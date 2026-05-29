@@ -4,7 +4,7 @@ import {
   Upload, FileSpreadsheet, Search, X, RefreshCw, Info,
   ChevronDown, Download, Truck, PackageCheck, Settings, BarChart3,
   AlertCircle, CheckCircle2, Filter, ArrowUpDown, Clock, CloudUpload, Database, Save,
-  Pencil, Trash2
+  Pencil, Trash2, Lock
 } from 'lucide-react'
 import { COLS_GIAO_NHAN, parseXlsxToRows, formatVal, getTrangThaiColor } from './constants.js'
 import { supabase, isSupabaseConfigured, supabaseUrl, supabaseAnonKey } from './supabaseClient.js'
@@ -502,12 +502,12 @@ function TabBar({ tabs, active, onChange }) {
 }
 
 // ─── Upload Zone ──────────────────────────────────────────────────────────────
-function UploadZone({ onFile, label, accept = '.xlsx,.xls' }) {
+function UploadZone({ onFile, label, accept = '.xlsx,.xls', disabled = false }) {
   const [drag, setDrag] = useState(false)
   const ref = useRef()
 
   const handle = useCallback((file) => {
-    if (!file) return
+    if (disabled || !file) return
     const reader = new FileReader()
     reader.onload = (e) => {
       const wb = XLSX.read(e.target.result, { type: 'array' })
@@ -516,35 +516,49 @@ function UploadZone({ onFile, label, accept = '.xlsx,.xls' }) {
       onFile(data, file.name)
     }
     reader.readAsArrayBuffer(file)
-  }, [onFile])
+  }, [onFile, disabled])
 
   return (
     <div
-      className={`upload-zone${drag ? ' drag-over' : ''}`}
-      onClick={() => ref.current.click()}
-      onDragOver={e => { e.preventDefault(); setDrag(true) }}
+      className={`upload-zone${drag && !disabled ? ' drag-over' : ''}${disabled ? ' disabled' : ''}`}
+      onClick={() => { if (!disabled) ref.current.click() }}
+      onDragOver={e => { e.preventDefault(); if (!disabled) setDrag(true) }}
       onDragLeave={() => setDrag(false)}
-      onDrop={e => { e.preventDefault(); setDrag(false); handle(e.dataTransfer.files[0]) }}
+      onDrop={e => { e.preventDefault(); setDrag(false); if (!disabled) handle(e.dataTransfer.files[0]) }}
+      style={{
+        cursor: disabled ? 'not-allowed' : 'pointer',
+        opacity: disabled ? 0.75 : 1,
+        backgroundColor: disabled ? '#fafafa' : undefined,
+        borderColor: disabled ? '#fca5a5' : undefined,
+        borderStyle: disabled ? 'dashed' : 'dashed',
+        position: 'relative'
+      }}
     >
-      <input ref={ref} type="file" accept={accept} onChange={e => handle(e.target.files[0])} />
+      <input ref={ref} type="file" accept={accept} disabled={disabled} onChange={e => { if (!disabled) handle(e.target.files[0]) }} style={{ display: 'none' }} />
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
         <div style={{
           width: 56, height: 56, borderRadius: 12,
-          background: 'var(--primary-light)',
+          background: disabled ? '#ff787515' : 'var(--primary-light)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          boxShadow: '0 2px 8px rgba(37,99,235,0.08)'
+          boxShadow: disabled ? 'none' : '0 2px 8px rgba(37,99,235,0.08)'
         }}>
-          <Upload size={24} color="var(--primary)" />
+          {disabled ? <Lock size={24} color="#f5222d" /> : <Upload size={24} color="var(--primary)" />}
         </div>
         <div>
-          <div style={{ fontWeight: 700, fontSize: 16, color: 'var(--text)', marginBottom: 6 }}>
-            {label}
+          <div style={{ fontWeight: 700, fontSize: 16, color: disabled ? '#f5222d' : 'var(--text)', marginBottom: 6 }}>
+            {disabled ? 'Nút Tải File Đang Bị Khóa' : label}
           </div>
-          <div style={{ color: 'var(--text-muted)', fontSize: 14 }}>
-            Kéo thả file vào đây hoặc <span style={{ color: 'var(--primary)', fontWeight: 600 }}>chọn file từ thiết bị</span>
+          <div style={{ color: disabled ? '#7f1d1d' : 'var(--text-muted)', fontSize: 14 }}>
+            {disabled ? (
+              <span style={{ fontWeight: 600 }}>⚠️ Bạn chưa Chọn Kho Dự Án cụ thể để gán dữ liệu.</span>
+            ) : (
+              <>Kéo thả file vào đây hoặc <span style={{ color: 'var(--primary)', fontWeight: 600 }}>chọn file từ thiết bị</span></>
+            )}
           </div>
-          <div style={{ color: 'var(--text-light)', fontSize: 12, marginTop: 6, fontStyle: 'italic' }}>
-            Hỗ trợ định dạng chuẩn: .xlsx, .xls
+          <div style={{ color: disabled ? '#b91c1c' : 'var(--text-light)', fontSize: 12, marginTop: 6, fontStyle: 'italic', fontWeight: disabled ? 500 : 'normal' }}>
+            {disabled 
+              ? 'Hãy chọn một dự án cụ thể bên danh sách "KHO DỰ ÁN" ở thanh Menu trên trước để tiếp tục tải lên.' 
+              : 'Hỗ trợ định dạng chuẩn: .xlsx, .xls'}
           </div>
         </div>
       </div>
@@ -867,11 +881,11 @@ function OrderTab({
             }}>
               <Info size={14} color="#d97706" style={{ marginTop: 1, flexShrink: 0 }} />
               <div style={{ fontSize: 14, color: '#92400e' }}>
-                <strong>Lưu ý:</strong> Vui lòng chọn <strong>Kho dự án</strong> ở góc trên trước khi upload file. Dữ liệu sẽ được gán vào dự án đang chọn.
+                <strong>Lưu ý:</strong> Vui lòng chọn <strong>Kho dự án</strong> ở góc trên trước khi upload file. Dữ liệu sẽ được gán vào dự án đang chọn. Chức năng tải file đang tạm thời bị khóa cho đến khi chọn dự án.
               </div>
             </div>
           )}
-          <UploadZone onFile={handleFile} label={uploadLabel} />
+          <UploadZone onFile={handleFile} label={uploadLabel} disabled={!selectedProject} />
         </div>
       ) : loading ? (
         <div className="empty-state">
@@ -1018,12 +1032,12 @@ function PreviewImportModal({ isOpen, onClose, onConfirm, rows, fileName, type, 
   const unitKey = type === 'giao' ? 'donViGiao' : 'donViNhan'
   const unitLabel = type === 'giao' ? 'Đơn vị giao' : 'Đơn vị nhận'
 
-  // Lọc các dòng có Đơn vị giao/nhận trùng với Kho dự án đang chọn
+  // Lọc các dòng có Đơn vị giao/nhận trùng khớp với Kho dự án đang chọn (trùng khớp hoàn toàn, không phân biệt chữ hoa thường)
   const matchedByUnit = selectedProject
     ? rows.filter(r => {
         const unit = String(r[unitKey] || '').trim().toLowerCase()
         const proj = selectedProject.trim().toLowerCase()
-        return unit.includes(proj) || proj.includes(unit)
+        return unit === proj
       })
     : rows
 
@@ -1034,7 +1048,7 @@ function PreviewImportModal({ isOpen, onClose, onConfirm, rows, fileName, type, 
   const uniqueUnits = [...new Set(rows.map(r => String(r[unitKey] || '').trim()).filter(Boolean))]
   const mismatchUnits = uniqueUnits.filter(u => {
     const proj = (selectedProject || '').trim().toLowerCase()
-    return !u.toLowerCase().includes(proj) && !proj.includes(u.toLowerCase())
+    return u.toLowerCase() !== proj
   })
 
   // Trong số các dòng khớp đơn vị, chỉ lấy dòng Đã phê duyệt
@@ -1086,6 +1100,42 @@ function PreviewImportModal({ isOpen, onClose, onConfirm, rows, fileName, type, 
           </button>
         </div>
 
+        {/* Warning notification banner for matching rules */}
+        {mismatchCount > 0 && (
+          <div style={{
+            background: approvedRows.length === 0 ? '#fef2f2' : '#fffbeb',
+            borderBottom: approvedRows.length === 0 ? '1px solid #fee2e2' : '1px solid #fef3c7',
+            padding: '12px 24px',
+            color: approvedRows.length === 0 ? '#991b1b' : '#92400e',
+            fontSize: 13,
+            display: 'flex',
+            alignItems: 'flex-start',
+            gap: 10,
+            flexShrink: 0,
+            textAlign: 'left'
+          }}>
+            <AlertCircle size={18} color={approvedRows.length === 0 ? '#dc2626' : '#d97706'} style={{ flexShrink: 0, marginTop: '2px' }} />
+            <div style={{ flex: 1, lineHeight: 1.5 }}>
+              {approvedRows.length === 0 ? (
+                <span>
+                  <strong style={{ fontSize: '14px', display: 'block', marginBottom: '4px', color: '#b91c1c' }}>⚠️ KIỂM TRA LỖI KHỚP DÀNH CHO KHO DỰ ÁN</strong>
+                  Không có bất kỳ dòng dữ liệu nào trong tệp tải lên có cột <strong>{unitLabel}</strong> khớp hoàn toàn với Kho dự án đã chọn <strong>"{selectedProject}"</strong>. Hệ thống sẽ <strong>bỏ qua toàn bộ dữ liệu</strong> và không thể lưu tệp này.
+                  {uniqueUnits.length > 0 && (
+                    <div style={{ marginTop: 8, padding: '8px 12px', background: '#fff', borderRadius: '6px', border: '1px solid #fee2e2', fontWeight: 500, color: '#b91c1c' }}>
+                      Các giá trị {unitLabel} được tìm thấy trong tệp hiện tại: <strong>{uniqueUnits.join(', ')}</strong>
+                    </div>
+                  )}
+                </span>
+              ) : (
+                <span>
+                  <strong style={{ fontSize: '14px', display: 'block', marginBottom: '4px' }}>⚠️ LƯU Ý BỎ QUA DỮ LIỆU KHÔNG TRÙNG KHỚP</strong>
+                  Phát hiện <strong>{mismatchCount.toLocaleString()} dòng</strong> có cột <strong>{unitLabel}</strong> không trùng khớp hoàn toàn với tên Kho dự án đang chọn <strong>"{selectedProject}"</strong>. Hệ thống sẽ tự động <strong>bỏ qua {mismatchCount.toLocaleString()} dòng này</strong> và chỉ nhập/lưu {approvedRows.length.toLocaleString()} dòng trùng khớp có trạng thái đã phê duyệt.
+                </span>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Table preview */}
         <div style={{ overflow: 'auto', flex: 1 }}>
           <DataTable rows={previewRows} />
@@ -1098,6 +1148,18 @@ function PreviewImportModal({ isOpen, onClose, onConfirm, rows, fileName, type, 
         }}>
           {/* Thông báo lọc dữ liệu */}
           <div style={{ display: 'flex', gap: 10, marginBottom: 10, flexWrap: 'wrap' }}>
+            {/* Tổng cộng số dòng tải lên */}
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 7,
+              background: '#f8fafc', border: '1px solid #cbd5e1',
+              borderRadius: 8, padding: '7px 14px', fontSize: 13, color: '#334155', flex: '1 1 100%'
+            }}>
+              <FileSpreadsheet size={15} color="#475569" />
+              <span>
+                Tổng cộng phát hiện: <strong style={{ color: '#0f172a', fontSize: 14 }}>{rows.length.toLocaleString()} dòng</strong> dữ liệu được tải lên từ file Excel.
+              </span>
+            </div>
+
             {/* Dòng khớp đơn vị & đã phê duyệt → sẽ lưu */}
             <div style={{
               display: 'flex', alignItems: 'center', gap: 7,
@@ -1532,6 +1594,9 @@ function SupabaseConfigModal({ isOpen, onClose }) {
     return 'default'
   })
 
+  const [testing, setTesting] = useState(false)
+  const [testResult, setTestResult] = useState(null) // { success: boolean, message: string }
+
   React.useEffect(() => {
     if (isOpen) {
       setUrl(localStorage.getItem('sgc_supabase_url') || import.meta.env.VITE_SUPABASE_URL || 'https://luhsnaqlajbwkftrsbeg.supabase.co')
@@ -1542,10 +1607,56 @@ function SupabaseConfigModal({ isOpen, onClose }) {
         return 'default'
       })
       setSaveSuccess(false)
+      setTestResult(null)
     }
   }, [isOpen])
 
   if (!isOpen) return null
+
+  const handleTestConnection = async () => {
+    setTesting(true)
+    setTestResult(null)
+    try {
+      const trimmedUrl = url.trim()
+      const trimmedKey = key.trim()
+      if (!trimmedUrl || !trimmedKey) {
+        setTestResult({ success: false, message: 'Vui lòng điền đầy đủ URL và Anon Key trước!' })
+        setTesting(false)
+        return
+      }
+
+      const res = await fetch(`${trimmedUrl}/rest/v1/du_an?select=*&limit=1`, {
+        headers: {
+          'apikey': trimmedKey,
+          'Authorization': `Bearer ${trimmedKey}`
+        }
+      })
+
+      if (res.ok) {
+        setTestResult({ success: true, message: 'Kết nối thành công! Cấu hình hoàn toàn chính xác.' })
+      } else {
+        const status = res.status
+        let customMsg = `Lỗi từ Máy chủ (HTTP ${status})`
+        if (status === 401) {
+          customMsg = 'Lỗi 401 Unauthorized: Anon Key của bạn không hợp lệ hoặc đã bị thay đổi/vô hiệu hóa trên trang quản trị Supabase!'
+        } else if (status === 404) {
+          customMsg = 'Lỗi 404 Not Found: URL dự án Supabase không chính xác!'
+        } else {
+          try {
+            const body = await res.json()
+            customMsg = `Lỗi (${status}): ${body.message || body.details || 'Không rõ lý do'}`
+          } catch (err) {
+            customMsg = `Lỗi (${status}): Yêu cầu bị từ chối hoặc sai credentials.`
+          }
+        }
+        setTestResult({ success: false, message: customMsg })
+      }
+    } catch (e) {
+      setTestResult({ success: false, message: `Lỗi kết nối mạng: ${e.message}. Kiểm tra lại tính chính xác của URL.` })
+    } finally {
+      setTesting(false)
+    }
+  }
 
   const handleSave = () => {
     const trimmedUrl = url.trim()
@@ -1635,11 +1746,11 @@ function SupabaseConfigModal({ isOpen, onClose }) {
           }} />
           <div style={{ flex: 1 }}>
             <span style={{ fontSize: 13, fontWeight: 700, color: isCurrentlyConnected ? '#065f46' : '#9f1239' }}>
-              Trạng thái: {isCurrentlyConnected ? 'Đã kết nối với Database' : 'Chưa kết nối (Offline)'}
+              Trạng thái: {isCurrentlyConnected ? 'Đã bật đầu nối Supabase' : 'Chưa cấu hình (Offline)'}
             </span>
             <p style={{ margin: '1px 0 0 0', fontSize: 11, color: isCurrentlyConnected ? '#047857' : '#be123c' }}>
               {isCurrentlyConnected 
-                ? `Đầu nối từ: ${currentSource === 'local' ? 'Trình duyệt Web (Local Storage)' : currentSource === 'env' ? 'Biến môi trường (Vite Env)' : 'Cấu hình tích hợp mặc định (Code)'}`
+                ? `Đang load từ: ${currentSource === 'local' ? 'Trình duyệt Web (Local Storage)' : currentSource === 'env' ? 'Biến môi trường (Vite Env)' : 'Cấu hình tích hợp mặc định (Code)'}`
                 : 'Đang chạy offline bằng bộ dữ liệu tạm thời.'}
             </p>
           </div>
@@ -1676,6 +1787,55 @@ function SupabaseConfigModal({ isOpen, onClose }) {
           </div>
         </div>
 
+        {/* Live Test connection button & results */}
+        <div style={{ border: '1px dashed #cbd5e1', borderRadius: 8, padding: 12, background: '#f8fafc' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontSize: 12, fontWeight: 600, color: '#334155' }}>Kiểm tra trạng thái kết nối trực tiếp:</span>
+            <button
+              type="button"
+              onClick={handleTestConnection}
+              disabled={testing}
+              style={{
+                background: testing ? '#e2e8f0' : '#f1f5f9',
+                border: '1px solid #cbd5e1',
+                padding: '4px 10px',
+                borderRadius: 4,
+                fontSize: 11,
+                fontWeight: 600,
+                color: '#1e293b',
+                cursor: testing ? 'not-allowed' : 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 4
+              }}
+            >
+              {testing ? (
+                <>
+                  <RefreshCw size={11} className="animate-spin" />
+                  Đang kiểm tra...
+                </>
+              ) : 'Bấm để Test'}
+            </button>
+          </div>
+
+          {testResult && (
+            <div style={{
+              marginTop: 8,
+              padding: 8,
+              borderRadius: 6,
+              fontSize: 11,
+              fontWeight: 500,
+              backgroundColor: testResult.success ? '#f0fdf4' : '#fef2f2',
+              border: `1px solid ${testResult.success ? '#bbf7d0' : '#fca5a5'}`,
+              color: testResult.success ? '#15803d' : '#b91c1c',
+              textAlign: 'left',
+              lineHeight: '1.4'
+            }}>
+              {testResult.message}
+            </div>
+          )}
+        </div>
+
         {/* Info detail block */}
         <details style={{ fontSize: 12, color: '#475569', border: '1px solid #e2e8f0', borderRadius: 8, padding: '8px 12px', background: '#f8fafc' }}>
           <summary style={{ fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, userSelect: 'none' }}>
@@ -1685,6 +1845,48 @@ function SupabaseConfigModal({ isOpen, onClose }) {
           <div style={{ marginTop: 8, paddingLeft: 4, display: 'flex', flexDirection: 'column', gap: 6 }}>
             <p style={{ margin: 0 }}><strong>Cách 1:</strong> Bạn chỉ cần cấu hình ngay tại form này rồi bấm <strong>Lưu kết nối</strong>. Trình duyệt của bạn sẽ tự lưu vĩnh viễn và đồng bộ dữ liệu ngay lập tức.</p>
             <p style={{ margin: 0 }}><strong>Cách 2:</strong> Vào Cloudflare Dashboard &gt; Settings &gt; Environment variables &gt; Thêm <code style={{ fontSize: 11, background: '#cbd5e1', padding: '1px 3px', borderRadius: 3 }}>VITE_SUPABASE_URL</code> và <code style={{ fontSize: 11, background: '#cbd5e1', padding: '1px 3px', borderRadius: 3 }}>VITE_SUPABASE_ANON_KEY</code> để mọi thiết bị truy cập mặc định online.</p>
+          </div>
+        </details>
+
+        {/* SQL Queries / RLS Policy Instructions */}
+        <details style={{ fontSize: 12, color: '#475569', border: '1px solid #fed7aa', borderRadius: 8, padding: '8px 12px', background: '#fffbeb' }}>
+          <summary style={{ fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, userSelect: 'none', color: '#c2410c' }}>
+            <AlertCircle size={14} color="#ea580c" />
+            <span>Sửa lỗi lưu/xóa (RLS Row Level Security) trong Supabase</span>
+          </summary>
+          <div style={{ marginTop: 8, paddingLeft: 4, display: 'flex', flexDirection: 'column', gap: 6, textAlign: 'left' }}>
+            <p style={{ margin: 0, fontSize: 11.5, color: '#475569', lineHeight: '1.5' }}>
+              Mặc định Supabase bật <strong>Row Level Security (RLS)</strong> nên sẽ chặn các lệnh <strong>INSERT</strong> và <strong>DELETE</strong> từ Client (báo lỗi 401 hoặc lỗi chặn RLS ngay cả khi kết nối Test OK).
+            </p>
+            <p style={{ margin: 0, fontSize: 11.5, color: '#475569', lineHeight: '1.5' }}>
+              Hãy sao chép các câu lệnh SQL dưới đây, dán vào tab <strong>SQL Editor</strong> trong trang quản trị Supabase dự án của bạn rồi chọn <strong>Run</strong> để khắc phục hoàn toàn:
+            </p>
+            <pre style={{
+              margin: '6px 0',
+              padding: '8px 10px',
+              background: '#1e293b',
+              color: '#f8fafc',
+              borderRadius: 6,
+              fontSize: 10.5,
+              overflowX: 'auto',
+              fontFamily: 'monospace',
+              lineHeight: '1.4'
+            }}>
+{`-- 1. Cấp quyền đầy đủ cho bảng du_an (Danh sách kho dự án)
+ALTER TABLE public.du_an ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow public du_an" ON public.du_an;
+CREATE POLICY "Allow public du_an" ON public.du_an FOR ALL USING (true) WITH CHECK (true);
+
+-- 2. Cấp quyền đầy đủ cho bảng don_giao (Báo cáo đơn vị giao)
+ALTER TABLE public.don_giao ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow public don_giao" ON public.don_giao;
+CREATE POLICY "Allow public don_giao" ON public.don_giao FOR ALL USING (true) WITH CHECK (true);
+
+-- 3. Cấp quyền đầy đủ cho bảng don_nhan (Báo cáo đơn vị nhận)
+ALTER TABLE public.don_nhan ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow public don_nhan" ON public.don_nhan;
+CREATE POLICY "Allow public don_nhan" ON public.don_nhan FOR ALL USING (true) WITH CHECK (true);`}
+            </pre>
           </div>
         </details>
 
@@ -1758,6 +1960,7 @@ function SupabaseConfigModal({ isOpen, onClose }) {
   )
 }
 
+
 // Helper functions for robust database access and column-case normalization
 function toSnakeCase(str) {
   return str.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`)
@@ -1786,102 +1989,238 @@ function normalizeDbRow(dbRow) {
   return normalized
 }
 
-async function insertWithFallback(tableName, originalChunk) {
-  // Helper to run a self-healing insert-and-retry loop for a specific payload structure
-  const tryInsertWithHealing = async (payload) => {
-    // Deep clone the payload so modifications don't leak or cross-contaminate different formats
-    let currentPayload = JSON.parse(JSON.stringify(payload))
-    
-    for (let retry = 0; retry < 50; retry++) {
-      const { error } = await supabase.from(tableName).insert(currentPayload)
-      if (!error) {
-        return { success: true }
-      }
-      
-      const errMsg = error.message || ''
-      let missingField = null
-      
-      // Match various PostgreSQL / PostgREST missing column error formats
-      const match1 = errMsg.match(/Could not find the '(.*?)' column of/i)
-      const match2 = errMsg.match(/column "(.*?)" of relation/i)
-      const match3 = errMsg.match(/column "(.*?)" does not exist/i)
-      
-      if (match1) {
-        missingField = match1[1]
-      } else if (match2) {
-        missingField = match2[1]
-      } else if (match3) {
-        missingField = match3[1]
-      }
-      
-      if (missingField) {
-        console.warn(`[Self-Healing] Loại bỏ cột không tồn tại '${missingField}' trên bảng '${tableName}' và thử lại...`)
-        currentPayload.forEach(row => {
-          // Remove case-insensitively & snake-case-insensitively
-          const keys = Object.keys(row)
-          keys.forEach(k => {
-            if (
-              k.toLowerCase() === missingField.toLowerCase() ||
-              toSnakeCase(k).toLowerCase() === toSnakeCase(missingField).toLowerCase() ||
-              k.replace(/_/g, '').toLowerCase() === missingField.replace(/_/g, '').toLowerCase()
-            ) {
-              delete row[k]
-            }
-          })
-          // Fallback direct deletes
-          delete row[missingField]
-          delete row[missingField.toLowerCase()]
-          delete row[toSnakeCase(missingField)]
-        })
-        
-        // If there are no keys left to attempt, stop to prevent infinite looping
-        if (currentPayload.length > 0 && Object.keys(currentPayload[0]).length === 0) {
-          break
-        }
-        continue
-      }
-      
-      return { success: false, error }
+// Cache the best casing style for each table ('camel', 'lower', 'snake') to bypass wrong attempts
+const tableCasingStyleCache = {}
+
+// Cache list of columns that do not exist on each table to avoid repeated "column not found" roundtrips
+const blacklistedColumnsCache = {}
+
+function convertToCasingStyle(row, style) {
+  const newRow = {}
+  Object.keys(row).forEach(k => {
+    if (style === 'lower') {
+      newRow[k.toLowerCase()] = row[k]
+    } else if (style === 'snake') {
+      newRow[toSnakeCase(k)] = row[k]
+    } else {
+      newRow[k] = row[k] // camel / default
     }
-    return { success: false, error: new Error('Không thể lưu do loại bỏ cột không thành công hoặc lỗi DB nghiêm trọng') }
-  }
+  })
+  return newRow
+}
 
-  // Try 1: Exact CamelCase payload
-  {
-    const res = await tryInsertWithHealing(originalChunk)
-    if (res.success) return { success: true }
-    console.warn(`CamelCase insert failed for ${tableName}:`, res.error?.message || res.error)
-  }
+function filterRowByBlacklist(row, tableName) {
+  const blacklist = blacklistedColumnsCache[tableName] || []
+  if (blacklist.length === 0) return row
+  
+  const cleanRow = { ...row }
+  blacklist.forEach(badField => {
+    delete cleanRow[badField]
+    delete cleanRow[badField.toLowerCase()]
+    delete cleanRow[toSnakeCase(badField)]
+    delete cleanRow[badField.replace(/_/g, '')]
+  })
+  return cleanRow
+}
 
-  // Try 2: Lowercase payload (unquoted PostgreSQL creates lowercase columns by default)
-  {
-    const lowercaseChunk = originalChunk.map(row => {
-      const newRow = {}
-      Object.keys(row).forEach(k => {
-        newRow[k.toLowerCase()] = row[k]
+async function tryInsertWithSelfHealing(tableName, payload, style) {
+  let currentPayload = JSON.parse(JSON.stringify(payload))
+  
+  for (let retry = 0; retry < 50; retry++) {
+    const { error } = await supabase.from(tableName).insert(currentPayload)
+    if (!error) {
+      return { success: true }
+    }
+    
+    const errMsg = error.message || ''
+    let missingField = null
+    
+    const match1 = errMsg.match(/Could not find the '(.*?)' column of/i)
+    const match2 = errMsg.match(/column "(.*?)" of relation/i)
+    const match3 = errMsg.match(/column "(.*?)" does not exist/i)
+    
+    if (match1) {
+      missingField = match1[1]
+    } else if (match2) {
+      missingField = match2[1]
+    } else if (match3) {
+      missingField = match3[1]
+    }
+    
+    if (missingField) {
+      console.warn(`[Self-Healing] Loại bỏ cột không tồn tại '${missingField}' trên bảng '${tableName}' và thử lại...`)
+      
+      // Update our global blacklist for subsequent chunks & retry
+      if (!blacklistedColumnsCache[tableName]) {
+        blacklistedColumnsCache[tableName] = []
+      }
+      if (!blacklistedColumnsCache[tableName].includes(missingField)) {
+        blacklistedColumnsCache[tableName].push(missingField)
+      }
+      
+      currentPayload.forEach(row => {
+        delete row[missingField]
+        delete row[missingField.toLowerCase()]
+        delete row[toSnakeCase(missingField)]
+        delete row[missingField.replace(/_/g, '')]
       })
-      return newRow
-    })
-    const res = await tryInsertWithHealing(lowercaseChunk)
+      
+      if (currentPayload.length > 0 && Object.keys(currentPayload[0]).length === 0) {
+        break
+      }
+      continue
+    }
+    
+    return { success: false, error }
+  }
+  return { success: false, error: new Error('Không thể tự khắc phục cột bị thiếu sau nhiều lần thử') }
+}
+
+async function insertWithFallback(tableName, originalChunk) {
+  // If we already know the casing style for this table, use it directly!
+  const cachedStyle = tableCasingStyleCache[tableName]
+  if (cachedStyle) {
+    const styledChunk = originalChunk.map(row => 
+      filterRowByBlacklist(convertToCasingStyle(row, cachedStyle), tableName)
+    )
+    const res = await tryInsertWithSelfHealing(tableName, styledChunk, cachedStyle)
     if (res.success) return { success: true }
-    console.warn(`Lowercase insert failed for ${tableName}:`, res.error?.message || res.error)
+    console.warn(`Cached style "${cachedStyle}" failed for ${tableName}:`, res.error?.message || res.error)
   }
 
-  // Try 3: SnakeCase payload (common PostgreSQL naming style)
-  {
-    const snakeChunk = originalChunk.map(row => {
-      const newRow = {}
-      Object.keys(row).forEach(k => {
-        newRow[toSnakeCase(k)] = row[k]
-      })
-      return newRow
-    })
-    const res = await tryInsertWithHealing(snakeChunk)
-    if (res.success) return { success: true }
-    console.warn(`SnakeCase insert failed for ${tableName}:`, res.error?.message || res.error)
+  // First try direct straight insert across casings WITHOUT self-healing to find the perfect style 
+  // (Prevents silent stripping of required columns of the table)
+  const stylesToTry = ['snake', 'lower', 'camel']
+  for (const style of stylesToTry) {
+    const styledChunk = originalChunk.map(row => 
+      filterRowByBlacklist(convertToCasingStyle(row, style), tableName)
+    )
+    const { error } = await supabase.from(tableName).insert(styledChunk)
+    if (!error) {
+      console.log(`[Casing Finder] Phát hiện cấu trúc table "${tableName}" trùng khớp hoàn hảo với kiểu: "${style}"`)
+      tableCasingStyleCache[tableName] = style
+      return { success: true }
+    }
+    
+    // Check if the error is due to missing columns or something else.
+    const errMsg = error.message || ''
+    const isMissingColumnError = 
+      errMsg.includes('column') && 
+      (errMsg.includes('not exist') || errMsg.includes('Could not find') || errMsg.includes('relation'))
+      
+    if (!isMissingColumnError) {
+      // If it's a constraint, RLS or real error, bubble it up.
+      throw error
+    }
+  }
+
+  // If all straight inserts failed, we attempt with Self Healing in snake, then lower, then camel
+  const healingOrder = ['snake', 'lower', 'camel']
+  for (const style of healingOrder) {
+    const styledChunk = originalChunk.map(row => 
+      filterRowByBlacklist(convertToCasingStyle(row, style), tableName)
+    )
+    const res = await tryInsertWithSelfHealing(tableName, styledChunk, style)
+    if (res.success) {
+      console.log(`[Casing Finder/Healed] Đồng bộ thành công trên "${tableName}" kiểu "${style}" sau khi loại bỏ các cột không dùng`)
+      tableCasingStyleCache[tableName] = style
+      return { success: true }
+    }
   }
 
   throw new Error('Supabase từ chối đồng bộ dữ liệu. Đã thử đồng hóa viết hoa/thường và tự động gỡ các cột không có trong Table nhưng vẫn thất bại.')
+}
+
+// Adaptive database row deletion helper which detects table columns from OpenAPI schema or fallback methods
+async function deleteFromTableAdaptive(tableName, possibleColumns, targetValue) {
+  try {
+    let columns = null
+    
+    // Try 1: OpenAPI Schema detection (highly robust, zero 400 bad requests)
+    try {
+      const response = await fetch(`${supabaseUrl}/rest/v1/`, {
+        headers: {
+          'apikey': supabaseAnonKey,
+          'Authorization': `Bearer ${supabaseAnonKey}`
+        }
+      })
+      if (response.ok) {
+        const schema = await response.json()
+        const def = schema.definitions?.[tableName]
+        if (def && def.properties) {
+          columns = Object.keys(def.properties)
+          console.log(`[Schema Finder] Phát hiện các cột của bảng "${tableName}" từ OpenAPI schema:`, columns)
+        }
+      }
+    } catch (schemaErr) {
+      console.warn('[Schema Finder] Lỗi khi tải OpenAPI schema từ Supabase:', schemaErr.message)
+    }
+
+    // Try 2: Row inspection fallback (if OpenAPI schema was unreachable or failed)
+    if (!columns) {
+      const { data, error } = await supabase.from(tableName).select('*').limit(1)
+      if (!error && data && data.length > 0) {
+        columns = Object.keys(data[0])
+        console.log(`[Schema Finder] Phát hiện các cột của bảng "${tableName}" từ truy vấn dòng mẫu:`, columns)
+      } else if (!error && (!data || data.length === 0)) {
+        // Table is empty, no-op is safe
+        console.log(`[Schema Finder] Bảng "${tableName}" đang trống hoàn toàn. Không cần gửi lệnh DELETE.`)
+        return { success: true, reason: 'table_empty' }
+      } else if (error) {
+        console.warn(`[Schema Finder] Lỗi truy vấn dòng mẫu từ bảng "${tableName}":`, error.message)
+      }
+    }
+
+    // If we have columns, find the matching column to delete by
+    if (columns && columns.length > 0) {
+      const matchingCol = possibleColumns.find(col => 
+        columns.includes(col) || 
+        columns.some(c => c.toLowerCase() === col.toLowerCase())
+      )
+
+      if (matchingCol) {
+        const exactCol = columns.find(c => c.toLowerCase() === matchingCol.toLowerCase()) || matchingCol
+        console.log(`[Adaptive Delete] Đang thực hiện xóa trên bảng "${tableName}" với điều kiện "${exactCol}" = "${targetValue}"`)
+        const { error: delErr } = await supabase.from(tableName).delete().eq(exactCol, targetValue)
+        if (delErr) {
+          console.error(`[Adaptive Delete] Lỗi khi xóa trên bảng "${tableName}":`, delErr.message)
+          throw delErr
+        }
+
+        // Verify if the item actually deleted from Supabase to catch silent RLS denials (PostgreSQL RLS silent bypass returns 200 OK)
+        const { data: checkData, error: checkErr } = await supabase.from(tableName).select(exactCol).eq(exactCol, targetValue).limit(1)
+        if (!checkErr && checkData && checkData.length > 0) {
+          console.warn(`[Adaptive Delete] Phát hiện dòng có "${exactCol}" = "${targetValue}" vẫn hiện diện trên "${tableName}" mặc dù lệnh DELETE trả về thành công! Đây chắc chắn là do chính sách bảo mật RLS (Row Level Security) đang chặn quyền DELETE.`)
+          throw new Error(`Supabase từ chối xóa dòng này (bị chặn bởi cấu hình bảo mật RLS - Row Level Security). Vui lòng tạo chính sách "DELETE" cho vai trò "anon" (hoặc "public") trên bảng "${tableName}" trong trang quản trị.`)
+        }
+
+        return { success: true }
+      }
+    }
+
+    // Fallback: If no columns were detected at all, do sequential trial as a last resort
+    console.warn(`[Adaptive Delete] Không phát hiện được cấu trúc cột cho "${tableName}". Đang thử xóa tuần tự fallback...`)
+    let lastError = null
+    for (const col of possibleColumns) {
+      const { error: delErr } = await supabase.from(tableName).delete().eq(col, targetValue)
+      if (!delErr) {
+        // Verify delete on fallback
+        const { data: checkData, error: checkErr } = await supabase.from(tableName).select(col).eq(col, targetValue).limit(1)
+        if (!checkErr && checkData && checkData.length > 0) {
+          lastError = new Error(`Cập nhật bị chặn bởi RLS: Bảng "${tableName}" không cho phép xóa cột "${col}" bằng vai trò hiện tại.`)
+          continue
+        }
+        console.log(`[Adaptive Delete] Xóa thành công trên "${tableName}" bằng cột fallback "${col}"`)
+        return { success: true }
+      }
+      lastError = delErr
+    }
+    
+    throw lastError || new Error(`Không tìm thấy cột phù hợp hoặc không được cấu hình quyền DELETE trên bảng "${tableName}"`)
+  } catch (err) {
+    console.error(`[Adaptive Delete] Lỗi trong quá trình xóa dữ liệu trên bảng "${tableName}":`, err)
+    return { success: false, error: err }
+  }
 }
 
 // ─── App ──────────────────────────────────────────────────────────────────────
@@ -1892,6 +2231,7 @@ export default function App() {
   const [showEditProjectModal, setShowEditProjectModal] = useState(false)
   const [showDeleteProjectModal, setShowDeleteProjectModal] = useState(false)
   const [showConfigModal, setShowConfigModal] = useState(false)
+  const [supabaseAuthError, setSupabaseAuthError] = useState(false)
   const [projectToEdit, setProjectToEdit] = useState('')
   const [projectToDelete, setProjectToDelete] = useState('')
 
@@ -1924,6 +2264,16 @@ export default function App() {
       const { data: projData, error: projError } = await supabase
         .from('du_an')
         .select('*')
+      
+      if (projError) {
+        console.error('Lỗi tải danh mục dự án từ Supabase:', projError)
+        if (projError.status === 401 || projError.message?.includes('Unauthorized') || projError.message?.includes('JWT') || projError.message?.includes('key') || projError.message?.includes('Invalid API key')) {
+          setSupabaseAuthError(true)
+        }
+      } else {
+        setSupabaseAuthError(false)
+      }
+
       if (!projError && projData) {
         const list = projData.map(d => {
           const key = Object.keys(d).find(k =>
@@ -1941,7 +2291,11 @@ export default function App() {
       }
 
       const { data: gData, error: gError } = await supabase.from('don_giao').select('*')
-      if (!gError) {
+      if (gError) {
+        if (gError.status === 401) {
+          setSupabaseAuthError(true)
+        }
+      } else {
         if (gData && gData.length > 0) {
           const mappedG = gData.map((item, idx) => {
             const normalized = normalizeDbRow(item)
@@ -1956,7 +2310,11 @@ export default function App() {
       }
 
       const { data: nData, error: nError } = await supabase.from('don_nhan').select('*')
-      if (!nError) {
+      if (nError) {
+        if (nError.status === 401) {
+          setSupabaseAuthError(true)
+        }
+      } else {
         if (nData && nData.length > 0) {
           const mappedN = nData.map((item, idx) => {
             const normalized = normalizeDbRow(item)
@@ -2123,12 +2481,12 @@ export default function App() {
 
     const unitKey = type === 'giao' ? 'donViGiao' : 'donViNhan'
 
-    // Bước 1: Lọc các dòng có Đơn vị giao/nhận trùng với Kho dự án đang chọn
+    // Bước 1: Lọc các dòng có Đơn vị giao/nhận trùng khớp với Kho dự án đang chọn (trùng khớp hoàn toàn, không phân biệt chữ hoa thường)
     const matchedByUnit = selectedProject
       ? parsedRows.filter(r => {
           const unit = String(r[unitKey] || '').trim().toLowerCase()
           const proj = selectedProject.trim().toLowerCase()
-          return unit.includes(proj) || proj.includes(unit)
+          return unit === proj
         })
       : parsedRows
 
@@ -2175,13 +2533,10 @@ export default function App() {
       try {
         let query = supabase.from(tableName).delete()
         if (selectedProject) {
-          // Xóa theo dự án đang chọn (thử các tên cột có thể có)
-          const { error: e1 } = await supabase.from(tableName).delete().eq('duAn', selectedProject)
-          if (e1) {
-            const { error: e2 } = await supabase.from(tableName).delete().eq('du_an', selectedProject)
-            if (e2) {
-              await supabase.from(tableName).delete().eq('duan', selectedProject)
-            }
+          // Xóa theo dự án đang chọn sử dụng cơ chế Adaptive cực kỳ tối ưu
+          const deleteRes = await deleteFromTableAdaptive(tableName, ['duAn', 'du_an', 'duan'], selectedProject)
+          if (!deleteRes.success && deleteRes.reason !== 'table_empty') {
+            throw deleteRes.error || new Error('Không tìm thấy cột phù hợp hoặc không được phân quyền xóa.')
           }
         } else {
           // Không có dự án cụ thể → xóa hết bảng
@@ -2396,27 +2751,26 @@ export default function App() {
           type: 'info'
         })
 
-        // Xóa song song tất cả các tên cột có thể có trong bảng 'du_an'
-        await Promise.allSettled([
-          supabase.from('du_an').delete().eq('ten_du_an', trimmed),
-          supabase.from('du_an').delete().eq('tenduan', trimmed),
-          supabase.from('du_an').delete().eq('tenDuAn', trimmed),
-          supabase.from('du_an').delete().eq('ten_duan', trimmed),
-        ])
+        // Xóa tuần tự: Xóa các tham chiếu ở con trước để tránh Foreign Key Violation, sau đó mới xóa ở cha
+        console.log('[Supabase Delete] Thực hiện xóa liên kết don_giao...')
+        const resGiao = await deleteFromTableAdaptive('don_giao', ['duAn', 'du_an', 'duan'], trimmed)
+        if (!resGiao.success && resGiao.reason !== 'table_empty') {
+          console.warn('[Supabase Delete] Cảnh báo lỗi xóa don_giao (có thể bỏ qua nếu bảng không dùng/không có dữ liệu):', resGiao.error)
+        }
 
-        // -- Xóa tham chiếu trong 'don_giao' (song song tất cả tên cột có thể)
-        await Promise.allSettled([
-          supabase.from('don_giao').delete().eq('du_an', trimmed),
-          supabase.from('don_giao').delete().eq('duan', trimmed),
-          supabase.from('don_giao').delete().eq('duAn', trimmed),
-        ])
+        console.log('[Supabase Delete] Thực hiện xóa liên kết don_nhan...')
+        const resNhan = await deleteFromTableAdaptive('don_nhan', ['duAn', 'du_an', 'duan'], trimmed)
+        if (!resNhan.success && resNhan.reason !== 'table_empty') {
+          console.warn('[Supabase Delete] Cảnh báo lỗi xóa don_nhan (col có thể bỏ qua nếu bảng không dùng/không có dữ liệu):', resNhan.error)
+        }
 
-        // -- Xóa tham chiếu trong 'don_nhan' (song song tất cả tên cột có thể)
-        await Promise.allSettled([
-          supabase.from('don_nhan').delete().eq('du_an', trimmed),
-          supabase.from('don_nhan').delete().eq('duan', trimmed),
-          supabase.from('don_nhan').delete().eq('duAn', trimmed),
-        ])
+        console.log('[Supabase Delete] Thực hiện xóa dự án trong bảng du_an...')
+        const resDuAn = await deleteFromTableAdaptive('du_an', ['ten_du_an', 'tenduan', 'tenDuAn', 'ten_duan', 'tendu_an', 'name'], trimmed)
+        if (!resDuAn.success) {
+          const errObj = resDuAn.error || {}
+          const errorMsg = errObj.message || errObj.details || 'Không rõ nguyên nhân. Vui lòng kiểm tra quyền RLS (Row Level Security) cho chính sách DELETE hoặc ràng buộc khóa ngoại (Foreign Key Constraints).'
+          throw new Error(errorMsg)
+        }
 
         // Reload toàn bộ dữ liệu từ Supabase để đồng bộ sau khi xóa
         await loadDataFromSupabase()
@@ -2473,6 +2827,47 @@ export default function App() {
         onOpenConfigModal={() => setShowConfigModal(true)}
       />
       <TabBar tabs={tabs} active={tab} onChange={setTab} />
+
+      {supabaseAuthError && (
+        <div style={{
+          margin: '16px 16px 0 16px',
+          padding: '12px 16px',
+          borderRadius: '12px',
+          border: '1px solid #fca5a5',
+          backgroundColor: '#fef2f2',
+          color: '#991b1b',
+          display: 'flex',
+          alignItems: 'flex-start',
+          gap: '12px',
+          boxShadow: '0 2px 4px rgba(0,0,0,0.02)',
+          textAlign: 'left'
+        }}>
+          <AlertCircle size={20} color="#dc2626" style={{ marginTop: '2px', flexShrink: 0 }} />
+          <div style={{ flex: 1 }}>
+            <h4 style={{ margin: 0, fontSize: '13px', fontWeight: 700 }}>⚠️ Lỗi xác thực kết nối Supabase (401 Unauthorized)</h4>
+            <p style={{ margin: '4px 0 0 0', fontSize: '12px', color: '#b91c1c', lineHeight: 1.4 }}>
+              Cơ sở dữ liệu Supabase đã từ chối yêu cầu truy cập vì Project URL hoặc Anon Key bị cấu hình sai hoặc đã bị thay đổi/hết hạn trên trang quản trị dự án của bạn (Lỗi 401 Unauthorized). 
+              Do đó, bạn <strong>không thể xem danh sách, cập nhật hay xóa dự án</strong> được. Vui lòng bấm vào nút cấu hình lại bên dưới.
+            </p>
+            <button
+              onClick={() => setShowConfigModal(true)}
+              style={{
+                marginTop: '8px',
+                padding: '4px 10px',
+                fontSize: '11px',
+                fontWeight: 700,
+                color: '#ffffff',
+                backgroundColor: '#dc2626',
+                border: 'none',
+                borderRadius: '4px',
+                cursor: 'pointer'
+              }}
+            >
+              Sửa & kiểm cấu hình kết nối ngay
+            </button>
+          </div>
+        </div>
+      )}
 
       <div style={{ flex: 1, overflow: 'hidden' }}>
         {tab === 'giao' && (
