@@ -658,7 +658,15 @@ function FilterBar({ search, setSearch, trangThai, setTrangThai, trangThaiOption
 }
 
 // ─── Data Table ───────────────────────────────────────────────────────────────
+const PAGE_SIZE_OPTIONS = [50, 100, 200, 500]
+
 function DataTable({ rows }) {
+  const [pageSize, setPageSize] = React.useState(100)
+  const [currentPage, setCurrentPage] = React.useState(1)
+
+  // Reset to page 1 when rows change (filter applied)
+  React.useEffect(() => { setCurrentPage(1) }, [rows])
+
   if (rows.length === 0) return (
     <div className="empty-state">
       <Search size={48} />
@@ -667,85 +675,170 @@ function DataTable({ rows }) {
     </div>
   )
 
+  const totalPages = Math.ceil(rows.length / pageSize)
+  const startIdx = (currentPage - 1) * pageSize
+  const endIdx = Math.min(startIdx + pageSize, rows.length)
+  const pageRows = rows.slice(startIdx, endIdx)
+
+  // Generate page buttons (show max 7 around current)
+  const getPageNums = () => {
+    const pages = []
+    if (totalPages <= 7) {
+      for (let i = 1; i <= totalPages; i++) pages.push(i)
+    } else {
+      pages.push(1)
+      if (currentPage > 3) pages.push('...')
+      for (let i = Math.max(2, currentPage - 1); i <= Math.min(totalPages - 1, currentPage + 1); i++) pages.push(i)
+      if (currentPage < totalPages - 2) pages.push('...')
+      pages.push(totalPages)
+    }
+    return pages
+  }
+
+  const btnBase = {
+    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+    height: 30, minWidth: 30, padding: '0 8px',
+    border: '1px solid #e2e8f0', borderRadius: 6,
+    fontSize: 13, fontWeight: 500, cursor: 'pointer',
+    background: '#fff', color: '#374151', transition: 'all 0.15s',
+    userSelect: 'none'
+  }
+  const btnActive = { ...btnBase, background: 'var(--primary)', color: '#fff', borderColor: 'var(--primary)', fontWeight: 700 }
+  const btnDisabled = { ...btnBase, opacity: 0.4, cursor: 'not-allowed', pointerEvents: 'none' }
+
   return (
-    <div className="table-wrap">
-      <table>
-        <thead>
-          <tr>
-            <th style={{ width: 50, minWidth: 50, maxWidth: 50, textAlign: 'center', verticalAlign: 'middle', fontSize: '12px', padding: '8px 10px' }}>
-              STT
-            </th>
-            {COLS_GIAO_NHAN.map(c => {
-              return (
+    <div>
+      {/* Pagination top bar */}
+      <div style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        marginBottom: 10, gap: 12, flexWrap: 'wrap'
+      }}>
+        {/* Left: page size selector */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ fontSize: 13, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>Hiển thị</span>
+          <div style={{ display: 'flex', gap: 4 }}>
+            {PAGE_SIZE_OPTIONS.map(sz => (
+              <button
+                key={sz}
+                onClick={() => { setPageSize(sz); setCurrentPage(1) }}
+                style={pageSize === sz
+                  ? { ...btnActive, minWidth: 44, height: 28, fontSize: 12 }
+                  : { ...btnBase, minWidth: 44, height: 28, fontSize: 12 }
+                }
+              >
+                {sz}
+              </button>
+            ))}
+          </div>
+          <span style={{ fontSize: 13, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>dòng / trang</span>
+        </div>
+
+        {/* Right: page info + nav */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <span style={{ fontSize: 13, color: 'var(--text-muted)', marginRight: 4, whiteSpace: 'nowrap' }}>
+            {startIdx + 1}–{endIdx} / {rows.length.toLocaleString()} dòng
+          </span>
+
+          {/* Prev */}
+          <button style={currentPage === 1 ? btnDisabled : btnBase} onClick={() => setCurrentPage(p => p - 1)}>‹</button>
+
+          {/* Page numbers */}
+          {getPageNums().map((p, i) =>
+            p === '...'
+              ? <span key={`ellipsis-${i}`} style={{ fontSize: 13, color: '#94a3b8', padding: '0 2px' }}>…</span>
+              : <button key={p} style={currentPage === p ? btnActive : btnBase} onClick={() => setCurrentPage(p)}>{p}</button>
+          )}
+
+          {/* Next */}
+          <button style={currentPage === totalPages ? btnDisabled : btnBase} onClick={() => setCurrentPage(p => p + 1)}>›</button>
+        </div>
+      </div>
+
+      {/* Table */}
+      <div className="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th style={{ width: 50, minWidth: 50, maxWidth: 50, textAlign: 'center', verticalAlign: 'middle', fontSize: '12px', padding: '8px 10px' }}>
+                STT
+              </th>
+              {COLS_GIAO_NHAN.map(c => (
                 <th
                   key={c.key}
                   style={{
-                    width: c.width,
-                    minWidth: c.width,
-                    maxWidth: c.width,
-                    textAlign: 'center',
-                    verticalAlign: 'middle',
-                    fontSize: '12px',
-                    padding: '8px 10px',
-                    whiteSpace: 'normal',
-                    wordBreak: 'break-word',
-                    lineHeight: '1.2'
+                    width: c.width, minWidth: c.width, maxWidth: c.width,
+                    textAlign: 'center', verticalAlign: 'middle',
+                    fontSize: '12px', padding: '8px 10px',
+                    whiteSpace: 'normal', wordBreak: 'break-word', lineHeight: '1.2'
                   }}
                 >
                   {c.label}
                 </th>
-              );
-            })}
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((row, i) => (
-            <tr key={row.id}>
-              <td style={{ width: 50, minWidth: 50, maxWidth: 50, textAlign: 'center', fontSize: '12px', color: '#1b1919', padding: '6px 10px' }}>{i + 1}</td>
-              {COLS_GIAO_NHAN.map(col => {
-                const isCenteredCol = [
-                  'ngayXuatNhap', 'maVatTu', 'maSAP', 'dvt', 'loaiDon',
-                  'maDonViGiao', 'donViGiao', 'nguoiGiao',
-                  'maDonViNhan', 'donViNhan', 'nguoiPheDuyet', 'nguoiNhan',
-                  'soHopDong', 'thuKho', 'tinhTrang'
-                ].includes(col.key);
-                const isRightAligned = ['khoiLuongNhap', 'khoiLuongXuat'].includes(col.key) || col.key.toLowerCase().includes('khoiluong');
-                return (
-                  <td
-                    key={col.key}
-                    style={{
-                      width: col.width,
-                      minWidth: col.width,
-                      maxWidth: col.width,
-                      color: '#1b1919',
-                      textAlign: isCenteredCol ? 'center' : (isRightAligned ? 'right' : 'left'),
-                      fontSize: '12px',
-                      padding: '6px 10px',
-                      wordBreak: 'break-word',
-                      whiteSpace: 'normal'
-                    }}
-                    title={String(formatVal(row[col.key]) || '')}
-                  >
-                    {col.key === 'trangThai' ? (
-                      row[col.key] ? (
-                        <span className={`badge ${getTrangThaiColor(row[col.key])}`} style={{ fontSize: '11px', padding: '2px 6px', lineHeight: 1.2 }}>
-                          {row[col.key]}
-                        </span>
-                      ) : ''
-                    ) : col.key === 'tinhTrang' ? (
-                      row[col.key]
-                        ? <span className={`badge ${row[col.key] === 'NEW' ? 'badge-green' : row[col.key] === 'USED' ? 'badge-yellow' : 'badge-gray'}`} style={{ fontSize: '11px', padding: '2px 6px', lineHeight: 1.2 }}>{row[col.key]}</span>
-                        : ''
-                    ) : (
-                      formatVal(row[col.key]) !== null && formatVal(row[col.key]) !== undefined ? formatVal(row[col.key]) : ''
-                    )}
-                  </td>
-                );
-              })}
+              ))}
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {pageRows.map((row, i) => (
+              <tr key={row.id}>
+                <td style={{ width: 50, minWidth: 50, maxWidth: 50, textAlign: 'center', fontSize: '12px', color: '#1b1919', padding: '6px 10px' }}>
+                  {startIdx + i + 1}
+                </td>
+                {COLS_GIAO_NHAN.map(col => {
+                  const isCenteredCol = [
+                    'ngayXuatNhap', 'maVatTu', 'maSAP', 'dvt', 'loaiDon',
+                    'maDonViGiao', 'donViGiao', 'nguoiGiao',
+                    'maDonViNhan', 'donViNhan', 'nguoiPheDuyet', 'nguoiNhan',
+                    'soHopDong', 'thuKho', 'tinhTrang'
+                  ].includes(col.key)
+                  const isRightAligned = ['khoiLuongNhap', 'khoiLuongXuat'].includes(col.key) || col.key.toLowerCase().includes('khoiluong')
+                  return (
+                    <td
+                      key={col.key}
+                      style={{
+                        width: col.width, minWidth: col.width, maxWidth: col.width,
+                        color: '#1b1919',
+                        textAlign: isCenteredCol ? 'center' : (isRightAligned ? 'right' : 'left'),
+                        fontSize: '12px', padding: '6px 10px',
+                        wordBreak: 'break-word', whiteSpace: 'normal'
+                      }}
+                      title={String(formatVal(row[col.key]) || '')}
+                    >
+                      {col.key === 'trangThai' ? (
+                        row[col.key] ? (
+                          <span className={`badge ${getTrangThaiColor(row[col.key])}`} style={{ fontSize: '11px', padding: '2px 6px', lineHeight: 1.2 }}>
+                            {row[col.key]}
+                          </span>
+                        ) : ''
+                      ) : col.key === 'tinhTrang' ? (
+                        row[col.key]
+                          ? <span className={`badge ${row[col.key] === 'NEW' ? 'badge-green' : row[col.key] === 'USED' ? 'badge-yellow' : 'badge-gray'}`} style={{ fontSize: '11px', padding: '2px 6px', lineHeight: 1.2 }}>{row[col.key]}</span>
+                          : ''
+                      ) : (
+                        formatVal(row[col.key]) !== null && formatVal(row[col.key]) !== undefined ? formatVal(row[col.key]) : ''
+                      )}
+                    </td>
+                  )
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Pagination bottom bar */}
+      {totalPages > 1 && (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 12 }}>
+          <button style={currentPage === 1 ? btnDisabled : btnBase} onClick={() => setCurrentPage(1)}>«</button>
+          <button style={currentPage === 1 ? btnDisabled : btnBase} onClick={() => setCurrentPage(p => p - 1)}>‹</button>
+          {getPageNums().map((p, i) =>
+            p === '...'
+              ? <span key={`ellipsis-b-${i}`} style={{ fontSize: 13, color: '#94a3b8', padding: '0 2px' }}>…</span>
+              : <button key={p} style={currentPage === p ? btnActive : btnBase} onClick={() => setCurrentPage(p)}>{p}</button>
+          )}
+          <button style={currentPage === totalPages ? btnDisabled : btnBase} onClick={() => setCurrentPage(p => p + 1)}>›</button>
+          <button style={currentPage === totalPages ? btnDisabled : btnBase} onClick={() => setCurrentPage(totalPages)}>»</button>
+        </div>
+      )}
     </div>
   )
 }
