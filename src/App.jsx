@@ -57,7 +57,7 @@ function SearchableSelect({ value, onChange, options, placeholder = 'Tất cả 
     cursor: 'pointer',
     width: 'fit-content',
     minWidth: 160,
-    maxWidth: 460,
+    maxWidth: 600,
     height: 32,
     display: 'flex',
     alignItems: 'center',
@@ -587,7 +587,7 @@ function StatsBar({ rows }) {
   ]
 
   return (
-    <div style={{ display: 'flex', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
+    <div style={{ display: 'flex', gap: 12, marginBottom: 16, flexWrap: 'wrap', flexShrink: 0 }}>
       {cards.map(c => (
         <div key={c.label} style={{
           background: c.bg,
@@ -623,7 +623,7 @@ function StatsBar({ rows }) {
 // ─── Filter Bar ───────────────────────────────────────────────────────────────
 function FilterBar({ search, setSearch, trangThai, setTrangThai, trangThaiOptions, duAn, setDuAn, duAnOptions, onClear, onEditProject }) {
   return (
-    <div style={{ display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap', alignItems: 'center' }}>
+    <div style={{ display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap', alignItems: 'center', flexShrink: 0 }}>
       <div style={{ position: 'relative', flex: '1 1 200px', minWidth: 160 }}>
         <Search size={14} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-light)' }} />
         <input
@@ -707,11 +707,11 @@ function DataTable({ rows }) {
   const btnDisabled = { ...btnBase, opacity: 0.4, cursor: 'not-allowed', pointerEvents: 'none' }
 
   return (
-    <div>
+    <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
       {/* Pagination top bar */}
       <div style={{
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        marginBottom: 10, gap: 12, flexWrap: 'wrap'
+        marginBottom: 10, gap: 12, flexWrap: 'wrap', flexShrink: 0
       }}>
         {/* Left: page size selector */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -827,7 +827,7 @@ function DataTable({ rows }) {
 
       {/* Pagination bottom bar */}
       {totalPages > 1 && (
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 12 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 12, flexShrink: 0 }}>
           <button style={currentPage === 1 ? btnDisabled : btnBase} onClick={() => setCurrentPage(1)}>«</button>
           <button style={currentPage === 1 ? btnDisabled : btnBase} onClick={() => setCurrentPage(p => p - 1)}>‹</button>
           {getPageNums().map((p, i) =>
@@ -1175,8 +1175,8 @@ function OrderTab({
           <h3>Đang xử lý dữ liệu...</h3>
         </div>
       ) : (
-        <>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, gap: 12 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, gap: 12, flexShrink: 0 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <div style={{
                 background: 'var(--primary-light)', borderRadius: 8, padding: '6px 12px',
@@ -1249,8 +1249,29 @@ function OrderTab({
             onEditProject={onEditProject}
           />
 
-          <DataTable rows={filtered} />
-        </>
+          {filtered.length === 0 && selectedProject && !search && !trangThai ? (
+            <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <div style={{ maxWidth: 480, width: '100%', textAlign: 'center' }}>
+                <div style={{
+                  width: 56, height: 56, background: 'var(--primary-light)',
+                  borderRadius: 16, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  margin: '0 auto 12px'
+                }}>
+                  {isGiao ? <Truck size={26} color="var(--primary)" /> : <PackageCheck size={26} color="var(--primary)" />}
+                </div>
+                <h3 style={{ fontSize: 17, fontWeight: 700, color: 'var(--text)', marginBottom: 6 }}>
+                  Dự án <span style={{ color: 'var(--primary)' }}>"{selectedProject}"</span> chưa có dữ liệu
+                </h3>
+                <p style={{ color: 'var(--text-muted)', fontSize: 14, marginBottom: 20 }}>
+                  Upload file Excel để tải dữ liệu {label} cho dự án này.
+                </p>
+                <UploadZone onFile={handleFile} label={uploadLabel} disabled={false} />
+              </div>
+            </div>
+          ) : (
+            <DataTable rows={filtered} />
+          )}
+        </div>
       )}
     </div>
   )
