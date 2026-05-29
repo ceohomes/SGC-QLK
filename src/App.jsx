@@ -7,7 +7,6 @@ import {
   Pencil, Trash2
 } from 'lucide-react'
 import { COLS_GIAO_NHAN, parseXlsxToRows, formatVal, getTrangThaiColor } from './constants.js'
-import { MOCK_GIAO_ROWS, MOCK_NHAN_ROWS } from './mockData.js'
 import { supabase, isSupabaseConfigured, supabaseUrl, supabaseAnonKey } from './supabaseClient.js'
 
 // ─── Searchable Select ────────────────────────────────────────────────────────
@@ -1721,11 +1720,11 @@ export default function App() {
   })
 
   // Hold rows and sheet file names globally so state is retained across tab switches!
-  const [giaoRows, setGiaoRows] = useState(MOCK_GIAO_ROWS)
-  const [giaoFileName, setGiaoFileName] = useState('Report_Orders_Don_giao.xlsx')
+  const [giaoRows, setGiaoRows] = useState([])
+  const [giaoFileName, setGiaoFileName] = useState('')
 
-  const [nhanRows, setNhanRows] = useState(MOCK_NHAN_ROWS)
-  const [nhanFileName, setNhanFileName] = useState('Report_Orders_Don_nhan.xlsx')
+  const [nhanRows, setNhanRows] = useState([])
+  const [nhanFileName, setNhanFileName] = useState('')
 
   const [syncingType, setSyncingType] = useState(null) // 'giao' | 'nhan' | null
   const [supabaseMessage, setSupabaseMessage] = useState(null) // { text, type: 'success' | 'error' | 'info' }
@@ -1761,16 +1760,22 @@ export default function App() {
           .from('don_giao')
           .select('*')
         
-        if (!gError && gData && gData.length > 0) {
-          const mappedG = gData.map((item, idx) => {
-            const normalized = normalizeDbRow(item)
-            return {
-              id: normalized.id || idx,
-              ...normalized
-            }
-          })
-          setGiaoRows(mappedG)
-          setGiaoFileName('Report_Orders_Don_giao (Supabase DB)')
+        if (!gError) {
+          if (gData && gData.length > 0) {
+            const mappedG = gData.map((item, idx) => {
+              const normalized = normalizeDbRow(item)
+              return {
+                id: normalized.id || idx,
+                ...normalized
+              }
+            })
+            setGiaoRows(mappedG)
+            setGiaoFileName('Report_Orders_Don_giao (Supabase DB)')
+          } else {
+            // Supabase trống → xóa local rows để đồng bộ
+            setGiaoRows([])
+            setGiaoFileName('')
+          }
         }
 
         // Fetch don_nhan rows
@@ -1778,16 +1783,22 @@ export default function App() {
           .from('don_nhan')
           .select('*')
         
-        if (!nError && nData && nData.length > 0) {
-          const mappedN = nData.map((item, idx) => {
-            const normalized = normalizeDbRow(item)
-            return {
-              id: normalized.id || idx,
-              ...normalized
-            }
-          })
-          setNhanRows(mappedN)
-          setNhanFileName('Report_Orders_Don_nhan (Supabase DB)')
+        if (!nError) {
+          if (nData && nData.length > 0) {
+            const mappedN = nData.map((item, idx) => {
+              const normalized = normalizeDbRow(item)
+              return {
+                id: normalized.id || idx,
+                ...normalized
+              }
+            })
+            setNhanRows(mappedN)
+            setNhanFileName('Report_Orders_Don_nhan (Supabase DB)')
+          } else {
+            // Supabase trống → xóa local rows để đồng bộ
+            setNhanRows([])
+            setNhanFileName('')
+          }
         }
       } catch (e) {
         console.error('Lỗi khi tải dữ liệu từ Supabase:', e)
