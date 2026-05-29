@@ -165,7 +165,6 @@ function StatsBar({ rows }) {
 
   const cards = [
     { label: 'Tổng đơn', value: stats.total.toLocaleString(), color: '#0f58a7', bg: '#e8f1fb' },
-    { label: 'Đã phê duyệt', value: stats.daPD.toLocaleString(), color: '#16a34a', bg: '#dcfce7' },
     { label: 'Chưa xác nhận', value: stats.chuaPD.toLocaleString(), color: '#d97706', bg: '#fef9c3' },
     { label: 'Tổng KL nhập', value: stats.kls.toLocaleString('vi-VN'), color: '#7c3aed', bg: '#ede9fe' },
   ]
@@ -223,13 +222,6 @@ function FilterBar({ search, setSearch, trangThai, setTrangThai, trangThaiOption
 }
 
 // ─── Data Table ───────────────────────────────────────────────────────────────
-const GROUPS = [
-  { key: null, cols: COLS_GIAO_NHAN.filter(c => !c.group), label: null },
-  { key: 'Nhập kho', cols: COLS_GIAO_NHAN.filter(c => c.group === 'Nhập kho'), label: 'Nhập kho' },
-  { key: 'Xuất kho', cols: COLS_GIAO_NHAN.filter(c => c.group === 'Xuất kho'), label: 'Xuất kho' },
-  { key: 'Thông tin chung', cols: COLS_GIAO_NHAN.filter(c => c.group === 'Thông tin chung'), label: 'Thông tin chung' },
-]
-
 function DataTable({ rows }) {
   if (rows.length === 0) return (
     <div className="empty-state">
@@ -244,17 +236,12 @@ function DataTable({ rows }) {
       <table>
         <thead>
           <tr>
-            <th style={{ width: 48, textAlign: 'center' }}>#</th>
-            {GROUPS.map(g =>
-              g.label
-                ? <th key={g.key} colSpan={g.cols.length} style={{ textAlign: 'center' }}>{g.label}</th>
-                : g.cols.map(c => <th key={c.key} rowSpan={2} style={{ minWidth: c.width }}>{c.label}</th>)
-            )}
-          </tr>
-          <tr>
-            {GROUPS.filter(g => g.label).map(g =>
-              g.cols.map(c => <th key={c.key} style={{ minWidth: c.width }}>{c.label}</th>)
-            )}
+            <th style={{ width: 48, textAlign: 'center' }}>
+              #<br/><span style={{fontWeight:400,fontSize:10,opacity:0.75}}>KL nhập</span>
+            </th>
+            {COLS_GIAO_NHAN.map(c => (
+              <th key={c.key} style={{ minWidth: c.width }}>{c.label}</th>
+            ))}
           </tr>
         </thead>
         <tbody>
