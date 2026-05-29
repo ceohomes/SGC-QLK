@@ -854,6 +854,23 @@ function OrderTab({
             </div>
           </div>
 
+          {!selectedProject && (
+            <div style={{
+              background: '#fff8e1',
+              border: '1px solid #f59e0b',
+              borderRadius: 10,
+              padding: '10px 14px',
+              marginBottom: 16,
+              display: 'flex',
+              gap: 8,
+              alignItems: 'flex-start',
+            }}>
+              <Info size={14} color="#d97706" style={{ marginTop: 1, flexShrink: 0 }} />
+              <div style={{ fontSize: 14, color: '#92400e' }}>
+                <strong>Lưu ý:</strong> Vui lòng chọn <strong>Kho dự án</strong> ở góc trên trước khi upload file. Dữ liệu sẽ được gán vào dự án đang chọn.
+              </div>
+            </div>
+          )}
           <UploadZone onFile={handleFile} label={uploadLabel} />
         </div>
       ) : loading ? (
@@ -1912,16 +1929,24 @@ export default function App() {
   }
 
   const handleImportFile = async (type, parsedRows, name) => {
+    // Nếu đang chọn một dự án cụ thể, chỉ lấy rows thuộc dự án đó
+    // và gán duAn cho tất cả rows bằng selectedProject (đảm bảo khớp)
+    let rowsToStore = parsedRows
+    if (selectedProject) {
+      // Gán dự án hiện tại cho tất cả rows được upload (rows thuộc dự án đang xem)
+      rowsToStore = parsedRows.map(row => ({ ...row, duAn: selectedProject }))
+    }
+
     if (type === 'giao') {
-      setGiaoRows(parsedRows)
+      setGiaoRows(rowsToStore)
       setGiaoFileName(name)
     } else {
-      setNhanRows(parsedRows)
+      setNhanRows(rowsToStore)
       setNhanFileName(name)
     }
 
     if (isSupabaseConfigured) {
-      await syncRowsToSupabase(type, parsedRows, true)
+      await syncRowsToSupabase(type, rowsToStore, true)
     }
   }
 
@@ -2218,13 +2243,10 @@ export default function App() {
   }, [giaoRows, nhanRows])
 
   const allProjects = useMemo(() => {
-    if (isSupabaseConfigured) {
-      // Khi đã kết nối Supabase, danh sách dự án phải đồng bộ tuyệt đối với bảng du_an (customProjects)
-      return [...new Set(customProjects)].sort()
-    }
-    const list = new Set([...fileProjects, ...customProjects])
-    return [...list].sort()
-  }, [fileProjects, customProjects, isSupabaseConfigured])
+    // Danh sách dự án chỉ lấy từ customProjects (do người dùng tạo bằng nút "+ Tạo mới")
+    // KHÔNG tự động lấy từ file upload lên
+    return [...new Set(customProjects)].sort()
+  }, [customProjects])
 
   const tabs = [
     { id: 'giao', label: 'Đơn Giao', icon: <Truck size={15} /> },
