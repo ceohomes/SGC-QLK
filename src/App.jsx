@@ -1003,6 +1003,14 @@ function PlaceholderTab({ icon, title, desc }) {
 
 // ─── Preview Import Modal ─────────────────────────────────────────────────────
 function PreviewImportModal({ isOpen, onClose, onConfirm, rows, fileName, type, selectedProject }) {
+  // Nhấn Esc để đóng modal
+  React.useEffect(() => {
+    if (!isOpen) return
+    const handleKeyDown = (e) => { if (e.key === 'Escape') onClose() }
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [isOpen, onClose])
+
   if (!isOpen) return null
   const label = type === 'giao' ? 'Đơn Giao' : 'Đơn Nhận'
   const previewRows = rows.slice(0, 10)
