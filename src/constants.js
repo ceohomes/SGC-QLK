@@ -3,42 +3,39 @@ export const COLS_GIAO_NHAN = [
   { key: 'ngayXuatNhap', label: 'Ngày xuất nhập', width: 110 },
   { key: 'maVatTu', label: 'Mã vật tư', width: 100 },
   { key: 'maSAP', label: 'Mã SAP', width: 110 },
-  { key: 'thongSoKyThuat', label: 'Thông số KT', width: 130 },
+  { key: 'thongSoKyThuat', label: 'Thông số kỹ thuật', width: 164 },
   { key: 'tenVatTu', label: 'Tên vật tư', width: 220 },
   { key: 'dvt', label: 'ĐVT', width: 60 },
-  { key: 'loaiDon', label: 'Loại đơn', width: 130 },
+  { key: 'loaiDon', label: 'Loại đơn (Xuất, nhập kho)', width: 180 },
   { key: 'maDonNhapKho', label: 'Mã đơn nhập kho', width: 280 },
   { key: 'maDonXuatKho', label: 'Mã đơn xuất kho', width: 280 },
-  // Nhập kho group
-  { key: 'khoiLuongNhap', label: 'KL nhập', width: 80, group: 'Nhập kho' },
-  { key: 'maDonViGiao', label: 'Mã đơn vị giao', width: 130, group: 'Nhập kho' },
-  { key: 'donViGiao', label: 'Đơn vị giao', width: 200, group: 'Nhập kho' },
-  { key: 'nguoiGiao', label: 'Người giao', width: 150, group: 'Nhập kho' },
-  // Xuất kho group
-  { key: 'khoiLuongXuat', label: 'KL xuất', width: 80, group: 'Xuất kho' },
-  { key: 'maDonViNhan', label: 'Mã đơn vị nhận', width: 130, group: 'Xuất kho' },
-  { key: 'donViNhan', label: 'Đơn vị nhận', width: 200, group: 'Xuất kho' },
-  { key: 'nguoiPheDuyet', label: 'Người phê duyệt', width: 150, group: 'Xuất kho' },
-  // Thông tin chung group
-  { key: 'tenNguon', label: 'Tên nguồn xuất/nhập', width: 300, group: 'Thông tin chung' },
-  { key: 'maNguon', label: 'Mã nguồn', width: 200, group: 'Thông tin chung' },
-  { key: 'lo', label: 'Lô', width: 80, group: 'Thông tin chung' },
-  { key: 'hangMuc', label: 'Hạng mục', width: 100, group: 'Thông tin chung' },
-  { key: 'soHopDong', label: 'Số HĐ tổ đội', width: 150, group: 'Thông tin chung' },
-  { key: 'thuKho', label: 'Thủ kho BCH', width: 200, group: 'Thông tin chung' },
-  { key: 'bienSoXe', label: 'Biển số xe', width: 100, group: 'Thông tin chung' },
-  { key: 'phanKhu', label: 'Phân khu', width: 130, group: 'Thông tin chung' },
-  { key: 'duAn', label: 'Dự án', width: 200, group: 'Thông tin chung' },
-  { key: 'tinhTrang', label: 'Tình trạng VT', width: 120, group: 'Thông tin chung' },
-  { key: 'nguoiNhan', label: 'Người nhận', width: 200, group: 'Thông tin chung' },
-  { key: 'maDonLienQuan', label: 'Mã đơn liên quan', width: 280, group: 'Thông tin chung' },
-  { key: 'nhaCungCap', label: 'Nhà cung cấp', width: 280, group: 'Thông tin chung' },
-  { key: 'maDonChuyenTiepLC', label: 'Mã ĐCT liên công ty', width: 200, group: 'Thông tin chung' },
-  { key: 'maDonChuyenTiepNB', label: 'Mã ĐCT nội bộ', width: 200, group: 'Thông tin chung' },
-  { key: 'ghiChu', label: 'Ghi chú', width: 300, group: 'Thông tin chung' },
-  { key: 'ghiChuVatTu', label: 'Ghi chú VT', width: 200, group: 'Thông tin chung' },
-  { key: 'trangThai', label: 'Trạng thái', width: 130, group: 'Thông tin chung' },
-  { key: 'nhanHieu', label: 'Nhãn hiệu', width: 120, group: 'Thông tin chung' },
+  { key: 'khoiLuongNhap', label: 'Khối lượng nhập', width: 120 },
+  { key: 'maDonViGiao', label: 'Mã đơn vị giao', width: 130 },
+  { key: 'donViGiao', label: 'Đơn vị giao', width: 200 },
+  { key: 'nguoiGiao', label: 'Người giao', width: 150 },
+  { key: 'khoiLuongXuat', label: 'Khối lượng xuất', width: 120 },
+  { key: 'maDonViNhan', label: 'Mã đơn vị nhận', width: 130 },
+  { key: 'donViNhan', label: 'Đơn vị nhận', width: 200 },
+  { key: 'nguoiPheDuyet', label: 'Người phê duyệt 1', width: 150 },
+  { key: 'tenNguon', label: 'Tên nguồn xuất/ nhập kho', width: 300 },
+  { key: 'maNguon', label: 'Mã nguồn nhập/xuất kho', width: 200 },
+  { key: 'lo', label: 'Lô', width: 80 },
+  { key: 'hangMuc', label: 'Hạng mục', width: 100 },
+  { key: 'soHopDong', label: 'Số Hợp đồng tổ đội', width: 160 },
+  { key: 'thuKho', label: 'Thủ kho BCH Giao/Nhận hàng', width: 220 },
+  { key: 'bienSoXe', label: 'Biển số xe', width: 100 },
+  { key: 'phanKhu', label: 'Phân khu', width: 130 },
+  { key: 'duAn', label: 'Dự án', width: 200 },
+  { key: 'tinhTrang', label: 'Tình trạng vật tư', width: 130 },
+  { key: 'nguoiNhan', label: 'Người nhận', width: 150 },
+  { key: 'maDonLienQuan', label: 'Mã đơn liên quan', width: 280 },
+  { key: 'nhaCungCap', label: 'Nhà cung cấp', width: 280 },
+  { key: 'maDonChuyenTiepLC', label: 'Mã đơn chuyển tiếp liên công ty', width: 240 },
+  { key: 'maDonChuyenTiepNB', label: 'Mã đơn chuyển tiếp nội bộ', width: 220 },
+  { key: 'ghiChu', label: 'Ghi chú', width: 300 },
+  { key: 'ghiChuVatTu', label: 'Ghi chú vật tư', width: 180 },
+  { key: 'trangThai', label: 'Trạng Thái', width: 130 },
+  { key: 'nhanHieu', label: 'Nhãn hiệu', width: 120 },
 ]
 
 export function parseXlsxToRows(data) {
@@ -108,8 +105,8 @@ export function formatVal(val) {
 export function getTrangThaiColor(val) {
   if (!val) return 'badge-gray'
   const v = String(val).toLowerCase()
+  if (v.includes('chờ') || v.includes('chưa')) return 'badge-yellow'
   if (v.includes('phê duyệt') || v.includes('hoàn thành') || v.includes('đã')) return 'badge-green'
   if (v.includes('từ chối') || v.includes('hủy')) return 'badge-red'
-  if (v.includes('chờ') || v.includes('chưa')) return 'badge-yellow'
   return 'badge-blue'
 }
