@@ -1002,20 +1002,40 @@ function PlaceholderTab({ icon, title, desc }) {
 }
 
 // ─── Preview Import Modal ─────────────────────────────────────────────────────
-function PreviewImportModal({ isOpen, onClose, onConfirm, rows, fileName, type }) {
+function PreviewImportModal({ isOpen, onClose, onConfirm, rows, fileName, type, selectedProject }) {
   if (!isOpen) return null
   const label = type === 'giao' ? 'Đơn Giao' : 'Đơn Nhận'
   const previewRows = rows.slice(0, 10)
+
+  // Kiểm tra Kho dự án có khớp với cột Đơn vị giao/nhận không
+  const unitKey = type === 'giao' ? 'donViGiao' : 'donViNhan'
+  const unitLabel = type === 'giao' ? 'Đơn vị giao' : 'Đơn vị nhận'
+
+  // Lấy các giá trị đơn vị duy nhất trong file
+  const uniqueUnits = [...new Set(rows.map(r => String(r[unitKey] || '').trim()).filter(Boolean))]
+
+  // Kiểm tra xem Kho dự án hiện tại có khớp với đơn vị trong file không
+  const projectMatchesUnit = selectedProject
+    ? uniqueUnits.some(u => u.toLowerCase().includes(selectedProject.toLowerCase()) || selectedProject.toLowerCase().includes(u.toLowerCase()))
+    : true
+  const projectMismatch = selectedProject && !projectMatchesUnit
+
+  // Tính toán số dòng hợp lệ (Đã phê duyệt) và bị bỏ qua
+  const approvedRows = rows.filter(r => {
+    const v = String(r.trangThai || '').toLowerCase()
+    return v.includes('phê duyệt') || (v.includes('đã') && !v.includes('hủy'))
+  })
+  const skippedCount = rows.length - approvedRows.length
 
   return (
     <div style={{
       position: 'fixed', inset: 0, zIndex: 10000,
       background: 'rgba(15,23,42,0.55)', backdropFilter: 'blur(3px)',
-      display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16
+      display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '12px 16px'
     }}>
       <div style={{
         background: '#fff', borderRadius: 14, boxShadow: '0 25px 60px rgba(15,23,42,0.22)',
-        width: '100%', maxWidth: 900, maxHeight: '90vh',
+        width: '100%', maxWidth: '98vw', height: '96vh',
         display: 'flex', flexDirection: 'column', overflow: 'hidden'
       }}>
         {/* Header */}
@@ -1050,38 +1070,69 @@ function PreviewImportModal({ isOpen, onClose, onConfirm, rows, fileName, type }
         </div>
 
         {/* Table preview */}
-        <div style={{ overflow: 'auto', flex: 1, padding: '0 0 0 0' }}>
+        <div style={{ overflow: 'auto', flex: 1 }}>
           <DataTable rows={previewRows} />
         </div>
 
         {/* Footer */}
         <div style={{
-          padding: '14px 24px', borderTop: '1px solid #e2e8f0',
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          background: '#f8fafc', flexShrink: 0, gap: 12
+          padding: '12px 24px', borderTop: '1px solid #e2e8f0',
+          background: '#f8fafc', flexShrink: 0
         }}>
-          <div style={{
-            display: 'flex', alignItems: 'center', gap: 8,
-            background: '#eff6ff', border: '1px solid #bfdbfe',
-            borderRadius: 8, padding: '8px 14px', fontSize: 14, color: '#1e40af'
-          }}>
-            <Info size={15} color="#3b82f6" />
-            Bạn có muốn lưu {rows.length.toLocaleString()} dòng dữ liệu này không?
+          {/* Cảnh báo Kho dự án không khớp Đơn vị giao/nhận */}
+          {projectMismatch && (
+            <div style={{
+              display: 'flex', alignItems: 'flex-start', gap: 8,
+              background: '#fff1f2', border: '1.5px solid #fecdd3',
+              borderRadius: 8, padding: '10px 14px', fontSize: 13, color: '#9f1239',
+              marginBottom: 10
+            }}>
+              <AlertCircle size={16} color="#ef4444" style={{ marginTop: 1, flexShrink: 0 }} />
+              <span>
+                <strong>Kho dự án không khớp!</strong> Bạn đang chọn kho <strong>"{selectedProject}"</strong> nhưng cột <strong>{unitLabel}</strong> trong file có giá trị: <strong>{uniqueUnits.slice(0, 3).join(', ')}{uniqueUnits.length > 3 ? '...' : ''}</strong>.
+                {' '}Vui lòng chọn đúng Kho dự án trùng tên với <strong>{unitLabel}</strong> trong file trước khi lưu.
+              </span>
+            </div>
+          )}
+
+          {/* Thông báo lọc dữ liệu */}
+          <div style={{ display: 'flex', gap: 10, marginBottom: 10, flexWrap: 'wrap' }}>
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 7,
+              background: '#ecfdf5', border: '1px solid #a7f3d0',
+              borderRadius: 8, padding: '7px 14px', fontSize: 13, color: '#065f46', flex: 1, minWidth: 220
+            }}>
+              <CheckCircle2 size={15} color="#10b981" />
+              <span>
+                <strong>{approvedRows.length.toLocaleString()} dòng</strong> trạng thái <strong>Đã phê duyệt</strong> sẽ được lưu
+              </span>
+            </div>
+            {skippedCount > 0 && (
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: 7,
+                background: '#fff7ed', border: '1px solid #fed7aa',
+                borderRadius: 8, padding: '7px 14px', fontSize: 13, color: '#92400e', flex: 1, minWidth: 220
+              }}>
+                <AlertCircle size={15} color="#f59e0b" />
+                <span>
+                  <strong>{skippedCount.toLocaleString()} dòng</strong> trạng thái khác (Chưa xác nhận, Từ chối...) <strong>sẽ không được lưu</strong>
+                </span>
+              </div>
+            )}
           </div>
-          <div style={{ display: 'flex', gap: 10 }}>
-            <button
-              onClick={onClose}
-              className="btn btn-outline"
-              style={{ minWidth: 90 }}
-            >
+          {/* Actions */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 10 }}>
+            <button onClick={onClose} className="btn btn-outline" style={{ minWidth: 90 }}>
               <X size={14} /> Hủy
             </button>
             <button
               onClick={onConfirm}
               className="btn btn-primary"
-              style={{ minWidth: 120 }}
+              style={{ minWidth: 160, opacity: (approvedRows.length === 0 || projectMismatch) ? 0.5 : 1, cursor: (approvedRows.length === 0 || projectMismatch) ? 'not-allowed' : 'pointer' }}
+              disabled={approvedRows.length === 0 || projectMismatch}
+              title={projectMismatch ? `Kho dự án phải trùng tên với ${unitLabel} trong file` : ''}
             >
-              <Save size={14} /> Lưu dữ liệu
+              <Save size={14} /> Lưu {approvedRows.length.toLocaleString()} dòng đã duyệt
             </button>
           </div>
         </div>
@@ -2042,10 +2093,16 @@ export default function App() {
     const { type, rows: parsedRows, fileName: name } = previewModal
     setPreviewModal(null)
 
-    // Nếu đang chọn một dự án cụ thể, gán duAn cho tất cả rows
-    let rowsToStore = parsedRows
+    // Chỉ lấy các dòng có trạng thái "Đã phê duyệt"
+    const approvedRows = parsedRows.filter(r => {
+      const v = String(r.trangThai || '').toLowerCase()
+      return v.includes('phê duyệt') || (v.includes('đã') && !v.includes('hủy'))
+    })
+
+    // Nếu đang chọn một dự án cụ thể, gán duAn cho tất cả rows đã lọc
+    let rowsToStore = approvedRows
     if (selectedProject) {
-      rowsToStore = parsedRows.map(row => ({ ...row, duAn: selectedProject }))
+      rowsToStore = approvedRows.map(row => ({ ...row, duAn: selectedProject }))
     }
 
     if (type === 'giao') {
@@ -2480,6 +2537,7 @@ export default function App() {
         rows={previewModal?.rows || []}
         fileName={previewModal?.fileName || ''}
         type={previewModal?.type || 'giao'}
+        selectedProject={selectedProject}
       />
 
       <AddProjectModal
