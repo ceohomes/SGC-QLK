@@ -4,14 +4,14 @@ import {
   Upload, FileSpreadsheet, Search, X, RefreshCw, Info,
   ChevronDown, Download, Truck, PackageCheck, Settings, BarChart3,
   AlertCircle, CheckCircle2, Filter, ArrowUpDown, Clock, CloudUpload, Database, Save,
-  Pencil
+  Pencil, Trash2
 } from 'lucide-react'
 import { COLS_GIAO_NHAN, parseXlsxToRows, formatVal, getTrangThaiColor } from './constants.js'
 import { MOCK_GIAO_ROWS, MOCK_NHAN_ROWS } from './mockData.js'
 import { supabase, isSupabaseConfigured, supabaseUrl, supabaseAnonKey } from './supabaseClient.js'
 
 // ─── Searchable Select ────────────────────────────────────────────────────────
-function SearchableSelect({ value, onChange, options, placeholder = 'Tất cả dự án', variant = 'header', onEditProject }) {
+function SearchableSelect({ value, onChange, options, placeholder = 'Tất cả dự án', variant = 'header', onEditProject, onDeleteProject }) {
   const [isOpen, setIsOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const containerRef = useRef(null)
@@ -49,21 +49,22 @@ function SearchableSelect({ value, onChange, options, placeholder = 'Tất cả 
     background: '#ffffff',
     border: 'none',
     borderRadius: 6,
-    padding: '4px 32px 4px 12px',
+    padding: '0 32px 0 12px',
     color: '#0f172a',
     fontSize: 14,
     fontWeight: 700,
     cursor: 'pointer',
-    width: '100%',
+    width: 'fit-content',
     minWidth: 160,
-    maxWidth: 240,
+    maxWidth: 460,
     height: 32,
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',
     userSelect: 'none',
     position: 'relative',
-    boxShadow: '0 1px 3px rgba(15,23,42,0.08)'
+    boxShadow: '0 1px 3px rgba(15,23,42,0.08)',
+    boxSizing: 'border-box'
   } : {
     background: '#ffffff',
     border: '1.5px solid #cbd5e1',
@@ -81,7 +82,8 @@ function SearchableSelect({ value, onChange, options, placeholder = 'Tất cả 
     justifyContent: 'space-between',
     userSelect: 'none',
     position: 'relative',
-    boxShadow: 'var(--shadow-sm)'
+    boxShadow: 'var(--shadow-sm)',
+    boxSizing: 'border-box'
   }
 
   const dropdownPanelStyle = {
@@ -94,8 +96,8 @@ function SearchableSelect({ value, onChange, options, placeholder = 'Tất cả 
     boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.1)',
     border: '1px solid #cbd5e1',
     padding: 6,
-    minWidth: 220,
-    maxWidth: 320,
+    minWidth: '100%',
+    maxWidth: 460,
     display: 'flex',
     flexDirection: 'column',
     gap: 6
@@ -109,7 +111,11 @@ function SearchableSelect({ value, onChange, options, placeholder = 'Tất cả 
           textOverflow: 'ellipsis',
           whiteSpace: 'nowrap',
           overflow: 'hidden',
-          marginRight: 4
+          marginRight: 4,
+          display: 'flex',
+          alignItems: 'center',
+          height: '100%',
+          lineHeight: 'normal'
         }}>
           {displaySelected}
         </span>
@@ -243,7 +249,6 @@ function SearchableSelect({ value, onChange, options, placeholder = 'Tất cả 
                         alignItems: 'center',
                         justifyContent: 'center',
                         marginLeft: 4,
-                        marginRight: matches ? 4 : 0,
                         transition: 'all 0.1s'
                       }}
                       onMouseOver={e => {
@@ -258,6 +263,41 @@ function SearchableSelect({ value, onChange, options, placeholder = 'Tất cả 
                       }}
                     >
                       <Pencil size={11} />
+                    </button>
+                  )}
+                  {onDeleteProject && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        onDeleteProject(opt)
+                      }}
+                      title="Xóa dự án"
+                      style={{
+                        background: 'transparent',
+                        border: 'none',
+                        color: '#64748b',
+                        padding: '4px',
+                        cursor: 'pointer',
+                        borderRadius: '4px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        marginLeft: 4,
+                        marginRight: matches ? 4 : 0,
+                        transition: 'all 0.1s'
+                      }}
+                      onMouseOver={e => {
+                        e.stopPropagation()
+                        e.currentTarget.style.color = '#ef4444'
+                        e.currentTarget.style.background = '#fee2e2'
+                      }}
+                      onMouseOut={e => {
+                        e.stopPropagation()
+                        e.currentTarget.style.color = '#64748b'
+                        e.currentTarget.style.background = 'transparent'
+                      }}
+                    >
+                      <Trash2 size={11} />
                     </button>
                   )}
                   {matches && <CheckCircle2 size={13} color="#0f58a7" />}
@@ -278,7 +318,7 @@ function SearchableSelect({ value, onChange, options, placeholder = 'Tất cả 
 }
 
 // ─── Header ──────────────────────────────────────────────────────────────────
-function Header({ selectedProject, setSelectedProject, duAnOptions, onOpenAddProjectModal, onEditProject }) {
+function Header({ selectedProject, setSelectedProject, duAnOptions, onOpenAddProjectModal, onEditProject, onDeleteProject, onOpenConfigModal }) {
   return (
     <header style={{
       background: 'linear-gradient(135deg, #0a3d73 0%, #0f58a7 60%, #1a6abf 100%)', // Original professional blue system
@@ -329,6 +369,7 @@ function Header({ selectedProject, setSelectedProject, duAnOptions, onOpenAddPro
             placeholder="Tất cả dự án"
             variant="header"
             onEditProject={onEditProject}
+            onDeleteProject={onDeleteProject}
           />
         </div>
         <button
@@ -358,18 +399,32 @@ function Header({ selectedProject, setSelectedProject, duAnOptions, onOpenAddPro
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          background: isSupabaseConfigured ? 'rgba(16, 185, 129, 0.15)' : 'rgba(245, 158, 11, 0.15)',
-          border: isSupabaseConfigured ? '1px solid rgba(16, 185, 129, 0.3)' : '1px solid rgba(245, 158, 11, 0.3)',
-          borderRadius: 6,
-          padding: '4px 10px',
-          color: '#ffffff',
-          fontSize: 12,
-          fontWeight: 600,
-          whiteSpace: 'nowrap'
-        }}>
+        <button
+          onClick={onOpenConfigModal}
+          title="Cấu hình kết nối cơ sở dữ liệu Supabase"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            background: isSupabaseConfigured ? 'rgba(16, 185, 129, 0.15)' : 'rgba(245, 158, 11, 0.15)',
+            border: isSupabaseConfigured ? '1px solid rgba(16, 185, 129, 0.3)' : '1px solid rgba(245, 158, 11, 0.3)',
+            borderRadius: 6,
+            padding: '4px 10px',
+            color: '#ffffff',
+            fontSize: 12,
+            fontWeight: 600,
+            whiteSpace: 'nowrap',
+            cursor: 'pointer',
+            transition: 'all 0.15s ease',
+            height: 28,
+            boxSizing: 'border-box'
+          }}
+          onMouseOver={(e) => {
+            e.currentTarget.style.background = isSupabaseConfigured ? 'rgba(16, 185, 129, 0.3)' : 'rgba(245, 158, 11, 0.3)'
+          }}
+          onMouseOut={(e) => {
+            e.currentTarget.style.background = isSupabaseConfigured ? 'rgba(16, 185, 129, 0.15)' : 'rgba(245, 158, 11, 0.15)'
+          }}
+        >
           <Database size={13} style={{ marginRight: 5, color: isSupabaseConfigured ? '#34d399' : '#fbbf24' }} />
           <span>{isSupabaseConfigured ? 'Supabase Connected' : 'Supabase Offline'}</span>
           <span style={{
@@ -381,7 +436,7 @@ function Header({ selectedProject, setSelectedProject, duAnOptions, onOpenAddPro
             display: 'inline-block',
             boxShadow: isSupabaseConfigured ? '0 0 8px #10b981' : '0 0 8px #f59e0b'
           }} />
-        </div>
+        </button>
 
         <div style={{
           background: 'rgba(255,255,255,0.15)',
@@ -613,17 +668,24 @@ function DataTable({ rows }) {
       <table>
         <thead>
           <tr>
-            <th style={{ width: 48, textAlign: 'center' }}>
+            <th style={{ width: 50, minWidth: 50, maxWidth: 50, textAlign: 'center', verticalAlign: 'middle', fontSize: '12px', padding: '8px 10px' }}>
               STT
             </th>
             {COLS_GIAO_NHAN.map(c => {
-              const isCenteredCol = ['ngayXuatNhap', 'maVatTu', 'maSAP'].includes(c.key);
               return (
                 <th
                   key={c.key}
                   style={{
+                    width: c.width,
                     minWidth: c.width,
-                    textAlign: isCenteredCol ? 'center' : undefined
+                    maxWidth: c.width,
+                    textAlign: 'center',
+                    verticalAlign: 'middle',
+                    fontSize: '12px',
+                    padding: '8px 10px',
+                    whiteSpace: 'normal',
+                    wordBreak: 'break-word',
+                    lineHeight: '1.2'
                   }}
                 >
                   {c.label}
@@ -635,28 +697,40 @@ function DataTable({ rows }) {
         <tbody>
           {rows.map((row, i) => (
             <tr key={row.id}>
-              <td style={{ textAlign: 'center', fontSize: 13, color: '#1b1919' }}>{i + 1}</td>
+              <td style={{ width: 50, minWidth: 50, maxWidth: 50, textAlign: 'center', fontSize: '12px', color: '#1b1919', padding: '6px 10px' }}>{i + 1}</td>
               {COLS_GIAO_NHAN.map(col => {
-                const isCenteredCol = ['ngayXuatNhap', 'maVatTu', 'maSAP'].includes(col.key);
+                const isCenteredCol = [
+                  'ngayXuatNhap', 'maVatTu', 'maSAP', 'dvt', 'loaiDon',
+                  'maDonViGiao', 'donViGiao', 'nguoiGiao',
+                  'maDonViNhan', 'donViNhan', 'nguoiPheDuyet', 'nguoiNhan',
+                  'soHopDong', 'thuKho', 'tinhTrang'
+                ].includes(col.key);
+                const isRightAligned = ['khoiLuongNhap', 'khoiLuongXuat'].includes(col.key) || col.key.toLowerCase().includes('khoiluong');
                 return (
                   <td
                     key={col.key}
                     style={{
-                      maxWidth: col.width + 40,
+                      width: col.width,
+                      minWidth: col.width,
+                      maxWidth: col.width,
                       color: '#1b1919',
-                      textAlign: isCenteredCol ? 'center' : undefined
+                      textAlign: isCenteredCol ? 'center' : (isRightAligned ? 'right' : 'left'),
+                      fontSize: '12px',
+                      padding: '6px 10px',
+                      wordBreak: 'break-word',
+                      whiteSpace: 'normal'
                     }}
                     title={String(formatVal(row[col.key]) || '')}
                   >
                     {col.key === 'trangThai' ? (
                       row[col.key] ? (
-                        <span className={`badge ${getTrangThaiColor(row[col.key])}`}>
+                        <span className={`badge ${getTrangThaiColor(row[col.key])}`} style={{ fontSize: '11px', padding: '2px 6px', lineHeight: 1.2 }}>
                           {row[col.key]}
                         </span>
                       ) : ''
                     ) : col.key === 'tinhTrang' ? (
                       row[col.key]
-                        ? <span className={`badge ${row[col.key] === 'NEW' ? 'badge-green' : row[col.key] === 'USED' ? 'badge-yellow' : 'badge-gray'}`}>{row[col.key]}</span>
+                        ? <span className={`badge ${row[col.key] === 'NEW' ? 'badge-green' : row[col.key] === 'USED' ? 'badge-yellow' : 'badge-gray'}`} style={{ fontSize: '11px', padding: '2px 6px', lineHeight: 1.2 }}>{row[col.key]}</span>
                         : ''
                     ) : (
                       formatVal(row[col.key]) !== null && formatVal(row[col.key]) !== undefined ? formatVal(row[col.key]) : ''
@@ -684,7 +758,9 @@ function OrderTab({
   onSync,
   syncing,
   supabaseMessage,
-  onEditProject
+  onEditProject,
+  projectOptions,
+  onImportFile
 }) {
   const isGiao = type === 'giao'
   const [loading, setLoading] = useState(false)
@@ -700,16 +776,24 @@ function OrderTab({
     setLoading(true)
     setTimeout(() => {
       const parsed = parseXlsxToRows(data)
-      setRows(parsed)
-      setFileName(name)
+      if (onImportFile) {
+        onImportFile(parsed, name)
+      } else {
+        setRows(parsed)
+        setFileName(name)
+      }
       setLoading(false)
     }, 80)
-  }, [setRows, setFileName])
+  }, [setRows, setFileName, onImportFile])
 
   const trangThaiOptions = useMemo(() =>
     [...new Set(rows.map(r => r.trangThai).filter(Boolean))].sort(), [rows])
-  const duAnOptions = useMemo(() =>
-    [...new Set(rows.map(r => r.duAn).filter(Boolean))].sort(), [rows])
+  const duAnOptions = useMemo(() => {
+    if (projectOptions !== undefined && projectOptions !== null) {
+      return projectOptions
+    }
+    return [...new Set(rows.map(r => r.duAn).filter(Boolean))].sort()
+  }, [rows, projectOptions])
 
   const filtered = useMemo(() => {
     let r = rows
@@ -1129,8 +1213,110 @@ function EditProjectModal({ isOpen, onClose, onSave, currentName }) {
   )
 }
 
-// ─── Config Tab Component ───────────────────────────────────────────────────
-function ConfigTab() {
+// ─── Delete Project Modal ──────────────────────────────────────────────────
+function DeleteProjectModal({ isOpen, onClose, onConfirm, projectName }) {
+  if (!isOpen) return null
+
+  return (
+    <div style={{
+      position: 'fixed',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      backgroundColor: 'rgba(15, 23, 42, 0.65)',
+      backdropFilter: 'blur(4px)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      zIndex: 10002
+    }}>
+      <div style={{
+        background: '#ffffff',
+        borderRadius: 12,
+        width: '100%',
+        maxWidth: 420,
+        padding: 24,
+        boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04)',
+        border: '1px solid #fee2e2',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 16
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #f1f5f9', paddingBottom: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <AlertCircle size={20} color="#ef4444" />
+            <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: '#991b1b' }}>Xác nhận xóa Dự án</h3>
+          </div>
+          <button onClick={onClose} style={{ background: 'transparent', border: 'none', color: '#64748b', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
+            <X size={18} />
+          </button>
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, textAlign: 'left' }}>
+          <p style={{ margin: 0, fontSize: 14, color: '#334155', lineHeight: '1.5' }}>
+            Bạn có chắc chắn muốn xóa kho dự án <strong style={{ color: '#0f172a' }}>"{projectName}"</strong>?
+          </p>
+          <div style={{
+            backgroundColor: '#fffbeb',
+            border: '1px solid #fef3c7',
+            borderRadius: 8,
+            padding: '10px 12px',
+            display: 'flex',
+            gap: 8,
+            alignItems: 'flex-start'
+          }}>
+            <AlertCircle size={16} color="#d97706" style={{ flexShrink: 0, marginTop: 2 }} />
+            <p style={{ margin: 0, fontSize: 12, color: '#b45309', lineHeight: '1.4', fontWeight: 500 }}>
+              Lưu ý: Thao tác này sẽ gỡ ký danh dự án khỏi danh sách chọn lựa của bạn.
+            </p>
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 8 }}>
+          <button
+            onClick={onClose}
+            style={{
+              padding: '8px 16px',
+              borderRadius: 6,
+              border: '1px solid #cbd5e1',
+              background: '#ffffff',
+              color: '#475569',
+              fontSize: 13,
+              fontWeight: 600,
+              cursor: 'pointer'
+            }}
+          >
+            Hủy bỏ
+          </button>
+          <button
+            onClick={onConfirm}
+            style={{
+              padding: '8px 16px',
+              borderRadius: 6,
+              border: 'none',
+              background: '#ef4444',
+              color: '#ffffff',
+              fontSize: 13,
+              fontWeight: 600,
+              cursor: 'pointer',
+              boxShadow: '0 2px 4px rgba(239, 68, 68, 0.2)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6
+            }}
+          >
+            <Trash2 size={14} />
+            Đồng ý xóa
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─── Supabase Config Modal ───────────────────────────────────────────────────
+function SupabaseConfigModal({ isOpen, onClose }) {
   const [url, setUrl] = useState(() => {
     return localStorage.getItem('sgc_supabase_url') || import.meta.env.VITE_SUPABASE_URL || 'https://luhsnaqlajbwkftrsbeg.supabase.co'
   })
@@ -1143,6 +1329,21 @@ function ConfigTab() {
     if (import.meta.env.VITE_SUPABASE_URL) return 'env'
     return 'default'
   })
+
+  React.useEffect(() => {
+    if (isOpen) {
+      setUrl(localStorage.getItem('sgc_supabase_url') || import.meta.env.VITE_SUPABASE_URL || 'https://luhsnaqlajbwkftrsbeg.supabase.co')
+      setKey(localStorage.getItem('sgc_supabase_key') || import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx1aHNuYXFsYWpid2tmdHJzYmVnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwMDk3MjIsImV4cCI6MjA5NTU4NTcyMn0.NqqOG1KkzceGquzudBcPqOSsX1BhB24U_jmew0Mqsc4')
+      setCurrentSource(() => {
+        if (localStorage.getItem('sgc_supabase_url')) return 'local'
+        if (import.meta.env.VITE_SUPABASE_URL) return 'env'
+        return 'default'
+      })
+      setSaveSuccess(false)
+    }
+  }, [isOpen])
+
+  if (!isOpen) return null
 
   const handleSave = () => {
     const trimmedUrl = url.trim()
@@ -1174,54 +1375,59 @@ function ConfigTab() {
     }
   }
 
-  // Check connection status in real-time
   const isCurrentlyConnected = isSupabaseConfigured
 
   return (
     <div style={{
-      background: '#ffffff',
-      borderRadius: 12,
-      border: '1px solid #e2e8f0',
-      padding: '24px',
-      maxWidth: '800px',
-      margin: '20px auto 40px auto',
-      textAlign: 'left',
-      boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -1px rgba(0,0,0,0.03)'
+      position: 'fixed',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      backgroundColor: 'rgba(15, 23, 42, 0.65)',
+      backdropFilter: 'blur(5px)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      zIndex: 10002
     }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, borderBottom: '1px solid #f1f5f9', paddingBottom: 16, marginBottom: 20 }}>
-        <div style={{
-          backgroundColor: '#eff6ff',
-          color: '#0f58a7',
-          padding: 8,
-          borderRadius: 8,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center'
-        }}>
-          <Database size={24} />
+      <div style={{
+        background: '#ffffff',
+        borderRadius: 16,
+        width: '100%',
+        maxWidth: 580,
+        maxHeight: '90vh',
+        overflowY: 'auto',
+        padding: 24,
+        boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)',
+        border: '1px solid #e2e8f0',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 16
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #f1f5f9', paddingBottom: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <Database size={18} color="#0f58a7" />
+            <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: '#0f172a' }}>Cấu hình kết nối cơ sở dữ liệu Supabase</h3>
+          </div>
+          <button onClick={onClose} style={{ background: 'transparent', border: 'none', color: '#64748b', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: 4 }}>
+            <X size={18} />
+          </button>
         </div>
-        <div>
-          <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: '#0f172a' }}>Cấu hình kết nối cơ sở dữ liệu Supabase</h2>
-          <p style={{ margin: '4px 0 0 0', fontSize: 13, color: '#64748b' }}>
-            Kết nối ứng dụng báo cáo giao nhận của bạn với máy chủ Supabase để đồng bộ dữ liệu vĩnh viễn.
-          </p>
-        </div>
-      </div>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
         {/* Status indicator */}
         <div style={{
           display: 'flex',
           alignItems: 'center',
           gap: 12,
-          padding: '12px 16px',
+          padding: '10px 14px',
           borderRadius: 8,
           backgroundColor: isCurrentlyConnected ? '#ecfdf5' : '#fff1f2',
           border: `1px solid ${isCurrentlyConnected ? '#a7f3d0' : '#fecdd3'}`
         }}>
           <div style={{
-            width: 10,
-            height: 10,
+            width: 8,
+            height: 8,
             borderRadius: '50%',
             backgroundColor: isCurrentlyConnected ? '#10b981' : '#f43f5e'
           }} />
@@ -1229,83 +1435,64 @@ function ConfigTab() {
             <span style={{ fontSize: 13, fontWeight: 700, color: isCurrentlyConnected ? '#065f46' : '#9f1239' }}>
               Trạng thái: {isCurrentlyConnected ? 'Đã kết nối với Database' : 'Chưa kết nối (Offline)'}
             </span>
-            <p style={{ margin: '2px 0 0 0', fontSize: 12, color: isCurrentlyConnected ? '#047857' : '#be123c' }}>
+            <p style={{ margin: '1px 0 0 0', fontSize: 11, color: isCurrentlyConnected ? '#047857' : '#be123c' }}>
               {isCurrentlyConnected 
-                ? `Đang sử dụng cấu hình từ: ${currentSource === 'local' ? 'Trình duyệt Web (Local Storage)' : currentSource === 'env' ? 'Biến môi trường (Vite Env)' : 'Cấu hình tích hợp mặc định (Code webapp)'}`
-                : 'Ứng dụng hiện đang chạy ngoại tuyến bằng bộ nhớ tạm thời trên trình duyệt của bạn.'}
+                ? `Đầu nối từ: ${currentSource === 'local' ? 'Trình duyệt Web (Local Storage)' : currentSource === 'env' ? 'Biến môi trường (Vite Env)' : 'Cấu hình tích hợp mặc định (Code)'}`
+                : 'Đang chạy offline bằng bộ dữ liệu tạm thời.'}
             </p>
           </div>
         </div>
 
         {/* Edit Fields */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <label style={{ fontSize: 13, fontWeight: 600, color: '#334155' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            <label style={{ fontSize: 12, fontWeight: 600, color: '#475569', textAlign: 'left' }}>
               Supabase Project URL (VITE_SUPABASE_URL)
             </label>
             <input
               type="text"
               className="input"
-              style={{ width: '100%', fontFamily: 'monospace', fontSize: 13 }}
+              style={{ width: '100%', fontFamily: 'monospace', fontSize: 12 }}
               placeholder="Ví dụ: https://your-project-id.supabase.co"
               value={url}
               onChange={(e) => setUrl(e.target.value)}
             />
           </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <label style={{ fontSize: 13, fontWeight: 600, color: '#334155' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            <label style={{ fontSize: 12, fontWeight: 600, color: '#475569', textAlign: 'left' }}>
               Supabase Project API Anon Key (VITE_SUPABASE_ANON_KEY)
             </label>
             <textarea
               className="input"
               rows={3}
-              style={{ width: '100%', fontFamily: 'monospace', fontSize: 12, resize: 'vertical', padding: '8px 12px', lineHeight: '1.4' }}
-              placeholder="Nhập chuỗi Anon Key dài của bạn..."
+              style={{ width: '100%', fontFamily: 'monospace', fontSize: 11, resize: 'vertical', padding: '6px 10px', lineHeight: '1.4' }}
+              placeholder="Nhập chuỗi Anon Key..."
               value={key}
               onChange={(e) => setKey(e.target.value)}
             />
           </div>
         </div>
 
-        {/* Actions bar */}
-        <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-          <button
-            onClick={handleSave}
-            disabled={saveSuccess}
-            style={{
-              padding: '10px 20px',
-              borderRadius: 6,
-              background: 'linear-gradient(135deg, #0f58a7 0%, #1a6abf 100%)',
-              color: '#ffffff',
-              fontSize: 13,
-              fontWeight: 700,
-              border: 'none',
-              cursor: saveSuccess ? 'not-allowed' : 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 8,
-              boxShadow: '0 2px 4px rgba(15,88,167,0.2)'
-            }}
-          >
-            {saveSuccess ? (
-              <>
-                <RefreshCw size={15} className="animate-spin" />
-                Đang lưu & tải lại trang...
-              </>
-            ) : (
-              <>
-                <Save size={15} />
-                Lưu cấu hình kết nối
-              </>
-            )}
-          </button>
+        {/* Info detail block */}
+        <details style={{ fontSize: 12, color: '#475569', border: '1px solid #e2e8f0', borderRadius: 8, padding: '8px 12px', background: '#f8fafc' }}>
+          <summary style={{ fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, userSelect: 'none' }}>
+            <Info size={14} color="#0f58a7" />
+            <span>Hướng dẫn đồng bộ lên Cloudflare / Pages</span>
+          </summary>
+          <div style={{ marginTop: 8, paddingLeft: 4, display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <p style={{ margin: 0 }}><strong>Cách 1:</strong> Bạn chỉ cần cấu hình ngay tại form này rồi bấm <strong>Lưu kết nối</strong>. Trình duyệt của bạn sẽ tự lưu vĩnh viễn và đồng bộ dữ liệu ngay lập tức.</p>
+            <p style={{ margin: 0 }}><strong>Cách 2:</strong> Vào Cloudflare Dashboard &gt; Settings &gt; Environment variables &gt; Thêm <code style={{ fontSize: 11, background: '#cbd5e1', padding: '1px 3px', borderRadius: 3 }}>VITE_SUPABASE_URL</code> và <code style={{ fontSize: 11, background: '#cbd5e1', padding: '1px 3px', borderRadius: 3 }}>VITE_SUPABASE_ANON_KEY</code> để mọi thiết bị truy cập mặc định online.</p>
+          </div>
+        </details>
 
+        {/* Footer actions */}
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, borderTop: '1px solid #f1f5f9', paddingTop: 12 }}>
           {currentSource === 'local' && (
             <button
               onClick={handleClear}
               style={{
-                padding: '10px 16px',
+                padding: '6px 12px',
                 borderRadius: 6,
                 background: '#ffffff',
                 border: '1px solid #cbd5e1',
@@ -1318,41 +1505,52 @@ function ConfigTab() {
               Phục hồi mặc định
             </button>
           )}
+          <button
+            onClick={onClose}
+            style={{
+              padding: '6px 12px',
+              borderRadius: 6,
+              border: '1px solid #cbd5e1',
+              background: '#ffffff',
+              color: '#475569',
+              fontSize: 13,
+              fontWeight: 600,
+              cursor: 'pointer'
+            }}
+          >
+            Hủy bỏ
+          </button>
+          <button
+            onClick={handleSave}
+            disabled={saveSuccess}
+            style={{
+              padding: '6px 14px',
+              borderRadius: 6,
+              border: 'none',
+              background: 'linear-gradient(135deg, #0f58a7 0%, #1a6abf 100%)',
+              color: '#ffffff',
+              fontSize: 13,
+              fontWeight: 600,
+              cursor: saveSuccess ? 'not-allowed' : 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              boxShadow: '0 2px 4px rgba(15,88,167,0.2)'
+            }}
+          >
+            {saveSuccess ? (
+              <>
+                <RefreshCw size={13} className="animate-spin" />
+                Đang lưu...
+              </>
+            ) : (
+              <>
+                <Save size={13} />
+                Lưu kết nối
+              </>
+            )}
+          </button>
         </div>
-
-        {/* Helpful instructions for deploying to Cloudflare Pages */}
-        <div style={{
-          marginTop: 12,
-          padding: '16px 20px',
-          borderRadius: 8,
-          backgroundColor: '#f8fafc',
-          border: '1px solid #e2e8f0'
-        }}>
-          <h4 style={{ margin: '0 0 8px 0', fontSize: 13, fontWeight: 700, color: '#334155', display: 'flex', alignItems: 'center', gap: 6 }}>
-            <Info size={15} color="#0f58a7" />
-            Hướng dẫn chạy online khi deploy lên Cloudflare.com / Cloudflare Pages:
-          </h4>
-          <ol style={{ margin: 0, paddingLeft: 20, fontSize: 12, color: '#475569', display: 'flex', flexDirection: 'column', gap: 8, lineHeight: '1.5' }}>
-            <li>
-              Mặc định khi bạn deploy mã nguồn lên Cloudflare, bản build sẽ không tự động cấu hình sẵn Supabase của bạn trừ khi bạn khai báo.
-            </li>
-            <li>
-              <strong>Cách 1 (Nhanh & cực tiện):</strong> Bạn chỉ cần mở ứng dụng của mình trên Cloudflare, vào chính tab <strong>Cấu hình dữ liệu</strong> này, dán URL + Anon Key vào đây rồi bấm <strong>Lưu cấu hình</strong>. Webapp sẽ Online ngay lập tức và tự ghi nhớ vĩnh viễn trên trình duyệt của bạn mà không lộ key vào code!
-            </li>
-            <li>
-              <strong>Cách 2 (Cố định cho tất cả mọi người cùng truy cập):</strong>
-              <ul style={{ paddingLeft: 16, marginTop: 4, display: 'flex', flexDirection: 'column', gap: 4 }}>
-                <li>Truy cập trang quản trị Cloudflare Dashboard &gt; chọn dự án Pages của bạn.</li>
-                <li>Đi tới tab <strong>Settings</strong> &gt; Chọn <strong>Environment variables</strong> ở menu bên trái.</li>
-                <li>Thêm 2 biến môi trường mới tại phần <strong>Production</strong> (và cả Preview nếu cần):</li>
-                <li>• Tên: <code style={{ backgroundColor: '#e2e8f0', padding: '2px 4px', borderRadius: 4, fontFamily: 'monospace', fontSize: 11 }}>VITE_SUPABASE_URL</code> — Giá trị: URL Supabase của bạn</li>
-                <li>• Tên: <code style={{ backgroundColor: '#e2e8f0', padding: '2px 4px', borderRadius: 4, fontFamily: 'monospace', fontSize: 11 }}>VITE_SUPABASE_ANON_KEY</code> — Giá trị: Anon Key Supabase của bạn</li>
-                <li>Bấm <strong>Save</strong>, sau đó nhấn <strong>Deploy</strong> lại bản build gần nhất. Bản mới sẽ tự động online cho mọi người truy cập!</li>
-              </ul>
-            </li>
-          </ol>
-        </div>
-
       </div>
     </div>
   )
@@ -1387,37 +1585,101 @@ function normalizeDbRow(dbRow) {
 }
 
 async function insertWithFallback(tableName, originalChunk) {
+  // Helper to run a self-healing insert-and-retry loop for a specific payload structure
+  const tryInsertWithHealing = async (payload) => {
+    // Deep clone the payload so modifications don't leak or cross-contaminate different formats
+    let currentPayload = JSON.parse(JSON.stringify(payload))
+    
+    for (let retry = 0; retry < 50; retry++) {
+      const { error } = await supabase.from(tableName).insert(currentPayload)
+      if (!error) {
+        return { success: true }
+      }
+      
+      const errMsg = error.message || ''
+      let missingField = null
+      
+      // Match various PostgreSQL / PostgREST missing column error formats
+      const match1 = errMsg.match(/Could not find the '(.*?)' column of/i)
+      const match2 = errMsg.match(/column "(.*?)" of relation/i)
+      const match3 = errMsg.match(/column "(.*?)" does not exist/i)
+      
+      if (match1) {
+        missingField = match1[1]
+      } else if (match2) {
+        missingField = match2[1]
+      } else if (match3) {
+        missingField = match3[1]
+      }
+      
+      if (missingField) {
+        console.warn(`[Self-Healing] Loại bỏ cột không tồn tại '${missingField}' trên bảng '${tableName}' và thử lại...`)
+        currentPayload.forEach(row => {
+          // Remove case-insensitively & snake-case-insensitively
+          const keys = Object.keys(row)
+          keys.forEach(k => {
+            if (
+              k.toLowerCase() === missingField.toLowerCase() ||
+              toSnakeCase(k).toLowerCase() === toSnakeCase(missingField).toLowerCase() ||
+              k.replace(/_/g, '').toLowerCase() === missingField.replace(/_/g, '').toLowerCase()
+            ) {
+              delete row[k]
+            }
+          })
+          // Fallback direct deletes
+          delete row[missingField]
+          delete row[missingField.toLowerCase()]
+          delete row[toSnakeCase(missingField)]
+        })
+        
+        // If there are no keys left to attempt, stop to prevent infinite looping
+        if (currentPayload.length > 0 && Object.keys(currentPayload[0]).length === 0) {
+          break
+        }
+        continue
+      }
+      
+      return { success: false, error }
+    }
+    return { success: false, error: new Error('Không thể lưu do loại bỏ cột không thành công hoặc lỗi DB nghiêm trọng') }
+  }
+
   // Try 1: Exact CamelCase payload
-  const { error: err1 } = await supabase.from(tableName).insert(originalChunk)
-  if (!err1) return { success: true }
-  console.warn(`CamelCase insert failed for ${tableName}:`, err1.message || err1)
+  {
+    const res = await tryInsertWithHealing(originalChunk)
+    if (res.success) return { success: true }
+    console.warn(`CamelCase insert failed for ${tableName}:`, res.error?.message || res.error)
+  }
 
   // Try 2: Lowercase payload (unquoted PostgreSQL creates lowercase columns by default)
-  const lowercaseChunk = originalChunk.map(row => {
-    const newRow = {}
-    Object.keys(row).forEach(k => {
-      newRow[k.toLowerCase()] = row[k]
+  {
+    const lowercaseChunk = originalChunk.map(row => {
+      const newRow = {}
+      Object.keys(row).forEach(k => {
+        newRow[k.toLowerCase()] = row[k]
+      })
+      return newRow
     })
-    return newRow
-  })
-  const { error: err2 } = await supabase.from(tableName).insert(lowercaseChunk)
-  if (!err2) return { success: true }
-  console.warn(`Lowercase insert failed for ${tableName}:`, err2.message || err2)
+    const res = await tryInsertWithHealing(lowercaseChunk)
+    if (res.success) return { success: true }
+    console.warn(`Lowercase insert failed for ${tableName}:`, res.error?.message || res.error)
+  }
 
   // Try 3: SnakeCase payload (common PostgreSQL naming style)
-  const snakeChunk = originalChunk.map(row => {
-    const newRow = {}
-    Object.keys(row).forEach(k => {
-      newRow[toSnakeCase(k)] = row[k]
+  {
+    const snakeChunk = originalChunk.map(row => {
+      const newRow = {}
+      Object.keys(row).forEach(k => {
+        newRow[toSnakeCase(k)] = row[k]
+      })
+      return newRow
     })
-    return newRow
-  })
-  const { error: err3 } = await supabase.from(tableName).insert(snakeChunk)
-  if (!err3) return { success: true }
-  console.warn(`SnakeCase insert failed for ${tableName}:`, err3.message || err3)
+    const res = await tryInsertWithHealing(snakeChunk)
+    if (res.success) return { success: true }
+    console.warn(`SnakeCase insert failed for ${tableName}:`, res.error?.message || res.error)
+  }
 
-  // If both failed, throw a readable combined error
-  throw new Error(err1.message || err2.message || err3.message || 'Lỗi lưu trữ dữ liệu')
+  throw new Error('Supabase từ chối đồng bộ dữ liệu. Đã thử đồng hóa viết hoa/thường và tự động gỡ các cột không có trong Table nhưng vẫn thất bại.')
 }
 
 // ─── App ──────────────────────────────────────────────────────────────────────
@@ -1426,7 +1688,10 @@ export default function App() {
   const [selectedProject, setSelectedProject] = useState('')
   const [showAddProjectModal, setShowAddProjectModal] = useState(false)
   const [showEditProjectModal, setShowEditProjectModal] = useState(false)
+  const [showDeleteProjectModal, setShowDeleteProjectModal] = useState(false)
+  const [showConfigModal, setShowConfigModal] = useState(false)
   const [projectToEdit, setProjectToEdit] = useState('')
+  const [projectToDelete, setProjectToDelete] = useState('')
 
   const [customProjects, setCustomProjects] = useState(() => {
     try {
@@ -1468,12 +1733,9 @@ export default function App() {
             return d[key]
           }).filter(Boolean)
           
-          if (list.length > 0) {
-            setCustomProjects(prev => {
-              const merged = new Set([...prev, ...list])
-              return [...merged].sort()
-            })
-          }
+          const sortedList = [...list].sort()
+          setCustomProjects(sortedList)
+          localStorage.setItem('sgc_custom_projects', JSON.stringify(sortedList))
         }
 
         // Fetch don_giao rows
@@ -1513,13 +1775,36 @@ export default function App() {
         console.error('Lỗi khi tải dữ liệu từ Supabase:', e)
       }
     }
+    
     loadData()
-  }, [])
 
-  const handleSyncToSupabase = async (type) => {
     if (!isSupabaseConfigured) return
 
-    const rowsToSync = type === 'giao' ? giaoRows : nhanRows
+    // Đăng ký nhận thông tin Realtime tức thời từ Supabase
+    const channel = supabase
+      .channel('schema-changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'don_giao' }, () => {
+        console.log('[Supabase Realtime] Tự động cập nhật bảng Đơn Giao...')
+        loadData()
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'don_nhan' }, () => {
+        console.log('[Supabase Realtime] Tự động cập nhật bảng Đơn Nhận...')
+        loadData()
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'du_an' }, () => {
+        console.log('[Supabase Realtime] Tự động cập nhật danh sách Dự Án...')
+        loadData()
+      })
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [])
+
+  const syncRowsToSupabase = async (type, rowsToSync, isAuto = false) => {
+    if (!isSupabaseConfigured) return
+
     if (!rowsToSync || rowsToSync.length === 0) {
       setSupabaseMessage({
         text: 'Không có dữ liệu để đồng bộ.',
@@ -1531,7 +1816,9 @@ export default function App() {
 
     setSyncingType(type)
     setSupabaseMessage({
-      text: `Đang lưu dữ liệu Đơn ${type === 'giao' ? 'Giao' : 'Nhận'} lên Supabase...`,
+      text: isAuto 
+        ? `Đang tự động đồng bộ ${rowsToSync.length} dòng lên Supabase...`
+        : `Đang lưu dữ liệu Đơn ${type === 'giao' ? 'Giao' : 'Nhận'} lên Supabase...`,
       type: 'info'
     })
 
@@ -1601,7 +1888,9 @@ export default function App() {
       }
 
       setSupabaseMessage({
-        text: `Đồng bộ thành công ${rowsToSync.length} dòng dữ liệu lên Supabase!`,
+        text: isAuto 
+          ? `Đã tự động liên thông thành công ${rowsToSync.length} dòng lên Supabase!`
+          : `Đồng bộ thành công ${rowsToSync.length} dòng dữ liệu lên Supabase!`,
         type: 'success'
       })
       setTimeout(() => setSupabaseMessage(null), 5000)
@@ -1614,6 +1903,25 @@ export default function App() {
       setTimeout(() => setSupabaseMessage(null), 6000)
     } finally {
       setSyncingType(null)
+    }
+  }
+
+  const handleSyncToSupabase = async (type) => {
+    const rowsToSync = type === 'giao' ? giaoRows : nhanRows
+    await syncRowsToSupabase(type, rowsToSync, false)
+  }
+
+  const handleImportFile = async (type, parsedRows, name) => {
+    if (type === 'giao') {
+      setGiaoRows(parsedRows)
+      setGiaoFileName(name)
+    } else {
+      setNhanRows(parsedRows)
+      setNhanFileName(name)
+    }
+
+    if (isSupabaseConfigured) {
+      await syncRowsToSupabase(type, parsedRows, true)
     }
   }
 
@@ -1768,6 +2076,140 @@ export default function App() {
     }
   }
 
+  const handleDeleteProject = (projectName) => {
+    const trimmed = projectName.trim()
+    if (!trimmed) return
+    setProjectToDelete(trimmed)
+    setShowDeleteProjectModal(true)
+  }
+
+  const handleConfirmDeleteProject = async () => {
+    const trimmed = projectToDelete.trim()
+    if (!trimmed) return
+
+    setShowDeleteProjectModal(false)
+    setProjectToDelete('')
+
+    // 1. Cập nhật customProjects local state & localStorage
+    setCustomProjects(prev => {
+      const updated = prev.filter(p => p !== trimmed)
+      localStorage.setItem('sgc_custom_projects', JSON.stringify(updated))
+      return updated
+    })
+
+    // Clear references from in-memory delivery/receipt rows so it doesn't stay in fileProjects list!
+    setGiaoRows(prev => prev.map(row => {
+      if (row.duAn === trimmed) {
+        return { ...row, duAn: '' }
+      }
+      return row
+    }))
+    setNhanRows(prev => prev.map(row => {
+      if (row.duAn === trimmed) {
+        return { ...row, duAn: '' }
+      }
+      return row
+    }))
+
+    // Reset active selection if the deleted project is currently selected
+    if (selectedProject === trimmed) {
+      setSelectedProject('')
+    }
+
+    // 2. Xóa trên Supabase nếu đã cấu hình
+    if (isSupabaseConfigured) {
+      try {
+        setSupabaseMessage({
+          text: `Đang kết nối để xóa kho dự án "${trimmed}" trên Supabase...`,
+          type: 'info'
+        })
+
+        // Xóa theo các trường hợp cột có thể xảy ra trong bảng 'du_an'
+        const { error: err1 } = await supabase
+          .from('du_an')
+          .delete()
+          .eq('ten_du_an', trimmed)
+
+        if (err1) {
+          const { error: err2 } = await supabase
+            .from('du_an')
+            .delete()
+            .eq('tenduan', trimmed)
+
+          if (err2) {
+            const { error: err3 } = await supabase
+              .from('du_an')
+              .delete()
+              .eq('tenDuAn', trimmed)
+              
+            if (err3) {
+              await supabase
+                .from('du_an')
+                .delete()
+                .eq('ten_duan', trimmed)
+                .catch(e => console.warn('Ignore: failed lowercase snake cases delete', e))
+            }
+          }
+        }
+
+        // -- Clear referencing columns in 'don_giao' table on Supabase to keep it synchronized!
+        const { error: gErr1 } = await supabase
+          .from('don_giao')
+          .update({ du_an: '' })
+          .eq('du_an', trimmed)
+        
+        if (gErr1) {
+          const { error: gErr2 } = await supabase
+            .from('don_giao')
+            .update({ duan: '' })
+            .eq('duan', trimmed)
+          
+          if (gErr2) {
+            await supabase
+              .from('don_giao')
+              .update({ duAn: '' })
+              .eq('duAn', trimmed)
+              .catch(e => console.warn('Ignore: failed camelCase don_giao clear references', e))
+          }
+        }
+
+        // -- Clear referencing columns in 'don_nhan' table on Supabase to keep it synchronized!
+        const { error: nErr1 } = await supabase
+          .from('don_nhan')
+          .update({ du_an: '' })
+          .eq('du_an', trimmed)
+        
+        if (nErr1) {
+          const { error: nErr2 } = await supabase
+            .from('don_nhan')
+            .update({ duan: '' })
+            .eq('duan', trimmed)
+          
+          if (nErr2) {
+            await supabase
+              .from('don_nhan')
+              .update({ duAn: '' })
+              .eq('duAn', trimmed)
+              .catch(e => console.warn('Ignore: failed camelCase don_nhan clear references', e))
+          }
+        }
+
+        setSupabaseMessage({
+          text: `Xóa kho dự án "${trimmed}" thành công!`,
+          type: 'success'
+        })
+        setTimeout(() => setSupabaseMessage(null), 4000)
+      } catch (err) {
+        console.error('Lỗi khi xóa dự án trên Supabase:', err)
+        setSupabaseMessage({
+          text: `Đã xóa cục bộ thành công! Nhưng gặp lỗi đồng bộ Supabase: ${err.message || err}`,
+          type: 'error'
+        })
+        setTimeout(() => setSupabaseMessage(null), 5000)
+      }
+    }
+  }
+
   const fileProjects = useMemo(() => {
     const list = new Set()
     giaoRows.forEach(r => { if (r.duAn) list.add(r.duAn) })
@@ -1776,14 +2218,17 @@ export default function App() {
   }, [giaoRows, nhanRows])
 
   const allProjects = useMemo(() => {
+    if (isSupabaseConfigured) {
+      // Khi đã kết nối Supabase, danh sách dự án phải đồng bộ tuyệt đối với bảng du_an (customProjects)
+      return [...new Set(customProjects)].sort()
+    }
     const list = new Set([...fileProjects, ...customProjects])
     return [...list].sort()
-  }, [fileProjects, customProjects])
+  }, [fileProjects, customProjects, isSupabaseConfigured])
 
   const tabs = [
     { id: 'giao', label: 'Đơn Giao', icon: <Truck size={15} /> },
     { id: 'nhan', label: 'Đơn Nhận', icon: <PackageCheck size={15} /> },
-    { id: 'config', label: 'Cấu hình dữ liệu', icon: <Settings size={15} /> },
     { id: 'summary', label: 'Tổng hợp', icon: <BarChart3 size={15} /> },
   ]
 
@@ -1798,6 +2243,8 @@ export default function App() {
           setProjectToEdit(projectName)
           setShowEditProjectModal(true)
         }}
+        onDeleteProject={handleDeleteProject}
+        onOpenConfigModal={() => setShowConfigModal(true)}
       />
       <TabBar tabs={tabs} active={tab} onChange={setTab} />
 
@@ -1818,6 +2265,8 @@ export default function App() {
               setProjectToEdit(projectName)
               setShowEditProjectModal(true)
             }}
+            projectOptions={allProjects}
+            onImportFile={(rows, name) => handleImportFile('giao', rows, name)}
           />
         )}
         {tab === 'nhan' && (
@@ -1836,10 +2285,9 @@ export default function App() {
               setProjectToEdit(projectName)
               setShowEditProjectModal(true)
             }}
+            projectOptions={allProjects}
+            onImportFile={(rows, name) => handleImportFile('nhan', rows, name)}
           />
-        )}
-        {tab === 'config' && (
-          <ConfigTab />
         )}
         {tab === 'summary' && (
           <PlaceholderTab
@@ -1864,6 +2312,21 @@ export default function App() {
         }}
         onSave={handleEditProject}
         currentName={projectToEdit}
+      />
+
+      <SupabaseConfigModal
+        isOpen={showConfigModal}
+        onClose={() => setShowConfigModal(false)}
+      />
+
+      <DeleteProjectModal
+        isOpen={showDeleteProjectModal}
+        onClose={() => {
+          setShowDeleteProjectModal(false)
+          setProjectToDelete('')
+        }}
+        onConfirm={handleConfirmDeleteProject}
+        projectName={projectToDelete}
       />
 
       <style>{`
