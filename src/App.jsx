@@ -51,13 +51,13 @@ function SearchableSelect({ value, onChange, options, placeholder = 'Tất cả 
     borderRadius: 6,
     padding: '4px 32px 4px 12px',
     color: '#0f172a',
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: 700,
     cursor: 'pointer',
     width: '100%',
     minWidth: 160,
     maxWidth: 240,
-    height: 28,
+    height: 32,
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -318,7 +318,7 @@ function Header({ selectedProject, setSelectedProject, duAnOptions, onOpenAddPro
         borderRadius: 8,
         border: '1px solid rgba(255, 255, 255, 0.20)'
       }}>
-        <span style={{ color: '#ffffff', fontWeight: 700, fontSize: 13, textTransform: 'uppercase', letterSpacing: '0.04em', whiteSpace: 'nowrap' }}>
+        <span style={{ color: '#ffffff', fontWeight: 700, fontSize: 14, textTransform: 'uppercase', letterSpacing: '0.04em', whiteSpace: 'nowrap' }}>
           Kho dự án:
         </span>
         <div style={{ display: 'flex', alignItems: 'center' }}>
@@ -337,7 +337,7 @@ function Header({ selectedProject, setSelectedProject, duAnOptions, onOpenAddPro
             background: 'linear-gradient(180deg, #10b981 0%, #059669 100%)',
             border: 'none',
             color: '#ffffff',
-            fontSize: 12,
+            fontSize: 14,
             fontWeight: 700,
             padding: '4px 12px',
             borderRadius: 6,
@@ -345,7 +345,7 @@ function Header({ selectedProject, setSelectedProject, duAnOptions, onOpenAddPro
             display: 'flex',
             alignItems: 'center',
             gap: 4,
-            height: 28,
+            height: 32,
             boxShadow: '0 2px 4px rgba(5,150,105,0.2)',
             transition: 'opacity 0.15s',
             whiteSpace: 'nowrap'
@@ -1132,16 +1132,16 @@ function EditProjectModal({ isOpen, onClose, onSave, currentName }) {
 // ─── Config Tab Component ───────────────────────────────────────────────────
 function ConfigTab() {
   const [url, setUrl] = useState(() => {
-    return localStorage.getItem('sgc_supabase_url') || import.meta.env.VITE_SUPABASE_URL || ''
+    return localStorage.getItem('sgc_supabase_url') || import.meta.env.VITE_SUPABASE_URL || 'https://luhsnaqlajbwkftrsbeg.supabase.co'
   })
   const [key, setKey] = useState(() => {
-    return localStorage.getItem('sgc_supabase_key') || import.meta.env.VITE_SUPABASE_ANON_KEY || ''
+    return localStorage.getItem('sgc_supabase_key') || import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx1aHNuYXFsYWpid2tmdHJzYmVnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwMDk3MjIsImV4cCI6MjA5NTU4NTcyMn0.NqqOG1KkzceGquzudBcPqOSsX1BhB24U_jmew0Mqsc4'
   })
   const [saveSuccess, setSaveSuccess] = useState(false)
   const [currentSource, setCurrentSource] = useState(() => {
     if (localStorage.getItem('sgc_supabase_url')) return 'local'
     if (import.meta.env.VITE_SUPABASE_URL) return 'env'
-    return 'none'
+    return 'default'
   })
 
   const handleSave = () => {
@@ -1161,12 +1161,12 @@ function ConfigTab() {
   }
 
   const handleClear = () => {
-    if (window.confirm('Bạn có chắc chắn muốn xóa cấu hình thủ công và quay lại dùng cấu hình trong File môi trường mặc định?')) {
+    if (window.confirm('Bạn có chắc chắn muốn xóa cấu hình thủ công và quay lại dùng cấu hình tích hợp mặc định trong code?')) {
       localStorage.removeItem('sgc_supabase_url')
       localStorage.removeItem('sgc_supabase_key')
-      setUrl(import.meta.env.VITE_SUPABASE_URL || '')
-      setKey(import.meta.env.VITE_SUPABASE_ANON_KEY || '')
-      setCurrentSource(import.meta.env.VITE_SUPABASE_URL ? 'env' : 'none')
+      setUrl(import.meta.env.VITE_SUPABASE_URL || 'https://luhsnaqlajbwkftrsbeg.supabase.co')
+      setKey(import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx1aHNuYXFsYWpid2tmdHJzYmVnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwMDk3MjIsImV4cCI6MjA5NTU4NTcyMn0.NqqOG1KkzceGquzudBcPqOSsX1BhB24U_jmew0Mqsc4')
+      setCurrentSource(import.meta.env.VITE_SUPABASE_URL ? 'env' : 'default')
       setSaveSuccess(true)
       setTimeout(() => {
         window.location.reload()
@@ -1231,7 +1231,7 @@ function ConfigTab() {
             </span>
             <p style={{ margin: '2px 0 0 0', fontSize: 12, color: isCurrentlyConnected ? '#047857' : '#be123c' }}>
               {isCurrentlyConnected 
-                ? `Đang sử dụng cấu hình từ: ${currentSource === 'local' ? 'Trình duyệt Web (Local Storage)' : 'Biến môi trường (Vite Env)'}`
+                ? `Đang sử dụng cấu hình từ: ${currentSource === 'local' ? 'Trình duyệt Web (Local Storage)' : currentSource === 'env' ? 'Biến môi trường (Vite Env)' : 'Cấu hình tích hợp mặc định (Code webapp)'}`
                 : 'Ứng dụng hiện đang chạy ngoại tuyến bằng bộ nhớ tạm thời trên trình duyệt của bạn.'}
             </p>
           </div>
