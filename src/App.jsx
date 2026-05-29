@@ -760,7 +760,8 @@ function OrderTab({
   supabaseMessage,
   onEditProject,
   projectOptions,
-  onImportFile
+  onImportFile,
+  onDeleteFile
 }) {
   const isGiao = type === 'giao'
   const [loading, setLoading] = useState(false)
@@ -916,7 +917,7 @@ function OrderTab({
                   {syncing ? 'Đang lưu...' : 'Lưu vào Supabase'}
                 </button>
               )}
-              <button className="btn btn-outline btn-sm" onClick={() => { setRows([]); setFileName(''); setSearch(''); setTrangThai(''); setSelectedProject('') }}>
+              <button className="btn btn-outline btn-sm" onClick={() => { if (onDeleteFile) { onDeleteFile() } else { setRows([]); setFileName(''); setSearch(''); setTrangThai('') } }}>
                 <X size={12} /> Xóa file
               </button>
               <label className="btn btn-primary btn-sm" style={{ cursor: 'pointer' }}>
@@ -1950,7 +1951,45 @@ export default function App() {
     }
   }
 
-  const handleAddProject = (name) => {
+  const handleDeleteFile = async (type) => {
+    // 1. Xóa dữ liệu local
+    if (type === 'giao') {
+      setGiaoRows([])
+      setGiaoFileName('')
+    } else {
+      setNhanRows([])
+      setNhanFileName('')
+    }
+
+    // 2. Nếu đã kết nối Supabase, xóa các dòng tương ứng trên Supabase
+    if (isSupabaseConfigured) {
+      const tableName = type === 'giao' ? 'don_giao' : 'don_nhan'
+      setSyncingType(type)
+      setSupabaseMessage({ text: `Đang xóa dữ liệu Đơn ${type === 'giao' ? 'Giao' : 'Nhận'} trên Supabase...`, type: 'info' })
+      try {
+        let query = supabase.from(tableName).delete()
+        if (selectedProject) {
+          // Xóa theo dự án đang chọn (thử các tên cột có thể có)
+          const { error: e1 } = await supabase.from(tableName).delete().eq('duAn', selectedProject)
+          if (e1) {
+            const { error: e2 } = await supabase.from(tableName).delete().eq('du_an', selectedProject)
+            if (e2) {
+              await supabase.from(tableName).delete().eq('duan', selectedProject)
+            }
+          }
+        } else {
+          // Không có dự án cụ thể → xóa hết bảng
+          await query.neq('id', -999)
+        }
+        setSupabaseMessage({ text: `Đã xóa dữ liệu Đơn ${type === 'giao' ? 'Giao' : 'Nhận'} khỏi Supabase thành công!`, type: 'success' })
+        setTimeout(() => setSupabaseMessage(null), 4000)
+      } catch (err) {
+        setSupabaseMessage({ text: `Lỗi khi xóa trên Supabase: ${err.message || err}`, type: 'error' })
+        setTimeout(() => setSupabaseMessage(null), 5000)
+      }
+      setSyncingType(null)
+    }
+  }
     const trimmed = name.trim()
     if (!trimmed) return
     if (!customProjects.includes(trimmed)) {
@@ -2289,6 +2328,7 @@ export default function App() {
             }}
             projectOptions={allProjects}
             onImportFile={(rows, name) => handleImportFile('giao', rows, name)}
+            onDeleteFile={() => handleDeleteFile('giao')}
           />
         )}
         {tab === 'nhan' && (
@@ -2309,6 +2349,7 @@ export default function App() {
             }}
             projectOptions={allProjects}
             onImportFile={(rows, name) => handleImportFile('nhan', rows, name)}
+            onDeleteFile={() => handleDeleteFile('nhan')}
           />
         )}
         {tab === 'summary' && (
