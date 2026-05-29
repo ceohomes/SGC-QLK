@@ -1,12 +1,14 @@
 import React, { useState, useRef, useCallback, useMemo } from 'react'
 import * as XLSX from 'xlsx'
+import * as XLSXStyleRaw from 'xlsx-js-style'
+const XLSXStyle = XLSXStyleRaw.default || XLSXStyleRaw
 import {
   Upload, FileSpreadsheet, Search, X, RefreshCw, Info,
   ChevronDown, Download, Truck, PackageCheck, Settings, BarChart3,
   AlertCircle, CheckCircle2, Filter, ArrowUpDown, Clock, CloudUpload, Database, Save,
   Pencil, Trash2, Lock
 } from 'lucide-react'
-import { COLS_GIAO_NHAN, parseXlsxToRows, formatVal, getTrangThaiColor } from './constants.js'
+import { COLS_GIAO_NHAN, parseXlsxToRows, formatVal, getTrangThaiColor, isApprovedStatus, isPendingStatus, isRejectedStatus } from './constants.js'
 import { supabase, isSupabaseConfigured, supabaseUrl, supabaseAnonKey } from './supabaseClient.js'
 
 // ─── Searchable Select ────────────────────────────────────────────────────────
@@ -570,20 +572,9 @@ function UploadZone({ onFile, label, accept = '.xlsx,.xls', disabled = false }) 
 function StatsBar({ rows }) {
   const stats = useMemo(() => {
     const total = rows.length
-    const daPheDuyet = rows.filter(r => {
-      const ts = String(r.trangThai || '').toLowerCase();
-      return ts.includes('đã phê duyệt') || ts.includes('approved') || ts.includes('hoàn thành');
-    }).length;
-    
-    const choPheDuyet = rows.filter(r => {
-      const ts = String(r.trangThai || '').toLowerCase();
-      return ts.includes('chờ') || ts.includes('pending') || ts.includes('chưa');
-    }).length;
-
-    const tuChoi = rows.filter(r => {
-      const ts = String(r.trangThai || '').toLowerCase();
-      return ts.includes('từ') || ts.includes('rejected') || ts.includes('hủy');
-    }).length;
+    const daPheDuyet = rows.filter(r => isApprovedStatus(r.trangThai)).length;
+    const choPheDuyet = rows.filter(r => isPendingStatus(r.trangThai)).length;
+    const tuChoi = rows.filter(r => isRejectedStatus(r.trangThai)).length;
 
     return { total, daPheDuyet, choPheDuyet, tuChoi }
   }, [rows])
@@ -832,8 +823,206 @@ function OrderTab({
     return rows.filter(r => r.duAn === selectedProject)
   }, [rows, selectedProject])
 
+  const handleExportExcel = useCallback(() => {
+    const wb = XLSXStyle.utils.book_new()
+    const ws = {}
+
+    // Columns: STT + COLS_GIAO_NHAN
+    const columns = [
+      { key: 'STT', label: 'STT', width: 50 },
+      ...COLS_GIAO_NHAN
+    ]
+
+    // Set widths
+    ws['!cols'] = columns.map(c => ({ wpx: c.width }))
+
+    let excelRowIdx = 1
+
+    // Write header row
+    columns.forEach((col, colIdx) => {
+      const colChar = getColLabel(colIdx)
+      const cellRef = `${colChar}${excelRowIdx}`
+      ws[cellRef] = {
+        v: col.label,
+        t: 's',
+        s: {
+          fill: {
+            patternType: 'solid',
+            fgColor: { rgb: '0F58A7' }
+          },
+          font: {
+            name: 'Segoe UI',
+            sz: 9.5,
+            bold: true,
+            color: { rgb: 'FFFFFF' }
+          },
+          alignment: {
+            horizontal: 'center',
+            vertical: 'center',
+            wrapText: true
+          },
+          border: {
+            top: { style: 'thin', color: { rgb: '0A3D73' } },
+            bottom: { style: 'medium', color: { rgb: '0A3D73' } },
+            left: { style: 'thin', color: { rgb: '0A3D73' } },
+            right: { style: 'thin', color: { rgb: '0A3D73' } }
+          }
+        }
+      }
+    })
+
+    // Helper to get letter coordinate
+    function getColLabel(index) {
+      let label = ''
+      let temp = index
+      while (temp >= 0) {
+        label = String.fromCharCode((temp % 26) + 65) + label
+        temp = Math.floor(temp / 26) - 1
+      }
+      return label
+    }
+
+    // Helper for status styling
+    function getExcelStatusStyle(val, colKey) {
+      if (!val) return null
+      const v = String(val).toLowerCase()
+      if (colKey === 'trangThai') {
+        if (v.includes('chờ') || v.includes('chưa')) {
+          return { fg: 'FFFBEB', text: '92400E' } // Orange/Yellow
+        }
+        if (v.includes('phê duyệt') || v.includes('hoàn thành') || v.includes('đã')) {
+          return { fg: 'ECFDF5', text: '065F46' } // Green
+        }
+        if (v.includes('từ chối') || v.includes('hủy')) {
+          return { fg: 'FFF1F2', text: '9F1239' } // Red
+        }
+        return { fg: 'EFF6FF', text: '1E40AF' } // Blue
+      }
+      if (colKey === 'tinhTrang') {
+        if (val === 'NEW') {
+          return { fg: 'ECFDF5', text: '065F46' }
+        }
+        if (val === 'USED') {
+          return { fg: 'FFFBEB', text: '92400E' }
+        }
+        return { fg: 'F8FAFC', text: '475569' }
+      }
+      return null
+    }
+
+    // Write data rows
+    filtered.forEach((row, rowIndex) => {
+      excelRowIdx++
+      const isEvenNum = (rowIndex % 2 === 1)
+      const rowBgColor = isEvenNum ? 'F8FAFC' : 'FFFFFF'
+
+      columns.forEach((col, colIdx) => {
+        const colChar = getColLabel(colIdx)
+        const cellRef = `${colChar}${excelRowIdx}`
+
+        let val = ''
+        let cellType = 's'
+        let numFormat = undefined
+
+        if (col.key === 'STT') {
+          val = rowIndex + 1
+          cellType = 'n'
+        } else {
+          const raw = row[col.key]
+          if (raw !== null && raw !== undefined) {
+            const isRightAligned = ['khoiLuongNhap', 'khoiLuongXuat'].includes(col.key) || col.key.toLowerCase().includes('khoiluong')
+            if (isRightAligned && !isNaN(Number(raw)) && raw !== '') {
+              val = Number(raw)
+              cellType = 'n'
+              numFormat = '#,##0'
+            } else {
+              val = String(raw)
+            }
+          }
+        }
+
+        // Check alignment
+        const isCenteredCol = [
+          'STT', 'ngayXuatNhap', 'maVatTu', 'maSAP', 'dvt', 'loaiDon',
+          'maDonViGiao', 'donViGiao', 'nguoiGiao',
+          'maDonViNhan', 'donViNhan', 'nguoiPheDuyet', 'nguoiNhan',
+          'soHopDong', 'thuKho', 'tinhTrang', 'trangThai'
+        ].includes(col.key)
+        const isRightAligned = ['khoiLuongNhap', 'khoiLuongXuat'].includes(col.key) || col.key.toLowerCase().includes('khoiluong')
+
+        // Styles
+        const cellStyle = {
+          font: {
+            name: 'Segoe UI',
+            sz: 9,
+            color: { rgb: '1B1919' }
+          },
+          alignment: {
+            horizontal: isCenteredCol ? 'center' : (isRightAligned ? 'right' : 'left'),
+            vertical: 'center',
+            wrapText: true
+          },
+          border: {
+            top: { style: 'thin', color: { rgb: 'E2E8F0' } },
+            bottom: { style: 'thin', color: { rgb: 'E2E8F0' } },
+            left: { style: 'thin', color: { rgb: 'E2E8F0' } },
+            right: { style: 'thin', color: { rgb: 'E2E8F0' } }
+          },
+          fill: {
+            patternType: 'solid',
+            fgColor: { rgb: rowBgColor }
+          }
+        }
+
+        // Status style overlay
+        if (col.key === 'trangThai' || col.key === 'tinhTrang') {
+          const statusOverlay = getExcelStatusStyle(val, col.key)
+          if (statusOverlay) {
+            cellStyle.fill.fgColor = { rgb: statusOverlay.fg }
+            cellStyle.font.color = { rgb: statusOverlay.text }
+            cellStyle.font.bold = true
+          }
+        }
+
+        const cellObj = {
+          v: val,
+          t: cellType,
+          s: cellStyle
+        }
+        if (numFormat) {
+          cellObj.z = numFormat
+        }
+
+        ws[cellRef] = cellObj
+      })
+    })
+
+    // Set range ref
+    ws['!ref'] = `A1:${getColLabel(columns.length - 1)}${excelRowIdx}`
+
+    XLSXStyle.utils.book_append_sheet(wb, ws, isGiao ? "Đơn Giao" : "Đơn Nhận")
+    
+    // Save
+    const wbout = XLSXStyle.write(wb, { bookType: 'xlsx', type: 'binary' })
+    function s2ab(s) {
+      const buf = new ArrayBuffer(s.length)
+      const view = new Uint8Array(buf)
+      for (let i = 0; i < s.length; i++) view[i] = s.charCodeAt(i) & 0xFF
+      return buf
+    }
+    const blob = new Blob([s2ab(wbout)], { type: 'application/octet-stream' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `Export_${isGiao ? 'Don_giao' : 'Don_nhan'}_${new Date().toISOString().slice(0, 10)}.xlsx`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+  }, [filtered, isGiao])
+
   return (
-    <div style={{ padding: 24 }}>
+    <div style={{ padding: '16px 24px 24px 24px', height: '100%', display: 'flex', flexDirection: 'column', boxSizing: 'border-box', overflow: 'hidden' }}>
       {!rows.length && !loading ? (
         <div style={{ maxWidth: 560, margin: '40px auto' }}>
           <div style={{ marginBottom: 20, textAlign: 'center' }}>
@@ -910,11 +1099,10 @@ function OrderTab({
               </span>
             </div>
             <div style={{ display: 'flex', gap: 8 }}>
-              {isSupabaseConfigured && rows.length > 0 && (
+              {rows.length > 0 && (
                 <button
                   className="btn btn-sm"
-                  onClick={onSync}
-                  disabled={syncing}
+                  onClick={handleExportExcel}
                   style={{
                     background: 'linear-gradient(135deg, #059669 0%, #10b981 100%)',
                     color: '#ffffff',
@@ -922,22 +1110,12 @@ function OrderTab({
                     boxShadow: '0 2px 4px rgba(16,185,129,0.2)',
                   }}
                 >
-                  {syncing ? (
-                    <RefreshCw size={12} style={{ animation: 'spin 1s linear infinite' }} />
-                  ) : (
-                    <CloudUpload size={12} />
-                  )}
-                  {syncing ? 'Đang lưu...' : 'Lưu vào Supabase'}
+                  <Download size={12} /> Xuất Excel
                 </button>
               )}
               <button className="btn btn-outline btn-sm" onClick={() => { if (onDeleteFile) { onDeleteFile() } else { setRows([]); setFileName(''); setSearch(''); setTrangThai('') } }}>
                 <X size={12} /> Xóa file
               </button>
-              <label className="btn btn-primary btn-sm" style={{ cursor: 'pointer' }}>
-                <Upload size={12} /> Đổi file
-                <input type="file" accept=".xlsx,.xls" style={{ display: 'none' }}
-                  onChange={e => { if (e.target.files[0]) handleFile(e.target.files[0], e.target.files[0].name); e.target.value = '' }} />
-              </label>
             </div>
           </div>
 
@@ -1052,10 +1230,7 @@ function PreviewImportModal({ isOpen, onClose, onConfirm, rows, fileName, type, 
   })
 
   // Trong số các dòng khớp đơn vị, chỉ lấy dòng Đã phê duyệt
-  const approvedRows = matchedByUnit.filter(r => {
-    const v = String(r.trangThai || '').toLowerCase()
-    return v.includes('phê duyệt') || (v.includes('đã') && !v.includes('hủy'))
-  })
+  const approvedRows = matchedByUnit.filter(r => isApprovedStatus(r.trangThai))
   const skippedStatusCount = matchedByUnit.length - approvedRows.length
 
   return (
@@ -2017,7 +2192,34 @@ ALTER TABLE public.don_nhan ADD CONSTRAINT don_nhan_ten_du_an_fkey
 
 // Helper functions for robust database access and column-case normalization
 function toSnakeCase(str) {
+  if (str === 'maSAP') return 'ma_sap'
+  if (str === 'maDonChuyenTiepLC') return 'ma_don_chuyen_tiep_lc'
+  if (str === 'maDonChuyenTiepNB') return 'ma_don_chuyen_tiep_nb'
   return str.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`)
+}
+
+function extractMissingField(errMsg) {
+  if (!errMsg) return null
+  const patterns = [
+    /Could not find the ['"](.*?)['"] (column|property)/i,
+    /Could not find the (column|property) ['"](.*?)['"]/i,
+    /(column|property) ['"](.*?)['"] of relation/i,
+    /(column|property) ['"](.*?)['"] does not exist/i,
+    /['"](.*?)['"] is not a (column|property)/i,
+    /relation ['"].*?['"] does not have a (column|property) ['"](.*?)['"]/i
+  ]
+  for (const regex of patterns) {
+    const match = errMsg.match(regex)
+    if (match) {
+      for (let i = 1; i < match.length; i++) {
+        const val = match[i]
+        if (val && val.toLowerCase() !== 'column' && val.toLowerCase() !== 'property') {
+          return val
+        }
+      }
+    }
+  }
+  return null
 }
 
 function normalizeDbRow(dbRow) {
@@ -2044,6 +2246,29 @@ function normalizeDbRow(dbRow) {
              k.toLowerCase() === 'tendu_an'
       )
     }
+    // Hỗ trợ thêm cho maSAP nếu không tìm thấy tự động
+    if (col.key === 'maSAP' && !dbKeyMatch) {
+      dbKeyMatch = Object.keys(dbRow).find(
+        k => k.toLowerCase() === 'ma_sap' || 
+             k.toLowerCase() === 'masap' || 
+             k.toLowerCase() === 'ma_s_a_p'
+      )
+    }
+    // Hỗ trợ thêm cho maDonChuyenTiepLC
+    if (col.key === 'maDonChuyenTiepLC' && !dbKeyMatch) {
+      dbKeyMatch = Object.keys(dbRow).find(
+        k => k.toLowerCase() === 'ma_don_chuyen_tiep_lc' || 
+             k.toLowerCase() === 'ma_don_chuyen_tiep_l_c'
+      )
+    }
+    // Hỗ trợ thêm cho maDonChuyenTiepNB
+    if (col.key === 'maDonChuyenTiepNB' && !dbKeyMatch) {
+      dbKeyMatch = Object.keys(dbRow).find(
+        k => k.toLowerCase() === 'ma_don_chuyen_tiep_nb' || 
+             k.toLowerCase() === 'ma_don_chuyen_tiep_n_b'
+      )
+    }
+
     if (dbKeyMatch && dbRow[dbKeyMatch] !== undefined) {
       normalized[col.key] = dbRow[dbKeyMatch]
     }
@@ -2108,19 +2333,7 @@ async function tryInsertWithSelfHealing(tableName, payload, style) {
     }
     
     const errMsg = error.message || ''
-    let missingField = null
-    
-    const match1 = errMsg.match(/Could not find the '(.*?)' column of/i)
-    const match2 = errMsg.match(/column "(.*?)" of relation/i)
-    const match3 = errMsg.match(/column "(.*?)" does not exist/i)
-    
-    if (match1) {
-      missingField = match1[1]
-    } else if (match2) {
-      missingField = match2[1]
-    } else if (match3) {
-      missingField = match3[1]
-    }
+    const missingField = extractMissingField(errMsg)
     
     if (missingField) {
       console.warn(`[Self-Healing] Loại bỏ cột không tồn tại '${missingField}' trên bảng '${tableName}' và thử lại...`)
@@ -2180,8 +2393,8 @@ async function insertWithFallback(tableName, originalChunk) {
     // Check if the error is due to missing columns or something else.
     const errMsg = error.message || ''
     const isMissingColumnError = 
-      errMsg.includes('column') && 
-      (errMsg.includes('not exist') || errMsg.includes('Could not find') || errMsg.includes('relation'))
+      (errMsg.toLowerCase().includes('column') || errMsg.toLowerCase().includes('property') || errMsg.toLowerCase().includes('relation')) &&
+      (errMsg.toLowerCase().includes('not exist') || errMsg.toLowerCase().includes('could not find') || errMsg.toLowerCase().includes('schema cache'))
       
     if (!isMissingColumnError) {
       // If it's a constraint, RLS or real error, bubble it up.
@@ -2365,9 +2578,38 @@ export default function App() {
         localStorage.setItem('sgc_custom_projects', JSON.stringify(sortedList))
       }
 
-      const { data: gData, error: gError } = await supabase.from('don_giao').select('*').order('id', { ascending: true })
-      if (gError) {
-        if (gError.status === 401) {
+      // Paginate and load ALL rows for don_giao without limit constraints
+      let gData = []
+      let fromG = 0
+      const PAGE_SIZE = 1000
+      let hasMoreG = true
+      let gErrorObj = null
+
+      while (hasMoreG) {
+        const { data: gPage, error: gError } = await supabase
+          .from('don_giao')
+          .select('*')
+          .order('id', { ascending: true })
+          .range(fromG, fromG + PAGE_SIZE - 1)
+        
+        if (gError) {
+          gErrorObj = gError
+          break
+        }
+        if (gPage && gPage.length > 0) {
+          gData = [...gData, ...gPage]
+          if (gPage.length < PAGE_SIZE) {
+            hasMoreG = false
+          } else {
+            fromG += PAGE_SIZE
+          }
+        } else {
+          hasMoreG = false
+        }
+      }
+
+      if (gErrorObj) {
+        if (gErrorObj.status === 401) {
           setSupabaseAuthError(true)
         }
       } else {
@@ -2393,9 +2635,37 @@ export default function App() {
         }
       }
 
-      const { data: nData, error: nError } = await supabase.from('don_nhan').select('*').order('id', { ascending: true })
-      if (nError) {
-        if (nError.status === 401) {
+      // Paginate and load ALL rows for don_nhan without limit constraints
+      let nData = []
+      let fromN = 0
+      let hasMoreN = true
+      let nErrorObj = null
+
+      while (hasMoreN) {
+        const { data: nPage, error: nError } = await supabase
+          .from('don_nhan')
+          .select('*')
+          .order('id', { ascending: true })
+          .range(fromN, fromN + PAGE_SIZE - 1)
+        
+        if (nError) {
+          nErrorObj = nError
+          break
+        }
+        if (nPage && nPage.length > 0) {
+          nData = [...nData, ...nPage]
+          if (nPage.length < PAGE_SIZE) {
+            hasMoreN = false
+          } else {
+            fromN += PAGE_SIZE
+          }
+        } else {
+          hasMoreN = false
+        }
+      }
+
+      if (nErrorObj) {
+        if (nErrorObj.status === 401) {
           setSupabaseAuthError(true)
         }
       } else {
@@ -2476,20 +2746,59 @@ export default function App() {
     try {
       const tableName = type === 'giao' ? 'don_giao' : 'don_nhan'
 
-      // 1. Delete all records from this table (filter by serial id ensures lowercase success on any postgres setup)
-      const { error: delError } = await supabase
-        .from(tableName)
-        .delete()
-        .neq('id', -999)
+      // 1. Delete existing records belonging to the synced projects to avoid wiping other unrelated projects.
+      // If no projects are found in the sync list, delete all table rows as fallback.
+      const uniqueProjectsInSync = [...new Set(rowsToSync.map(r => r.duAn).filter(Boolean))]
+      
+      if (uniqueProjectsInSync.length > 0) {
+        console.log(`[Sync] Đang dọn dẹp các dòng cũ thuộc ${uniqueProjectsInSync.length} dự án đang lưu...`)
+        for (const proj of uniqueProjectsInSync) {
+          const delRes = await deleteFromTableAdaptive(tableName, ['duAn', 'du_an', 'duan', 'ten_du_an', 'tenduan', 'tenDuAn'], proj)
+          if (!delRes.success && delRes.reason !== 'table_empty') {
+            console.warn(`[Sync] Không thể tự động dọn dẹp dự án "${proj}" trên bảng "${tableName}":`, delRes.error)
+          }
+        }
+      } else {
+        console.log(`[Sync] Không tìm thấy thông tin dự án cụ thể. Tiến hành dọn dẹp toàn bảng...`)
+        const { error: delError } = await supabase
+          .from(tableName)
+          .delete()
+          .neq('id', -999)
 
-      if (delError) throw delError
+        if (delError) throw delError
+      }
 
-      // 2. Map structure to columns in Postgres matching COLS_GIAO_NHAN
+      // 2. Map structure to columns in Postgres matching COLS_GIAO_NHAN.
+      // Crucial: Use SQL null instead of empty string '' for empty/undefined fields to avoid casting exceptions on numeric columns like khoi_luong_nhap/khoi_luong_xuat.
       const payload = rowsToSync.map(row => {
         const item = {}
         COLS_GIAO_NHAN.forEach(col => {
-          item[col.key] = row[col.key] !== undefined ? String(row[col.key]) : ''
+          const val = row[col.key]
+          if (val === undefined || val === null || String(val).trim() === '') {
+            item[col.key] = null
+          } else {
+            if (typeof val === 'number') {
+              item[col.key] = val
+            } else {
+              const isNumericColumn = col.key === 'khoiLuongNhap' || col.key === 'khoiLuongXuat'
+              if (isNumericColumn) {
+                // Parse float robustly (remove potential spaces or thousand separator commas)
+                const cleanStr = String(val).replace(/,/g, '').replace(/\s/g, '').trim()
+                const parsed = parseFloat(cleanStr)
+                item[col.key] = isNaN(parsed) ? null : parsed
+              } else {
+                item[col.key] = String(val)
+              }
+            }
+          }
         })
+
+        // Tự động điền Kho dự án tương ứng vào cột ten_du_an và du_an (duAn)
+        const projectVal = row.duAn || selectedProject || ''
+        item['duAn'] = projectVal || null
+        item['ten_du_an'] = selectedProject || projectVal || null
+        item['tenDuAn'] = selectedProject || projectVal || null
+
         return item
       })
 
@@ -2500,29 +2809,39 @@ export default function App() {
         await insertWithFallback(tableName, chunk)
       }
 
-      // Also ensure project names exist/upserted in 'du_an' database
+      // 4. Ensure project names exist in 'du_an' database safely.
+      // Instead of an unsafe upsert that may trigger 409 Conflict errors (due to lack of unique constraint/index),
+      // we query existing project names first and insert only the ones that do not exist.
       const uniqueProjects = [...new Set(rowsToSync.map(r => r.duAn).filter(Boolean))]
       if (uniqueProjects.length > 0) {
         try {
-          // Attempt upsert on snake_case
-          const projPayload = uniqueProjects.map(p => ({ ten_du_an: p }))
-          const { error: pErr1 } = await supabase
+          const { data: existingProj, error: fetchErr } = await supabase
             .from('du_an')
-            .upsert(projPayload, { onConflict: 'ten_du_an' })
+            .select('ten_du_an, tenduan, tenDuAn')
           
-          if (pErr1) {
-            // Attempt upsert on lowercase
-            const projPayload2 = uniqueProjects.map(p => ({ tenduan: p }))
-            const { error: pErr2 } = await supabase
-              .from('du_an')
-              .upsert(projPayload2, { onConflict: 'tenduan' })
-            
-            if (pErr2) {
-              // Attempt upsert on camelCase
-              const projPayload3 = uniqueProjects.map(p => ({ tenDuAn: p }))
-              await supabase
-                .from('du_an')
-                .upsert(projPayload3, { onConflict: 'tenDuAn' })
+          if (!fetchErr) {
+            const existingNames = new Set(
+              (existingProj || [])
+                .map(p => p.ten_du_an || p.tenduan || p.tenDuAn)
+                .filter(Boolean)
+                .map(n => n.trim().toLowerCase())
+            )
+
+            const newProjects = uniqueProjects.filter(p => !existingNames.has(p.trim().toLowerCase()))
+
+            if (newProjects.length > 0) {
+              let colName = 'ten_du_an'
+              if (existingProj && existingProj.length > 0) {
+                const firstRowKeys = Object.keys(existingProj[0])
+                if (firstRowKeys.includes('tenduan')) colName = 'tenduan'
+                else if (firstRowKeys.includes('tenDuAn')) colName = 'tenDuAn'
+              }
+              
+              const insertPayload = newProjects.map(p => ({ [colName]: p }))
+              const { error: insErr } = await supabase.from('du_an').insert(insertPayload)
+              if (insErr) {
+                console.warn('[Sync Projects] Lỗi khi chèn dự án mới:', insErr.message)
+              }
             }
           }
         } catch (e) {
@@ -2584,16 +2903,19 @@ export default function App() {
       : parsedRows
 
     // Bước 2: Chỉ lấy các dòng có trạng thái "Đã phê duyệt"
-    const approvedRows = matchedByUnit.filter(r => {
-      const v = String(r.trangThai || '').toLowerCase()
-      return v.includes('phê duyệt') || (v.includes('đã') && !v.includes('hủy'))
-    })
+    const approvedRows = matchedByUnit.filter(r => isApprovedStatus(r.trangThai))
 
-    // Bước 3: Gán duAn cho tất cả rows đã lọc
-    let rowsToStore = approvedRows
-    if (selectedProject) {
-      rowsToStore = approvedRows.map(row => ({ ...row, duAn: selectedProject }))
-    }
+    // Bước 3: Gán duAn và ten_du_an cho tất cả rows đã lọc - tự động điền thông tin Kho dự án đã chọn làm mặc định hoặc giữ nguyên nếu khớp
+    const rowsToStore = approvedRows.map(row => {
+      const originalDuAn = row.duAn && String(row.duAn).trim() !== '' ? String(row.duAn).trim() : ''
+      const finalDuAn = selectedProject || originalDuAn || ''
+      return { 
+        ...row, 
+        duAn: finalDuAn,
+        tenDuAn: finalDuAn,
+        ten_du_an: finalDuAn
+      }
+    })
 
     if (type === 'giao') {
       setGiaoRows(rowsToStore)
@@ -2920,7 +3242,7 @@ export default function App() {
   ]
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+    <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       <Header
         selectedProject={selectedProject}
         setSelectedProject={setSelectedProject}

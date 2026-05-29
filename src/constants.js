@@ -7,8 +7,8 @@ export const COLS_GIAO_NHAN = [
   { key: 'tenVatTu', label: 'Tên vật tư', width: 160 },
   { key: 'dvt', label: 'ĐVT', width: 60 },
   { key: 'loaiDon', label: 'Loại đơn (Xuất, nhập kho)', width: 80 },
-  { key: 'maDonNhapKho', label: 'Mã đơn nhập kho', width: 160 },
-  { key: 'maDonXuatKho', label: 'Mã đơn xuất kho', width: 160 },
+  { key: 'maDonNhapKho', label: 'Mã đơn nhập kho', width: 200 },
+  { key: 'maDonXuatKho', label: 'Mã đơn xuất kho', width: 200 },
   { key: 'khoiLuongNhap', label: 'Khối lượng nhập', width: 80 },
   { key: 'maDonViGiao', label: 'Mã đơn vị giao', width: 120 },
   { key: 'donViGiao', label: 'Đơn vị giao', width: 120 },
@@ -17,7 +17,7 @@ export const COLS_GIAO_NHAN = [
   { key: 'maDonViNhan', label: 'Mã đơn vị nhận', width: 120 },
   { key: 'donViNhan', label: 'Đơn vị nhận', width: 120 },
   { key: 'nguoiPheDuyet', label: 'Người phê duyệt 1', width: 120 },
-  { key: 'tenNguon', label: 'Tên nguồn xuất/ nhập kho', width: 120 },
+  { key: 'tenNguon', label: 'Tên nguồn xuất/ nhập kho', width: 220 },
   { key: 'maNguon', label: 'Mã nguồn nhập/xuất kho', width: 120 },
   { key: 'lo', label: 'Lô', width: 80 },
   { key: 'hangMuc', label: 'Hạng mục', width: 100 },
@@ -32,7 +32,7 @@ export const COLS_GIAO_NHAN = [
   { key: 'nhaCungCap', label: 'Nhà cung cấp', width: 120 },
   { key: 'maDonChuyenTiepLC', label: 'Mã đơn chuyển tiếp liên công ty', width: 120 },
   { key: 'maDonChuyenTiepNB', label: 'Mã đơn chuyển tiếp nội bộ', width: 120 },
-  { key: 'ghiChu', label: 'Ghi chú', width: 120 },
+  { key: 'ghiChu', label: 'Ghi chú', width: 220 },
   { key: 'ghiChuVatTu', label: 'Ghi chú vật tư', width: 180 },
   { key: 'trangThai', label: 'Trạng Thái', width: 130 },
   { key: 'nhanHieu', label: 'Nhãn hiệu', width: 120 },
@@ -102,11 +102,32 @@ export function formatVal(val) {
   return String(val)
 }
 
+export function isApprovedStatus(statusStr) {
+  if (!statusStr) return false
+  const s = String(statusStr).toLowerCase()
+  // Exclude explicit pending or negative status
+  if (s.includes('chờ') || s.includes('chưa') || s.includes('pending')) return false
+  if (s.includes('từ chối') || s.includes('hủy') || s.includes('reject') || s.includes('không')) return false
+  // Include valid approved indications
+  return s.includes('đã') || s.includes('duyệt') || s.includes('approved') || s.includes('hoàn thành')
+}
+
+export function isPendingStatus(statusStr) {
+  if (!statusStr) return false
+  const s = String(statusStr).toLowerCase()
+  return s.includes('chờ') || s.includes('chưa') || s.includes('pending')
+}
+
+export function isRejectedStatus(statusStr) {
+  if (!statusStr) return false
+  const s = String(statusStr).toLowerCase()
+  return s.includes('từ chối') || s.includes('hủy') || s.includes('reject')
+}
+
 export function getTrangThaiColor(val) {
   if (!val) return 'badge-gray'
-  const v = String(val).toLowerCase()
-  if (v.includes('chờ') || v.includes('chưa')) return 'badge-yellow'
-  if (v.includes('phê duyệt') || v.includes('hoàn thành') || v.includes('đã')) return 'badge-green'
-  if (v.includes('từ chối') || v.includes('hủy')) return 'badge-red'
+  if (isRejectedStatus(val)) return 'badge-red'
+  if (isPendingStatus(val)) return 'badge-yellow'
+  if (isApprovedStatus(val)) return 'badge-green'
   return 'badge-blue'
 }
