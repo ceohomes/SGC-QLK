@@ -89,15 +89,41 @@ export function parseXlsxToRows(data) {
   return rows
 }
 
-export function formatVal(val) {
+export function formatVal(val, colKey) {
   if (val === null || val === undefined) return ''
   if (typeof val === 'number') {
-    // Check if it's an Excel date serial (between 1 and 50000)
+    // Các cột khối lượng/số lượng: luôn format với dấu phân cách hàng nghìn
+    const isQuantityCol = colKey && (
+      colKey.toLowerCase().includes('khoiluong') ||
+      colKey.toLowerCase().includes('soluong') ||
+      colKey.toLowerCase().includes('quantity') ||
+      colKey === 'khoiLuongNhap' ||
+      colKey === 'khoiLuongXuat'
+    )
+    if (isQuantityCol) {
+      // Format số với dấu phân cách hàng nghìn
+      if (Number.isInteger(val)) return val.toLocaleString('vi-VN')
+      return val.toLocaleString('vi-VN', { maximumFractionDigits: 3 })
+    }
+    // Check if it's an Excel date serial (between 1 and 50000, integer)
     if (val > 1 && val < 50000 && Number.isInteger(val)) {
       // Could be date, return as-is for now  
       return val
     }
     return val.toLocaleString('vi-VN')
+  }
+  // Nếu là chuỗi số (string) trong cột khối lượng, thử parse và format
+  if (typeof val === 'string' && colKey && (
+    colKey.toLowerCase().includes('khoiluong') ||
+    colKey === 'khoiLuongNhap' ||
+    colKey === 'khoiLuongXuat'
+  )) {
+    const cleaned = val.replace(/[^\d.,]/g, '').replace(',', '.')
+    const num = parseFloat(cleaned)
+    if (!isNaN(num)) {
+      if (Number.isInteger(num)) return num.toLocaleString('vi-VN')
+      return num.toLocaleString('vi-VN', { maximumFractionDigits: 3 })
+    }
   }
   return String(val)
 }

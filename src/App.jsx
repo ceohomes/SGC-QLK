@@ -801,7 +801,7 @@ function DataTable({ rows }) {
                         fontSize: '12px', padding: '6px 10px',
                         wordBreak: 'break-word', whiteSpace: 'normal'
                       }}
-                      title={String(formatVal(row[col.key]) || '')}
+                      title={String(formatVal(row[col.key], col.key) || '')}
                     >
                       {col.key === 'trangThai' ? (
                         row[col.key] ? (
@@ -814,7 +814,7 @@ function DataTable({ rows }) {
                           ? <span className={`badge ${row[col.key] === 'NEW' ? 'badge-green' : row[col.key] === 'USED' ? 'badge-yellow' : 'badge-gray'}`} style={{ fontSize: '11px', padding: '2px 6px', lineHeight: 1.2 }}>{row[col.key]}</span>
                           : ''
                       ) : (
-                        formatVal(row[col.key]) !== null && formatVal(row[col.key]) !== undefined ? formatVal(row[col.key]) : ''
+                        formatVal(row[col.key], col.key) !== null && formatVal(row[col.key], col.key) !== undefined ? formatVal(row[col.key], col.key) : ''
                       )}
                     </td>
                   )
@@ -1206,7 +1206,7 @@ function OrderTab({
                   <Download size={12} /> Xuất Excel
                 </button>
               )}
-              <button className="btn btn-outline btn-sm" onClick={() => { if (onDeleteFile) { onDeleteFile() } else { setRows([]); setFileName(''); setSearch(''); setTrangThai('') } }}>
+              <button className="btn btn-outline btn-sm" onClick={() => { if (onDeleteFile) { onDeleteFile() } else { setRows([]); setFileName(''); setSearch(''); setTrangThai('') } }} style={{ display: selectedProject ? 'flex' : 'none' }}>
                 <X size={12} /> Xóa file
               </button>
             </div>
@@ -3024,13 +3024,21 @@ export default function App() {
   }
 
   const handleDeleteFile = async (type) => {
-    // 1. Xóa dữ liệu local
+    // 1. Xóa dữ liệu local - chỉ xóa rows thuộc selectedProject, không xóa dữ liệu kho khác
     if (type === 'giao') {
-      setGiaoRows([])
-      setGiaoFileName('')
+      if (selectedProject) {
+        setGiaoRows(prev => prev.filter(r => r.duAn !== selectedProject))
+      } else {
+        setGiaoRows([])
+        setGiaoFileName('')
+      }
     } else {
-      setNhanRows([])
-      setNhanFileName('')
+      if (selectedProject) {
+        setNhanRows(prev => prev.filter(r => r.duAn !== selectedProject))
+      } else {
+        setNhanRows([])
+        setNhanFileName('')
+      }
     }
 
     // 2. Nếu đã kết nối Supabase, xóa các dòng tương ứng trên Supabase
