@@ -1849,7 +1849,7 @@ function SupabaseConfigModal({ isOpen, onClose }) {
         </details>
 
         {/* SQL Queries / RLS Policy Instructions */}
-        <details style={{ fontSize: 12, color: '#475569', border: '1px solid #fed7aa', borderRadius: 8, padding: '8px 12px', background: '#fffbeb' }}>
+        <details style={{ fontSize: 12, color: '#475569', border: '1px solid #fed7aa', borderRadius: 8, padding: '8px 12px', background: '#fffbeb', marginBottom: 8 }}>
           <summary style={{ fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, userSelect: 'none', color: '#c2410c' }}>
             <AlertCircle size={14} color="#ea580c" />
             <span>Sửa lỗi lưu/xóa (RLS Row Level Security) trong Supabase</span>
@@ -1887,6 +1887,60 @@ ALTER TABLE public.don_nhan ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Allow public don_nhan" ON public.don_nhan;
 CREATE POLICY "Allow public don_nhan" ON public.don_nhan FOR ALL USING (true) WITH CHECK (true);`}
             </pre>
+          </div>
+        </details>
+
+        {/* SQL Queries / Database Schema configuration instructions */}
+        <details style={{ fontSize: 12, color: '#475569', border: '1px solid #93c5fd', borderRadius: 8, padding: '8px 12px', background: '#f0f9ff' }}>
+          <summary style={{ fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, userSelect: 'none', color: '#1d4ed8' }}>
+            <AlertCircle size={14} color="#2563eb" />
+            <span>Sửa liên kết cột sai (Thêm cột ten_du_an & Tạo khóa ngoại khớp)</span>
+          </summary>
+          <div style={{ marginTop: 8, paddingLeft: 4, display: 'flex', flexDirection: 'column', gap: 6, textAlign: 'left' }}>
+            <p style={{ margin: 0, fontSize: 11.5, color: '#475569', lineHeight: '1.5' }}>
+              Để sửa lỗi liên kết cột không đồng nhất (cột <code>ten_du_an</code> thuộc bảng <code>du_an</code> nhưng lại liên kết vào cột <code>du_an</code> của 2 bảng kia khiến cho sơ đồ Supabase hiển thị lệch lạc), bạn chỉ cần chạy tập lệnh SQL dưới đây trong <strong>SQL Editor</strong>:
+            </p>
+            <pre style={{
+              margin: '6px 0',
+              padding: '8px 10px',
+              background: '#0f172a',
+              color: '#38bdf8',
+              borderRadius: 6,
+              fontSize: 10.5,
+              overflowX: 'auto',
+              fontFamily: 'monospace',
+              lineHeight: '1.4'
+            }}>
+{`-- A. Tạo cột ten_du_an mới cho bảng don_giao & don_nhan (nếu chưa có)
+ALTER TABLE public.don_giao ADD COLUMN IF NOT EXISTS ten_du_an text;
+ALTER TABLE public.don_nhan ADD COLUMN IF NOT EXISTS ten_du_an text;
+
+-- B. Di chuyển tự động toàn bộ dữ liệu dự án cũ sang cột mới (Bảo toàn dữ liệu cũ)
+UPDATE public.don_giao SET ten_du_an = du_an WHERE ten_du_an IS NULL OR ten_du_an = '';
+UPDATE public.don_nhan SET ten_du_an = du_an WHERE ten_du_an IS NULL OR ten_du_an = '';
+
+-- C. Đảm bảo cột ten_du_an trong bảng du_an có ràng buộc duy nhất (Bắt buộc để làm Khóa Ngoại)
+ALTER TABLE public.du_an DROP CONSTRAINT IF EXISTS du_an_ten_du_an_key;
+ALTER TABLE public.du_an ADD CONSTRAINT du_an_ten_du_an_key UNIQUE (ten_du_an);
+
+-- D. Loại bỏ khóa ngoại cũ liên kết trực tiếp vào cột du_an cũ (nếu có)
+ALTER TABLE public.don_giao DROP CONSTRAINT IF EXISTS don_giao_du_an_fkey;
+ALTER TABLE public.don_nhan DROP CONSTRAINT IF EXISTS don_nhan_du_an_fkey;
+
+-- E. Thiết lập khóa ngoại liên kết chuẩn xác đến cột ten_du_an của bảng du_an
+ALTER TABLE public.don_giao ADD CONSTRAINT don_giao_ten_du_an_fkey 
+  FOREIGN KEY (ten_du_an) REFERENCES public.du_an (ten_du_an) ON UPDATE CASCADE ON DELETE SET NULL;
+
+ALTER TABLE public.don_nhan ADD CONSTRAINT don_nhan_ten_du_an_fkey 
+  FOREIGN KEY (ten_du_an) REFERENCES public.du_an (ten_du_an) ON UPDATE CASCADE ON DELETE SET NULL;
+
+-- F. (Tùy chọn) Xóa hẳn hai cột du_an cũ thừa thãi để sơ đồ Supabase sạch đẹp 100%
+-- ALTER TABLE public.don_giao DROP COLUMN IF EXISTS du_an;
+-- ALTER TABLE public.don_nhan DROP COLUMN IF EXISTS du_an;`}
+            </pre>
+            <p style={{ margin: 0, fontSize: 11, color: '#16a34a', fontWeight: 500 }}>
+              ✔️ <strong>Lưu ý:</strong> Ứng dụng đã được tích hợp cơ chế <strong>Tự phục hồi (Self-Healing)</strong> thông minh. Bất kể bạn đang sử dụng cấu trúc cũ (cột <code>du_an</code>) hay cấu trúc mới (cột <code>ten_du_an</code>), phần mềm sẽ tự phát hiện lỗi column, tự gỡ bỏ cột thừa và lưu trữ trơn tru mà không làm ngắt quãng công việc của bạn!
+            </p>
           </div>
         </details>
 
@@ -1976,11 +2030,20 @@ function normalizeDbRow(dbRow) {
   // Map PostgreSQL columns back to React's camelCase keys
   COLS_GIAO_NHAN.forEach(col => {
     // Look for exact camelCase, lowercase, or snake_case matches
-    const dbKeyMatch = Object.keys(dbRow).find(
+    let dbKeyMatch = Object.keys(dbRow).find(
       k => k === col.key || 
            k.toLowerCase() === col.key.toLowerCase() || 
            k.toLowerCase() === toSnakeCase(col.key).toLowerCase()
     )
+    // Đặc biệt hỗ trợ ánh xạ cột ten_du_an hoặc tenduan về duAn của React
+    if (col.key === 'duAn' && !dbKeyMatch) {
+      dbKeyMatch = Object.keys(dbRow).find(
+        k => k.toLowerCase() === 'ten_du_an' || 
+             k.toLowerCase() === 'tenduan' || 
+             k.toLowerCase() === 'ten_duan' ||
+             k.toLowerCase() === 'tendu_an'
+      )
+    }
     if (dbKeyMatch && dbRow[dbKeyMatch] !== undefined) {
       normalized[col.key] = dbRow[dbKeyMatch]
     }
@@ -2000,10 +2063,22 @@ function convertToCasingStyle(row, style) {
   Object.keys(row).forEach(k => {
     if (style === 'lower') {
       newRow[k.toLowerCase()] = row[k]
+      // Project name column fallback keys for self-healing
+      if (k === 'duAn') {
+        newRow['ten_du_an'] = row[k]
+        newRow['tenduan'] = row[k]
+      }
     } else if (style === 'snake') {
       newRow[toSnakeCase(k)] = row[k]
+      if (k === 'duAn') {
+        newRow['ten_du_an'] = row[k]
+      }
     } else {
       newRow[k] = row[k] // camel / default
+      if (k === 'duAn') {
+        newRow['ten_du_an'] = row[k]
+        newRow['tenDuAn'] = row[k]
+      }
     }
   })
   return newRow
@@ -2290,7 +2365,7 @@ export default function App() {
         localStorage.setItem('sgc_custom_projects', JSON.stringify(sortedList))
       }
 
-      const { data: gData, error: gError } = await supabase.from('don_giao').select('*')
+      const { data: gData, error: gError } = await supabase.from('don_giao').select('*').order('id', { ascending: true })
       if (gError) {
         if (gError.status === 401) {
           setSupabaseAuthError(true)
@@ -2301,6 +2376,15 @@ export default function App() {
             const normalized = normalizeDbRow(item)
             return { id: normalized.id || idx, ...normalized }
           })
+          // Sắp xếp tăng dần theo ID để đảm bảo thứ tự dòng từ trên xuống như file gốc
+          mappedG.sort((a, b) => {
+            const idA = Number(a.id)
+            const idB = Number(b.id)
+            if (!isNaN(idA) && !isNaN(idB)) {
+              return idA - idB
+            }
+            return 0
+          })
           setGiaoRows(mappedG)
           setGiaoFileName('Report_Orders_Don_giao (Supabase DB)')
         } else {
@@ -2309,7 +2393,7 @@ export default function App() {
         }
       }
 
-      const { data: nData, error: nError } = await supabase.from('don_nhan').select('*')
+      const { data: nData, error: nError } = await supabase.from('don_nhan').select('*').order('id', { ascending: true })
       if (nError) {
         if (nError.status === 401) {
           setSupabaseAuthError(true)
@@ -2319,6 +2403,15 @@ export default function App() {
           const mappedN = nData.map((item, idx) => {
             const normalized = normalizeDbRow(item)
             return { id: normalized.id || idx, ...normalized }
+          })
+          // Sắp xếp tăng dần theo ID để đảm bảo thứ tự dòng từ trên xuống như file gốc
+          mappedN.sort((a, b) => {
+            const idA = Number(a.id)
+            const idB = Number(b.id)
+            if (!isNaN(idA) && !isNaN(idB)) {
+              return idA - idB
+            }
+            return 0
           })
           setNhanRows(mappedN)
           setNhanFileName('Report_Orders_Don_nhan (Supabase DB)')
@@ -2401,7 +2494,7 @@ export default function App() {
       })
 
       // 3. Batch insert with chunking & smart casing fallbacks
-      const chunkSize = 200
+      const chunkSize = 1000
       for (let i = 0; i < payload.length; i += chunkSize) {
         const chunk = payload.slice(i, i + chunkSize)
         await insertWithFallback(tableName, chunk)
@@ -2534,7 +2627,7 @@ export default function App() {
         let query = supabase.from(tableName).delete()
         if (selectedProject) {
           // Xóa theo dự án đang chọn sử dụng cơ chế Adaptive cực kỳ tối ưu
-          const deleteRes = await deleteFromTableAdaptive(tableName, ['duAn', 'du_an', 'duan'], selectedProject)
+          const deleteRes = await deleteFromTableAdaptive(tableName, ['duAn', 'du_an', 'duan', 'ten_du_an', 'tenduan', 'tenDuAn'], selectedProject)
           if (!deleteRes.success && deleteRes.reason !== 'table_empty') {
             throw deleteRes.error || new Error('Không tìm thấy cột phù hợp hoặc không được phân quyền xóa.')
           }
@@ -2646,44 +2739,58 @@ export default function App() {
         }
 
         // -- Update 'don_giao' table
-        const { error: gErr1 } = await supabase
+        const { error: gErr0 } = await supabase
           .from('don_giao')
-          .update({ du_an: trimmedNew })
-          .eq('du_an', trimmedOld)
-        
-        if (gErr1) {
-          const { error: gErr2 } = await supabase
+          .update({ ten_du_an: trimmedNew })
+          .eq('ten_du_an', trimmedOld)
+
+        if (gErr0) {
+          const { error: gErr1 } = await supabase
             .from('don_giao')
-            .update({ duan: trimmedNew })
-            .eq('duan', trimmedOld)
+            .update({ du_an: trimmedNew })
+            .eq('du_an', trimmedOld)
           
-          if (gErr2) {
-            await supabase
+          if (gErr1) {
+            const { error: gErr2 } = await supabase
               .from('don_giao')
-              .update({ duAn: trimmedNew })
-              .eq('duAn', trimmedOld)
-              .catch(e => console.warn('Ignore: failed camelCase don_giao rename', e))
+              .update({ duan: trimmedNew })
+              .eq('duan', trimmedOld)
+            
+            if (gErr2) {
+              await supabase
+                .from('don_giao')
+                .update({ duAn: trimmedNew })
+                .eq('duAn', trimmedOld)
+                .catch(e => console.warn('Ignore: failed camelCase don_giao rename', e))
+            }
           }
         }
 
         // -- Update 'don_nhan' table
-        const { error: nErr1 } = await supabase
+        const { error: nErr0 } = await supabase
           .from('don_nhan')
-          .update({ du_an: trimmedNew })
-          .eq('du_an', trimmedOld)
-        
-        if (nErr1) {
-          const { error: nErr2 } = await supabase
+          .update({ ten_du_an: trimmedNew })
+          .eq('ten_du_an', trimmedOld)
+
+        if (nErr0) {
+          const { error: nErr1 } = await supabase
             .from('don_nhan')
-            .update({ duan: trimmedNew })
-            .eq('duan', trimmedOld)
+            .update({ du_an: trimmedNew })
+            .eq('du_an', trimmedOld)
           
-          if (nErr2) {
-            await supabase
+          if (nErr1) {
+            const { error: nErr2 } = await supabase
               .from('don_nhan')
-              .update({ duAn: trimmedNew })
-              .eq('duAn', trimmedOld)
-              .catch(e => console.warn('Ignore: failed camelCase don_nhan rename', e))
+              .update({ duan: trimmedNew })
+              .eq('duan', trimmedOld)
+            
+            if (nErr2) {
+              await supabase
+                .from('don_nhan')
+                .update({ duAn: trimmedNew })
+                .eq('duAn', trimmedOld)
+                .catch(e => console.warn('Ignore: failed camelCase don_nhan rename', e))
+            }
           }
         }
 
@@ -2753,13 +2860,13 @@ export default function App() {
 
         // Xóa tuần tự: Xóa các tham chiếu ở con trước để tránh Foreign Key Violation, sau đó mới xóa ở cha
         console.log('[Supabase Delete] Thực hiện xóa liên kết don_giao...')
-        const resGiao = await deleteFromTableAdaptive('don_giao', ['duAn', 'du_an', 'duan'], trimmed)
+        const resGiao = await deleteFromTableAdaptive('don_giao', ['duAn', 'du_an', 'duan', 'ten_du_an', 'tenduan', 'tenDuAn'], trimmed)
         if (!resGiao.success && resGiao.reason !== 'table_empty') {
           console.warn('[Supabase Delete] Cảnh báo lỗi xóa don_giao (có thể bỏ qua nếu bảng không dùng/không có dữ liệu):', resGiao.error)
         }
 
         console.log('[Supabase Delete] Thực hiện xóa liên kết don_nhan...')
-        const resNhan = await deleteFromTableAdaptive('don_nhan', ['duAn', 'du_an', 'duan'], trimmed)
+        const resNhan = await deleteFromTableAdaptive('don_nhan', ['duAn', 'du_an', 'duan', 'ten_du_an', 'tenduan', 'tenDuAn'], trimmed)
         if (!resNhan.success && resNhan.reason !== 'table_empty') {
           console.warn('[Supabase Delete] Cảnh báo lỗi xóa don_nhan (col có thể bỏ qua nếu bảng không dùng/không có dữ liệu):', resNhan.error)
         }
