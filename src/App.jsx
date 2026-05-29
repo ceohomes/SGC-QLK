@@ -1990,6 +1990,8 @@ export default function App() {
       setSyncingType(null)
     }
   }
+
+  const handleAddProject = (name) => {
     const trimmed = name.trim()
     if (!trimmed) return
     if (!customProjects.includes(trimmed)) {
