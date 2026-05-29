@@ -1001,6 +1001,95 @@ function PlaceholderTab({ icon, title, desc }) {
   )
 }
 
+// ─── Preview Import Modal ─────────────────────────────────────────────────────
+function PreviewImportModal({ isOpen, onClose, onConfirm, rows, fileName, type }) {
+  if (!isOpen) return null
+  const label = type === 'giao' ? 'Đơn Giao' : 'Đơn Nhận'
+  const previewRows = rows.slice(0, 10)
+
+  return (
+    <div style={{
+      position: 'fixed', inset: 0, zIndex: 10000,
+      background: 'rgba(15,23,42,0.55)', backdropFilter: 'blur(3px)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16
+    }}>
+      <div style={{
+        background: '#fff', borderRadius: 14, boxShadow: '0 25px 60px rgba(15,23,42,0.22)',
+        width: '100%', maxWidth: 900, maxHeight: '90vh',
+        display: 'flex', flexDirection: 'column', overflow: 'hidden'
+      }}>
+        {/* Header */}
+        <div style={{
+          padding: '18px 24px', borderBottom: '1px solid #e2e8f0',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{
+              width: 40, height: 40, background: 'var(--primary-light)',
+              borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center'
+            }}>
+              <FileSpreadsheet size={20} color="var(--primary)" />
+            </div>
+            <div>
+              <div style={{ fontWeight: 700, fontSize: 16, color: 'var(--text)' }}>
+                Xem trước dữ liệu — {label}
+              </div>
+              <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 2 }}>
+                {fileName} · {rows.length.toLocaleString()} dòng dữ liệu
+                {rows.length > 10 && <span style={{ color: '#f59e0b', marginLeft: 4 }}>(hiển thị 10 dòng đầu)</span>}
+              </div>
+            </div>
+          </div>
+          <button onClick={onClose} style={{
+            background: 'none', border: 'none', cursor: 'pointer',
+            color: 'var(--text-muted)', padding: 4, borderRadius: 6,
+            display: 'flex', alignItems: 'center'
+          }}>
+            <X size={20} />
+          </button>
+        </div>
+
+        {/* Table preview */}
+        <div style={{ overflow: 'auto', flex: 1, padding: '0 0 0 0' }}>
+          <DataTable rows={previewRows} />
+        </div>
+
+        {/* Footer */}
+        <div style={{
+          padding: '14px 24px', borderTop: '1px solid #e2e8f0',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          background: '#f8fafc', flexShrink: 0, gap: 12
+        }}>
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 8,
+            background: '#eff6ff', border: '1px solid #bfdbfe',
+            borderRadius: 8, padding: '8px 14px', fontSize: 14, color: '#1e40af'
+          }}>
+            <Info size={15} color="#3b82f6" />
+            Bạn có muốn lưu {rows.length.toLocaleString()} dòng dữ liệu này không?
+          </div>
+          <div style={{ display: 'flex', gap: 10 }}>
+            <button
+              onClick={onClose}
+              className="btn btn-outline"
+              style={{ minWidth: 90 }}
+            >
+              <X size={14} /> Hủy
+            </button>
+            <button
+              onClick={onConfirm}
+              className="btn btn-primary"
+              style={{ minWidth: 120 }}
+            >
+              <Save size={14} /> Lưu dữ liệu
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ─── Modal ───────────────────────────────────────────────────────────────────
 function AddProjectModal({ isOpen, onClose, onSave }) {
   const [name, setName] = useState('')
@@ -1710,6 +1799,9 @@ export default function App() {
   const [projectToEdit, setProjectToEdit] = useState('')
   const [projectToDelete, setProjectToDelete] = useState('')
 
+  // Preview import modal state
+  const [previewModal, setPreviewModal] = useState(null) // { type, rows, fileName }
+
   const [customProjects, setCustomProjects] = useState(() => {
     try {
       const saved = localStorage.getItem('sgc_custom_projects')
@@ -1941,11 +2033,18 @@ export default function App() {
   }
 
   const handleImportFile = async (type, parsedRows, name) => {
-    // Nếu đang chọn một dự án cụ thể, chỉ lấy rows thuộc dự án đó
-    // và gán duAn cho tất cả rows bằng selectedProject (đảm bảo khớp)
+    // Hiển thị modal preview trước, chờ người dùng xác nhận lưu
+    setPreviewModal({ type, rows: parsedRows, fileName: name })
+  }
+
+  const handleConfirmImport = async () => {
+    if (!previewModal) return
+    const { type, rows: parsedRows, fileName: name } = previewModal
+    setPreviewModal(null)
+
+    // Nếu đang chọn một dự án cụ thể, gán duAn cho tất cả rows
     let rowsToStore = parsedRows
     if (selectedProject) {
-      // Gán dự án hiện tại cho tất cả rows được upload (rows thuộc dự án đang xem)
       rowsToStore = parsedRows.map(row => ({ ...row, duAn: selectedProject }))
     }
 
@@ -2373,6 +2472,15 @@ export default function App() {
           />
         )}
       </div>
+
+      <PreviewImportModal
+        isOpen={!!previewModal}
+        onClose={() => setPreviewModal(null)}
+        onConfirm={handleConfirmImport}
+        rows={previewModal?.rows || []}
+        fileName={previewModal?.fileName || ''}
+        type={previewModal?.type || 'giao'}
+      />
 
       <AddProjectModal
         isOpen={showAddProjectModal}
