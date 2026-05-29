@@ -1007,25 +1007,34 @@ function PreviewImportModal({ isOpen, onClose, onConfirm, rows, fileName, type, 
   const label = type === 'giao' ? 'Đơn Giao' : 'Đơn Nhận'
   const previewRows = rows.slice(0, 10)
 
-  // Kiểm tra Kho dự án có khớp với cột Đơn vị giao/nhận không
   const unitKey = type === 'giao' ? 'donViGiao' : 'donViNhan'
   const unitLabel = type === 'giao' ? 'Đơn vị giao' : 'Đơn vị nhận'
 
-  // Lấy các giá trị đơn vị duy nhất trong file
+  // Lọc các dòng có Đơn vị giao/nhận trùng với Kho dự án đang chọn
+  const matchedByUnit = selectedProject
+    ? rows.filter(r => {
+        const unit = String(r[unitKey] || '').trim().toLowerCase()
+        const proj = selectedProject.trim().toLowerCase()
+        return unit.includes(proj) || proj.includes(unit)
+      })
+    : rows
+
+  // Số dòng bị loại vì không khớp đơn vị
+  const mismatchCount = rows.length - matchedByUnit.length
+
+  // Lấy các đơn vị trong file KHÔNG khớp (để thông báo)
   const uniqueUnits = [...new Set(rows.map(r => String(r[unitKey] || '').trim()).filter(Boolean))]
+  const mismatchUnits = uniqueUnits.filter(u => {
+    const proj = (selectedProject || '').trim().toLowerCase()
+    return !u.toLowerCase().includes(proj) && !proj.includes(u.toLowerCase())
+  })
 
-  // Kiểm tra xem Kho dự án hiện tại có khớp với đơn vị trong file không
-  const projectMatchesUnit = selectedProject
-    ? uniqueUnits.some(u => u.toLowerCase().includes(selectedProject.toLowerCase()) || selectedProject.toLowerCase().includes(u.toLowerCase()))
-    : true
-  const projectMismatch = selectedProject && !projectMatchesUnit
-
-  // Tính toán số dòng hợp lệ (Đã phê duyệt) và bị bỏ qua
-  const approvedRows = rows.filter(r => {
+  // Trong số các dòng khớp đơn vị, chỉ lấy dòng Đã phê duyệt
+  const approvedRows = matchedByUnit.filter(r => {
     const v = String(r.trangThai || '').toLowerCase()
     return v.includes('phê duyệt') || (v.includes('đã') && !v.includes('hủy'))
   })
-  const skippedCount = rows.length - approvedRows.length
+  const skippedStatusCount = matchedByUnit.length - approvedRows.length
 
   return (
     <div style={{
@@ -1079,24 +1088,9 @@ function PreviewImportModal({ isOpen, onClose, onConfirm, rows, fileName, type, 
           padding: '12px 24px', borderTop: '1px solid #e2e8f0',
           background: '#f8fafc', flexShrink: 0
         }}>
-          {/* Cảnh báo Kho dự án không khớp Đơn vị giao/nhận */}
-          {projectMismatch && (
-            <div style={{
-              display: 'flex', alignItems: 'flex-start', gap: 8,
-              background: '#fff1f2', border: '1.5px solid #fecdd3',
-              borderRadius: 8, padding: '10px 14px', fontSize: 13, color: '#9f1239',
-              marginBottom: 10
-            }}>
-              <AlertCircle size={16} color="#ef4444" style={{ marginTop: 1, flexShrink: 0 }} />
-              <span>
-                <strong>Kho dự án không khớp!</strong> Bạn đang chọn kho <strong>"{selectedProject}"</strong> nhưng cột <strong>{unitLabel}</strong> trong file có giá trị: <strong>{uniqueUnits.slice(0, 3).join(', ')}{uniqueUnits.length > 3 ? '...' : ''}</strong>.
-                {' '}Vui lòng chọn đúng Kho dự án trùng tên với <strong>{unitLabel}</strong> trong file trước khi lưu.
-              </span>
-            </div>
-          )}
-
           {/* Thông báo lọc dữ liệu */}
           <div style={{ display: 'flex', gap: 10, marginBottom: 10, flexWrap: 'wrap' }}>
+            {/* Dòng khớp đơn vị & đã phê duyệt → sẽ lưu */}
             <div style={{
               display: 'flex', alignItems: 'center', gap: 7,
               background: '#ecfdf5', border: '1px solid #a7f3d0',
@@ -1104,10 +1098,27 @@ function PreviewImportModal({ isOpen, onClose, onConfirm, rows, fileName, type, 
             }}>
               <CheckCircle2 size={15} color="#10b981" />
               <span>
-                <strong>{approvedRows.length.toLocaleString()} dòng</strong> trạng thái <strong>Đã phê duyệt</strong> sẽ được lưu
+                <strong>{approvedRows.length.toLocaleString()} dòng</strong> khớp <strong>{unitLabel} "{selectedProject || 'tất cả'}"</strong> &amp; trạng thái <strong>Đã phê duyệt</strong> → sẽ được lưu
               </span>
             </div>
-            {skippedCount > 0 && (
+
+            {/* Dòng không khớp đơn vị → bị loại */}
+            {mismatchCount > 0 && (
+              <div style={{
+                display: 'flex', alignItems: 'flex-start', gap: 7,
+                background: '#fff1f2', border: '1px solid #fecdd3',
+                borderRadius: 8, padding: '7px 14px', fontSize: 13, color: '#9f1239', flex: 1, minWidth: 220
+              }}>
+                <AlertCircle size={15} color="#ef4444" style={{ marginTop: 1, flexShrink: 0 }} />
+                <span>
+                  <strong>{mismatchCount.toLocaleString()} dòng</strong> có <strong>{unitLabel}</strong> không khớp kho <strong>"{selectedProject}"</strong>
+                  {mismatchUnits.length > 0 && <span style={{ color: '#be123c' }}> ({mismatchUnits.slice(0,2).join(', ')}{mismatchUnits.length > 2 ? '...' : ''})</span>} → <strong>sẽ không được lưu</strong>
+                </span>
+              </div>
+            )}
+
+            {/* Dòng khớp đơn vị nhưng chưa phê duyệt → bị loại */}
+            {skippedStatusCount > 0 && (
               <div style={{
                 display: 'flex', alignItems: 'center', gap: 7,
                 background: '#fff7ed', border: '1px solid #fed7aa',
@@ -1115,11 +1126,12 @@ function PreviewImportModal({ isOpen, onClose, onConfirm, rows, fileName, type, 
               }}>
                 <AlertCircle size={15} color="#f59e0b" />
                 <span>
-                  <strong>{skippedCount.toLocaleString()} dòng</strong> trạng thái khác (Chưa xác nhận, Từ chối...) <strong>sẽ không được lưu</strong>
+                  <strong>{skippedStatusCount.toLocaleString()} dòng</strong> chưa được phê duyệt (Chưa xác nhận, Từ chối...) → <strong>sẽ không được lưu</strong>
                 </span>
               </div>
             )}
           </div>
+
           {/* Actions */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 10 }}>
             <button onClick={onClose} className="btn btn-outline" style={{ minWidth: 90 }}>
@@ -1128,9 +1140,8 @@ function PreviewImportModal({ isOpen, onClose, onConfirm, rows, fileName, type, 
             <button
               onClick={onConfirm}
               className="btn btn-primary"
-              style={{ minWidth: 160, opacity: (approvedRows.length === 0 || projectMismatch) ? 0.5 : 1, cursor: (approvedRows.length === 0 || projectMismatch) ? 'not-allowed' : 'pointer' }}
-              disabled={approvedRows.length === 0 || projectMismatch}
-              title={projectMismatch ? `Kho dự án phải trùng tên với ${unitLabel} trong file` : ''}
+              style={{ minWidth: 160, opacity: approvedRows.length === 0 ? 0.5 : 1, cursor: approvedRows.length === 0 ? 'not-allowed' : 'pointer' }}
+              disabled={approvedRows.length === 0}
             >
               <Save size={14} /> Lưu {approvedRows.length.toLocaleString()} dòng đã duyệt
             </button>
@@ -1371,16 +1382,18 @@ function EditProjectModal({ isOpen, onClose, onSave, currentName }) {
 }
 
 // ─── Delete Project Modal ──────────────────────────────────────────────────
-function DeleteProjectModal({ isOpen, onClose, onConfirm, projectName }) {
+function DeleteProjectModal({ isOpen, onClose, onConfirm, projectName, giaoRows, nhanRows }) {
   if (!isOpen) return null
+
+  // Đếm số dòng dữ liệu thuộc dự án này
+  const giaoCount = (giaoRows || []).filter(r => r.duAn === projectName).length
+  const nhanCount = (nhanRows || []).filter(r => r.duAn === projectName).length
+  const hasData = giaoCount > 0 || nhanCount > 0
 
   return (
     <div style={{
       position: 'fixed',
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
+      top: 0, left: 0, right: 0, bottom: 0,
       backgroundColor: 'rgba(15, 23, 42, 0.65)',
       backdropFilter: 'blur(4px)',
       display: 'flex',
@@ -1392,7 +1405,7 @@ function DeleteProjectModal({ isOpen, onClose, onConfirm, projectName }) {
         background: '#ffffff',
         borderRadius: 12,
         width: '100%',
-        maxWidth: 420,
+        maxWidth: 440,
         padding: 24,
         boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04)',
         border: '1px solid #fee2e2',
@@ -1400,9 +1413,12 @@ function DeleteProjectModal({ isOpen, onClose, onConfirm, projectName }) {
         flexDirection: 'column',
         gap: 16
       }}>
+        {/* Header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #f1f5f9', paddingBottom: 12 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <AlertCircle size={20} color="#ef4444" />
+            <div style={{ width: 36, height: 36, borderRadius: 10, background: '#fee2e2', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Trash2 size={18} color="#ef4444" />
+            </div>
             <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: '#991b1b' }}>Xác nhận xóa Dự án</h3>
           </div>
           <button onClick={onClose} style={{ background: 'transparent', border: 'none', color: '#64748b', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
@@ -1410,38 +1426,65 @@ function DeleteProjectModal({ isOpen, onClose, onConfirm, projectName }) {
           </button>
         </div>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, textAlign: 'left' }}>
-          <p style={{ margin: 0, fontSize: 14, color: '#334155', lineHeight: '1.5' }}>
+        {/* Body */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <p style={{ margin: 0, fontSize: 14, color: '#334155', lineHeight: '1.6' }}>
             Bạn có chắc chắn muốn xóa kho dự án <strong style={{ color: '#0f172a' }}>"{projectName}"</strong>?
           </p>
-          <div style={{
-            backgroundColor: '#fffbeb',
-            border: '1px solid #fef3c7',
-            borderRadius: 8,
-            padding: '10px 12px',
-            display: 'flex',
-            gap: 8,
-            alignItems: 'flex-start'
-          }}>
-            <AlertCircle size={16} color="#d97706" style={{ flexShrink: 0, marginTop: 2 }} />
-            <p style={{ margin: 0, fontSize: 12, color: '#b45309', lineHeight: '1.4', fontWeight: 500 }}>
-              Lưu ý: Thao tác này sẽ gỡ ký danh dự án khỏi danh sách chọn lựa của bạn.
-            </p>
-          </div>
+
+          {/* Cảnh báo nếu có dữ liệu */}
+          {hasData ? (
+            <div style={{
+              background: '#fff1f2',
+              border: '1.5px solid #fecdd3',
+              borderRadius: 10,
+              padding: '12px 14px',
+              display: 'flex',
+              gap: 10,
+              alignItems: 'flex-start'
+            }}>
+              <AlertCircle size={18} color="#ef4444" style={{ flexShrink: 0, marginTop: 1 }} />
+              <div style={{ fontSize: 13, color: '#9f1239', lineHeight: '1.6' }}>
+                <strong>Dự án này đang có dữ liệu!</strong>
+                <div style={{ marginTop: 6, display: 'flex', flexDirection: 'column', gap: 3 }}>
+                  {giaoCount > 0 && (
+                    <span>• <strong>{giaoCount.toLocaleString()} dòng</strong> Đơn Giao sẽ bị xóa vĩnh viễn</span>
+                  )}
+                  {nhanCount > 0 && (
+                    <span>• <strong>{nhanCount.toLocaleString()} dòng</strong> Đơn Nhận sẽ bị xóa vĩnh viễn</span>
+                  )}
+                </div>
+                <div style={{ marginTop: 8, fontWeight: 600 }}>
+                  Thao tác này không thể hoàn tác. Bạn có chắc chắn muốn tiếp tục?
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div style={{
+              background: '#fffbeb',
+              border: '1px solid #fef3c7',
+              borderRadius: 8,
+              padding: '10px 12px',
+              display: 'flex',
+              gap: 8,
+              alignItems: 'flex-start'
+            }}>
+              <AlertCircle size={16} color="#d97706" style={{ flexShrink: 0, marginTop: 2 }} />
+              <p style={{ margin: 0, fontSize: 12, color: '#b45309', lineHeight: '1.4', fontWeight: 500 }}>
+                Dự án chưa có dữ liệu. Thao tác này sẽ gỡ dự án khỏi danh sách chọn lựa.
+              </p>
+            </div>
+          )}
         </div>
 
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 8 }}>
+        {/* Footer */}
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 4 }}>
           <button
             onClick={onClose}
             style={{
-              padding: '8px 16px',
-              borderRadius: 6,
-              border: '1px solid #cbd5e1',
-              background: '#ffffff',
-              color: '#475569',
-              fontSize: 13,
-              fontWeight: 600,
-              cursor: 'pointer'
+              padding: '8px 16px', borderRadius: 6,
+              border: '1px solid #cbd5e1', background: '#ffffff',
+              color: '#475569', fontSize: 13, fontWeight: 600, cursor: 'pointer'
             }}
           >
             Hủy bỏ
@@ -1449,22 +1492,16 @@ function DeleteProjectModal({ isOpen, onClose, onConfirm, projectName }) {
           <button
             onClick={onConfirm}
             style={{
-              padding: '8px 16px',
-              borderRadius: 6,
-              border: 'none',
-              background: '#ef4444',
-              color: '#ffffff',
-              fontSize: 13,
-              fontWeight: 600,
+              padding: '8px 18px', borderRadius: 6, border: 'none',
+              background: hasData ? '#dc2626' : '#ef4444',
+              color: '#ffffff', fontSize: 13, fontWeight: 700,
               cursor: 'pointer',
-              boxShadow: '0 2px 4px rgba(239, 68, 68, 0.2)',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 6
+              boxShadow: hasData ? '0 2px 8px rgba(220,38,38,0.35)' : '0 2px 4px rgba(239,68,68,0.2)',
+              display: 'flex', alignItems: 'center', gap: 6
             }}
           >
             <Trash2 size={14} />
-            Đồng ý xóa
+            {hasData ? 'Xóa cả dữ liệu' : 'Đồng ý xóa'}
           </button>
         </div>
       </div>
@@ -1872,83 +1909,66 @@ export default function App() {
   const [syncingType, setSyncingType] = useState(null) // 'giao' | 'nhan' | null
   const [supabaseMessage, setSupabaseMessage] = useState(null) // { text, type: 'success' | 'error' | 'info' }
 
+  // Fetch data from Supabase - hoisted so it can be called anywhere (e.g. after delete)
+  const loadDataFromSupabase = React.useCallback(async () => {
+    if (!isSupabaseConfigured) return
+    try {
+      const { data: projData, error: projError } = await supabase
+        .from('du_an')
+        .select('*')
+      if (!projError && projData) {
+        const list = projData.map(d => {
+          const key = Object.keys(d).find(k =>
+            k.toLowerCase() === 'ten_du_an' ||
+            k.toLowerCase() === 'tenduan' ||
+            k.toLowerCase() === 'ten_duan' ||
+            k.toLowerCase() === 'tendu_an' ||
+            k.toLowerCase() === 'tenduan'
+          ) || Object.keys(d)[0]
+          return d[key]
+        }).filter(Boolean)
+        const sortedList = [...list].sort()
+        setCustomProjects(sortedList)
+        localStorage.setItem('sgc_custom_projects', JSON.stringify(sortedList))
+      }
+
+      const { data: gData, error: gError } = await supabase.from('don_giao').select('*')
+      if (!gError) {
+        if (gData && gData.length > 0) {
+          const mappedG = gData.map((item, idx) => {
+            const normalized = normalizeDbRow(item)
+            return { id: normalized.id || idx, ...normalized }
+          })
+          setGiaoRows(mappedG)
+          setGiaoFileName('Report_Orders_Don_giao (Supabase DB)')
+        } else {
+          setGiaoRows([])
+          setGiaoFileName('')
+        }
+      }
+
+      const { data: nData, error: nError } = await supabase.from('don_nhan').select('*')
+      if (!nError) {
+        if (nData && nData.length > 0) {
+          const mappedN = nData.map((item, idx) => {
+            const normalized = normalizeDbRow(item)
+            return { id: normalized.id || idx, ...normalized }
+          })
+          setNhanRows(mappedN)
+          setNhanFileName('Report_Orders_Don_nhan (Supabase DB)')
+        } else {
+          setNhanRows([])
+          setNhanFileName('')
+        }
+      }
+    } catch (e) {
+      console.error('Lỗi khi tải dữ liệu từ Supabase:', e)
+    }
+  }, [])
+
   // Fetch initial data from Supabase if connected
   React.useEffect(() => {
-    async function loadData() {
-      if (!isSupabaseConfigured) return
-      try {
-        // Fetch projects supporting both snake_case, lowercase, and camelCase column naming
-        const { data: projData, error: projError } = await supabase
-          .from('du_an')
-          .select('*')
-        if (!projError && projData) {
-          const list = projData.map(d => {
-            const key = Object.keys(d).find(k => 
-              k.toLowerCase() === 'ten_du_an' || 
-              k.toLowerCase() === 'tenduan' || 
-              k.toLowerCase() === 'ten_duan' || 
-              k.toLowerCase() === 'tendu_an' ||
-              k.toLowerCase() === 'tenduan'
-            ) || Object.keys(d)[0]
-            return d[key]
-          }).filter(Boolean)
-          
-          const sortedList = [...list].sort()
-          setCustomProjects(sortedList)
-          localStorage.setItem('sgc_custom_projects', JSON.stringify(sortedList))
-        }
-
-        // Fetch don_giao rows
-        const { data: gData, error: gError } = await supabase
-          .from('don_giao')
-          .select('*')
-        
-        if (!gError) {
-          if (gData && gData.length > 0) {
-            const mappedG = gData.map((item, idx) => {
-              const normalized = normalizeDbRow(item)
-              return {
-                id: normalized.id || idx,
-                ...normalized
-              }
-            })
-            setGiaoRows(mappedG)
-            setGiaoFileName('Report_Orders_Don_giao (Supabase DB)')
-          } else {
-            // Supabase trống → xóa local rows để đồng bộ
-            setGiaoRows([])
-            setGiaoFileName('')
-          }
-        }
-
-        // Fetch don_nhan rows
-        const { data: nData, error: nError } = await supabase
-          .from('don_nhan')
-          .select('*')
-        
-        if (!nError) {
-          if (nData && nData.length > 0) {
-            const mappedN = nData.map((item, idx) => {
-              const normalized = normalizeDbRow(item)
-              return {
-                id: normalized.id || idx,
-                ...normalized
-              }
-            })
-            setNhanRows(mappedN)
-            setNhanFileName('Report_Orders_Don_nhan (Supabase DB)')
-          } else {
-            // Supabase trống → xóa local rows để đồng bộ
-            setNhanRows([])
-            setNhanFileName('')
-          }
-        }
-      } catch (e) {
-        console.error('Lỗi khi tải dữ liệu từ Supabase:', e)
-      }
-    }
-    
-    loadData()
+    loadDataFromSupabase()
 
     if (!isSupabaseConfigured) return
 
@@ -1957,22 +1977,22 @@ export default function App() {
       .channel('schema-changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'don_giao' }, () => {
         console.log('[Supabase Realtime] Tự động cập nhật bảng Đơn Giao...')
-        loadData()
+        loadDataFromSupabase()
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'don_nhan' }, () => {
         console.log('[Supabase Realtime] Tự động cập nhật bảng Đơn Nhận...')
-        loadData()
+        loadDataFromSupabase()
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'du_an' }, () => {
         console.log('[Supabase Realtime] Tự động cập nhật danh sách Dự Án...')
-        loadData()
+        loadDataFromSupabase()
       })
       .subscribe()
 
     return () => {
       supabase.removeChannel(channel)
     }
-  }, [])
+  }, [loadDataFromSupabase])
 
   const syncRowsToSupabase = async (type, rowsToSync, isAuto = false) => {
     if (!isSupabaseConfigured) return
@@ -2093,13 +2113,24 @@ export default function App() {
     const { type, rows: parsedRows, fileName: name } = previewModal
     setPreviewModal(null)
 
-    // Chỉ lấy các dòng có trạng thái "Đã phê duyệt"
-    const approvedRows = parsedRows.filter(r => {
+    const unitKey = type === 'giao' ? 'donViGiao' : 'donViNhan'
+
+    // Bước 1: Lọc các dòng có Đơn vị giao/nhận trùng với Kho dự án đang chọn
+    const matchedByUnit = selectedProject
+      ? parsedRows.filter(r => {
+          const unit = String(r[unitKey] || '').trim().toLowerCase()
+          const proj = selectedProject.trim().toLowerCase()
+          return unit.includes(proj) || proj.includes(unit)
+        })
+      : parsedRows
+
+    // Bước 2: Chỉ lấy các dòng có trạng thái "Đã phê duyệt"
+    const approvedRows = matchedByUnit.filter(r => {
       const v = String(r.trangThai || '').toLowerCase()
       return v.includes('phê duyệt') || (v.includes('đã') && !v.includes('hủy'))
     })
 
-    // Nếu đang chọn một dự án cụ thể, gán duAn cho tất cả rows đã lọc
+    // Bước 3: Gán duAn cho tất cả rows đã lọc
     let rowsToStore = approvedRows
     if (selectedProject) {
       rowsToStore = approvedRows.map(row => ({ ...row, duAn: selectedProject }))
@@ -2357,83 +2388,40 @@ export default function App() {
           type: 'info'
         })
 
-        // Xóa theo các trường hợp cột có thể xảy ra trong bảng 'du_an'
-        const { error: err1 } = await supabase
-          .from('du_an')
-          .delete()
-          .eq('ten_du_an', trimmed)
+        // Xóa song song tất cả các tên cột có thể có trong bảng 'du_an'
+        await Promise.allSettled([
+          supabase.from('du_an').delete().eq('ten_du_an', trimmed),
+          supabase.from('du_an').delete().eq('tenduan', trimmed),
+          supabase.from('du_an').delete().eq('tenDuAn', trimmed),
+          supabase.from('du_an').delete().eq('ten_duan', trimmed),
+        ])
 
-        if (err1) {
-          const { error: err2 } = await supabase
-            .from('du_an')
-            .delete()
-            .eq('tenduan', trimmed)
+        // -- Xóa tham chiếu trong 'don_giao' (song song tất cả tên cột có thể)
+        await Promise.allSettled([
+          supabase.from('don_giao').delete().eq('du_an', trimmed),
+          supabase.from('don_giao').delete().eq('duan', trimmed),
+          supabase.from('don_giao').delete().eq('duAn', trimmed),
+        ])
 
-          if (err2) {
-            const { error: err3 } = await supabase
-              .from('du_an')
-              .delete()
-              .eq('tenDuAn', trimmed)
-              
-            if (err3) {
-              await supabase
-                .from('du_an')
-                .delete()
-                .eq('ten_duan', trimmed)
-                .catch(e => console.warn('Ignore: failed lowercase snake cases delete', e))
-            }
-          }
-        }
+        // -- Xóa tham chiếu trong 'don_nhan' (song song tất cả tên cột có thể)
+        await Promise.allSettled([
+          supabase.from('don_nhan').delete().eq('du_an', trimmed),
+          supabase.from('don_nhan').delete().eq('duan', trimmed),
+          supabase.from('don_nhan').delete().eq('duAn', trimmed),
+        ])
 
-        // -- Clear referencing columns in 'don_giao' table on Supabase to keep it synchronized!
-        const { error: gErr1 } = await supabase
-          .from('don_giao')
-          .update({ du_an: '' })
-          .eq('du_an', trimmed)
-        
-        if (gErr1) {
-          const { error: gErr2 } = await supabase
-            .from('don_giao')
-            .update({ duan: '' })
-            .eq('duan', trimmed)
-          
-          if (gErr2) {
-            await supabase
-              .from('don_giao')
-              .update({ duAn: '' })
-              .eq('duAn', trimmed)
-              .catch(e => console.warn('Ignore: failed camelCase don_giao clear references', e))
-          }
-        }
-
-        // -- Clear referencing columns in 'don_nhan' table on Supabase to keep it synchronized!
-        const { error: nErr1 } = await supabase
-          .from('don_nhan')
-          .update({ du_an: '' })
-          .eq('du_an', trimmed)
-        
-        if (nErr1) {
-          const { error: nErr2 } = await supabase
-            .from('don_nhan')
-            .update({ duan: '' })
-            .eq('duan', trimmed)
-          
-          if (nErr2) {
-            await supabase
-              .from('don_nhan')
-              .update({ duAn: '' })
-              .eq('duAn', trimmed)
-              .catch(e => console.warn('Ignore: failed camelCase don_nhan clear references', e))
-          }
-        }
+        // Reload toàn bộ dữ liệu từ Supabase để đồng bộ sau khi xóa
+        await loadDataFromSupabase()
 
         setSupabaseMessage({
-          text: `Xóa kho dự án "${trimmed}" thành công!`,
+          text: `Xóa kho dự án "${trimmed}" thành công và đã đồng bộ!`,
           type: 'success'
         })
         setTimeout(() => setSupabaseMessage(null), 4000)
       } catch (err) {
         console.error('Lỗi khi xóa dự án trên Supabase:', err)
+        // Dù lỗi vẫn thử reload để đồng bộ
+        await loadDataFromSupabase().catch(() => {})
         setSupabaseMessage({
           text: `Đã xóa cục bộ thành công! Nhưng gặp lỗi đồng bộ Supabase: ${err.message || err}`,
           type: 'error'
@@ -2569,6 +2557,8 @@ export default function App() {
         }}
         onConfirm={handleConfirmDeleteProject}
         projectName={projectToDelete}
+        giaoRows={giaoRows}
+        nhanRows={nhanRows}
       />
 
       <style>{`
