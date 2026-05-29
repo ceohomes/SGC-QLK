@@ -8,7 +8,7 @@ import {
 } from 'lucide-react'
 import { COLS_GIAO_NHAN, parseXlsxToRows, formatVal, getTrangThaiColor } from './constants.js'
 import { MOCK_GIAO_ROWS, MOCK_NHAN_ROWS } from './mockData.js'
-import { supabase, isSupabaseConfigured } from './supabaseClient.js'
+import { supabase, isSupabaseConfigured, supabaseUrl, supabaseAnonKey } from './supabaseClient.js'
 
 // ─── Searchable Select ────────────────────────────────────────────────────────
 function SearchableSelect({ value, onChange, options, placeholder = 'Tất cả dự án', variant = 'header', onEditProject }) {
@@ -1129,6 +1129,235 @@ function EditProjectModal({ isOpen, onClose, onSave, currentName }) {
   )
 }
 
+// ─── Config Tab Component ───────────────────────────────────────────────────
+function ConfigTab() {
+  const [url, setUrl] = useState(() => {
+    return localStorage.getItem('sgc_supabase_url') || import.meta.env.VITE_SUPABASE_URL || ''
+  })
+  const [key, setKey] = useState(() => {
+    return localStorage.getItem('sgc_supabase_key') || import.meta.env.VITE_SUPABASE_ANON_KEY || ''
+  })
+  const [saveSuccess, setSaveSuccess] = useState(false)
+  const [currentSource, setCurrentSource] = useState(() => {
+    if (localStorage.getItem('sgc_supabase_url')) return 'local'
+    if (import.meta.env.VITE_SUPABASE_URL) return 'env'
+    return 'none'
+  })
+
+  const handleSave = () => {
+    const trimmedUrl = url.trim()
+    const trimmedKey = key.trim()
+
+    if (trimmedUrl && trimmedKey) {
+      localStorage.setItem('sgc_supabase_url', trimmedUrl)
+      localStorage.setItem('sgc_supabase_key', trimmedKey)
+      setSaveSuccess(true)
+      setTimeout(() => {
+        window.location.reload()
+      }, 1000)
+    } else {
+      alert('Vui lòng điền đầy đủ cả URL và Anon Key!')
+    }
+  }
+
+  const handleClear = () => {
+    if (window.confirm('Bạn có chắc chắn muốn xóa cấu hình thủ công và quay lại dùng cấu hình trong File môi trường mặc định?')) {
+      localStorage.removeItem('sgc_supabase_url')
+      localStorage.removeItem('sgc_supabase_key')
+      setUrl(import.meta.env.VITE_SUPABASE_URL || '')
+      setKey(import.meta.env.VITE_SUPABASE_ANON_KEY || '')
+      setCurrentSource(import.meta.env.VITE_SUPABASE_URL ? 'env' : 'none')
+      setSaveSuccess(true)
+      setTimeout(() => {
+        window.location.reload()
+      }, 1000)
+    }
+  }
+
+  // Check connection status in real-time
+  const isCurrentlyConnected = isSupabaseConfigured
+
+  return (
+    <div style={{
+      background: '#ffffff',
+      borderRadius: 12,
+      border: '1px solid #e2e8f0',
+      padding: '24px',
+      maxWidth: '800px',
+      margin: '20px auto 40px auto',
+      textAlign: 'left',
+      boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -1px rgba(0,0,0,0.03)'
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, borderBottom: '1px solid #f1f5f9', paddingBottom: 16, marginBottom: 20 }}>
+        <div style={{
+          backgroundColor: '#eff6ff',
+          color: '#0f58a7',
+          padding: 8,
+          borderRadius: 8,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center'
+        }}>
+          <Database size={24} />
+        </div>
+        <div>
+          <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: '#0f172a' }}>Cấu hình kết nối cơ sở dữ liệu Supabase</h2>
+          <p style={{ margin: '4px 0 0 0', fontSize: 13, color: '#64748b' }}>
+            Kết nối ứng dụng báo cáo giao nhận của bạn với máy chủ Supabase để đồng bộ dữ liệu vĩnh viễn.
+          </p>
+        </div>
+      </div>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+        {/* Status indicator */}
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 12,
+          padding: '12px 16px',
+          borderRadius: 8,
+          backgroundColor: isCurrentlyConnected ? '#ecfdf5' : '#fff1f2',
+          border: `1px solid ${isCurrentlyConnected ? '#a7f3d0' : '#fecdd3'}`
+        }}>
+          <div style={{
+            width: 10,
+            height: 10,
+            borderRadius: '50%',
+            backgroundColor: isCurrentlyConnected ? '#10b981' : '#f43f5e'
+          }} />
+          <div style={{ flex: 1 }}>
+            <span style={{ fontSize: 13, fontWeight: 700, color: isCurrentlyConnected ? '#065f46' : '#9f1239' }}>
+              Trạng thái: {isCurrentlyConnected ? 'Đã kết nối với Database' : 'Chưa kết nối (Offline)'}
+            </span>
+            <p style={{ margin: '2px 0 0 0', fontSize: 12, color: isCurrentlyConnected ? '#047857' : '#be123c' }}>
+              {isCurrentlyConnected 
+                ? `Đang sử dụng cấu hình từ: ${currentSource === 'local' ? 'Trình duyệt Web (Local Storage)' : 'Biến môi trường (Vite Env)'}`
+                : 'Ứng dụng hiện đang chạy ngoại tuyến bằng bộ nhớ tạm thời trên trình duyệt của bạn.'}
+            </p>
+          </div>
+        </div>
+
+        {/* Edit Fields */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <label style={{ fontSize: 13, fontWeight: 600, color: '#334155' }}>
+              Supabase Project URL (VITE_SUPABASE_URL)
+            </label>
+            <input
+              type="text"
+              className="input"
+              style={{ width: '100%', fontFamily: 'monospace', fontSize: 13 }}
+              placeholder="Ví dụ: https://your-project-id.supabase.co"
+              value={url}
+              onChange={(e) => setUrl(e.target.value)}
+            />
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <label style={{ fontSize: 13, fontWeight: 600, color: '#334155' }}>
+              Supabase Project API Anon Key (VITE_SUPABASE_ANON_KEY)
+            </label>
+            <textarea
+              className="input"
+              rows={3}
+              style={{ width: '100%', fontFamily: 'monospace', fontSize: 12, resize: 'vertical', padding: '8px 12px', lineHeight: '1.4' }}
+              placeholder="Nhập chuỗi Anon Key dài của bạn..."
+              value={key}
+              onChange={(e) => setKey(e.target.value)}
+            />
+          </div>
+        </div>
+
+        {/* Actions bar */}
+        <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+          <button
+            onClick={handleSave}
+            disabled={saveSuccess}
+            style={{
+              padding: '10px 20px',
+              borderRadius: 6,
+              background: 'linear-gradient(135deg, #0f58a7 0%, #1a6abf 100%)',
+              color: '#ffffff',
+              fontSize: 13,
+              fontWeight: 700,
+              border: 'none',
+              cursor: saveSuccess ? 'not-allowed' : 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              boxShadow: '0 2px 4px rgba(15,88,167,0.2)'
+            }}
+          >
+            {saveSuccess ? (
+              <>
+                <RefreshCw size={15} className="animate-spin" />
+                Đang lưu & tải lại trang...
+              </>
+            ) : (
+              <>
+                <Save size={15} />
+                Lưu cấu hình kết nối
+              </>
+            )}
+          </button>
+
+          {currentSource === 'local' && (
+            <button
+              onClick={handleClear}
+              style={{
+                padding: '10px 16px',
+                borderRadius: 6,
+                background: '#ffffff',
+                border: '1px solid #cbd5e1',
+                color: '#64748b',
+                fontSize: 13,
+                fontWeight: 600,
+                cursor: 'pointer'
+              }}
+            >
+              Phục hồi mặc định
+            </button>
+          )}
+        </div>
+
+        {/* Helpful instructions for deploying to Cloudflare Pages */}
+        <div style={{
+          marginTop: 12,
+          padding: '16px 20px',
+          borderRadius: 8,
+          backgroundColor: '#f8fafc',
+          border: '1px solid #e2e8f0'
+        }}>
+          <h4 style={{ margin: '0 0 8px 0', fontSize: 13, fontWeight: 700, color: '#334155', display: 'flex', alignItems: 'center', gap: 6 }}>
+            <Info size={15} color="#0f58a7" />
+            Hướng dẫn chạy online khi deploy lên Cloudflare.com / Cloudflare Pages:
+          </h4>
+          <ol style={{ margin: 0, paddingLeft: 20, fontSize: 12, color: '#475569', display: 'flex', flexDirection: 'column', gap: 8, lineHeight: '1.5' }}>
+            <li>
+              Mặc định khi bạn deploy mã nguồn lên Cloudflare, bản build sẽ không tự động cấu hình sẵn Supabase của bạn trừ khi bạn khai báo.
+            </li>
+            <li>
+              <strong>Cách 1 (Nhanh & cực tiện):</strong> Bạn chỉ cần mở ứng dụng của mình trên Cloudflare, vào chính tab <strong>Cấu hình dữ liệu</strong> này, dán URL + Anon Key vào đây rồi bấm <strong>Lưu cấu hình</strong>. Webapp sẽ Online ngay lập tức và tự ghi nhớ vĩnh viễn trên trình duyệt của bạn mà không lộ key vào code!
+            </li>
+            <li>
+              <strong>Cách 2 (Cố định cho tất cả mọi người cùng truy cập):</strong>
+              <ul style={{ paddingLeft: 16, marginTop: 4, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                <li>Truy cập trang quản trị Cloudflare Dashboard &gt; chọn dự án Pages của bạn.</li>
+                <li>Đi tới tab <strong>Settings</strong> &gt; Chọn <strong>Environment variables</strong> ở menu bên trái.</li>
+                <li>Thêm 2 biến môi trường mới tại phần <strong>Production</strong> (và cả Preview nếu cần):</li>
+                <li>• Tên: <code style={{ backgroundColor: '#e2e8f0', padding: '2px 4px', borderRadius: 4, fontFamily: 'monospace', fontSize: 11 }}>VITE_SUPABASE_URL</code> — Giá trị: URL Supabase của bạn</li>
+                <li>• Tên: <code style={{ backgroundColor: '#e2e8f0', padding: '2px 4px', borderRadius: 4, fontFamily: 'monospace', fontSize: 11 }}>VITE_SUPABASE_ANON_KEY</code> — Giá trị: Anon Key Supabase của bạn</li>
+                <li>Bấm <strong>Save</strong>, sau đó nhấn <strong>Deploy</strong> lại bản build gần nhất. Bản mới sẽ tự động online cho mọi người truy cập!</li>
+              </ul>
+            </li>
+          </ol>
+        </div>
+
+      </div>
+    </div>
+  )
+}
+
 // Helper functions for robust database access and column-case normalization
 function toSnakeCase(str) {
   return str.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`)
@@ -1610,11 +1839,7 @@ export default function App() {
           />
         )}
         {tab === 'config' && (
-          <PlaceholderTab
-            icon={<Settings />}
-            title="Cấu hình dữ liệu"
-            desc="Tính năng cấu hình dữ liệu sẽ được triển khai trong phiên bản tiếp theo."
-          />
+          <ConfigTab />
         )}
         {tab === 'summary' && (
           <PlaceholderTab
