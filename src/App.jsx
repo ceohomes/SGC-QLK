@@ -1666,16 +1666,15 @@ function SummaryConfigTab({ giaoRows, nhanRows, selectedProject, allProjects }) 
         <CreateSummaryConfigModal
           onClose={() => setShowCreateModal(false)}
           onSave={handleCreateConfig}
-          allProjects={allProjects}
+          selectedProject={selectedProject}
         />
       )}
     </div>
   )
 }
 
-function CreateSummaryConfigModal({ onClose, onSave, allProjects }) {
+function CreateSummaryConfigModal({ onClose, onSave, selectedProject }) {
   const [name, setName] = React.useState('')
-  const [project, setProject] = React.useState('')
   const [error, setError] = React.useState('')
 
   React.useEffect(() => {
@@ -1686,7 +1685,7 @@ function CreateSummaryConfigModal({ onClose, onSave, allProjects }) {
 
   const handleSave = () => {
     if (!name.trim()) { setError('Vui lòng nhập tên loại tổng hợp'); return }
-    onSave(name.trim(), project)
+    onSave(name.trim(), selectedProject)
   }
 
   return (
@@ -1727,20 +1726,30 @@ function CreateSummaryConfigModal({ onClose, onSave, allProjects }) {
           {error && <span style={{ fontSize: 12, color: '#ef4444', fontWeight: 500 }}>{error}</span>}
         </div>
 
+        {/* Hiển thị dự án đang chọn — không cần dropdown */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
           <label style={{ fontSize: 13, fontWeight: 600, color: '#475569' }}>Gắn với Dự án</label>
-          <select
-            className="input"
-            value={project}
-            onChange={e => setProject(e.target.value)}
-            style={{ fontSize: 14 }}
-          >
-            <option value="">— Tất cả dự án —</option>
-            {allProjects.map(p => <option key={p} value={p}>{p}</option>)}
-          </select>
-          <span style={{ fontSize: 11, color: '#94a3b8', fontStyle: 'italic', lineHeight: '1.4' }}>
-            Chọn dự án để lấy đúng danh sách đơn vị giao/nhận tương ứng. Cấu hình được lưu riêng biệt theo từng dự án.
-          </span>
+          {selectedProject ? (
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 8,
+              background: '#eff6ff', border: '1px solid #bfdbfe',
+              borderRadius: 8, padding: '9px 14px'
+            }}>
+              <CheckCircle2 size={15} color="#0f58a7" />
+              <span style={{ fontSize: 14, fontWeight: 700, color: '#0f58a7' }}>{selectedProject}</span>
+            </div>
+          ) : (
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 8,
+              background: '#fffbeb', border: '1px solid #fde68a',
+              borderRadius: 8, padding: '9px 14px'
+            }}>
+              <AlertCircle size={15} color="#d97706" />
+              <span style={{ fontSize: 13, color: '#92400e' }}>
+                Chưa chọn dự án — cấu hình sẽ áp dụng cho <strong>tất cả dự án</strong>. Bạn có thể chọn dự án cụ thể ở thanh KHO DỰ ÁN trên header trước khi tạo.
+              </span>
+            </div>
+          )}
         </div>
 
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 4 }}>
@@ -3303,9 +3312,10 @@ export default function App() {
   const loadProjectsFromSupabase = React.useCallback(async () => {
     if (!isSupabaseConfigured) return
     try {
+      // Select * để tự detect cột tên dự án bất kể snake_case hay camelCase
       const { data: projData, error: projError } = await supabase
         .from('du_an')
-        .select('ten_du_an,tenduan,tenDuAn')
+        .select('*')
 
       if (projError) {
         console.error('Lỗi tải danh mục dự án:', projError)
@@ -3313,10 +3323,31 @@ export default function App() {
         return
       }
       setSupabaseAuthError(false)
-      if (projData) {
-        const list = projData.map(d => d.ten_du_an || d.tenduan || d.tenDuAn).filter(Boolean).sort()
-        setCustomProjects(list)
-        localStorage.setItem('sgc_custom_projects', JSON.stringify(list))
+      if (projData && projData.length > 0) {
+        console.log('[loadProjects] Raw Supabase du_an columns:', Object.keys(projData[0]))
+        // Tự detect cột tên dự án theo thứ tự ưu tiên
+        const NAME_COLS = ['ten_du_an', 'tenduan', 'tenDuAn', 'ten_duan', 'name', 'tendu_an']
+        const detectedCol = NAME_COLS.find(col => col in projData[0])
+        if (detectedCol) {
+          console.log('[loadProjects] Dùng cột:', detectedCol)
+          const list = projData.map(d => d[detectedCol]).filter(Boolean).sort()
+          setCustomProjects(list)
+          localStorage.setItem('sgc_custom_projects', JSON.stringify(list))
+        } else {
+          // Fallback: thử tất cả giá trị string đầu tiên tìm được
+          console.warn('[loadProjects] Không tìm thấy cột tên quen thuộc, thử fallback...')
+          const firstRow = projData[0]
+          const firstStrKey = Object.keys(firstRow).find(k => k !== 'id' && typeof firstRow[k] === 'string')
+          if (firstStrKey) {
+            const list = projData.map(d => d[firstStrKey]).filter(Boolean).sort()
+            console.log('[loadProjects] Fallback dùng cột:', firstStrKey, '→', list)
+            setCustomProjects(list)
+            localStorage.setItem('sgc_custom_projects', JSON.stringify(list))
+          }
+        }
+      } else if (projData && projData.length === 0) {
+        // Bảng du_an rỗng — giữ nguyên localStorage
+        console.log('[loadProjects] Bảng du_an rỗng trên Supabase')
       }
     } catch (e) {
       console.error('Lỗi tải dự án:', e)
@@ -3652,33 +3683,42 @@ export default function App() {
     }
   }
 
-  const handleAddProject = (name) => {
+  const handleAddProject = async (name) => {
     const trimmed = name.trim()
     if (!trimmed) return
     if (!customProjects.includes(trimmed)) {
+      // 1. Lưu local ngay lập tức
       const updated = [...customProjects, trimmed]
       setCustomProjects(updated)
       localStorage.setItem('sgc_custom_projects', JSON.stringify(updated))
 
+      // 2. Đồng bộ lên Supabase với fallback cột, rồi reload lại đúng danh sách
       if (isSupabaseConfigured) {
-        // Try inserting as ten_du_an (snake_case)
-        supabase.from('du_an')
-          .insert([{ ten_du_an: trimmed }])
-          .then(({ error }) => {
-            if (error) {
-              // Try tenduan (lowercase)
-              supabase.from('du_an')
-                .insert([{ tenduan: trimmed }])
-                .then(({ error: error2 }) => {
-                  if (error2) {
-                    // Try tenDuAn (camelCase)
-                    supabase.from('du_an')
-                      .insert([{ tenDuAn: trimmed }])
-                      .catch(e => console.error('Lỗi lưu dự án:', e))
-                  }
-                })
+        let insertOk = false
+        const colVariants = ['ten_du_an', 'tenduan', 'tenDuAn']
+        for (const col of colVariants) {
+          const { error } = await supabase.from('du_an').insert([{ [col]: trimmed }])
+          if (!error) {
+            insertOk = true
+            console.log('[AddProject] Lưu dự án "' + trimmed + '" thành công với cột "' + col + '"')
+            break
+          } else {
+            const msg = error.message || ''
+            const isColMissing = msg.includes('column') || msg.includes('not exist') || msg.includes('schema cache') || msg.includes('violates')
+            if (!isColMissing) {
+              console.error('[AddProject] Lỗi khi insert dự án:', error)
+              setSupabaseMessage({ text: 'Đã tạo dự án cục bộ nhưng lỗi lưu Supabase: ' + msg, type: 'error' })
+              setTimeout(() => setSupabaseMessage(null), 5000)
+              break
             }
-          })
+          }
+        }
+        // 3. Reload lại danh sách từ Supabase để đảm bảo hiển thị đúng
+        if (insertOk) {
+          await loadProjectsFromSupabase()
+          setSupabaseMessage({ text: 'Tạo kho dự án "' + trimmed + '" và đồng bộ Supabase thành công!', type: 'success' })
+          setTimeout(() => setSupabaseMessage(null), 3000)
+        }
       }
     }
     setSelectedProject(trimmed)
