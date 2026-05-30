@@ -1261,6 +1261,507 @@ function OrderTab({
   )
 }
 
+// ─── Summary Config Tab ───────────────────────────────────────────────────────
+const SUMMARY_CONFIG_KEY = 'sgc_summary_configs'
+
+function loadSummaryConfigs() {
+  try {
+    const raw = localStorage.getItem(SUMMARY_CONFIG_KEY)
+    return raw ? JSON.parse(raw) : []
+  } catch { return [] }
+}
+
+function saveSummaryConfigs(configs) {
+  localStorage.setItem(SUMMARY_CONFIG_KEY, JSON.stringify(configs))
+}
+
+function SummaryConfigTab({ giaoRows, nhanRows, selectedProject, allProjects }) {
+  const [configs, setConfigs] = React.useState(() => loadSummaryConfigs())
+  const [showCreateModal, setShowCreateModal] = React.useState(false)
+  const [expandedConfig, setExpandedConfig] = React.useState(null) // index of expanded config
+
+  // Persist on change
+  React.useEffect(() => { saveSummaryConfigs(configs) }, [configs])
+
+  // Get unique donViGiao for a project
+  const getUniqueGiao = (proj) => {
+    const rows = proj ? giaoRows.filter(r => (r.ten_du_an || r.tenDuAn || r.duAn || '') === proj) : giaoRows
+    return [...new Set(rows.map(r => r.donViGiao).filter(Boolean))].sort()
+  }
+
+  // Get unique donViNhan for a project
+  const getUniqueNhan = (proj) => {
+    const rows = proj ? nhanRows.filter(r => (r.ten_du_an || r.tenDuAn || r.duAn || '') === proj) : nhanRows
+    return [...new Set(rows.map(r => r.donViNhan).filter(Boolean))].sort()
+  }
+
+  const handleCreateConfig = (name, proj) => {
+    const giaoUnits = getUniqueGiao(proj)
+    const nhanUnits = getUniqueNhan(proj)
+    const newConfig = {
+      id: Date.now(),
+      name,
+      project: proj,
+      giaoTable: giaoUnits.map(u => ({ unit: u, giamTru: '', boQua: false, tinhToan: true })),
+      nhanTable: nhanUnits.map(u => ({ unit: u, giamTru: '', boQua: false, tinhToan: true })),
+    }
+    const updated = [...configs, newConfig]
+    setConfigs(updated)
+    setShowCreateModal(false)
+    setExpandedConfig(updated.length - 1)
+  }
+
+  const handleDeleteConfig = (idx) => {
+    if (!window.confirm(`Xóa cấu hình "${configs[idx].name}"?`)) return
+    const updated = configs.filter((_, i) => i !== idx)
+    setConfigs(updated)
+    if (expandedConfig === idx) setExpandedConfig(null)
+    else if (expandedConfig > idx) setExpandedConfig(expandedConfig - 1)
+  }
+
+  const updateGiaoRow = (cfgIdx, rowIdx, field, value) => {
+    setConfigs(prev => {
+      const next = prev.map((c, i) => {
+        if (i !== cfgIdx) return c
+        const newGiao = c.giaoTable.map((r, j) => j === rowIdx ? { ...r, [field]: value } : r)
+        return { ...c, giaoTable: newGiao }
+      })
+      return next
+    })
+  }
+
+  const updateNhanRow = (cfgIdx, rowIdx, field, value) => {
+    setConfigs(prev => {
+      const next = prev.map((c, i) => {
+        if (i !== cfgIdx) return c
+        const newNhan = c.nhanTable.map((r, j) => j === rowIdx ? { ...r, [field]: value } : r)
+        return { ...c, nhanTable: newNhan }
+      })
+      return next
+    })
+  }
+
+  // Sync units when rows data changes (reload units for existing configs)
+  const handleRefreshConfig = (cfgIdx) => {
+    const cfg = configs[cfgIdx]
+    const giaoUnits = getUniqueGiao(cfg.project)
+    const nhanUnits = getUniqueNhan(cfg.project)
+    setConfigs(prev => prev.map((c, i) => {
+      if (i !== cfgIdx) return c
+      // Merge: keep existing settings for known units, add new ones
+      const newGiao = giaoUnits.map(u => {
+        const exist = c.giaoTable.find(r => r.unit === u)
+        return exist || { unit: u, giamTru: '', boQua: false, tinhToan: true }
+      })
+      const newNhan = nhanUnits.map(u => {
+        const exist = c.nhanTable.find(r => r.unit === u)
+        return exist || { unit: u, giamTru: '', boQua: false, tinhToan: true }
+      })
+      return { ...c, giaoTable: newGiao, nhanTable: newNhan }
+    }))
+  }
+
+  const thStyle = {
+    padding: '8px 12px', fontSize: 12, fontWeight: 700, color: '#fff',
+    background: '#0f58a7', textAlign: 'center', whiteSpace: 'nowrap',
+    border: '1px solid #0a3d73'
+  }
+  const tdStyle = {
+    padding: '6px 10px', fontSize: 13, borderBottom: '1px solid #e2e8f0',
+    verticalAlign: 'middle', color: '#1e293b'
+  }
+
+  return (
+    <div style={{ padding: '16px 24px 32px 24px', height: '100%', overflowY: 'auto', boxSizing: 'border-box' }}>
+      {/* Header */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+        <div>
+          <h2 style={{ margin: 0, fontSize: 20, fontWeight: 800, color: '#0f172a' }}>Cấu hình tổng hợp</h2>
+          <p style={{ margin: '4px 0 0', color: '#64748b', fontSize: 14 }}>
+            Tạo và quản lý các loại tổng hợp theo từng dự án — cấu hình đơn vị giao và nhận riêng biệt
+          </p>
+        </div>
+        <button
+          onClick={() => setShowCreateModal(true)}
+          style={{
+            background: 'linear-gradient(135deg, #0f58a7 0%, #1a6abf 100%)',
+            color: '#fff', border: 'none', borderRadius: 8,
+            padding: '9px 18px', fontSize: 14, fontWeight: 700,
+            cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6,
+            boxShadow: '0 2px 8px rgba(15,88,167,0.25)'
+          }}
+        >
+          <span style={{ fontSize: 18, lineHeight: 1 }}>+</span> Tạo Loại Tổng hợp
+        </button>
+      </div>
+
+      {/* Empty state */}
+      {configs.length === 0 && (
+        <div style={{
+          background: '#f8fafc', border: '2px dashed #cbd5e1', borderRadius: 12,
+          padding: '48px 24px', textAlign: 'center', color: '#64748b'
+        }}>
+          <div style={{
+            width: 64, height: 64, background: '#e2e8f0', borderRadius: 16,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            margin: '0 auto 16px'
+          }}>
+            <Settings size={28} color="#94a3b8" />
+          </div>
+          <h3 style={{ margin: '0 0 8px', fontSize: 16, fontWeight: 700, color: '#334155' }}>
+            Chưa có loại tổng hợp nào
+          </h3>
+          <p style={{ margin: 0, fontSize: 14 }}>
+            Nhấn <strong>"+ Tạo Loại Tổng hợp"</strong> để bắt đầu cấu hình đơn vị giao nhận cho từng dự án.
+          </p>
+        </div>
+      )}
+
+      {/* Config list */}
+      {configs.map((cfg, cfgIdx) => {
+        const isExpanded = expandedConfig === cfgIdx
+        return (
+          <div key={cfg.id} style={{
+            background: '#fff', borderRadius: 12, border: '1px solid #e2e8f0',
+            boxShadow: '0 2px 8px rgba(15,23,42,0.06)', marginBottom: 16, overflow: 'hidden'
+          }}>
+            {/* Config header row */}
+            <div
+              onClick={() => setExpandedConfig(isExpanded ? null : cfgIdx)}
+              style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                padding: '14px 20px', cursor: 'pointer',
+                background: isExpanded ? '#eff6ff' : '#f8fafc',
+                borderBottom: isExpanded ? '1px solid #bfdbfe' : 'none',
+                transition: 'background 0.15s'
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <div style={{
+                  width: 36, height: 36, background: isExpanded ? '#0f58a7' : '#e2e8f0',
+                  borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  flexShrink: 0
+                }}>
+                  <BarChart3 size={18} color={isExpanded ? '#fff' : '#64748b'} />
+                </div>
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: 15, color: '#0f172a' }}>{cfg.name}</div>
+                  <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>
+                    Dự án: <strong style={{ color: '#0f58a7' }}>{cfg.project || 'Tất cả dự án'}</strong>
+                    &nbsp;·&nbsp; {cfg.giaoTable.length} đơn vị giao &nbsp;·&nbsp; {cfg.nhanTable.length} đơn vị nhận
+                  </div>
+                </div>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <button
+                  onClick={(e) => { e.stopPropagation(); handleRefreshConfig(cfgIdx) }}
+                  title="Làm mới danh sách đơn vị từ dữ liệu hiện tại"
+                  style={{
+                    background: 'transparent', border: '1px solid #cbd5e1', borderRadius: 6,
+                    padding: '4px 8px', cursor: 'pointer', color: '#475569',
+                    display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, fontWeight: 600
+                  }}
+                >
+                  <RefreshCw size={12} /> Làm mới
+                </button>
+                <button
+                  onClick={(e) => { e.stopPropagation(); handleDeleteConfig(cfgIdx) }}
+                  title="Xóa cấu hình này"
+                  style={{
+                    background: 'transparent', border: '1px solid #fca5a5', borderRadius: 6,
+                    padding: '4px 8px', cursor: 'pointer', color: '#ef4444',
+                    display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, fontWeight: 600
+                  }}
+                >
+                  <Trash2 size={12} /> Xóa
+                </button>
+                <ChevronDown size={16} color="#64748b" style={{
+                  transform: isExpanded ? 'rotate(180deg)' : 'none',
+                  transition: 'transform 0.2s'
+                }} />
+              </div>
+            </div>
+
+            {/* Config body */}
+            {isExpanded && (
+              <div style={{ padding: '20px 20px 24px' }}>
+                <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap' }}>
+                  {/* Bảng Đơn Giao */}
+                  <div style={{ flex: '1 1 400px', minWidth: 320 }}>
+                    <div style={{
+                      display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10
+                    }}>
+                      <div style={{
+                        width: 28, height: 28, borderRadius: 6, background: '#eff6ff',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center'
+                      }}>
+                        <Truck size={14} color="#0f58a7" />
+                      </div>
+                      <span style={{ fontWeight: 700, fontSize: 14, color: '#0f172a' }}>
+                        Bảng Đơn Giao
+                      </span>
+                      <span style={{ fontSize: 12, color: '#64748b', background: '#f1f5f9', borderRadius: 4, padding: '2px 8px' }}>
+                        {cfg.giaoTable.length} đơn vị
+                      </span>
+                    </div>
+
+                    {cfg.giaoTable.length === 0 ? (
+                      <div style={{ fontSize: 13, color: '#94a3b8', padding: '16px', textAlign: 'center', background: '#f8fafc', borderRadius: 8, border: '1px dashed #e2e8f0' }}>
+                        Không có dữ liệu đơn vị giao cho dự án này
+                      </div>
+                    ) : (
+                      <div style={{ overflowX: 'auto', borderRadius: 8, border: '1px solid #e2e8f0' }}>
+                        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                          <thead>
+                            <tr>
+                              <th style={{ ...thStyle, minWidth: 160, textAlign: 'left' }}>Đơn vị giao</th>
+                              <th style={{ ...thStyle, width: 100 }}>Giảm trừ</th>
+                              <th style={{ ...thStyle, width: 80 }}>Bỏ qua</th>
+                              <th style={{ ...thStyle, width: 100 }}>Tính toán</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {cfg.giaoTable.map((row, rIdx) => (
+                              <tr key={row.unit} style={{ background: rIdx % 2 === 0 ? '#fff' : '#f8fafc' }}>
+                                <td style={{ ...tdStyle, fontWeight: 600, color: '#0f172a' }}>{row.unit}</td>
+                                <td style={{ ...tdStyle, textAlign: 'center' }}>
+                                  <input
+                                    type="number"
+                                    value={row.giamTru}
+                                    onChange={e => updateGiaoRow(cfgIdx, rIdx, 'giamTru', e.target.value)}
+                                    placeholder="0"
+                                    style={{
+                                      width: 72, padding: '4px 6px', fontSize: 12,
+                                      border: '1px solid #cbd5e1', borderRadius: 4,
+                                      textAlign: 'right', outline: 'none',
+                                      background: row.boQua ? '#f8fafc' : '#fff',
+                                      color: row.boQua ? '#94a3b8' : '#0f172a'
+                                    }}
+                                    disabled={row.boQua}
+                                  />
+                                </td>
+                                <td style={{ ...tdStyle, textAlign: 'center' }}>
+                                  <input
+                                    type="checkbox"
+                                    checked={row.boQua}
+                                    onChange={e => updateGiaoRow(cfgIdx, rIdx, 'boQua', e.target.checked)}
+                                    style={{ width: 16, height: 16, cursor: 'pointer', accentColor: '#ef4444' }}
+                                  />
+                                </td>
+                                <td style={{ ...tdStyle, textAlign: 'center' }}>
+                                  <input
+                                    type="checkbox"
+                                    checked={row.tinhToan && !row.boQua}
+                                    onChange={e => updateGiaoRow(cfgIdx, rIdx, 'tinhToan', e.target.checked)}
+                                    style={{ width: 16, height: 16, cursor: 'pointer', accentColor: '#10b981' }}
+                                    disabled={row.boQua}
+                                  />
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Bảng Đơn Nhận */}
+                  <div style={{ flex: '1 1 400px', minWidth: 320 }}>
+                    <div style={{
+                      display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10
+                    }}>
+                      <div style={{
+                        width: 28, height: 28, borderRadius: 6, background: '#f0fdf4',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center'
+                      }}>
+                        <PackageCheck size={14} color="#10b981" />
+                      </div>
+                      <span style={{ fontWeight: 700, fontSize: 14, color: '#0f172a' }}>
+                        Bảng Đơn Nhận
+                      </span>
+                      <span style={{ fontSize: 12, color: '#64748b', background: '#f1f5f9', borderRadius: 4, padding: '2px 8px' }}>
+                        {cfg.nhanTable.length} đơn vị
+                      </span>
+                    </div>
+
+                    {cfg.nhanTable.length === 0 ? (
+                      <div style={{ fontSize: 13, color: '#94a3b8', padding: '16px', textAlign: 'center', background: '#f8fafc', borderRadius: 8, border: '1px dashed #e2e8f0' }}>
+                        Không có dữ liệu đơn vị nhận cho dự án này
+                      </div>
+                    ) : (
+                      <div style={{ overflowX: 'auto', borderRadius: 8, border: '1px solid #e2e8f0' }}>
+                        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                          <thead>
+                            <tr>
+                              <th style={{ ...thStyle, minWidth: 160, textAlign: 'left', background: '#065f46' }}>Đơn vị nhận</th>
+                              <th style={{ ...thStyle, width: 100, background: '#065f46' }}>Giảm trừ</th>
+                              <th style={{ ...thStyle, width: 80, background: '#065f46' }}>Bỏ qua</th>
+                              <th style={{ ...thStyle, width: 100, background: '#065f46' }}>Tính toán</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {cfg.nhanTable.map((row, rIdx) => (
+                              <tr key={row.unit} style={{ background: rIdx % 2 === 0 ? '#fff' : '#f8fafc' }}>
+                                <td style={{ ...tdStyle, fontWeight: 600, color: '#0f172a' }}>{row.unit}</td>
+                                <td style={{ ...tdStyle, textAlign: 'center' }}>
+                                  <input
+                                    type="number"
+                                    value={row.giamTru}
+                                    onChange={e => updateNhanRow(cfgIdx, rIdx, 'giamTru', e.target.value)}
+                                    placeholder="0"
+                                    style={{
+                                      width: 72, padding: '4px 6px', fontSize: 12,
+                                      border: '1px solid #cbd5e1', borderRadius: 4,
+                                      textAlign: 'right', outline: 'none',
+                                      background: row.boQua ? '#f8fafc' : '#fff',
+                                      color: row.boQua ? '#94a3b8' : '#0f172a'
+                                    }}
+                                    disabled={row.boQua}
+                                  />
+                                </td>
+                                <td style={{ ...tdStyle, textAlign: 'center' }}>
+                                  <input
+                                    type="checkbox"
+                                    checked={row.boQua}
+                                    onChange={e => updateNhanRow(cfgIdx, rIdx, 'boQua', e.target.checked)}
+                                    style={{ width: 16, height: 16, cursor: 'pointer', accentColor: '#ef4444' }}
+                                  />
+                                </td>
+                                <td style={{ ...tdStyle, textAlign: 'center' }}>
+                                  <input
+                                    type="checkbox"
+                                    checked={row.tinhToan && !row.boQua}
+                                    onChange={e => updateNhanRow(cfgIdx, rIdx, 'tinhToan', e.target.checked)}
+                                    style={{ width: 16, height: 16, cursor: 'pointer', accentColor: '#10b981' }}
+                                    disabled={row.boQua}
+                                  />
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Legend */}
+                <div style={{
+                  marginTop: 16, padding: '10px 14px', background: '#f8fafc',
+                  borderRadius: 8, border: '1px solid #e2e8f0',
+                  display: 'flex', gap: 20, flexWrap: 'wrap', fontSize: 12, color: '#64748b'
+                }}>
+                  <span>📌 <strong>Giảm trừ:</strong> Giá trị số khấu trừ khỏi tính toán</span>
+                  <span>🚫 <strong>Bỏ qua:</strong> Loại trừ đơn vị khỏi mọi tính toán</span>
+                  <span>✅ <strong>Tính toán:</strong> Đưa vào tổng hợp kết quả cuối</span>
+                </div>
+              </div>
+            )}
+          </div>
+        )
+      })}
+
+      {/* Create Config Modal */}
+      {showCreateModal && (
+        <CreateSummaryConfigModal
+          onClose={() => setShowCreateModal(false)}
+          onSave={handleCreateConfig}
+          allProjects={allProjects}
+        />
+      )}
+    </div>
+  )
+}
+
+function CreateSummaryConfigModal({ onClose, onSave, allProjects }) {
+  const [name, setName] = React.useState('')
+  const [project, setProject] = React.useState('')
+  const [error, setError] = React.useState('')
+
+  React.useEffect(() => {
+    const handleKey = (e) => { if (e.key === 'Escape') onClose() }
+    document.addEventListener('keydown', handleKey)
+    return () => document.removeEventListener('keydown', handleKey)
+  }, [onClose])
+
+  const handleSave = () => {
+    if (!name.trim()) { setError('Vui lòng nhập tên loại tổng hợp'); return }
+    onSave(name.trim(), project)
+  }
+
+  return (
+    <div style={{
+      position: 'fixed', inset: 0, zIndex: 10000,
+      background: 'rgba(15,23,42,0.55)', backdropFilter: 'blur(3px)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16
+    }}>
+      <div style={{
+        background: '#fff', borderRadius: 14, width: '100%', maxWidth: 460,
+        padding: 28, boxShadow: '0 25px 60px rgba(15,23,42,0.2)',
+        display: 'flex', flexDirection: 'column', gap: 18
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #f1f5f9', paddingBottom: 14 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ width: 36, height: 36, background: '#eff6ff', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Settings size={18} color="#0f58a7" />
+            </div>
+            <h3 style={{ margin: 0, fontSize: 16, fontWeight: 800, color: '#0f172a' }}>Tạo Loại Tổng hợp</h3>
+          </div>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748b', padding: 4, borderRadius: 6, display: 'flex' }}>
+            <X size={18} />
+          </button>
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <label style={{ fontSize: 13, fontWeight: 600, color: '#475569' }}>Tên Loại tổng hợp <span style={{ color: '#ef4444' }}>*</span></label>
+          <input
+            autoFocus
+            type="text"
+            className="input"
+            style={{ border: error ? '1px solid #ef4444' : '1px solid #cbd5e1' }}
+            placeholder="Ví dụ: Tổng hợp Tháng 5, BC Quý 2..."
+            value={name}
+            onChange={e => { setName(e.target.value); if (error) setError('') }}
+            onKeyDown={e => { if (e.key === 'Enter') handleSave() }}
+          />
+          {error && <span style={{ fontSize: 12, color: '#ef4444', fontWeight: 500 }}>{error}</span>}
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <label style={{ fontSize: 13, fontWeight: 600, color: '#475569' }}>Gắn với Dự án</label>
+          <select
+            className="input"
+            value={project}
+            onChange={e => setProject(e.target.value)}
+            style={{ fontSize: 14 }}
+          >
+            <option value="">— Tất cả dự án —</option>
+            {allProjects.map(p => <option key={p} value={p}>{p}</option>)}
+          </select>
+          <span style={{ fontSize: 11, color: '#94a3b8', fontStyle: 'italic', lineHeight: '1.4' }}>
+            Chọn dự án để lấy đúng danh sách đơn vị giao/nhận tương ứng. Cấu hình được lưu riêng biệt theo từng dự án.
+          </span>
+        </div>
+
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 4 }}>
+          <button
+            onClick={onClose}
+            style={{ padding: '7px 16px', borderRadius: 6, border: '1px solid #cbd5e1', background: '#fff', color: '#475569', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
+          >
+            Hủy
+          </button>
+          <button
+            onClick={handleSave}
+            style={{ padding: '7px 18px', borderRadius: 6, border: 'none', background: 'linear-gradient(135deg, #0f58a7 0%, #1a6abf 100%)', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', boxShadow: '0 2px 4px rgba(15,88,167,0.2)' }}
+          >
+            Tạo & Lưu
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ─── Placeholder Tab ──────────────────────────────────────────────────────────
 function PlaceholderTab({ icon, title, desc }) {
   return (
@@ -3384,6 +3885,7 @@ export default function App() {
   const tabs = [
     { id: 'giao', label: 'Đơn Giao', icon: <Truck size={15} /> },
     { id: 'nhan', label: 'Đơn Nhận', icon: <PackageCheck size={15} /> },
+    { id: 'config', label: 'Cấu hình tổng hợp', icon: <Settings size={15} /> },
     { id: 'summary', label: 'Tổng hợp', icon: <BarChart3 size={15} /> },
   ]
 
@@ -3485,6 +3987,14 @@ export default function App() {
             projectOptions={allProjects}
             onImportFile={(rows, name) => handleImportFile('nhan', rows, name)}
             onDeleteFile={() => handleDeleteFile('nhan')}
+          />
+        )}
+        {tab === 'config' && (
+          <SummaryConfigTab
+            giaoRows={giaoRows}
+            nhanRows={nhanRows}
+            selectedProject={selectedProject}
+            allProjects={allProjects}
           />
         )}
         {tab === 'summary' && (
