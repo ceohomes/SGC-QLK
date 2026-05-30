@@ -708,52 +708,6 @@ function DataTable({ rows }) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
-      {/* Pagination top bar */}
-      <div style={{
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        marginBottom: 10, gap: 12, flexWrap: 'wrap', flexShrink: 0
-      }}>
-        {/* Left: page size selector */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ fontSize: 13, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>Hiển thị</span>
-          <div style={{ display: 'flex', gap: 4 }}>
-            {PAGE_SIZE_OPTIONS.map(sz => (
-              <button
-                key={sz}
-                onClick={() => { setPageSize(sz); setCurrentPage(1) }}
-                style={pageSize === sz
-                  ? { ...btnActive, minWidth: 44, height: 28, fontSize: 12 }
-                  : { ...btnBase, minWidth: 44, height: 28, fontSize: 12 }
-                }
-              >
-                {sz}
-              </button>
-            ))}
-          </div>
-          <span style={{ fontSize: 13, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>dòng / trang</span>
-        </div>
-
-        {/* Right: page info + nav */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <span style={{ fontSize: 13, color: 'var(--text-muted)', marginRight: 4, whiteSpace: 'nowrap' }}>
-            {startIdx + 1}–{endIdx} / {rows.length.toLocaleString()} dòng
-          </span>
-
-          {/* Prev */}
-          <button style={currentPage === 1 ? btnDisabled : btnBase} onClick={() => setCurrentPage(p => p - 1)}>‹</button>
-
-          {/* Page numbers */}
-          {getPageNums().map((p, i) =>
-            p === '...'
-              ? <span key={`ellipsis-${i}`} style={{ fontSize: 13, color: '#94a3b8', padding: '0 2px' }}>…</span>
-              : <button key={p} style={currentPage === p ? btnActive : btnBase} onClick={() => setCurrentPage(p)}>{p}</button>
-          )}
-
-          {/* Next */}
-          <button style={currentPage === totalPages ? btnDisabled : btnBase} onClick={() => setCurrentPage(p => p + 1)}>›</button>
-        </div>
-      </div>
-
       {/* Table */}
       <div className="table-wrap">
         <table>
@@ -825,9 +779,36 @@ function DataTable({ rows }) {
         </table>
       </div>
 
-      {/* Pagination bottom bar */}
-      {totalPages > 1 && (
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 12, flexShrink: 0 }}>
+      {/* Pagination bottom bar: trái = hiển thị dòng/trang, phải = số trang */}
+      <div style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        marginTop: 10, gap: 12, flexWrap: 'wrap', flexShrink: 0
+      }}>
+        {/* Left: page size selector */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ fontSize: 13, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>Hiển thị</span>
+          <div style={{ display: 'flex', gap: 4 }}>
+            {PAGE_SIZE_OPTIONS.map(sz => (
+              <button
+                key={sz}
+                onClick={() => { setPageSize(sz); setCurrentPage(1) }}
+                style={pageSize === sz
+                  ? { ...btnActive, minWidth: 44, height: 28, fontSize: 12 }
+                  : { ...btnBase, minWidth: 44, height: 28, fontSize: 12 }
+                }
+              >
+                {sz}
+              </button>
+            ))}
+          </div>
+          <span style={{ fontSize: 13, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>dòng / trang</span>
+        </div>
+
+        {/* Right: page info + nav */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <span style={{ fontSize: 13, color: 'var(--text-muted)', marginRight: 4, whiteSpace: 'nowrap' }}>
+            {startIdx + 1}–{endIdx} / {rows.length.toLocaleString()} dòng
+          </span>
           <button style={currentPage === 1 ? btnDisabled : btnBase} onClick={() => setCurrentPage(1)}>«</button>
           <button style={currentPage === 1 ? btnDisabled : btnBase} onClick={() => setCurrentPage(p => p - 1)}>‹</button>
           {getPageNums().map((p, i) =>
@@ -838,7 +819,7 @@ function DataTable({ rows }) {
           <button style={currentPage === totalPages ? btnDisabled : btnBase} onClick={() => setCurrentPage(p => p + 1)}>›</button>
           <button style={currentPage === totalPages ? btnDisabled : btnBase} onClick={() => setCurrentPage(totalPages)}>»</button>
         </div>
-      )}
+      </div>
     </div>
   )
 }
@@ -2533,6 +2514,41 @@ async function insertWithFallback(tableName, originalChunk) {
   throw new Error('Supabase từ chối đồng bộ dữ liệu. Đã thử đồng hóa viết hoa/thường và tự động gỡ các cột không có trong Table nhưng vẫn thất bại.')
 }
 
+// ─── Reset sequence của bảng về MAX(id)+1 hoặc về 1 nếu bảng trống ──────────
+// Yêu cầu: đã tạo 2 functions trên Supabase SQL Editor (xem hướng dẫn trong app)
+async function resetTableSequence(tableName) {
+  try {
+    const { count, error: countErr } = await supabase
+      .from(tableName)
+      .select('*', { count: 'exact', head: true })
+
+    if (countErr) {
+      console.warn(`[Sequence Reset] Không đọc được số dòng bảng "${tableName}":`, countErr.message)
+      return
+    }
+
+    if (count === 0 || count === null) {
+      // Bảng trống → reset sequence về 1
+      const { error: rpcErr } = await supabase.rpc('reset_sequence_to_one', { p_table: tableName })
+      if (rpcErr) {
+        console.warn(`[Sequence Reset] RPC reset_sequence_to_one thất bại: ${rpcErr.message}`)
+      } else {
+        console.log(`[Sequence Reset] Reset sequence "${tableName}" về 1 (bảng trống).`)
+      }
+    } else {
+      // Còn dữ liệu → đồng bộ sequence theo MAX(id)
+      const { error: rpcErr } = await supabase.rpc('sync_sequence_to_max', { p_table: tableName })
+      if (rpcErr) {
+        console.warn(`[Sequence Reset] RPC sync_sequence_to_max thất bại: ${rpcErr.message}`)
+      } else {
+        console.log(`[Sequence Reset] Sync sequence "${tableName}" theo MAX(id).`)
+      }
+    }
+  } catch (e) {
+    console.warn(`[Sequence Reset] Lỗi:`, e)
+  }
+}
+
 // Adaptive database row deletion helper which detects table columns from OpenAPI schema or fallback methods
 async function deleteFromTableAdaptive(tableName, possibleColumns, targetValue) {
   try {
@@ -2907,11 +2923,14 @@ export default function App() {
           }
         })
 
-        // Tự động điền Kho dự án tương ứng vào cột ten_du_an và du_an (duAn)
-        const projectVal = row.duAn || selectedProject || ''
-        item['duAn'] = projectVal || null
-        item['ten_du_an'] = selectedProject || projectVal || null
-        item['tenDuAn'] = selectedProject || projectVal || null
+        // Giữ nguyên duAn (du_an) của từng dòng - KHÔNG ghi đè bằng selectedProject
+        // Chỉ cập nhật ten_du_an theo Kho dự án đang chọn (nếu có)
+        const originalDuAn = row.duAn || ''
+        item['duAn'] = originalDuAn || null
+        // ten_du_an: nếu đang chọn kho dự án thì ghi tên kho, nếu không thì giữ nguyên duAn gốc
+        const tenDuAnVal = selectedProject || originalDuAn || null
+        item['ten_du_an'] = tenDuAnVal
+        item['tenDuAn'] = tenDuAnVal
 
         return item
       })
@@ -2922,6 +2941,9 @@ export default function App() {
         const chunk = payload.slice(i, i + chunkSize)
         await insertWithFallback(tableName, chunk)
       }
+
+      // 3b. Đồng bộ sequence ID sau khi insert để tránh id nhảy số
+      await resetTableSequence(tableName)
 
       // 4. Ensure project names exist in 'du_an' database safely.
       // Instead of an unsafe upsert that may trigger 409 Conflict errors (due to lack of unique constraint/index),
@@ -3019,15 +3041,16 @@ export default function App() {
     // Bước 2: Chỉ lấy các dòng có trạng thái "Đã phê duyệt"
     const approvedRows = matchedByUnit.filter(r => isApprovedStatus(r.trangThai))
 
-    // Bước 3: Gán duAn và ten_du_an cho tất cả rows đã lọc - tự động điền thông tin Kho dự án đã chọn làm mặc định hoặc giữ nguyên nếu khớp
+    // Bước 3: Gán ten_du_an theo Kho dự án đang chọn, nhưng GIỮ NGUYÊN duAn gốc của từng dòng
     const rowsToStore = approvedRows.map(row => {
       const originalDuAn = row.duAn && String(row.duAn).trim() !== '' ? String(row.duAn).trim() : ''
-      const finalDuAn = selectedProject || originalDuAn || ''
+      // Không thay đổi duAn gốc - chỉ set ten_du_an theo kho đang chọn
+      const tenDuAnVal = selectedProject || originalDuAn || ''
       return { 
         ...row, 
-        duAn: finalDuAn,
-        tenDuAn: finalDuAn,
-        ten_du_an: finalDuAn
+        duAn: originalDuAn, // giữ nguyên du_an gốc
+        tenDuAn: tenDuAnVal, // ten_du_an theo kho dự án
+        ten_du_an: tenDuAnVal
       }
     })
 
@@ -3133,16 +3156,18 @@ export default function App() {
       return updated
     })
 
-    // 2. Update existing rows locally so user sees immediate results on screen
+    // 2. Chỉ cập nhật ten_du_an trong rows - KHÔNG thay đổi duAn (du_an) gốc
+    // duAn là dữ liệu gốc từ file Excel, ten_du_an là tên Kho dự án được gán
     setGiaoRows(prev => prev.map(row => {
-      if (row.duAn === trimmedOld) {
-        return { ...row, duAn: trimmedNew }
+      // Cập nhật ten_du_an nếu row thuộc kho cũ
+      if (row.duAn === trimmedOld || row.ten_du_an === trimmedOld || row.tenDuAn === trimmedOld) {
+        return { ...row, tenDuAn: trimmedNew, ten_du_an: trimmedNew }
       }
       return row
     }))
     setNhanRows(prev => prev.map(row => {
-      if (row.duAn === trimmedOld) {
-        return { ...row, duAn: trimmedNew }
+      if (row.duAn === trimmedOld || row.ten_du_an === trimmedOld || row.tenDuAn === trimmedOld) {
+        return { ...row, tenDuAn: trimmedNew, ten_du_an: trimmedNew }
       }
       return row
     }))
@@ -3182,60 +3207,32 @@ export default function App() {
           }
         }
 
-        // -- Update 'don_giao' table
+        // -- Update 'don_giao' table: chỉ update ten_du_an, KHÔNG update du_an gốc
         const { error: gErr0 } = await supabase
           .from('don_giao')
           .update({ ten_du_an: trimmedNew })
           .eq('ten_du_an', trimmedOld)
 
         if (gErr0) {
-          const { error: gErr1 } = await supabase
+          await supabase
             .from('don_giao')
-            .update({ du_an: trimmedNew })
-            .eq('du_an', trimmedOld)
-          
-          if (gErr1) {
-            const { error: gErr2 } = await supabase
-              .from('don_giao')
-              .update({ duan: trimmedNew })
-              .eq('duan', trimmedOld)
-            
-            if (gErr2) {
-              await supabase
-                .from('don_giao')
-                .update({ duAn: trimmedNew })
-                .eq('duAn', trimmedOld)
-                .catch(e => console.warn('Ignore: failed camelCase don_giao rename', e))
-            }
-          }
+            .update({ tenDuAn: trimmedNew })
+            .eq('tenDuAn', trimmedOld)
+            .catch(e => console.warn('Ignore: failed camelCase don_giao ten_du_an rename', e))
         }
 
-        // -- Update 'don_nhan' table
+        // -- Update 'don_nhan' table: chỉ update ten_du_an, KHÔNG update du_an gốc
         const { error: nErr0 } = await supabase
           .from('don_nhan')
           .update({ ten_du_an: trimmedNew })
           .eq('ten_du_an', trimmedOld)
 
         if (nErr0) {
-          const { error: nErr1 } = await supabase
+          await supabase
             .from('don_nhan')
-            .update({ du_an: trimmedNew })
-            .eq('du_an', trimmedOld)
-          
-          if (nErr1) {
-            const { error: nErr2 } = await supabase
-              .from('don_nhan')
-              .update({ duan: trimmedNew })
-              .eq('duan', trimmedOld)
-            
-            if (nErr2) {
-              await supabase
-                .from('don_nhan')
-                .update({ duAn: trimmedNew })
-                .eq('duAn', trimmedOld)
-                .catch(e => console.warn('Ignore: failed camelCase don_nhan rename', e))
-            }
-          }
+            .update({ tenDuAn: trimmedNew })
+            .eq('tenDuAn', trimmedOld)
+            .catch(e => console.warn('Ignore: failed camelCase don_nhan ten_du_an rename', e))
         }
 
         setSupabaseMessage({
