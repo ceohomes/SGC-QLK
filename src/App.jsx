@@ -663,9 +663,41 @@ const PAGE_SIZE_OPTIONS = [50, 100, 200, 500]
 function DataTable({ rows }) {
   const [pageSize, setPageSize] = React.useState(100)
   const [currentPage, setCurrentPage] = React.useState(1)
+  const tableWrapRef = React.useRef(null)
+  const mirrorRef = React.useRef(null)
 
   // Reset to page 1 when rows change (filter applied)
   React.useEffect(() => { setCurrentPage(1) }, [rows])
+
+  // Sync scroll giữa bảng và thanh cuộn mirror dưới
+  React.useEffect(() => {
+    const wrap = tableWrapRef.current
+    const mirror = mirrorRef.current
+    if (!wrap || !mirror) return
+
+    const syncMirrorWidth = () => {
+      const inner = wrap.querySelector('table')
+      if (inner) {
+        mirror.firstChild.style.width = inner.scrollWidth + 'px'
+      }
+    }
+    syncMirrorWidth()
+
+    const onWrapScroll = () => { mirror.scrollLeft = wrap.scrollLeft }
+    const onMirrorScroll = () => { wrap.scrollLeft = mirror.scrollLeft }
+
+    wrap.addEventListener('scroll', onWrapScroll)
+    mirror.addEventListener('scroll', onMirrorScroll)
+
+    const ro = new ResizeObserver(syncMirrorWidth)
+    ro.observe(wrap)
+
+    return () => {
+      wrap.removeEventListener('scroll', onWrapScroll)
+      mirror.removeEventListener('scroll', onMirrorScroll)
+      ro.disconnect()
+    }
+  }, [rows, pageSize])
 
   if (rows.length === 0) return (
     <div className="empty-state">
@@ -709,7 +741,7 @@ function DataTable({ rows }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
       {/* Table */}
-      <div className="table-wrap">
+      <div className="table-wrap" ref={tableWrapRef} style={{ overflowX: 'hidden', overflowY: 'auto' }}>
         <table>
           <thead>
             <tr>
@@ -777,6 +809,11 @@ function DataTable({ rows }) {
             ))}
           </tbody>
         </table>
+      </div>
+
+      {/* Mirror scrollbar ngang - dính ngay dưới bảng */}
+      <div ref={mirrorRef} className="scroll-mirror">
+        <div style={{ height: 1 }} />
       </div>
 
       {/* Pagination bottom bar: trái = hiển thị dòng/trang, phải = số trang */}
@@ -888,13 +925,13 @@ function OrderTab({
       )
     }
     if (trangThai) r = r.filter(row => row.trangThai === trangThai)
-    if (selectedProject) r = r.filter(row => row.duAn === selectedProject)
+    if (selectedProject) r = r.filter(row => (row.ten_du_an || row.tenDuAn || row.duAn) === selectedProject)
     return r
   }, [rows, search, trangThai, selectedProject])
 
   const projectFilteredRowsForStats = useMemo(() => {
     if (!selectedProject) return rows
-    return rows.filter(r => r.duAn === selectedProject)
+    return rows.filter(r => (r.ten_du_an || r.tenDuAn || r.duAn) === selectedProject)
   }, [rows, selectedProject])
 
   const handleExportExcel = useCallback(() => {
@@ -1726,8 +1763,8 @@ function DeleteProjectModal({ isOpen, onClose, onConfirm, projectName, giaoRows,
   if (!isOpen) return null
 
   // Đếm số dòng dữ liệu thuộc dự án này
-  const giaoCount = (giaoRows || []).filter(r => r.duAn === projectName).length
-  const nhanCount = (nhanRows || []).filter(r => r.duAn === projectName).length
+  const giaoCount = (giaoRows || []).filter(r => (r.ten_du_an || r.tenDuAn || r.duAn) === projectName).length
+  const nhanCount = (nhanRows || []).filter(r => (r.ten_du_an || r.tenDuAn || r.duAn) === projectName).length
   const hasData = giaoCount > 0 || nhanCount > 0
 
   return (
@@ -2878,12 +2915,14 @@ export default function App() {
 
       // 1. Delete existing records belonging to the synced projects to avoid wiping other unrelated projects.
       // If no projects are found in the sync list, delete all table rows as fallback.
-      const uniqueProjectsInSync = [...new Set(rowsToSync.map(r => r.duAn).filter(Boolean))]
+      // Lấy danh sách ten_du_an (Kho dự án) để xóa đúng các dòng cũ
+      const uniqueProjectsInSync = [...new Set(rowsToSync.map(r => r.ten_du_an || r.tenDuAn || r.duAn).filter(Boolean))]
       
       if (uniqueProjectsInSync.length > 0) {
         console.log(`[Sync] Đang dọn dẹp các dòng cũ thuộc ${uniqueProjectsInSync.length} dự án đang lưu...`)
         for (const proj of uniqueProjectsInSync) {
-          const delRes = await deleteFromTableAdaptive(tableName, ['duAn', 'du_an', 'duan', 'ten_du_an', 'tenduan', 'tenDuAn'], proj)
+          // Ưu tiên xóa theo ten_du_an (Kho dự án), không phải du_an gốc
+          const delRes = await deleteFromTableAdaptive(tableName, ['ten_du_an', 'tenDuAn', 'tenduan'], proj)
           if (!delRes.success && delRes.reason !== 'table_empty') {
             console.warn(`[Sync] Không thể tự động dọn dẹp dự án "${proj}" trên bảng "${tableName}":`, delRes.error)
           }
@@ -3071,14 +3110,14 @@ export default function App() {
     // 1. Xóa dữ liệu local - chỉ xóa rows thuộc selectedProject, không xóa dữ liệu kho khác
     if (type === 'giao') {
       if (selectedProject) {
-        setGiaoRows(prev => prev.filter(r => r.duAn !== selectedProject))
+        setGiaoRows(prev => prev.filter(r => (r.ten_du_an || r.tenDuAn || r.duAn) !== selectedProject))
       } else {
         setGiaoRows([])
         setGiaoFileName('')
       }
     } else {
       if (selectedProject) {
-        setNhanRows(prev => prev.filter(r => r.duAn !== selectedProject))
+        setNhanRows(prev => prev.filter(r => (r.ten_du_an || r.tenDuAn || r.duAn) !== selectedProject))
       } else {
         setNhanRows([])
         setNhanFileName('')
@@ -3094,7 +3133,7 @@ export default function App() {
         let query = supabase.from(tableName).delete()
         if (selectedProject) {
           // Xóa theo dự án đang chọn sử dụng cơ chế Adaptive cực kỳ tối ưu
-          const deleteRes = await deleteFromTableAdaptive(tableName, ['duAn', 'du_an', 'duan', 'ten_du_an', 'tenduan', 'tenDuAn'], selectedProject)
+          const deleteRes = await deleteFromTableAdaptive(tableName, ['ten_du_an', 'tenDuAn', 'tenduan'], selectedProject)
           if (!deleteRes.success && deleteRes.reason !== 'table_empty') {
             throw deleteRes.error || new Error('Không tìm thấy cột phù hợp hoặc không được phân quyền xóa.')
           }
@@ -3172,7 +3211,7 @@ export default function App() {
       return row
     }))
 
-    // Update active selection if user had the old name selected
+    // Update active selection nếu đang chọn kho cũ
     if (selectedProject === trimmedOld) {
       setSelectedProject(trimmedNew)
     }
@@ -3274,19 +3313,19 @@ export default function App() {
 
     // Clear references from in-memory delivery/receipt rows so it doesn't stay in fileProjects list!
     setGiaoRows(prev => prev.map(row => {
-      if (row.duAn === trimmed) {
-        return { ...row, duAn: '' }
+      if ((row.ten_du_an || row.tenDuAn || row.duAn) === trimmed) {
+        return { ...row, ten_du_an: '', tenDuAn: '' }
       }
       return row
     }))
     setNhanRows(prev => prev.map(row => {
-      if (row.duAn === trimmed) {
-        return { ...row, duAn: '' }
+      if ((row.ten_du_an || row.tenDuAn || row.duAn) === trimmed) {
+        return { ...row, ten_du_an: '', tenDuAn: '' }
       }
       return row
     }))
 
-    // Reset active selection if the deleted project is currently selected
+    // Reset active selection nếu đang chọn kho bị xóa
     if (selectedProject === trimmed) {
       setSelectedProject('')
     }
@@ -3301,13 +3340,13 @@ export default function App() {
 
         // Xóa tuần tự: Xóa các tham chiếu ở con trước để tránh Foreign Key Violation, sau đó mới xóa ở cha
         console.log('[Supabase Delete] Thực hiện xóa liên kết don_giao...')
-        const resGiao = await deleteFromTableAdaptive('don_giao', ['duAn', 'du_an', 'duan', 'ten_du_an', 'tenduan', 'tenDuAn'], trimmed)
+        const resGiao = await deleteFromTableAdaptive('don_giao', ['ten_du_an', 'tenDuAn', 'tenduan'], trimmed)
         if (!resGiao.success && resGiao.reason !== 'table_empty') {
           console.warn('[Supabase Delete] Cảnh báo lỗi xóa don_giao (có thể bỏ qua nếu bảng không dùng/không có dữ liệu):', resGiao.error)
         }
 
         console.log('[Supabase Delete] Thực hiện xóa liên kết don_nhan...')
-        const resNhan = await deleteFromTableAdaptive('don_nhan', ['duAn', 'du_an', 'duan', 'ten_du_an', 'tenduan', 'tenDuAn'], trimmed)
+        const resNhan = await deleteFromTableAdaptive('don_nhan', ['ten_du_an', 'tenDuAn', 'tenduan'], trimmed)
         if (!resNhan.success && resNhan.reason !== 'table_empty') {
           console.warn('[Supabase Delete] Cảnh báo lỗi xóa don_nhan (col có thể bỏ qua nếu bảng không dùng/không có dữ liệu):', resNhan.error)
         }

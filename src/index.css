@@ -113,7 +113,8 @@ input, select {
 
 /* Table Design */
 .table-wrap {
-  overflow: auto;
+  overflow-x: hidden; /* ẩn scrollbar ngang gốc, dùng mirror bên ngoài */
+  overflow-y: auto;
   position: relative;
   border-radius: var(--radius-lg);
   border: 1px solid var(--border);
@@ -121,6 +122,32 @@ input, select {
   box-shadow: var(--shadow-sm);
   flex: 1;
   min-height: 0;
+}
+/* Thanh cuộn mirror ngang dưới bảng */
+.scroll-mirror {
+  overflow-x: auto;
+  overflow-y: hidden;
+  height: 10px;
+  flex-shrink: 0;
+  margin-bottom: 2px;
+  border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+  background: #f1f5f9;
+  border: 1px solid var(--border);
+  border-top: none;
+}
+.scroll-mirror::-webkit-scrollbar {
+  height: 10px;
+}
+.scroll-mirror::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 10px;
+}
+.scroll-mirror::-webkit-scrollbar-thumb {
+  background: #94a3b8;
+  border-radius: 10px;
+}
+.scroll-mirror::-webkit-scrollbar-thumb:hover {
+  background: #64748b;
 }
 table {
   width: max-content;
