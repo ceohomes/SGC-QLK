@@ -2706,8 +2706,12 @@ async function resetTableSequence(tableName) {
   }
 }
 
-// Adaptive database row deletion helper which detects table columns from OpenAPI schema or fallback methods
-const tableSchemaCache = {}
+// Pre-populate cache cho các bảng đã biết cấu trúc — tránh fetch schema không cần thiết
+const tableSchemaCache = {
+  don_giao: ['id', 'ten_du_an', 'tenDuAn', 'tenduan', 'du_an'],
+  don_nhan: ['id', 'ten_du_an', 'tenDuAn', 'tenduan', 'du_an'],
+  du_an:    ['id', 'ten_du_an', 'tenduan', 'tenDuAn'],
+}
 async function deleteFromTableAdaptive(tableName, possibleColumns, targetValue) {
   try {
     let columns = null
@@ -2729,28 +2733,24 @@ async function deleteFromTableAdaptive(tableName, possibleColumns, targetValue) 
           if (def && def.properties) {
             columns = Object.keys(def.properties)
             tableSchemaCache[tableName] = columns // Lưu cache
-            console.log(`[Schema Finder] Phát hiện và cache các cột của bảng "${tableName}":`, columns)
+            console.log(`[Schema Finder] Cache cột bảng "${tableName}":`, columns)
           }
         }
       } catch (schemaErr) {
-        console.warn('[Schema Finder] Lỗi khi tải OpenAPI schema từ Supabase:', schemaErr.message)
+        console.warn('[Schema Finder] Lỗi tải OpenAPI schema:', schemaErr.message)
       }
     }
 
-    // Try 2: Row inspection fallback (if OpenAPI schema was unreachable or failed)
+    // Try 2: Kiểm tra bảng có trống không (chỉ select id để tối thiểu Egress)
     if (!columns) {
-      const { data, error } = await supabase.from(tableName).select('*').limit(1)
-      if (!error && data && data.length > 0) {
-        columns = Object.keys(data[0])
-        tableSchemaCache[tableName] = columns // Lưu cache
-        console.log(`[Schema Finder] Phát hiện và cache các cột của bảng "${tableName}" từ dòng mẫu:`, columns)
-      } else if (!error && (!data || data.length === 0)) {
-        // Table is empty, no-op is safe
-        console.log(`[Schema Finder] Bảng "${tableName}" đang trống hoàn toàn. Không cần gửi lệnh DELETE.`)
+      const { data, error } = await supabase.from(tableName).select('id').limit(1)
+      if (!error && (!data || data.length === 0)) {
+        console.log(`[Schema Finder] Bảng "${tableName}" trống. Không cần DELETE.`)
         return { success: true, reason: 'table_empty' }
       } else if (error) {
-        console.warn(`[Schema Finder] Lỗi truy vấn dòng mẫu từ bảng "${tableName}":`, error.message)
+        console.warn(`[Schema Finder] Lỗi truy vấn bảng "${tableName}":`, error.message)
       }
+      // columns vẫn null → chuyển sang fallback sequential bên dưới
     }
 
     // If we have columns, find the matching column to delete by
@@ -2796,6 +2796,7 @@ async function deleteFromTableAdaptive(tableName, possibleColumns, targetValue) 
 export default function App() {
   const [tab, setTab] = useState('giao')
   const syncInProgressRef = React.useRef(false) // Tạm dừng Realtime khi đang sync để tránh flood request
+  const realtimeDebounceRef = React.useRef(null) // Debounce timer cho Realtime callbacks
   const [selectedProject, setSelectedProject] = useState('')
   const [showAddProjectModal, setShowAddProjectModal] = useState(false)
   const [showEditProjectModal, setShowEditProjectModal] = useState(false)
@@ -2829,155 +2830,89 @@ export default function App() {
   const [syncingType, setSyncingType] = useState(null) // 'giao' | 'nhan' | null
   const [supabaseMessage, setSupabaseMessage] = useState(null) // { text, type: 'success' | 'error' | 'info' }
 
-  // Fetch data from Supabase - hoisted so it can be called anywhere (e.g. after delete)
-  const loadDataFromSupabase = React.useCallback(async () => {
+  // Danh sách columns cần fetch (bỏ qua metadata Supabase như created_at, updated_at)
+  const SELECT_COLS = 'id,ngay_xuat_nhap,ma_vat_tu,ma_s_a_p,thong_so_ky_thuat,ten_vat_tu,dvt,loai_don,ma_don_nhap_kho,ma_don_xuat_kho,khoi_luong_nhap,ma_don_vi_giao,don_vi_giao,nguoi_giao,khoi_luong_xuat,ma_don_vi_nhan,don_vi_nhan,nguoi_phe_duyet,ten_nguon,ma_nguon,lo,hang_muc,so_hop_dong,thu_kho,bien_so_xe,phan_khu,du_an,tinh_trang,nguoi_nhan,ma_don_lien_quan,nha_cung_cap,ma_don_chuyen_tiep_l_c,ma_don_chuyen_tiep_n_b,ghi_chu,ghi_chu_vat_tu,trang_thai,nhan_hieu,ten_du_an,tenDuAn'
+
+  const loadProjectsFromSupabase = React.useCallback(async () => {
     if (!isSupabaseConfigured) return
     try {
       const { data: projData, error: projError } = await supabase
         .from('du_an')
-        .select('*')
-      
+        .select('ten_du_an,tenduan,tenDuAn')
+
       if (projError) {
-        console.error('Lỗi tải danh mục dự án từ Supabase:', projError)
-        if (projError.status === 401 || projError.message?.includes('Unauthorized') || projError.message?.includes('JWT') || projError.message?.includes('key') || projError.message?.includes('Invalid API key')) {
-          setSupabaseAuthError(true)
-        }
-      } else {
-        setSupabaseAuthError(false)
+        console.error('Lỗi tải danh mục dự án:', projError)
+        if (projError.status === 401) setSupabaseAuthError(true)
+        return
       }
-
-      if (!projError && projData) {
-        const list = projData.map(d => {
-          const key = Object.keys(d).find(k =>
-            k.toLowerCase() === 'ten_du_an' ||
-            k.toLowerCase() === 'tenduan' ||
-            k.toLowerCase() === 'ten_duan' ||
-            k.toLowerCase() === 'tendu_an' ||
-            k.toLowerCase() === 'tenduan'
-          ) || Object.keys(d)[0]
-          return d[key]
-        }).filter(Boolean)
-        const sortedList = [...list].sort()
-        setCustomProjects(sortedList)
-        localStorage.setItem('sgc_custom_projects', JSON.stringify(sortedList))
-      }
-
-      // Paginate and load ALL rows for don_giao without limit constraints
-      let gData = []
-      let fromG = 0
-      const PAGE_SIZE = 1000
-      let hasMoreG = true
-      let gErrorObj = null
-
-      while (hasMoreG) {
-        const { data: gPage, error: gError } = await supabase
-          .from('don_giao')
-          .select('*')
-          .order('id', { ascending: true })
-          .range(fromG, fromG + PAGE_SIZE - 1)
-        
-        if (gError) {
-          gErrorObj = gError
-          break
-        }
-        if (gPage && gPage.length > 0) {
-          gData = [...gData, ...gPage]
-          if (gPage.length < PAGE_SIZE) {
-            hasMoreG = false
-          } else {
-            fromG += PAGE_SIZE
-          }
-        } else {
-          hasMoreG = false
-        }
-      }
-
-      if (gErrorObj) {
-        if (gErrorObj.status === 401) {
-          setSupabaseAuthError(true)
-        }
-      } else {
-        if (gData && gData.length > 0) {
-          const mappedG = gData.map((item, idx) => {
-            const normalized = normalizeDbRow(item)
-            return { id: normalized.id || idx, ...normalized }
-          })
-          // Sắp xếp tăng dần theo ID để đảm bảo thứ tự dòng từ trên xuống như file gốc
-          mappedG.sort((a, b) => {
-            const idA = Number(a.id)
-            const idB = Number(b.id)
-            if (!isNaN(idA) && !isNaN(idB)) {
-              return idA - idB
-            }
-            return 0
-          })
-          setGiaoRows(mappedG)
-          setGiaoFileName('Report_Orders_Don_giao (Supabase DB)')
-        } else {
-          setGiaoRows([])
-          setGiaoFileName('')
-        }
-      }
-
-      // Paginate and load ALL rows for don_nhan without limit constraints
-      let nData = []
-      let fromN = 0
-      let hasMoreN = true
-      let nErrorObj = null
-
-      while (hasMoreN) {
-        const { data: nPage, error: nError } = await supabase
-          .from('don_nhan')
-          .select('*')
-          .order('id', { ascending: true })
-          .range(fromN, fromN + PAGE_SIZE - 1)
-        
-        if (nError) {
-          nErrorObj = nError
-          break
-        }
-        if (nPage && nPage.length > 0) {
-          nData = [...nData, ...nPage]
-          if (nPage.length < PAGE_SIZE) {
-            hasMoreN = false
-          } else {
-            fromN += PAGE_SIZE
-          }
-        } else {
-          hasMoreN = false
-        }
-      }
-
-      if (nErrorObj) {
-        if (nErrorObj.status === 401) {
-          setSupabaseAuthError(true)
-        }
-      } else {
-        if (nData && nData.length > 0) {
-          const mappedN = nData.map((item, idx) => {
-            const normalized = normalizeDbRow(item)
-            return { id: normalized.id || idx, ...normalized }
-          })
-          // Sắp xếp tăng dần theo ID để đảm bảo thứ tự dòng từ trên xuống như file gốc
-          mappedN.sort((a, b) => {
-            const idA = Number(a.id)
-            const idB = Number(b.id)
-            if (!isNaN(idA) && !isNaN(idB)) {
-              return idA - idB
-            }
-            return 0
-          })
-          setNhanRows(mappedN)
-          setNhanFileName('Report_Orders_Don_nhan (Supabase DB)')
-        } else {
-          setNhanRows([])
-          setNhanFileName('')
-        }
+      setSupabaseAuthError(false)
+      if (projData) {
+        const list = projData.map(d => d.ten_du_an || d.tenduan || d.tenDuAn).filter(Boolean).sort()
+        setCustomProjects(list)
+        localStorage.setItem('sgc_custom_projects', JSON.stringify(list))
       }
     } catch (e) {
-      console.error('Lỗi khi tải dữ liệu từ Supabase:', e)
+      console.error('Lỗi tải dự án:', e)
     }
   }, [])
+
+  const loadTableFromSupabase = React.useCallback(async (tableType) => {
+    if (!isSupabaseConfigured) return
+    const tableName = tableType === 'giao' ? 'don_giao' : 'don_nhan'
+    const PAGE_SIZE = 1000
+    let allData = []
+    let from = 0
+    let hasMore = true
+    let errorObj = null
+
+    try {
+      while (hasMore) {
+        const { data: page, error } = await supabase
+          .from(tableName)
+          .select('*')
+          .order('id', { ascending: true })
+          .range(from, from + PAGE_SIZE - 1)
+
+        if (error) { errorObj = error; break }
+        if (page && page.length > 0) {
+          allData = [...allData, ...page]
+          hasMore = page.length === PAGE_SIZE
+          from += PAGE_SIZE
+        } else {
+          hasMore = false
+        }
+      }
+
+      if (errorObj) {
+        if (errorObj.status === 401) setSupabaseAuthError(true)
+        return
+      }
+
+      const mapped = allData.map((item, idx) => {
+        const normalized = normalizeDbRow(item)
+        return { id: normalized.id || idx, ...normalized }
+      }).sort((a, b) => Number(a.id) - Number(b.id))
+
+      if (tableType === 'giao') {
+        setGiaoRows(mapped)
+        setGiaoFileName(mapped.length > 0 ? 'Report_Orders_Don_giao (Supabase DB)' : '')
+      } else {
+        setNhanRows(mapped)
+        setNhanFileName(mapped.length > 0 ? 'Report_Orders_Don_nhan (Supabase DB)' : '')
+      }
+    } catch (e) {
+      console.error(`Lỗi tải bảng ${tableName}:`, e)
+    }
+  }, [])
+
+  const loadDataFromSupabase = React.useCallback(async () => {
+    if (!isSupabaseConfigured) return
+    await Promise.all([
+      loadProjectsFromSupabase(),
+      loadTableFromSupabase('giao'),
+      loadTableFromSupabase('nhan'),
+    ])
+  }, [loadProjectsFromSupabase, loadTableFromSupabase])
 
   // Fetch initial data from Supabase if connected
   React.useEffect(() => {
@@ -2985,30 +2920,31 @@ export default function App() {
 
     if (!isSupabaseConfigured) return
 
-    // Đăng ký nhận thông tin Realtime tức thời từ Supabase
+    // Realtime: CHỈ lắng nghe bảng du_an (rất nhẹ, vài row)
+    // KHÔNG lắng nghe don_giao/don_nhan — tránh fetch lại hàng nghìn row mỗi lần có thay đổi
+    // Dữ liệu don_giao/don_nhan được cập nhật qua local state ngay sau khi sync/xóa
+    const debouncedLoadProjects = () => {
+      if (syncInProgressRef.current) return
+      if (realtimeDebounceRef.current) clearTimeout(realtimeDebounceRef.current)
+      realtimeDebounceRef.current = setTimeout(() => {
+        loadProjectsFromSupabase()
+      }, 3000)
+    }
+
     const channel = supabase
-      .channel('schema-changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'don_giao' }, () => {
-        if (syncInProgressRef.current) return // Bỏ qua khi đang sync
-        console.log('[Supabase Realtime] Tự động cập nhật bảng Đơn Giao...')
-        loadDataFromSupabase()
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'don_nhan' }, () => {
-        if (syncInProgressRef.current) return // Bỏ qua khi đang sync
-        console.log('[Supabase Realtime] Tự động cập nhật bảng Đơn Nhận...')
-        loadDataFromSupabase()
-      })
+      .channel('du_an-changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'du_an' }, () => {
-        if (syncInProgressRef.current) return // Bỏ qua khi đang sync
-        console.log('[Supabase Realtime] Tự động cập nhật danh sách Dự Án...')
-        loadDataFromSupabase()
+        if (syncInProgressRef.current) return
+        console.log('[Realtime] Cập nhật danh sách Dự Án...')
+        debouncedLoadProjects()
       })
       .subscribe()
 
     return () => {
+      if (realtimeDebounceRef.current) clearTimeout(realtimeDebounceRef.current)
       supabase.removeChannel(channel)
     }
-  }, [loadDataFromSupabase])
+  }, [loadDataFromSupabase, loadProjectsFromSupabase])
 
   const syncRowsToSupabase = async (type, rowsToSync, isAuto = false) => {
     if (!isSupabaseConfigured) return
@@ -3096,10 +3032,14 @@ export default function App() {
       })
 
       // 3. Batch insert with chunking & smart casing fallbacks
-      const chunkSize = 1000
+      const chunkSize = 500
       for (let i = 0; i < payload.length; i += chunkSize) {
         const chunk = payload.slice(i, i + chunkSize)
         await insertWithFallback(tableName, chunk)
+        // Nhỏ nghỉ giữa các chunk để tránh quá tải request
+        if (i + chunkSize < payload.length) {
+          await new Promise(r => setTimeout(r, 200))
+        }
       }
 
       // 3b. Đồng bộ sequence ID sau khi insert để tránh id nhảy số
@@ -3169,7 +3109,10 @@ export default function App() {
       setTimeout(() => setSupabaseMessage(null), 6000)
     } finally {
       setSyncingType(null)
-      syncInProgressRef.current = false // Bật lại Realtime sau khi sync xong
+      // Delay trước khi bật lại Realtime để tránh flood request ngay sau khi sync
+      setTimeout(() => {
+        syncInProgressRef.current = false
+      }, 3000)
     }
   }
 
@@ -3357,64 +3300,53 @@ export default function App() {
     if (isSupabaseConfigured) {
       try {
         setSupabaseMessage({
-          text: `Đang kết nối để sửa tên dự án thành "${trimmedNew}" trên Supabase...`,
+          text: `Đang cập nhật tên dự án trên Supabase...`,
           type: 'info'
         })
 
-        // -- Update 'du_an' table
-        // Try all casing structures for public schema matching:
-        const { error: pErr1 } = await supabase
-          .from('du_an')
-          .update({ ten_du_an: trimmedNew })
-          .eq('ten_du_an', trimmedOld)
-        
-        if (pErr1) {
-          const { error: pErr2 } = await supabase
-            .from('du_an')
-            .update({ tenduan: trimmedNew })
-            .eq('tenduan', trimmedOld)
-          
-          if (pErr2) {
-            await supabase
-              .from('du_an')
-              .update({ tenDuAn: trimmedNew })
-              .eq('tenDuAn', trimmedOld)
-              .catch(e => console.warn('Ignore: failed camelCase du_an rename', e))
+        const errors = []
+
+        // Helper: thử update một bảng với nhiều kiểu cột
+        const updateTable = async (table, possibleCols) => {
+          for (const col of possibleCols) {
+            const { error } = await supabase
+              .from(table)
+              .update({ [col]: trimmedNew })
+              .eq(col, trimmedOld)
+            if (!error) return true // thành công
+            // Nếu lỗi do cột không tồn tại → thử cột tiếp theo
+            const msg = error.message || ''
+            const isColMissing = msg.includes('column') || msg.includes('not exist') || msg.includes('schema cache')
+            if (!isColMissing) {
+              // Lỗi thực sự (quyền, constraint...) → báo lỗi ngay
+              errors.push(`[${table}] ${msg}`)
+              return false
+            }
           }
+          // Không có cột nào khớp → coi như không có gì cần update (bảng dùng cột khác)
+          return true
         }
 
-        // -- Update 'don_giao' table: chỉ update ten_du_an, KHÔNG update du_an gốc
-        const { error: gErr0 } = await supabase
-          .from('don_giao')
-          .update({ ten_du_an: trimmedNew })
-          .eq('ten_du_an', trimmedOld)
+        // Cập nhật bảng du_an
+        await updateTable('du_an', ['ten_du_an', 'tenduan', 'tenDuAn'])
 
-        if (gErr0) {
-          await supabase
-            .from('don_giao')
-            .update({ tenDuAn: trimmedNew })
-            .eq('tenDuAn', trimmedOld)
-            .catch(e => console.warn('Ignore: failed camelCase don_giao ten_du_an rename', e))
+        // Cập nhật bảng don_giao
+        await updateTable('don_giao', ['ten_du_an', 'tenDuAn', 'tenduan'])
+
+        // Cập nhật bảng don_nhan
+        await updateTable('don_nhan', ['ten_du_an', 'tenDuAn', 'tenduan'])
+
+        if (errors.length > 0) {
+          setSupabaseMessage({
+            text: `Cập nhật cục bộ thành công! Một số lỗi Supabase: ${errors.join(' | ')}`,
+            type: 'error'
+          })
+        } else {
+          setSupabaseMessage({
+            text: `Đã đổi tên dự án thành "${trimmedNew}" và đồng bộ toàn bộ dữ liệu lên Supabase!`,
+            type: 'success'
+          })
         }
-
-        // -- Update 'don_nhan' table: chỉ update ten_du_an, KHÔNG update du_an gốc
-        const { error: nErr0 } = await supabase
-          .from('don_nhan')
-          .update({ ten_du_an: trimmedNew })
-          .eq('ten_du_an', trimmedOld)
-
-        if (nErr0) {
-          await supabase
-            .from('don_nhan')
-            .update({ tenDuAn: trimmedNew })
-            .eq('tenDuAn', trimmedOld)
-            .catch(e => console.warn('Ignore: failed camelCase don_nhan ten_du_an rename', e))
-        }
-
-        setSupabaseMessage({
-          text: `Cập nhật dự án thành công & đã đồng bộ dữ liệu trên Supabase!`,
-          type: 'success'
-        })
         setTimeout(() => setSupabaseMessage(null), 5000)
       } catch (err) {
         console.error('Lỗi khi cập nhật Supabase:', err)
@@ -3496,8 +3428,8 @@ export default function App() {
           throw new Error(errorMsg)
         }
 
-        // Reload toàn bộ dữ liệu từ Supabase để đồng bộ sau khi xóa
-        await loadDataFromSupabase()
+        // Chỉ reload danh sách dự án (nhẹ), KHÔNG reload toàn bộ don_giao/don_nhan
+        await loadProjectsFromSupabase()
 
         setSupabaseMessage({
           text: `Xóa kho dự án "${trimmed}" thành công và đã đồng bộ!`,
@@ -3506,8 +3438,7 @@ export default function App() {
         setTimeout(() => setSupabaseMessage(null), 4000)
       } catch (err) {
         console.error('Lỗi khi xóa dự án trên Supabase:', err)
-        // Dù lỗi vẫn thử reload để đồng bộ
-        await loadDataFromSupabase().catch(() => {})
+        await loadProjectsFromSupabase().catch(() => {})
         setSupabaseMessage({
           text: `Đã xóa cục bộ thành công! Nhưng gặp lỗi đồng bộ Supabase: ${err.message || err}`,
           type: 'error'
