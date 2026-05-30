@@ -1275,27 +1275,77 @@ function saveSummaryConfigs(configs) {
   localStorage.setItem(SUMMARY_CONFIG_KEY, JSON.stringify(configs))
 }
 
+// ─── Contrast & Border Helpers ────────────────────────────────────────────────
+function getContrastColor(hexColor) {
+  if (!hexColor || typeof hexColor !== 'string' || !hexColor.startsWith('#')) return '#0f172a'
+  const hex = hexColor.replace('#', '')
+  if (hex.length < 6) return '#0f172a'
+  const r = parseInt(hex.substring(0, 2), 16)
+  const g = parseInt(hex.substring(2, 4), 16)
+  const b = parseInt(hex.substring(4, 6), 16)
+  if (isNaN(r) || isNaN(g) || isNaN(b)) return '#0f172a'
+  const yiq = ((r * 299) + (g * 587) + (b * 114)) / 1000
+  return (yiq >= 150) ? '#0f172a' : '#ffffff'
+}
+
+function getMutedContrastColor(hexColor) {
+  if (!hexColor || typeof hexColor !== 'string' || !hexColor.startsWith('#')) return '#64748b'
+  const hex = hexColor.replace('#', '')
+  if (hex.length < 6) return '#64748b'
+  const r = parseInt(hex.substring(0, 2), 16)
+  const g = parseInt(hex.substring(2, 4), 16)
+  const b = parseInt(hex.substring(4, 6), 16)
+  if (isNaN(r) || isNaN(g) || isNaN(b)) return '#64748b'
+  const yiq = ((r * 299) + (g * 587) + (b * 114)) / 1000
+  return (yiq >= 150) ? '#475569' : '#f1f5f9'
+}
+
+function getBorderColor(hexColor) {
+  if (!hexColor || typeof hexColor !== 'string' || !hexColor.startsWith('#')) return '#e2e8f0'
+  const hex = hexColor.replace('#', '')
+  if (hex.length < 6) return '#e2e8f0'
+  const r = parseInt(hex.substring(0, 2), 16)
+  const g = parseInt(hex.substring(2, 4), 16)
+  const b = parseInt(hex.substring(4, 6), 16)
+  if (isNaN(r) || isNaN(g) || isNaN(b)) return '#e2e8f0'
+  const nr = Math.max(0, r - 25)
+  const ng = Math.max(0, g - 25)
+  const nb = Math.max(0, b - 25)
+  return `#${nr.toString(16).padStart(2, '0')}${ng.toString(16).padStart(2, '0')}${nb.toString(16).padStart(2, '0')}`
+}
+
+const PRESET_COLORS = [
+  { name: 'Xanh dương nhạt', value: '#eff6ff', border: '#bfdbfe', text: '#1e3a8a' },
+  { name: 'Xanh lục nhạt', value: '#f0fdf4', border: '#bbf7d0', text: '#14532d' },
+  { name: 'Sắc xuân lục', value: '#ecfdf5', border: '#a7f3d0', text: '#064e3b' },
+  { name: 'Vàng cam nhạt', value: '#fffbeb', border: '#fde68a', text: '#78350f' },
+  { name: 'Ghi sáng', value: '#f8fafc', border: '#cbd5e1', text: '#334155' },
+  { name: 'Tím oải hương', value: '#faf5ff', border: '#e9d5ff', text: '#581c87' },
+  { name: 'Hồng phấn', value: '#fff1f2', border: '#fecdd3', text: '#881337' },
+]
+
 function SummaryConfigTab({ giaoRows, nhanRows, selectedProject, allProjects }) {
   const [configs, setConfigs] = React.useState(() => loadSummaryConfigs())
   const [showCreateModal, setShowCreateModal] = React.useState(false)
   const [expandedConfig, setExpandedConfig] = React.useState(null) // index of expanded config
+  const [configToDeleteIdx, setConfigToDeleteIdx] = React.useState(null)
 
   // Persist on change
   React.useEffect(() => { saveSummaryConfigs(configs) }, [configs])
 
-  // Bảng Đơn Giao hiển thị list Đơn vị Nhận (từ nhanRows)
+  // Bảng Đơn Giao hiển thị list Đơn vị Nhận (từ giaoRows)
   const getUniqueGiao = (proj) => {
-    const rows = proj ? nhanRows.filter(r => (r.ten_du_an || r.tenDuAn || r.duAn || '') === proj) : nhanRows
+    const rows = proj ? giaoRows.filter(r => (r.ten_du_an || r.tenDuAn || r.duAn || '') === proj) : giaoRows
     return [...new Set(rows.map(r => r.donViNhan).filter(Boolean))].sort()
   }
 
-  // Bảng Đơn Nhận hiển thị list Đơn vị Giao (từ giaoRows)
+  // Bảng Đơn Nhận hiển thị list Đơn vị Giao (từ nhanRows)
   const getUniqueNhan = (proj) => {
-    const rows = proj ? giaoRows.filter(r => (r.ten_du_an || r.tenDuAn || r.duAn || '') === proj) : giaoRows
+    const rows = proj ? nhanRows.filter(r => (r.ten_du_an || r.tenDuAn || r.duAn || '') === proj) : nhanRows
     return [...new Set(rows.map(r => r.donViGiao).filter(Boolean))].sort()
   }
 
-  const handleCreateConfig = (name, proj) => {
+  const handleCreateConfig = (name, proj, bgColor) => {
     const giaoUnits = getUniqueGiao(proj)
     const nhanUnits = getUniqueNhan(proj)
     const newConfig = {
@@ -1304,6 +1354,7 @@ function SummaryConfigTab({ giaoRows, nhanRows, selectedProject, allProjects }) 
       project: proj,
       giaoTable: giaoUnits.map(u => ({ unit: u, giamTru: '', boQua: false, tinhToan: true })),
       nhanTable: nhanUnits.map(u => ({ unit: u, giamTru: '', boQua: false, tinhToan: true })),
+      bgColor: bgColor || '#eff6ff',
     }
     const updated = [...configs, newConfig]
     setConfigs(updated)
@@ -1312,18 +1363,24 @@ function SummaryConfigTab({ giaoRows, nhanRows, selectedProject, allProjects }) 
   }
 
   const handleDeleteConfig = (idx) => {
-    if (!window.confirm(`Xóa cấu hình "${configs[idx].name}"?`)) return
     const updated = configs.filter((_, i) => i !== idx)
     setConfigs(updated)
     if (expandedConfig === idx) setExpandedConfig(null)
     else if (expandedConfig > idx) setExpandedConfig(expandedConfig - 1)
+    setConfigToDeleteIdx(null)
   }
 
   const updateGiaoRow = (cfgIdx, rowIdx, field, value) => {
     setConfigs(prev => {
       const next = prev.map((c, i) => {
         if (i !== cfgIdx) return c
-        const newGiao = c.giaoTable.map((r, j) => j === rowIdx ? { ...r, [field]: value } : r)
+        const newGiao = c.giaoTable.map((r, j) => {
+          if (j !== rowIdx) return r
+          if (typeof field === 'object' && field !== null) {
+            return { ...r, ...field }
+          }
+          return { ...r, [field]: value }
+        })
         return { ...c, giaoTable: newGiao }
       })
       return next
@@ -1334,11 +1391,37 @@ function SummaryConfigTab({ giaoRows, nhanRows, selectedProject, allProjects }) 
     setConfigs(prev => {
       const next = prev.map((c, i) => {
         if (i !== cfgIdx) return c
-        const newNhan = c.nhanTable.map((r, j) => j === rowIdx ? { ...r, [field]: value } : r)
+        const newNhan = c.nhanTable.map((r, j) => {
+          if (j !== rowIdx) return r
+          if (typeof field === 'object' && field !== null) {
+            return { ...r, ...field }
+          }
+          return { ...r, [field]: value }
+        })
         return { ...c, nhanTable: newNhan }
       })
       return next
     })
+  }
+
+  const setUnitColumn = (cfgIdx, rIdx, colName, tableType) => {
+    if (tableType === 'giao') {
+      if (colName === 'giamTru') {
+        updateGiaoRow(cfgIdx, rIdx, { giamTru: '1', boQua: false, tinhToan: false })
+      } else if (colName === 'boQua') {
+        updateGiaoRow(cfgIdx, rIdx, { giamTru: '', boQua: true, tinhToan: false })
+      } else if (colName === 'tinhToan') {
+        updateGiaoRow(cfgIdx, rIdx, { giamTru: '', boQua: false, tinhToan: true })
+      }
+    } else {
+      if (colName === 'giamTru') {
+        updateNhanRow(cfgIdx, rIdx, { giamTru: '1', boQua: false, tinhToan: false })
+      } else if (colName === 'boQua') {
+        updateNhanRow(cfgIdx, rIdx, { giamTru: '', boQua: true, tinhToan: false })
+      } else if (colName === 'tinhToan') {
+        updateNhanRow(cfgIdx, rIdx, { giamTru: '', boQua: false, tinhToan: true })
+      }
+    }
   }
 
   // Sync units when rows data changes (reload units for existing configs)
@@ -1434,9 +1517,15 @@ function SummaryConfigTab({ giaoRows, nhanRows, selectedProject, allProjects }) 
       {/* Config list */}
       {configs.map((cfg, cfgIdx) => {
         const isExpanded = expandedConfig === cfgIdx
+        const cardBorderColor = cfg.bgColor ? getBorderColor(cfg.bgColor) : '#e2e8f0'
+        const contrastColor = cfg.bgColor ? getContrastColor(cfg.bgColor) : '#0f172a'
+        const mutedColor = cfg.bgColor ? getMutedContrastColor(cfg.bgColor) : '#64748b'
+        const headerBgColor = cfg.bgColor || (isExpanded ? '#eff6ff' : '#f8fafc')
+        const headerBorderBottom = isExpanded ? `1px solid ${cfg.bgColor ? getBorderColor(cfg.bgColor) : '#bfdbfe'}` : 'none'
+
         return (
           <div key={cfg.id} style={{
-            background: '#fff', borderRadius: 12, border: '1px solid #e2e8f0',
+            background: '#fff', borderRadius: 12, border: `1px solid ${cardBorderColor}`,
             boxShadow: '0 2px 8px rgba(15,23,42,0.06)', marginBottom: 16, overflow: 'hidden'
           }}>
             {/* Config header row */}
@@ -1445,8 +1534,8 @@ function SummaryConfigTab({ giaoRows, nhanRows, selectedProject, allProjects }) 
               style={{
                 display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                 padding: '14px 20px', cursor: 'pointer',
-                background: isExpanded ? '#eff6ff' : '#f8fafc',
-                borderBottom: isExpanded ? '1px solid #bfdbfe' : 'none',
+                background: headerBgColor,
+                borderBottom: headerBorderBottom,
                 transition: 'background 0.15s'
               }}
             >
@@ -1459,9 +1548,9 @@ function SummaryConfigTab({ giaoRows, nhanRows, selectedProject, allProjects }) 
                   <BarChart3 size={18} color={isExpanded ? '#fff' : '#64748b'} />
                 </div>
                 <div>
-                  <div style={{ fontWeight: 700, fontSize: 15, color: '#0f172a' }}>{cfg.name}</div>
-                  <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>
-                    Dự án: <strong style={{ color: '#0f58a7' }}>{cfg.project || 'Tất cả dự án'}</strong>
+                  <div style={{ fontWeight: 700, fontSize: 15, color: contrastColor }}>{cfg.name}</div>
+                  <div style={{ fontSize: 12, color: mutedColor, marginTop: 2 }}>
+                    Dự án: <strong style={{ color: contrastColor }}>{cfg.project || 'Tất cả dự án'}</strong>
                     &nbsp;·&nbsp; {cfg.giaoTable.length} đơn vị giao &nbsp;·&nbsp; {cfg.nhanTable.length} đơn vị nhận
                   </div>
                 </div>
@@ -1471,15 +1560,15 @@ function SummaryConfigTab({ giaoRows, nhanRows, selectedProject, allProjects }) 
                   onClick={(e) => { e.stopPropagation(); handleRefreshConfig(cfgIdx) }}
                   title="Làm mới danh sách đơn vị từ dữ liệu hiện tại"
                   style={{
-                    background: 'transparent', border: '1px solid #cbd5e1', borderRadius: 6,
-                    padding: '4px 8px', cursor: 'pointer', color: '#475569',
+                    background: 'transparent', border: `1px solid ${cfg.bgColor ? getBorderColor(cfg.bgColor) : '#cbd5e1'}`, borderRadius: 6,
+                    padding: '4px 8px', cursor: 'pointer', color: contrastColor,
                     display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, fontWeight: 600
                   }}
                 >
-                  <RefreshCw size={12} /> Làm mới
+                  <RefreshCw size={12} color={contrastColor} /> Làm mới
                 </button>
                 <button
-                  onClick={(e) => { e.stopPropagation(); handleDeleteConfig(cfgIdx) }}
+                  onClick={(e) => { e.stopPropagation(); setConfigToDeleteIdx(cfgIdx) }}
                   title="Xóa cấu hình này"
                   style={{
                     background: 'transparent', border: '1px solid #fca5a5', borderRadius: 6,
@@ -1489,7 +1578,7 @@ function SummaryConfigTab({ giaoRows, nhanRows, selectedProject, allProjects }) 
                 >
                   <Trash2 size={12} /> Xóa
                 </button>
-                <ChevronDown size={16} color="#64748b" style={{
+                <ChevronDown size={16} color={mutedColor} style={{
                   transform: isExpanded ? 'rotate(180deg)' : 'none',
                   transition: 'transform 0.2s'
                 }} />
@@ -1499,11 +1588,23 @@ function SummaryConfigTab({ giaoRows, nhanRows, selectedProject, allProjects }) 
             {/* Config body */}
             {isExpanded && (
               <div style={{ padding: '20px 20px 24px' }}>
-                <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap' }}>
+                {/* Drag and Drop instructions */}
+                <div style={{
+                  fontSize: '12.5px', color: '#0369a1', background: '#f0f9ff',
+                  padding: '10px 14px', borderRadius: 8, marginBottom: 16,
+                  border: '1px solid #bae6fd', display: 'flex', alignItems: 'center', gap: 8
+                }}>
+                  <span style={{ fontSize: 16 }}>💡</span>
+                  <span>
+                    <strong>Tính năng kéo thả:</strong> Bạn có thể nắm biểu tượng ☰ của <strong>Tên đơn vị</strong> rồi kéo thả sang ô tương ứng ở 3 cột (Giảm trừ, Bỏ qua, Tính toán) để thiết lập nhanh, tiện lợi và lưu lại tức thì!
+                  </span>
+                </div>
+
+                <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap' }}>
                   {/* Bảng Đơn Giao */}
                   <div style={{ flex: '1 1 400px', minWidth: 320 }}>
                     <div style={{
-                      display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10
+                      display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12
                     }}>
                       <div style={{
                         width: 28, height: 28, borderRadius: 6, background: '#eff6ff',
@@ -1524,55 +1625,330 @@ function SummaryConfigTab({ giaoRows, nhanRows, selectedProject, allProjects }) 
                         Không có dữ liệu đơn vị giao cho dự án này
                       </div>
                     ) : (
-                      <div style={{ overflowX: 'auto', borderRadius: 8, border: '1px solid #e2e8f0' }}>
+                      <div style={{ overflowX: 'auto', borderRadius: 8, border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
                         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, tableLayout: 'fixed' }}>
                           <thead>
                             <tr>
-                              <th style={{ ...thStyle, textAlign: 'left' }}>Đơn vị nhận</th>
-                              <th style={{ ...thStyle, width: 110, minWidth: 110, maxWidth: 110 }}>Giảm trừ</th>
-                              <th style={{ ...thStyle, width: 80, minWidth: 80, maxWidth: 80 }}>Bỏ qua</th>
-                              <th style={{ ...thStyle, width: 100, minWidth: 100, maxWidth: 100 }}>Tính toán</th>
+                              <th style={{ ...thStyle, textAlign: 'left', width: '25%', minWidth: '25%' }}>Đơn vị nhận</th>
+                              <th style={{ ...thStyle, width: '25%', minWidth: '25%', maxWidth: '25%' }}>Giảm trừ</th>
+                              <th style={{ ...thStyle, width: '25%', minWidth: '25%', maxWidth: '25%' }}>Bỏ qua</th>
+                              <th style={{ ...thStyle, width: '25%', minWidth: '25%', maxWidth: '25%' }}>Tính toán</th>
                             </tr>
                           </thead>
                           <tbody>
-                            {cfg.giaoTable.map((row, rIdx) => (
-                              <tr key={row.unit} style={{ background: rIdx % 2 === 0 ? '#fff' : '#f8fafc' }}>
-                                <td style={{ ...tdStyle, fontWeight: 600, color: '#0f172a' }}>{row.unit}</td>
-                                <td style={{ ...tdStyle, textAlign: 'center', width: 110, minWidth: 110, maxWidth: 110 }}>
-                                  <input
-                                    type="number"
-                                    value={row.giamTru}
-                                    onChange={e => updateGiaoRow(cfgIdx, rIdx, 'giamTru', e.target.value)}
-                                    placeholder="0"
-                                    style={{
-                                      width: 72, padding: '4px 6px', fontSize: 12,
-                                      border: '1px solid #cbd5e1', borderRadius: 4,
-                                      textAlign: 'right', outline: 'none',
-                                      background: row.boQua ? '#f8fafc' : '#fff',
-                                      color: row.boQua ? '#94a3b8' : '#0f172a'
+                            {cfg.giaoTable.map((row, rIdx) => {
+                              const isGiamTru = !!row.giamTru
+                              const isBoQua = !!row.boQua
+                              const isTinhToan = !isGiamTru && !isBoQua
+
+                              return (
+                                <tr key={row.unit} style={{ background: rIdx % 2 === 0 ? '#fff' : '#f8fafc', transition: 'background 0.15s' }}>
+                                  {/* Col 1: Unit Identity */}
+                                  <td 
+                                    draggable={true}
+                                    onDragStart={(e) => {
+                                      e.dataTransfer.setData('text/plain', row.unit);
+                                      e.dataTransfer.setData('application/sgc-unit-type', 'giao');
+                                      e.dataTransfer.setData('application/sgc-row-index', String(rIdx));
+                                      e.dataTransfer.effectAllowed = 'copyMove';
                                     }}
-                                    disabled={row.boQua}
-                                  />
-                                </td>
-                                <td style={{ ...tdStyle, textAlign: 'center', width: 80, minWidth: 80, maxWidth: 80 }}>
-                                  <input
-                                    type="checkbox"
-                                    checked={row.boQua}
-                                    onChange={e => updateGiaoRow(cfgIdx, rIdx, 'boQua', e.target.checked)}
-                                    style={{ width: 16, height: 16, cursor: 'pointer', accentColor: '#ef4444' }}
-                                  />
-                                </td>
-                                <td style={{ ...tdStyle, textAlign: 'center', width: 100, minWidth: 100, maxWidth: 100 }}>
-                                  <input
-                                    type="checkbox"
-                                    checked={row.tinhToan && !row.boQua}
-                                    onChange={e => updateGiaoRow(cfgIdx, rIdx, 'tinhToan', e.target.checked)}
-                                    style={{ width: 16, height: 16, cursor: 'pointer', accentColor: '#10b981' }}
-                                    disabled={row.boQua}
-                                  />
-                                </td>
-                              </tr>
-                            ))}
+                                    style={{ 
+                                      ...tdStyle, 
+                                      fontWeight: 600, 
+                                      color: '#0f172a',
+                                      width: '25%',
+                                      minWidth: '25%',
+                                      cursor: 'grab',
+                                      userSelect: 'none',
+                                      borderRight: '1px solid #f1f5f9'
+                                    }}
+                                    title="Nhấp giữ kéo sang các cột bên cạnh"
+                                  >
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, width: '100%', overflow: 'hidden' }}>
+                                      <span style={{ color: '#94a3b8', fontSize: 13, cursor: 'grab', userSelect: 'none', flexShrink: 0 }}>☰</span>
+                                      <span style={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', flex: 1 }} title={row.unit}>
+                                        {row.unit}
+                                      </span>
+                                    </div>
+                                  </td>
+
+                                  {/* Col 2: Giảm trừ */}
+                                  <td 
+                                    style={{ 
+                                      ...tdStyle, 
+                                      textAlign: 'center', 
+                                      width: '25%', 
+                                      minWidth: '25%', 
+                                      maxWidth: '25%',
+                                      borderRight: '1px solid #f1f5f9',
+                                      transition: 'all 0.15s',
+                                      cursor: 'pointer',
+                                      position: 'relative',
+                                      padding: '8px'
+                                    }}
+                                    onClick={() => setUnitColumn(cfgIdx, rIdx, 'giamTru', 'giao')}
+                                    onDragOver={(e) => {
+                                      e.preventDefault();
+                                      e.currentTarget.style.backgroundColor = '#eff6ff';
+                                      e.currentTarget.style.outline = '2px dashed #3b82f6';
+                                    }}
+                                    onDragLeave={(e) => {
+                                      e.preventDefault();
+                                      e.currentTarget.style.backgroundColor = '';
+                                      e.currentTarget.style.outline = 'none';
+                                    }}
+                                    onDrop={(e) => {
+                                      e.preventDefault();
+                                      e.currentTarget.style.backgroundColor = '';
+                                      e.currentTarget.style.outline = 'none';
+                                      const typeStr = e.dataTransfer.getData('application/sgc-unit-type');
+                                      const draggedIdxStr = e.dataTransfer.getData('application/sgc-row-index');
+                                      if (typeStr === 'giao' && draggedIdxStr !== '') {
+                                        const draggedIdx = Number(draggedIdxStr);
+                                        updateGiaoRow(cfgIdx, draggedIdx, { giamTru: '1', boQua: false, tinhToan: false });
+                                      }
+                                    }}
+                                  >
+                                    {isGiamTru ? (
+                                      <div 
+                                        draggable={true}
+                                        onDragStart={(e) => {
+                                          e.dataTransfer.setData('text/plain', row.unit);
+                                          e.dataTransfer.setData('application/sgc-unit-type', 'giao');
+                                          e.dataTransfer.setData('application/sgc-row-index', String(rIdx));
+                                          e.dataTransfer.effectAllowed = 'copyMove';
+                                        }}
+                                        style={{
+                                          background: '#eff6ff',
+                                          border: '1px solid #bfdbfe',
+                                          color: '#1e40af',
+                                          borderRadius: 6,
+                                          padding: '4px 8px',
+                                          fontSize: '11.5px',
+                                          fontWeight: 600,
+                                          display: 'inline-flex',
+                                          alignItems: 'center',
+                                          gap: 4,
+                                          cursor: 'grab',
+                                          boxShadow: '0 1px 2px rgba(30,64,175,0.05)',
+                                          maxWidth: '100%'
+                                        }}
+                                      >
+                                        <span style={{ flexShrink: 0, color: '#3b82f6' }}>☰</span>
+                                        <span style={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }} title={row.unit}>{row.unit}</span>
+                                        <button 
+                                          type="button" 
+                                          onClick={(e) => {
+                                            e.stopPropagation()
+                                            updateGiaoRow(cfgIdx, rIdx, { giamTru: '', boQua: false, tinhToan: true })
+                                          }}
+                                          style={{
+                                            background: 'transparent',
+                                            border: 'none',
+                                            color: '#1e40af',
+                                            cursor: 'pointer',
+                                            padding: 0,
+                                            marginLeft: 4,
+                                            fontSize: 14,
+                                            lineHeight: 1,
+                                            display: 'flex',
+                                            alignItems: 'center'
+                                          }}
+                                          title="Bỏ thiết lập"
+                                        >
+                                          ×
+                                        </button>
+                                      </div>
+                                    ) : (
+                                      <span style={{ fontSize: 11, color: '#cbd5e1', fontStyle: 'italic', pointerEvents: 'none' }}>Kéo thả hoặc Click</span>
+                                    )}
+                                  </td>
+
+                                  {/* Col 3: Bỏ qua */}
+                                  <td 
+                                    style={{ 
+                                      ...tdStyle, 
+                                      textAlign: 'center', 
+                                      width: '25%', 
+                                      minWidth: '25%', 
+                                      maxWidth: '25%',
+                                      borderRight: '1px solid #f1f5f9',
+                                      transition: 'all 0.15s',
+                                      cursor: 'pointer',
+                                      position: 'relative',
+                                      padding: '8px'
+                                    }}
+                                    onClick={() => setUnitColumn(cfgIdx, rIdx, 'boQua', 'giao')}
+                                    onDragOver={(e) => {
+                                      e.preventDefault();
+                                      e.currentTarget.style.backgroundColor = '#fff1f2';
+                                      e.currentTarget.style.outline = '2px dashed #f43f5e';
+                                    }}
+                                    onDragLeave={(e) => {
+                                      e.preventDefault();
+                                      e.currentTarget.style.backgroundColor = '';
+                                      e.currentTarget.style.outline = 'none';
+                                    }}
+                                    onDrop={(e) => {
+                                      e.preventDefault();
+                                      e.currentTarget.style.backgroundColor = '';
+                                      e.currentTarget.style.outline = 'none';
+                                      const typeStr = e.dataTransfer.getData('application/sgc-unit-type');
+                                      const draggedIdxStr = e.dataTransfer.getData('application/sgc-row-index');
+                                      if (typeStr === 'giao' && draggedIdxStr !== '') {
+                                        const draggedIdx = Number(draggedIdxStr);
+                                        updateGiaoRow(cfgIdx, draggedIdx, { giamTru: '', boQua: true, tinhToan: false });
+                                      }
+                                    }}
+                                  >
+                                    {isBoQua ? (
+                                      <div 
+                                        draggable={true}
+                                        onDragStart={(e) => {
+                                          e.dataTransfer.setData('text/plain', row.unit);
+                                          e.dataTransfer.setData('application/sgc-unit-type', 'giao');
+                                          e.dataTransfer.setData('application/sgc-row-index', String(rIdx));
+                                          e.dataTransfer.effectAllowed = 'copyMove';
+                                        }}
+                                        style={{
+                                          background: '#fff1f2',
+                                          border: '1px solid #fecdd3',
+                                          color: '#9f1239',
+                                          borderRadius: 6,
+                                          padding: '4px 8px',
+                                          fontSize: '11.5px',
+                                          fontWeight: 600,
+                                          display: 'inline-flex',
+                                          alignItems: 'center',
+                                          gap: 4,
+                                          cursor: 'grab',
+                                          boxShadow: '0 1px 2px rgba(159,18,57,0.05)',
+                                          maxWidth: '100%'
+                                        }}
+                                      >
+                                        <span style={{ flexShrink: 0, color: '#f43f5e' }}>☰</span>
+                                        <span style={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }} title={row.unit}>{row.unit}</span>
+                                        <button 
+                                          type="button" 
+                                          onClick={(e) => {
+                                            e.stopPropagation()
+                                            updateGiaoRow(cfgIdx, rIdx, { giamTru: '', boQua: false, tinhToan: true })
+                                          }}
+                                          style={{
+                                            background: 'transparent',
+                                            border: 'none',
+                                            color: '#9f1239',
+                                            cursor: 'pointer',
+                                            padding: 0,
+                                            marginLeft: 4,
+                                            fontSize: 14,
+                                            lineHeight: 1,
+                                            display: 'flex',
+                                            alignItems: 'center'
+                                          }}
+                                          title="Bỏ thiết lập"
+                                        >
+                                          ×
+                                        </button>
+                                      </div>
+                                    ) : (
+                                      <span style={{ fontSize: 11, color: '#cbd5e1', fontStyle: 'italic', pointerEvents: 'none' }}>Kéo thả hoặc Click</span>
+                                    )}
+                                  </td>
+
+                                  {/* Col 4: Tính toán */}
+                                  <td 
+                                    style={{ 
+                                      ...tdStyle, 
+                                      textAlign: 'center', 
+                                      width: '25%', 
+                                      minWidth: '25%', 
+                                      maxWidth: '25%',
+                                      transition: 'all 0.15s',
+                                      cursor: 'pointer',
+                                      position: 'relative',
+                                      padding: '8px'
+                                    }}
+                                    onClick={() => setUnitColumn(cfgIdx, rIdx, 'tinhToan', 'giao')}
+                                    onDragOver={(e) => {
+                                      e.preventDefault();
+                                      e.currentTarget.style.backgroundColor = '#ecfdf5';
+                                      e.currentTarget.style.outline = '2px dashed #10b981';
+                                    }}
+                                    onDragLeave={(e) => {
+                                      e.preventDefault();
+                                      e.currentTarget.style.backgroundColor = '';
+                                      e.currentTarget.style.outline = 'none';
+                                    }}
+                                    onDrop={(e) => {
+                                      e.preventDefault();
+                                      e.currentTarget.style.backgroundColor = '';
+                                      e.currentTarget.style.outline = 'none';
+                                      const typeStr = e.dataTransfer.getData('application/sgc-unit-type');
+                                      const draggedIdxStr = e.dataTransfer.getData('application/sgc-row-index');
+                                      if (typeStr === 'giao' && draggedIdxStr !== '') {
+                                        const draggedIdx = Number(draggedIdxStr);
+                                        updateGiaoRow(cfgIdx, draggedIdx, { giamTru: '', boQua: false, tinhToan: true });
+                                      }
+                                    }}
+                                  >
+                                    {isTinhToan ? (
+                                      <div 
+                                        draggable={true}
+                                        onDragStart={(e) => {
+                                          e.dataTransfer.setData('text/plain', row.unit);
+                                          e.dataTransfer.setData('application/sgc-unit-type', 'giao');
+                                          e.dataTransfer.setData('application/sgc-row-index', String(rIdx));
+                                          e.dataTransfer.effectAllowed = 'copyMove';
+                                        }}
+                                        style={{
+                                          background: '#ecfdf5',
+                                          border: '1px solid #a7f3d0',
+                                          color: '#065f46',
+                                          borderRadius: 6,
+                                          padding: '4px 8px',
+                                          fontSize: '11.5px',
+                                          fontWeight: 600,
+                                          display: 'inline-flex',
+                                          alignItems: 'center',
+                                          gap: 4,
+                                          cursor: 'grab',
+                                          boxShadow: '0 1px 2px rgba(6,95,70,0.05)',
+                                          maxWidth: '100%'
+                                        }}
+                                      >
+                                        <span style={{ flexShrink: 0, color: '#10b981' }}>☰</span>
+                                        <span style={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }} title={row.unit}>{row.unit}</span>
+                                        <button 
+                                          type="button" 
+                                          onClick={(e) => {
+                                            e.stopPropagation()
+                                            updateGiaoRow(cfgIdx, rIdx, { giamTru: '', boQua: true, tinhToan: false })
+                                          }}
+                                          style={{
+                                            background: 'transparent',
+                                            border: 'none',
+                                            color: '#065f46',
+                                            cursor: 'pointer',
+                                            padding: 0,
+                                            marginLeft: 4,
+                                            fontSize: 14,
+                                            lineHeight: 1,
+                                            display: 'flex',
+                                            alignItems: 'center'
+                                          }}
+                                          title="Bỏ thiết lập"
+                                        >
+                                          ×
+                                        </button>
+                                      </div>
+                                    ) : (
+                                      <span style={{ fontSize: 11, color: '#cbd5e1', fontStyle: 'italic', pointerEvents: 'none' }}>Kéo thả hoặc Click</span>
+                                    )}
+                                  </td>
+                                </tr>
+                              )
+                            })}
                           </tbody>
                         </table>
                       </div>
@@ -1582,7 +1958,7 @@ function SummaryConfigTab({ giaoRows, nhanRows, selectedProject, allProjects }) 
                   {/* Bảng Đơn Nhận */}
                   <div style={{ flex: '1 1 400px', minWidth: 320 }}>
                     <div style={{
-                      display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10
+                      display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12
                     }}>
                       <div style={{
                         width: 28, height: 28, borderRadius: 6, background: '#f0fdf4',
@@ -1603,55 +1979,330 @@ function SummaryConfigTab({ giaoRows, nhanRows, selectedProject, allProjects }) 
                         Không có dữ liệu đơn vị nhận cho dự án này
                       </div>
                     ) : (
-                      <div style={{ overflowX: 'auto', borderRadius: 8, border: '1px solid #e2e8f0' }}>
+                      <div style={{ overflowX: 'auto', borderRadius: 8, border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
                         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, tableLayout: 'fixed' }}>
                           <thead>
                             <tr>
-                              <th style={{ ...thStyle, textAlign: 'left', background: '#065f46' }}>Đơn vị giao</th>
-                              <th style={{ ...thStyle, width: 110, minWidth: 110, maxWidth: 110, background: '#065f46' }}>Giảm trừ</th>
-                              <th style={{ ...thStyle, width: 80, minWidth: 80, maxWidth: 80, background: '#065f46' }}>Bỏ qua</th>
-                              <th style={{ ...thStyle, width: 100, minWidth: 100, maxWidth: 100, background: '#065f46' }}>Tính toán</th>
+                              <th style={{ ...thStyle, textAlign: 'left', width: '25%', minWidth: '25%', background: '#065f46', border: '1px solid #04432e' }}>Đơn vị giao</th>
+                              <th style={{ ...thStyle, width: '25%', minWidth: '25%', maxWidth: '25%', background: '#065f46', border: '1px solid #04432e' }}>Giảm trừ</th>
+                              <th style={{ ...thStyle, width: '25%', minWidth: '25%', maxWidth: '25%', background: '#065f46', border: '1px solid #04432e' }}>Bỏ qua</th>
+                              <th style={{ ...thStyle, width: '25%', minWidth: '25%', maxWidth: '25%', background: '#065f46', border: '1px solid #04432e' }}>Tính toán</th>
                             </tr>
                           </thead>
                           <tbody>
-                            {cfg.nhanTable.map((row, rIdx) => (
-                              <tr key={row.unit} style={{ background: rIdx % 2 === 0 ? '#fff' : '#f8fafc' }}>
-                                <td style={{ ...tdStyle, fontWeight: 600, color: '#0f172a' }}>{row.unit}</td>
-                                <td style={{ ...tdStyle, textAlign: 'center', width: 110, minWidth: 110, maxWidth: 110 }}>
-                                  <input
-                                    type="number"
-                                    value={row.giamTru}
-                                    onChange={e => updateNhanRow(cfgIdx, rIdx, 'giamTru', e.target.value)}
-                                    placeholder="0"
-                                    style={{
-                                      width: 72, padding: '4px 6px', fontSize: 12,
-                                      border: '1px solid #cbd5e1', borderRadius: 4,
-                                      textAlign: 'right', outline: 'none',
-                                      background: row.boQua ? '#f8fafc' : '#fff',
-                                      color: row.boQua ? '#94a3b8' : '#0f172a'
+                            {cfg.nhanTable.map((row, rIdx) => {
+                              const isGiamTru = !!row.giamTru
+                              const isBoQua = !!row.boQua
+                              const isTinhToan = !isGiamTru && !isBoQua
+
+                              return (
+                                <tr key={row.unit} style={{ background: rIdx % 2 === 0 ? '#fff' : '#f8fafc', transition: 'background 0.15s' }}>
+                                  {/* Col 1: Unit Identity */}
+                                  <td 
+                                    draggable={true}
+                                    onDragStart={(e) => {
+                                      e.dataTransfer.setData('text/plain', row.unit);
+                                      e.dataTransfer.setData('application/sgc-unit-type', 'nhan');
+                                      e.dataTransfer.setData('application/sgc-row-index', String(rIdx));
+                                      e.dataTransfer.effectAllowed = 'copyMove';
                                     }}
-                                    disabled={row.boQua}
-                                  />
-                                </td>
-                                <td style={{ ...tdStyle, textAlign: 'center', width: 80, minWidth: 80, maxWidth: 80 }}>
-                                  <input
-                                    type="checkbox"
-                                    checked={row.boQua}
-                                    onChange={e => updateNhanRow(cfgIdx, rIdx, 'boQua', e.target.checked)}
-                                    style={{ width: 16, height: 16, cursor: 'pointer', accentColor: '#ef4444' }}
-                                  />
-                                </td>
-                                <td style={{ ...tdStyle, textAlign: 'center', width: 100, minWidth: 100, maxWidth: 100 }}>
-                                  <input
-                                    type="checkbox"
-                                    checked={row.tinhToan && !row.boQua}
-                                    onChange={e => updateNhanRow(cfgIdx, rIdx, 'tinhToan', e.target.checked)}
-                                    style={{ width: 16, height: 16, cursor: 'pointer', accentColor: '#10b981' }}
-                                    disabled={row.boQua}
-                                  />
-                                </td>
-                              </tr>
-                            ))}
+                                    style={{ 
+                                      ...tdStyle, 
+                                      fontWeight: 600, 
+                                      color: '#0f172a',
+                                      width: '25%',
+                                      minWidth: '25%',
+                                      cursor: 'grab',
+                                      userSelect: 'none',
+                                      borderRight: '1px solid #f1f5f9'
+                                    }}
+                                    title="Nhấp giữ kéo sang các cột bên cạnh"
+                                  >
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, width: '100%', overflow: 'hidden' }}>
+                                      <span style={{ color: '#94a3b8', fontSize: 13, cursor: 'grab', userSelect: 'none', flexShrink: 0 }}>☰</span>
+                                      <span style={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', flex: 1 }} title={row.unit}>
+                                        {row.unit}
+                                      </span>
+                                    </div>
+                                  </td>
+
+                                  {/* Col 2: Giảm trừ */}
+                                  <td 
+                                    style={{ 
+                                      ...tdStyle, 
+                                      textAlign: 'center', 
+                                      width: '25%', 
+                                      minWidth: '25%', 
+                                      maxWidth: '25%',
+                                      borderRight: '1px solid #f1f5f9',
+                                      transition: 'all 0.15s',
+                                      cursor: 'pointer',
+                                      position: 'relative',
+                                      padding: '8px'
+                                    }}
+                                    onClick={() => setUnitColumn(cfgIdx, rIdx, 'giamTru', 'nhan')}
+                                    onDragOver={(e) => {
+                                      e.preventDefault();
+                                      e.currentTarget.style.backgroundColor = '#eff6ff';
+                                      e.currentTarget.style.outline = '2px dashed #3b82f6';
+                                    }}
+                                    onDragLeave={(e) => {
+                                      e.preventDefault();
+                                      e.currentTarget.style.backgroundColor = '';
+                                      e.currentTarget.style.outline = 'none';
+                                    }}
+                                    onDrop={(e) => {
+                                      e.preventDefault();
+                                      e.currentTarget.style.backgroundColor = '';
+                                      e.currentTarget.style.outline = 'none';
+                                      const typeStr = e.dataTransfer.getData('application/sgc-unit-type');
+                                      const draggedIdxStr = e.dataTransfer.getData('application/sgc-row-index');
+                                      if (typeStr === 'nhan' && draggedIdxStr !== '') {
+                                        const draggedIdx = Number(draggedIdxStr);
+                                        updateNhanRow(cfgIdx, draggedIdx, { giamTru: '1', boQua: false, tinhToan: false });
+                                      }
+                                    }}
+                                  >
+                                    {isGiamTru ? (
+                                      <div 
+                                        draggable={true}
+                                        onDragStart={(e) => {
+                                          e.dataTransfer.setData('text/plain', row.unit);
+                                          e.dataTransfer.setData('application/sgc-unit-type', 'nhan');
+                                          e.dataTransfer.setData('application/sgc-row-index', String(rIdx));
+                                          e.dataTransfer.effectAllowed = 'copyMove';
+                                        }}
+                                        style={{
+                                          background: '#eff6ff',
+                                          border: '1px solid #bfdbfe',
+                                          color: '#1e40af',
+                                          borderRadius: 6,
+                                          padding: '4px 8px',
+                                          fontSize: '11.5px',
+                                          fontWeight: 600,
+                                          display: 'inline-flex',
+                                          alignItems: 'center',
+                                          gap: 4,
+                                          cursor: 'grab',
+                                          boxShadow: '0 1px 2px rgba(30,64,175,0.05)',
+                                          maxWidth: '100%'
+                                        }}
+                                      >
+                                        <span style={{ flexShrink: 0, color: '#3b82f6' }}>☰</span>
+                                        <span style={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }} title={row.unit}>{row.unit}</span>
+                                        <button 
+                                          type="button" 
+                                          onClick={(e) => {
+                                            e.stopPropagation()
+                                            updateNhanRow(cfgIdx, rIdx, { giamTru: '', boQua: false, tinhToan: true })
+                                          }}
+                                          style={{
+                                            background: 'transparent',
+                                            border: 'none',
+                                            color: '#1e40af',
+                                            cursor: 'pointer',
+                                            padding: 0,
+                                            marginLeft: 4,
+                                            fontSize: 14,
+                                            lineHeight: 1,
+                                            display: 'flex',
+                                            alignItems: 'center'
+                                          }}
+                                          title="Bỏ thiết lập"
+                                        >
+                                          ×
+                                        </button>
+                                      </div>
+                                    ) : (
+                                      <span style={{ fontSize: 11, color: '#cbd5e1', fontStyle: 'italic', pointerEvents: 'none' }}>Kéo thả hoặc Click</span>
+                                    )}
+                                  </td>
+
+                                  {/* Col 3: Bỏ qua */}
+                                  <td 
+                                    style={{ 
+                                      ...tdStyle, 
+                                      textAlign: 'center', 
+                                      width: '25%', 
+                                      minWidth: '25%', 
+                                      maxWidth: '25%',
+                                      borderRight: '1px solid #f1f5f9',
+                                      transition: 'all 0.15s',
+                                      cursor: 'pointer',
+                                      position: 'relative',
+                                      padding: '8px'
+                                    }}
+                                    onClick={() => setUnitColumn(cfgIdx, rIdx, 'boQua', 'nhan')}
+                                    onDragOver={(e) => {
+                                      e.preventDefault();
+                                      e.currentTarget.style.backgroundColor = '#fff1f2';
+                                      e.currentTarget.style.outline = '2px dashed #f43f5e';
+                                    }}
+                                    onDragLeave={(e) => {
+                                      e.preventDefault();
+                                      e.currentTarget.style.backgroundColor = '';
+                                      e.currentTarget.style.outline = 'none';
+                                    }}
+                                    onDrop={(e) => {
+                                      e.preventDefault();
+                                      e.currentTarget.style.backgroundColor = '';
+                                      e.currentTarget.style.outline = 'none';
+                                      const typeStr = e.dataTransfer.getData('application/sgc-unit-type');
+                                      const draggedIdxStr = e.dataTransfer.getData('application/sgc-row-index');
+                                      if (typeStr === 'nhan' && draggedIdxStr !== '') {
+                                        const draggedIdx = Number(draggedIdxStr);
+                                        updateNhanRow(cfgIdx, draggedIdx, { giamTru: '', boQua: true, tinhToan: false });
+                                      }
+                                    }}
+                                  >
+                                    {isBoQua ? (
+                                      <div 
+                                        draggable={true}
+                                        onDragStart={(e) => {
+                                          e.dataTransfer.setData('text/plain', row.unit);
+                                          e.dataTransfer.setData('application/sgc-unit-type', 'nhan');
+                                          e.dataTransfer.setData('application/sgc-row-index', String(rIdx));
+                                          e.dataTransfer.effectAllowed = 'copyMove';
+                                        }}
+                                        style={{
+                                          background: '#fff1f2',
+                                          border: '1px solid #fecdd3',
+                                          color: '#9f1239',
+                                          borderRadius: 6,
+                                          padding: '4px 8px',
+                                          fontSize: '11.5px',
+                                          fontWeight: 600,
+                                          display: 'inline-flex',
+                                          alignItems: 'center',
+                                          gap: 4,
+                                          cursor: 'grab',
+                                          boxShadow: '0 1px 2px rgba(159,18,57,0.05)',
+                                          maxWidth: '100%'
+                                        }}
+                                      >
+                                        <span style={{ flexShrink: 0, color: '#f43f5e' }}>☰</span>
+                                        <span style={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }} title={row.unit}>{row.unit}</span>
+                                        <button 
+                                          type="button" 
+                                          onClick={(e) => {
+                                            e.stopPropagation()
+                                            updateNhanRow(cfgIdx, rIdx, { giamTru: '', boQua: false, tinhToan: true })
+                                          }}
+                                          style={{
+                                            background: 'transparent',
+                                            border: 'none',
+                                            color: '#9f1239',
+                                            cursor: 'pointer',
+                                            padding: 0,
+                                            marginLeft: 4,
+                                            fontSize: 14,
+                                            lineHeight: 1,
+                                            display: 'flex',
+                                            alignItems: 'center'
+                                          }}
+                                          title="Bỏ thiết lập"
+                                        >
+                                          ×
+                                        </button>
+                                      </div>
+                                    ) : (
+                                      <span style={{ fontSize: 11, color: '#cbd5e1', fontStyle: 'italic', pointerEvents: 'none' }}>Kéo thả hoặc Click</span>
+                                    )}
+                                  </td>
+
+                                  {/* Col 4: Tính toán */}
+                                  <td 
+                                    style={{ 
+                                      ...tdStyle, 
+                                      textAlign: 'center', 
+                                      width: '25%', 
+                                      minWidth: '25%', 
+                                      maxWidth: '25%',
+                                      transition: 'all 0.15s',
+                                      cursor: 'pointer',
+                                      position: 'relative',
+                                      padding: '8px'
+                                    }}
+                                    onClick={() => setUnitColumn(cfgIdx, rIdx, 'tinhToan', 'nhan')}
+                                    onDragOver={(e) => {
+                                      e.preventDefault();
+                                      e.currentTarget.style.backgroundColor = '#ecfdf5';
+                                      e.currentTarget.style.outline = '2px dashed #10b981';
+                                    }}
+                                    onDragLeave={(e) => {
+                                      e.preventDefault();
+                                      e.currentTarget.style.backgroundColor = '';
+                                      e.currentTarget.style.outline = 'none';
+                                    }}
+                                    onDrop={(e) => {
+                                      e.preventDefault();
+                                      e.currentTarget.style.backgroundColor = '';
+                                      e.currentTarget.style.outline = 'none';
+                                      const typeStr = e.dataTransfer.getData('application/sgc-unit-type');
+                                      const draggedIdxStr = e.dataTransfer.getData('application/sgc-row-index');
+                                      if (typeStr === 'nhan' && draggedIdxStr !== '') {
+                                        const draggedIdx = Number(draggedIdxStr);
+                                        updateNhanRow(cfgIdx, draggedIdx, { giamTru: '', boQua: false, tinhToan: true });
+                                      }
+                                    }}
+                                  >
+                                    {isTinhToan ? (
+                                      <div 
+                                        draggable={true}
+                                        onDragStart={(e) => {
+                                          e.dataTransfer.setData('text/plain', row.unit);
+                                          e.dataTransfer.setData('application/sgc-unit-type', 'nhan');
+                                          e.dataTransfer.setData('application/sgc-row-index', String(rIdx));
+                                          e.dataTransfer.effectAllowed = 'copyMove';
+                                        }}
+                                        style={{
+                                          background: '#ecfdf5',
+                                          border: '1px solid #a7f3d0',
+                                          color: '#065f46',
+                                          borderRadius: 6,
+                                          padding: '4px 8px',
+                                          fontSize: '11.5px',
+                                          fontWeight: 600,
+                                          display: 'inline-flex',
+                                          alignItems: 'center',
+                                          gap: 4,
+                                          cursor: 'grab',
+                                          boxShadow: '0 1px 2px rgba(6,95,70,0.05)',
+                                          maxWidth: '100%'
+                                        }}
+                                      >
+                                        <span style={{ flexShrink: 0, color: '#10b981' }}>☰</span>
+                                        <span style={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }} title={row.unit}>{row.unit}</span>
+                                        <button 
+                                          type="button" 
+                                          onClick={(e) => {
+                                            e.stopPropagation()
+                                            updateNhanRow(cfgIdx, rIdx, { giamTru: '', boQua: true, tinhToan: false })
+                                          }}
+                                          style={{
+                                            background: 'transparent',
+                                            border: 'none',
+                                            color: '#065f46',
+                                            cursor: 'pointer',
+                                            padding: 0,
+                                            marginLeft: 4,
+                                            fontSize: 14,
+                                            lineHeight: 1,
+                                            display: 'flex',
+                                            alignItems: 'center'
+                                          }}
+                                          title="Bỏ thiết lập"
+                                        >
+                                          ×
+                                        </button>
+                                      </div>
+                                    ) : (
+                                      <span style={{ fontSize: 11, color: '#cbd5e1', fontStyle: 'italic', pointerEvents: 'none' }}>Kéo thả hoặc Click</span>
+                                    )}
+                                  </td>
+                                </tr>
+                              )
+                            })}
                           </tbody>
                         </table>
                       </div>
@@ -1665,9 +2316,9 @@ function SummaryConfigTab({ giaoRows, nhanRows, selectedProject, allProjects }) 
                   borderRadius: 8, border: '1px solid #e2e8f0',
                   display: 'flex', gap: 20, flexWrap: 'wrap', fontSize: 12, color: '#64748b'
                 }}>
-                  <span>📌 <strong>Giảm trừ:</strong> Giá trị số khấu trừ khỏi tính toán</span>
-                  <span>🚫 <strong>Bỏ qua:</strong> Loại trừ đơn vị khỏi mọi tính toán</span>
-                  <span>✅ <strong>Tính toán:</strong> Đưa vào tổng hợp kết quả cuối</span>
+                  <span>📌 <strong>Giảm trừ:</strong> Kéo thả tên đơn vị từ cột danh sách tương ứng để đưa vào nhóm Giảm trừ</span>
+                  <span>🚫 <strong>Bỏ qua:</strong> Kéo thả tên đơn vị tương ứng để loại khỏi tính toán</span>
+                  <span>✅ <strong>Tính toán:</strong> Nhóm các đơn vị thực hiện tính toán đầy đủ (mặc định)</span>
                 </div>
               </div>
             )}
@@ -1683,6 +2334,19 @@ function SummaryConfigTab({ giaoRows, nhanRows, selectedProject, allProjects }) 
           selectedProject={selectedProject}
         />
       )}
+
+      {/* Custom Delete Config Confirmation Modal */}
+      {configToDeleteIdx !== null && (
+        <DeleteConfigConfirmModal
+          isOpen={true}
+          onClose={() => setConfigToDeleteIdx(null)}
+          onConfirm={() => handleDeleteConfig(configToDeleteIdx)}
+          configName={configs[configToDeleteIdx]?.name || ''}
+          projectName={configs[configToDeleteIdx]?.project || ''}
+          giaoCount={configs[configToDeleteIdx]?.giaoTable?.length || 0}
+          nhanCount={configs[configToDeleteIdx]?.nhanTable?.length || 0}
+        />
+      )}
     </div>
   )
 }
@@ -1690,6 +2354,7 @@ function SummaryConfigTab({ giaoRows, nhanRows, selectedProject, allProjects }) 
 function CreateSummaryConfigModal({ onClose, onSave, selectedProject }) {
   const [name, setName] = React.useState('')
   const [error, setError] = React.useState('')
+  const [bgColor, setBgColor] = React.useState('#eff6ff')
 
   React.useEffect(() => {
     const handleKey = (e) => { if (e.key === 'Escape') onClose() }
@@ -1699,7 +2364,7 @@ function CreateSummaryConfigModal({ onClose, onSave, selectedProject }) {
 
   const handleSave = () => {
     if (!name.trim()) { setError('Vui lòng nhập tên loại tổng hợp'); return }
-    onSave(name.trim(), selectedProject)
+    onSave(name.trim(), selectedProject, bgColor)
   }
 
   return (
@@ -1740,6 +2405,82 @@ function CreateSummaryConfigModal({ onClose, onSave, selectedProject }) {
           {error && <span style={{ fontSize: 12, color: '#ef4444', fontWeight: 500 }}>{error}</span>}
         </div>
 
+        {/* Hiển thị bộ chọn màu sắc nền */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <label style={{ fontSize: 13, fontWeight: 600, color: '#475569' }}>Màu nền Loại tổng hợp</label>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
+            {PRESET_COLORS.map((preset) => (
+              <button
+                key={preset.value}
+                type="button"
+                onClick={() => setBgColor(preset.value)}
+                style={{
+                  width: 28,
+                  height: 28,
+                  borderRadius: '50%',
+                  backgroundColor: preset.value,
+                  border: bgColor === preset.value ? '2.5px solid #0f58a7' : '1px solid #cbd5e1',
+                  cursor: 'pointer',
+                  boxShadow: bgColor === preset.value ? '0 0 0 2px rgba(15,88,167,0.2)' : 'none',
+                  transition: 'all 0.15s',
+                  position: 'relative'
+                }}
+                title={preset.name}
+              >
+                {bgColor === preset.value && (
+                  <span style={{
+                    position: 'absolute',
+                    top: '50%',
+                    left: '50%',
+                    transform: 'translate(-50%, -50%)',
+                    fontSize: 10,
+                    color: getContrastColor(preset.value),
+                    fontWeight: 900
+                  }}>✓</span>
+                )}
+              </button>
+            ))}
+            
+            {/* Custom Color Input */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginLeft: 'auto', borderLeft: '1px solid #e2e8f0', paddingLeft: 12 }}>
+              <span style={{ fontSize: 12, color: '#64748b' }}>Tùy chọn:</span>
+              <input 
+                type="color" 
+                value={bgColor} 
+                onChange={e => setBgColor(e.target.value)}
+                style={{
+                  width: 30,
+                  height: 30,
+                  padding: 0,
+                  border: '1px solid #cbd5e1',
+                  borderRadius: 6,
+                  cursor: 'pointer',
+                  backgroundColor: 'transparent'
+                }}
+                title="Chọn một màu tùy ý"
+              />
+            </div>
+          </div>
+          
+          <div style={{
+            marginTop: 4,
+            padding: '10px 14px',
+            backgroundColor: bgColor,
+            border: `1px solid ${getBorderColor(bgColor)}`,
+            borderRadius: 8,
+            fontSize: 12,
+            color: getContrastColor(bgColor),
+            fontWeight: 700,
+            transition: 'background-color 0.2s, border-color 0.2s',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between'
+          }}>
+            <span>Mẫu màu nền hiển thị thực tế</span>
+            <div style={{ width: 14, height: 14, borderRadius: '50%', backgroundColor: bgColor, border: '1px solid rgba(0,0,0,0.1)' }} />
+          </div>
+        </div>
+
         {/* Hiển thị dự án đang chọn — không cần dropdown */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
           <label style={{ fontSize: 13, fontWeight: 600, color: '#475569' }}>Gắn với Dự án</label>
@@ -1778,6 +2519,125 @@ function CreateSummaryConfigModal({ onClose, onSave, selectedProject }) {
             style={{ padding: '7px 18px', borderRadius: 6, border: 'none', background: 'linear-gradient(135deg, #0f58a7 0%, #1a6abf 100%)', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', boxShadow: '0 2px 4px rgba(15,88,167,0.2)' }}
           >
             Tạo & Lưu
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function DeleteConfigConfirmModal({ isOpen, onClose, onConfirm, configName, projectName, giaoCount, nhanCount }) {
+  React.useEffect(() => {
+    const handleKey = (e) => { if (e.key === 'Escape') onClose() }
+    document.addEventListener('keydown', handleKey)
+    return () => document.removeEventListener('keydown', handleKey)
+  }, [onClose])
+
+  if (!isOpen) return null
+
+  return (
+    <div style={{
+      position: 'fixed',
+      top: 0, left: 0, right: 0, bottom: 0,
+      backgroundColor: 'rgba(15, 23, 42, 0.65)',
+      backdropFilter: 'blur(4px)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      zIndex: 10002
+    }}>
+      <div style={{
+        background: '#ffffff',
+        borderRadius: 14,
+        width: '100%',
+        maxWidth: 460,
+        padding: 24,
+        boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+        border: '1px solid #fee2e2',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 16
+      }}>
+        {/* Header */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #f1f5f9', paddingBottom: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ width: 36, height: 36, borderRadius: 10, background: '#fee2e2', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Trash2 size={18} color="#ef4444" />
+            </div>
+            <h3 style={{ margin: 0, fontSize: 16, fontWeight: 800, color: '#991b1b', letterSpacing: '-0.01em' }}>Xác nhận xóa Cấu hình</h3>
+          </div>
+          <button onClick={onClose} style={{ background: 'transparent', border: 'none', color: '#64748b', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: 4 }}>
+            <X size={18} />
+          </button>
+        </div>
+
+        {/* Body */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <p style={{ margin: 0, fontSize: 14.5, color: '#334155', lineHeight: '1.6' }}>
+            Bạn có chắc chắn muốn xóa cấu hình tổng hợp <strong style={{ color: '#0f172a' }}>"{configName}"</strong>?
+          </p>
+
+          <div style={{
+            background: '#fff8f8',
+            border: '1px solid #fecdd3',
+            borderRadius: 8,
+            padding: '12px 16px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 8,
+            fontSize: 13,
+            color: '#9f1239'
+          }}>
+            <div style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6 }}>
+              <AlertCircle size={14} color="#ef4444" />
+              Lưu ý: Hành động này không thể hoàn tác
+            </div>
+            <ul style={{ margin: '0 0 0 20px', padding: 0, display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <li>Dự án gắn liền: <strong>{projectName || 'Tất cả dự án'}</strong></li>
+              <li>Chứa <strong>{giaoCount}</strong> cài đặt đơn vị bảng Đơn Giao</li>
+              <li>Chứa <strong>{nhanCount}</strong> cài đặt đơn vị bảng Đơn Nhận</li>
+            </ul>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, borderTop: '1px solid #f1f5f9', paddingTop: 14, marginTop: 4 }}>
+          <button
+            onClick={onClose}
+            style={{
+              padding: '8px 16px',
+              borderRadius: 6,
+              border: '1px solid #cbd5e1',
+              background: '#fff',
+              color: '#475569',
+              fontSize: 13,
+              fontWeight: 600,
+              cursor: 'pointer',
+              transition: 'background 0.1s'
+            }}
+            onMouseOver={e => e.currentTarget.style.background = '#f8fafc'}
+            onMouseOut={e => e.currentTarget.style.background = '#fff'}
+          >
+            Hủy bỏ
+          </button>
+          <button
+            onClick={onConfirm}
+            style={{
+              padding: '8px 20px',
+              borderRadius: 6,
+              border: 'none',
+              background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+              color: '#fff',
+              fontSize: 13,
+              fontWeight: 700,
+              cursor: 'pointer',
+              boxShadow: '0 2px 6px rgba(239, 68, 68, 0.25)',
+              transition: 'opacity 0.1s'
+            }}
+            onMouseOver={e => e.currentTarget.style.opacity = '0.9'}
+            onMouseOut={e => e.currentTarget.style.opacity = '1'}
+          >
+            Đồng ý xóa
           </button>
         </div>
       </div>
