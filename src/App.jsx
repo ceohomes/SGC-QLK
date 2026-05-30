@@ -232,40 +232,6 @@ function SearchableSelect({ value, onChange, options, placeholder = 'Tất cả 
                   <span style={{ textOverflow: 'ellipsis', whiteSpace: 'nowrap', overflow: 'hidden', marginRight: 'auto', textAlign: 'left' }}>
                     {opt}
                   </span>
-                  {onEditProject && (
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        onEditProject(opt)
-                      }}
-                      title="Sửa tên dự án"
-                      style={{
-                        background: 'transparent',
-                        border: 'none',
-                        color: '#64748b',
-                        padding: '4px',
-                        cursor: 'pointer',
-                        borderRadius: '4px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        marginLeft: 4,
-                        transition: 'all 0.1s'
-                      }}
-                      onMouseOver={e => {
-                        e.stopPropagation()
-                        e.currentTarget.style.color = '#0f58a7'
-                        e.currentTarget.style.background = '#e2e8f0'
-                      }}
-                      onMouseOut={e => {
-                        e.stopPropagation()
-                        e.currentTarget.style.color = '#64748b'
-                        e.currentTarget.style.background = 'transparent'
-                      }}
-                    >
-                      <Pencil size={11} />
-                    </button>
-                  )}
                   {onDeleteProject && (
                     <button
                       onClick={(e) => {
@@ -3045,53 +3011,7 @@ export default function App() {
       // 3b. Đồng bộ sequence ID sau khi insert để tránh id nhảy số
       await resetTableSequence(tableName)
 
-      // 4. Ensure project names exist in 'du_an' database safely.
-      // Instead of an unsafe upsert that may trigger 409 Conflict errors (due to lack of unique constraint/index),
-      // we query existing project names first and insert only the ones that do not exist.
-      const uniqueProjects = [...new Set(rowsToSync.map(r => r.duAn).filter(Boolean))]
-      if (uniqueProjects.length > 0) {
-        try {
-          const { data: existingProj, error: fetchErr } = await supabase
-            .from('du_an')
-            .select('ten_du_an, tenduan, tenDuAn')
-          
-          if (!fetchErr) {
-            const existingNames = new Set(
-              (existingProj || [])
-                .map(p => p.ten_du_an || p.tenduan || p.tenDuAn)
-                .filter(Boolean)
-                .map(n => n.trim().toLowerCase())
-            )
-
-            const newProjects = uniqueProjects.filter(p => !existingNames.has(p.trim().toLowerCase()))
-
-            if (newProjects.length > 0) {
-              let colName = 'ten_du_an'
-              if (existingProj && existingProj.length > 0) {
-                const firstRowKeys = Object.keys(existingProj[0])
-                if (firstRowKeys.includes('tenduan')) colName = 'tenduan'
-                else if (firstRowKeys.includes('tenDuAn')) colName = 'tenDuAn'
-              }
-              
-              const insertPayload = newProjects.map(p => ({ [colName]: p }))
-              const { error: insErr } = await supabase.from('du_an').insert(insertPayload)
-              if (insErr) {
-                console.warn('[Sync Projects] Lỗi khi chèn dự án mới:', insErr.message)
-              }
-            }
-          }
-        } catch (e) {
-          console.warn('Lỗi đồng bộ danh sách dự án:', e)
-        }
-      }
-
-      // Refresh project list locally
-      if (uniqueProjects.length > 0) {
-        setCustomProjects(prev => {
-          const merged = new Set([...prev, ...uniqueProjects])
-          return [...merged].sort()
-        })
-      }
+      // Không tự động thêm dự án vào bảng du_an — danh sách kho dự án chỉ do user quản lý thủ công
 
       setSupabaseMessage({
         text: isAuto 
