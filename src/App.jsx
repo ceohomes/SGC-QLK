@@ -1224,7 +1224,7 @@ function OrderTab({
                   <Download size={12} /> Xuất Excel
                 </button>
               )}
-              <button className="btn btn-outline btn-sm" onClick={() => { if (onDeleteFile) { onDeleteFile() } else { setRows([]); setFileName(''); setSearch(''); setTrangThai('') } }} style={{ display: selectedProject ? 'flex' : 'none' }}>
+              <button className="btn btn-outline btn-sm" onClick={() => { if (onDeleteFile) { onDeleteFile() } else { if (window.confirm('Bạn có chắc chắn muốn xóa toàn bộ dữ liệu này?\n\nHành động này không thể hoàn tác.')) { setRows([]); setFileName(''); setSearch(''); setTrangThai('') } } }} style={{ display: selectedProject ? 'flex' : 'none' }}>
                 <X size={12} /> Xóa file
               </button>
             </div>
@@ -3106,17 +3106,33 @@ export default function App() {
   }
 
   const handleDeleteFile = async (type) => {
+    // Hiển thị hộp thoại xác nhận trước khi xóa
+    const label = type === 'giao' ? 'Đơn Giao' : 'Đơn Nhận'
+    const projectMsg = selectedProject ? ` của kho dự án "${selectedProject}"` : ''
+    const confirmed = window.confirm(`Bạn có chắc chắn muốn xóa toàn bộ dữ liệu ${label}${projectMsg}?\n\nHành động này không thể hoàn tác.`)
+    if (!confirmed) return
+
     // 1. Xóa dữ liệu local - chỉ xóa rows thuộc selectedProject, không xóa dữ liệu kho khác
     if (type === 'giao') {
       if (selectedProject) {
-        setGiaoRows(prev => prev.filter(r => (r.ten_du_an || r.tenDuAn || r.duAn) !== selectedProject))
+        setGiaoRows(prev => prev.filter(r => {
+          const rowProject = r.ten_du_an || r.tenDuAn || r.tenduan || r.duAn || r.du_an || ''
+          return rowProject !== selectedProject
+        }))
+        // Reset fileName nếu không còn dữ liệu của dự án này
+        setGiaoFileName(prev => prev)
       } else {
         setGiaoRows([])
         setGiaoFileName('')
       }
     } else {
       if (selectedProject) {
-        setNhanRows(prev => prev.filter(r => (r.ten_du_an || r.tenDuAn || r.duAn) !== selectedProject))
+        setNhanRows(prev => prev.filter(r => {
+          const rowProject = r.ten_du_an || r.tenDuAn || r.tenduan || r.duAn || r.du_an || ''
+          return rowProject !== selectedProject
+        }))
+        // Reset fileName nếu không còn dữ liệu của dự án này
+        setNhanFileName(prev => prev)
       } else {
         setNhanRows([])
         setNhanFileName('')
@@ -3129,16 +3145,16 @@ export default function App() {
       setSyncingType(type)
       setSupabaseMessage({ text: `Đang xóa dữ liệu Đơn ${type === 'giao' ? 'Giao' : 'Nhận'} trên Supabase...`, type: 'info' })
       try {
-        let query = supabase.from(tableName).delete()
         if (selectedProject) {
           // Xóa theo dự án đang chọn sử dụng cơ chế Adaptive cực kỳ tối ưu
-          const deleteRes = await deleteFromTableAdaptive(tableName, ['ten_du_an', 'tenDuAn', 'tenduan'], selectedProject)
+          const deleteRes = await deleteFromTableAdaptive(tableName, ['ten_du_an', 'tenDuAn', 'tenduan', 'du_an'], selectedProject)
           if (!deleteRes.success && deleteRes.reason !== 'table_empty') {
             throw deleteRes.error || new Error('Không tìm thấy cột phù hợp hoặc không được phân quyền xóa.')
           }
         } else {
           // Không có dự án cụ thể → xóa hết bảng
-          await query.neq('id', -999)
+          const { error } = await supabase.from(tableName).delete().neq('id', -999)
+          if (error) throw error
         }
         setSupabaseMessage({ text: `Đã xóa dữ liệu Đơn ${type === 'giao' ? 'Giao' : 'Nhận'} khỏi Supabase thành công!`, type: 'success' })
         setTimeout(() => setSupabaseMessage(null), 4000)
