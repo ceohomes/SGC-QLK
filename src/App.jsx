@@ -1329,9 +1329,11 @@ function SummaryConfigTab({ giaoRows, nhanRows, selectedProject, allProjects }) 
   const [showCreateModal, setShowCreateModal] = React.useState(false)
   const [expandedConfig, setExpandedConfig] = React.useState(null) // index of expanded config
   const [configToDeleteIdx, setConfigToDeleteIdx] = React.useState(null)
-
-  // Persist on change
-  React.useEffect(() => { saveSummaryConfigs(configs) }, [configs])
+  
+  // Supabase sync states
+  const [dbState, setDbState] = React.useState('idle') // 'idle' | 'loading' | 'success' | 'saving' | 'error'
+  const [dbMessage, setDbMessage] = React.useState('')
+  const lastSyncedRef = React.useRef(null)
 
   // Bảng Đơn Giao hiển thị list Đơn vị Nhận (từ giaoRows)
   const getUniqueGiao = (proj) => {
@@ -1345,29 +1347,247 @@ function SummaryConfigTab({ giaoRows, nhanRows, selectedProject, allProjects }) 
     return [...new Set(rows.map(r => r.donViGiao).filter(Boolean))].sort()
   }
 
-  const handleCreateConfig = (name, proj, bgColor) => {
+  // Load configs from Supabase
+  const fetchConfigsFromSupabase = React.useCallback(async () => {
+    if (!isSupabaseConfigured) return
+    setDbState('loading')
+    setDbMessage('Đang tải cấu hình tổng hợp từ Supabase...')
+    try {
+      const { data, error } = await supabase
+        .from('sgc_summary_configs')
+        .select('*')
+        .order('id', { ascending: true })
+
+      if (error) {
+        console.error('Lỗi tải cấu hình tổng hợp từ Supabase:', error.message)
+        setDbState('error')
+        setDbMessage('Lỗi tải từ Supabase: ' + error.message)
+        return
+      }
+
+      if (data) {
+        const mapped = data.map(dbRow => ({
+          id: dbRow.id,
+          name: dbRow.name,
+          project: dbRow.project,
+          giaoTable: dbRow.giao_table || [],
+          nhanTable: dbRow.nhan_table || [],
+          bgColor: dbRow.bg_color || '#eff6ff',
+        }))
+        setConfigs(mapped)
+        saveSummaryConfigs(mapped)
+        lastSyncedRef.current = JSON.parse(JSON.stringify(mapped))
+        setDbState('success')
+        setDbMessage('Đồng bộ thành công từ Supabase')
+        setTimeout(() => setDbMessage(''), 3000)
+      }
+    } catch (err) {
+      console.error('Lỗi kết nối Supabase khi tải configs:', err)
+      setDbState('error')
+      setDbMessage('Lỗi kết nối Supabase')
+    }
+  }, [])
+
+  // Initial load
+  React.useEffect(() => {
+    fetchConfigsFromSupabase()
+  }, [fetchConfigsFromSupabase])
+
+  // Save config update to Supabase
+  const saveConfigToSupabase = async (cfg) => {
+    if (!isSupabaseConfigured || !cfg || typeof cfg.id !== 'number') return
+    setDbState('saving')
+    setDbMessage('Đang tự động lưu cấu hình lên Supabase...')
+    try {
+      const payload = {
+        name: cfg.name,
+        project: cfg.project,
+        giao_table: cfg.giaoTable,
+        nhan_table: cfg.nhanTable,
+      }
+
+      let error
+      // 1. Try updating with bg_color column first
+      const res = await supabase
+        .from('sgc_summary_configs')
+        .update({ ...payload, bg_color: cfg.bgColor })
+        .eq('id', cfg.id)
+
+      if (res.error && (res.error.message.includes('bg_color') || res.error.message.includes('column') || res.error.message.includes('not exist'))) {
+        // 2. Retry without bg_color if column does not exist
+        const res2 = await supabase
+          .from('sgc_summary_configs')
+          .update(payload)
+          .eq('id', cfg.id)
+        error = res2.error
+      } else {
+        error = res.error
+      }
+
+      if (error) {
+        console.error(`Lỗi cập nhật cấu hình ID=${cfg.id} trên Supabase:`, error.message)
+        setDbState('error')
+        setDbMessage('Không thể lưu lên Supabase: ' + error.message)
+      } else {
+        setDbState('success')
+        setDbMessage('Đã đồng bộ tự động lên Supabase')
+        setTimeout(() => setDbMessage(''), 2500)
+      }
+    } catch (err) {
+      console.error('Lỗi khi thực hiện lưu cấu hình:', err)
+      setDbState('error')
+      setDbMessage('Lỗi liên kết cơ sở dữ liệu')
+    }
+  }
+
+  // Monitor configs state to auto-save
+  React.useEffect(() => {
+    // Save to local storage as fallback/cache
+    saveSummaryConfigs(configs)
+
+    // Bypass check during initial loading to prevent overwrites
+    if (dbState === 'loading') {
+      return
+    }
+
+    if (lastSyncedRef.current === null) {
+      lastSyncedRef.current = JSON.parse(JSON.stringify(configs))
+      return
+    }
+
+    if (isSupabaseConfigured) {
+      const lastSynced = lastSyncedRef.current
+      configs.forEach(cfg => {
+        const prev = lastSynced.find(c => c.id === cfg.id)
+        if (!prev) return // Handled in creation or loaded just now
+        
+        if (JSON.stringify(prev) !== JSON.stringify(cfg)) {
+          saveConfigToSupabase(cfg)
+        }
+      })
+    }
+
+    lastSyncedRef.current = JSON.parse(JSON.stringify(configs))
+  }, [configs])
+
+  const handleCreateConfig = async (name, proj, bgColor) => {
     const giaoUnits = getUniqueGiao(proj)
     const nhanUnits = getUniqueNhan(proj)
+    const tempId = Date.now()
+    
     const newConfig = {
-      id: Date.now(),
+      id: tempId,
       name,
       project: proj,
       giaoTable: giaoUnits.map(u => ({ unit: u, giamTru: '', boQua: false, tinhToan: true })),
       nhanTable: nhanUnits.map(u => ({ unit: u, giamTru: '', boQua: false, tinhToan: true })),
       bgColor: bgColor || '#eff6ff',
     }
-    const updated = [...configs, newConfig]
-    setConfigs(updated)
+
+    // Add locally for instant UI response
+    setConfigs(prev => [...prev, newConfig])
     setShowCreateModal(false)
-    setExpandedConfig(updated.length - 1)
+
+    if (isSupabaseConfigured) {
+      setDbState('saving')
+      setDbMessage('Đang lưu cấu hình mới lên Supabase...')
+      try {
+        const payload = {
+          name,
+          project: proj,
+          giao_table: newConfig.giaoTable,
+          nhan_table: newConfig.nhanTable,
+        }
+
+        let data, error
+        const res = await supabase
+          .from('sgc_summary_configs')
+          .insert([{ ...payload, bg_color: bgColor || '#eff6ff' }])
+          .select()
+
+        if (res.error && (res.error.message.includes('bg_color') || res.error.message.includes('column') || res.error.message.includes('not exist'))) {
+          // Retry without bg_color if column is missing
+          const res2 = await supabase
+            .from('sgc_summary_configs')
+            .insert([payload])
+            .select()
+          data = res2.data
+          error = res2.error
+        } else {
+          data = res.data
+          error = res.error
+        }
+
+        if (error) {
+          console.error('Lỗi khi lưu cấu hình mới lên Supabase:', error.message)
+          setDbState('error')
+          setDbMessage('Lỗi tạo cấu hình Supabase: ' + error.message)
+        } else if (data && data.length > 0) {
+          const dbRow = data[0]
+          setConfigs(prev => {
+            const updated = prev.map(c => c.id === tempId ? {
+              ...c,
+              id: dbRow.id,
+              bgColor: dbRow.bg_color || bgColor || '#eff6ff',
+            } : c)
+            
+            // Expand newly created config
+            const idx = updated.findIndex(c => c.id === dbRow.id)
+            if (idx !== -1) setExpandedConfig(idx)
+            return updated
+          })
+          setDbState('success')
+          setDbMessage('Tạo cấu hình mới thành công')
+          setTimeout(() => setDbMessage(''), 2500)
+          return
+        }
+      } catch (err) {
+        console.error('Lỗi insert Supabase:', err)
+        setDbState('error')
+        setDbMessage('Lỗi đồng bộ cấu hình mới')
+      }
+    }
+
+    // Offline / fallback expand
+    setConfigs(prev => {
+      const idx = prev.findIndex(c => c.id === tempId)
+      if (idx !== -1) setExpandedConfig(idx)
+      return prev
+    })
   }
 
-  const handleDeleteConfig = (idx) => {
+  const handleDeleteConfig = async (idx) => {
+    const cfg = configs[idx]
     const updated = configs.filter((_, i) => i !== idx)
     setConfigs(updated)
     if (expandedConfig === idx) setExpandedConfig(null)
     else if (expandedConfig > idx) setExpandedConfig(expandedConfig - 1)
     setConfigToDeleteIdx(null)
+
+    if (isSupabaseConfigured && cfg && typeof cfg.id === 'number') {
+      setDbState('saving')
+      setDbMessage('Đang xóa cấu hình trên Supabase...')
+      try {
+        const { error } = await supabase
+          .from('sgc_summary_configs')
+          .delete()
+          .eq('id', cfg.id)
+
+        if (error) {
+          console.error('Lỗi xóa cấu hình trên Supabase:', error.message)
+          setDbState('error')
+          setDbMessage('Lỗi xóa Supabase: ' + error.message)
+        } else {
+          setDbState('success')
+          setDbMessage('Đã xóa thành công cấu hình trên Supabase')
+          setTimeout(() => setDbMessage(''), 2500)
+        }
+      } catch (err) {
+        console.error('Lỗi kết nối khi xóa cấu hình:', err)
+        setDbState('error')
+        setDbMessage('Lỗi liên kết dữ liệu khi xóa')
+      }
+    }
   }
 
   const updateGiaoRow = (cfgIdx, rowIdx, field, value) => {
@@ -1463,6 +1683,37 @@ function SummaryConfigTab({ giaoRows, nhanRows, selectedProject, allProjects }) 
           <p style={{ margin: '4px 0 0', color: '#64748b', fontSize: 14 }}>
             Tạo và quản lý các loại tổng hợp theo từng dự án — cấu hình đơn vị giao và nhận riêng biệt
           </p>
+          {isSupabaseConfigured ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 8, fontSize: 12 }}>
+              <span style={{
+                display: 'inline-block', width: 8, height: 8, borderRadius: '50%',
+                background: dbState === 'error' ? '#ef4444' : dbState === 'saving' || dbState === 'loading' ? '#f59e0b' : '#10b981',
+                boxShadow: `0 0 8px ${dbState === 'error' ? '#ef4444' : dbState === 'saving' || dbState === 'loading' ? '#f59e0b' : '#10b981'}`
+              }} />
+              <span style={{ color: '#475569', fontWeight: 500 }}>
+                {dbMessage || 'Đồng bộ tự động với Supabase (sgc_summary_configs)'}
+              </span>
+              <button
+                type="button"
+                onClick={fetchConfigsFromSupabase}
+                disabled={dbState === 'loading' || dbState === 'saving'}
+                title="Tải lại từ Supabase"
+                style={{
+                  background: 'transparent', border: 'none', padding: '2px 4px', cursor: 'pointer',
+                  color: '#0f58a7', fontSize: 11, display: 'flex', alignItems: 'center', gap: 2,
+                  outline: 'none', fontWeight: 600
+                }}
+              >
+                <RefreshCw size={11} className={(dbState === 'loading' || dbState === 'saving') ? 'animate-spin' : ''} />
+                Làm mới
+              </button>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 8, fontSize: 12, color: '#f59e0b', fontWeight: 600 }}>
+              <AlertCircle size={12} />
+              <span>Chưa kết nối Supabase, dữ liệu lưu tạm ở trình duyệt</span>
+            </div>
+          )}
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
           <button
