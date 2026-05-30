@@ -3362,6 +3362,143 @@ function SummaryCompilationTab({ giaoRows, nhanRows, configs = [], selectedProje
     ws['!ref'] = excelRangeRef
     ws['!autofilter'] = { ref: excelRangeRef }
 
+    // -------------------------------------------------------------------------
+    // Create aggregated "Tổng hợp" sheet grouping imports/exports by Mã SAP,
+    // sorted alphabetically by Tên vật tư ascending
+    // -------------------------------------------------------------------------
+    const summaryMap = {}
+    filteredRows.forEach(row => {
+      const code = (row.maSAP || '').trim() || 'Chưa xác định'
+      if (!summaryMap[code]) {
+        summaryMap[code] = {
+          maSAP: code,
+          tenVatTu: row.tenVatTu || '',
+          dvt: row.dvt || '',
+          khoiLuongNhap: 0,
+          khoiLuongXuat: 0
+        }
+      }
+      summaryMap[code].khoiLuongNhap += row.khoiLuongNhap || 0
+      summaryMap[code].khoiLuongXuat += row.khoiLuongXuat || 0
+    })
+
+    const summaryList = Object.values(summaryMap)
+
+    // Sort alphabetically by Vietnamese tên vật tư (tenVatTu) ascending
+    summaryList.sort((a, b) => {
+      const nameA = a.tenVatTu || ''
+      const nameB = b.tenVatTu || ''
+      return nameA.localeCompare(nameB, 'vi', { sensitivity: 'accent' })
+    })
+
+    const wsSummary = {}
+    const summaryCols = [
+      { key: 'STT', label: 'STT', width: 50 },
+      { key: 'maSAP', label: 'Mã SAP', width: 120 },
+      { key: 'tenVatTu', label: 'Tên vật tư', width: 250 },
+      { key: 'dvt', label: 'ĐVT', width: 80 },
+      { key: 'khoiLuongNhap', label: 'Tổng khối lượng nhập', width: 160 },
+      { key: 'khoiLuongXuat', label: 'Tổng khối lượng xuất', width: 160 }
+    ]
+
+    wsSummary['!cols'] = summaryCols.map(c => ({ wpx: c.width }))
+
+    let summaryRowIdx = 1
+
+    // Header stylings for wsSummary
+    summaryCols.forEach((col, colIdx) => {
+      const colChar = getColLabel(colIdx)
+      const cellRef = `${colChar}${summaryRowIdx}`
+      wsSummary[cellRef] = {
+        v: col.label,
+        t: 's',
+        s: {
+          fill: { patternType: 'solid', fgColor: { rgb: '0F58A7' } },
+          font: { name: 'Segoe UI', sz: 9.5, bold: true, color: { rgb: 'FFFFFF' } },
+          alignment: { horizontal: 'center', vertical: 'center', wrapText: true },
+          border: {
+            top: { style: 'thin', color: { rgb: '0A3D73' } },
+            bottom: { style: 'medium', color: { rgb: '0A3D73' } },
+            left: { style: 'thin', color: { rgb: '0A3D73' } },
+            right: { style: 'thin', color: { rgb: '0A3D73' } }
+          }
+        }
+      }
+    })
+
+    // Populate rows for wsSummary
+    summaryList.forEach((row, rowIndex) => {
+      summaryRowIdx++
+      const isEvenNum = (rowIndex % 2 === 1)
+      const rowBgColor = isEvenNum ? 'F8FAFC' : 'FFFFFF'
+
+      summaryCols.forEach((col, colIdx) => {
+        const colChar = getColLabel(colIdx)
+        const cellRef = `${colChar}${summaryRowIdx}`
+
+        let val = ''
+        let cellType = 's'
+        let numFormat = undefined
+        let cellStyleColor = '1B1919'
+        let isBoldFont = false
+
+        if (col.key === 'STT') {
+          val = rowIndex + 1
+          cellType = 'n'
+        } else if (col.key === 'khoiLuongNhap' || col.key === 'khoiLuongXuat') {
+          const rawNum = row[col.key]
+          val = rawNum !== null && rawNum !== undefined ? Number(rawNum) : 0
+          cellType = 'n'
+          numFormat = '#,##0.000'
+          if (val < 0) {
+            cellStyleColor = '9F1239'
+            isBoldFont = true
+          }
+        } else {
+          const rawVal = row[col.key]
+          val = rawVal !== null && rawVal !== undefined ? String(rawVal) : ''
+        }
+
+        const isCenteredCol = ['STT', 'maSAP', 'dvt'].includes(col.key)
+        const isRightAligned = ['khoiLuongNhap', 'khoiLuongXuat'].includes(col.key)
+
+        const cellStyle = {
+          font: {
+            name: 'Segoe UI',
+            sz: 9,
+            color: { rgb: cellStyleColor },
+            bold: isBoldFont
+          },
+          alignment: {
+            horizontal: isCenteredCol ? 'center' : (isRightAligned ? 'right' : 'left'),
+            vertical: 'center',
+            wrapText: true
+          },
+          border: {
+            top: { style: 'thin', color: { rgb: 'E2E8F0' } },
+            bottom: { style: 'thin', color: { rgb: 'E2E8F0' } },
+            left: { style: 'thin', color: { rgb: 'E2E8F0' } },
+            right: { style: 'thin', color: { rgb: 'E2E8F0' } }
+          },
+          fill: {
+            patternType: 'solid',
+            fgColor: { rgb: rowBgColor }
+          }
+        }
+
+        const cellObj = { v: val, t: cellType, s: cellStyle }
+        if (numFormat) cellObj.z = numFormat
+
+        wsSummary[cellRef] = cellObj
+      })
+    })
+
+    const summaryRangeRef = `A1:${getColLabel(summaryCols.length - 1)}${summaryRowIdx}`
+    wsSummary['!ref'] = summaryRangeRef
+    wsSummary['!autofilter'] = { ref: summaryRangeRef }
+
+    // Append sheets in order. Let's make "Tổng hợp" first, and "Tổng hợp thông tin" second.
+    XLSXStyle.utils.book_append_sheet(wb, wsSummary, "Tổng hợp")
     XLSXStyle.utils.book_append_sheet(wb, ws, "Tổng hợp thông tin")
 
     const wbout = XLSXStyle.write(wb, { bookType: 'xlsx', type: 'binary' })
@@ -3422,36 +3559,37 @@ function SummaryCompilationTab({ giaoRows, nhanRows, configs = [], selectedProje
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 20, padding: '24px' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12, padding: '16px' }}>
       
-      {/* Configuration Selection dropdown & Actions Row */}
+      {/* Unified Compact Control and Stats Header Panel */}
       <div style={{
         background: '#ffffff',
         border: '1px solid #cbd5e1',
-        borderRadius: 12,
-        padding: '16px 20px',
+        borderRadius: 8,
+        padding: '10px 14px',
         display: 'flex',
         flexWrap: 'wrap',
         alignItems: 'center',
         justifyContent: 'space-between',
         gap: 16
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-          <span style={{ fontWeight: 600, fontSize: 14.5, color: '#334155' }}>Cấu hình tổng hợp:</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+          <span style={{ fontWeight: 600, fontSize: 13.5, color: '#334155' }}>Cấu hình tổng hợp:</span>
           <select 
             value={selectedConfigId || ''} 
             onChange={(e) => setSelectedConfigId(Number(e.target.value))}
             style={{
-              padding: '8px 16px',
-              borderRadius: 8,
+              padding: '6px 12px',
+              borderRadius: 6,
               border: '1px solid #cbd5e1',
               background: '#ffffff',
-              fontSize: 14,
+              fontSize: 13.5,
               fontWeight: 600,
               color: '#1e293b',
               boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
               cursor: 'pointer',
-              minWidth: 260
+              minWidth: 240,
+              height: 32
             }}
           >
             {configs.map(cfg => (
@@ -3460,21 +3598,34 @@ function SummaryCompilationTab({ giaoRows, nhanRows, configs = [], selectedProje
               </option>
             ))}
           </select>
-          
-          {currentConfig && (
-            <div style={{
-              background: currentConfig.bgColor || '#eff6ff',
-              border: `1px solid ${getBorderColor(currentConfig.bgColor)}`,
-              color: getContrastColor(currentConfig.bgColor),
-              borderRadius: 6,
-              padding: '4px 10px',
-              fontSize: 12.5,
-              fontWeight: 550
-            }}>
-              Dự án liên quan: {currentConfig.project || 'Tất cả'}
-            </div>
-          )}
         </div>
+
+        {/* Center: Inline highly-compact Stats blocks */}
+        {currentConfig && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 24, flexWrap: 'wrap' }}>
+            {/* Stat Item 1: Total records */}
+            <div style={{ borderLeft: '3px solid #64748b', paddingLeft: 8 }}>
+              <div style={{ fontSize: 10.5, color: '#64748b', fontWeight: 500, marginBottom: 1 }}>Dòng sau phân bổ</div>
+              <div style={{ fontSize: 14.5, fontWeight: 700, color: '#0f172a' }}>{statsTotalRows.toLocaleString('vi-VN')} dòng</div>
+            </div>
+
+            {/* Stat Item 2: Consolidated Import Volume */}
+            <div style={{ borderLeft: `3px solid ${totalNhap >= 0 ? '#10b981' : '#ef4444'}`, paddingLeft: 8 }}>
+              <div style={{ fontSize: 10.5, color: '#64748b', fontWeight: 500, marginBottom: 1 }}>Khối lượng Nhập ròng</div>
+              <div style={{ fontSize: 14.5, fontWeight: 700, color: totalNhap < 0 ? '#dc2626' : '#10b981' }}>
+                {totalNhap.toLocaleString('vi-VN', { maximumFractionDigits: 3 })}
+              </div>
+            </div>
+
+            {/* Stat Item 3: Consolidated Export Volume */}
+            <div style={{ borderLeft: `3px solid ${totalXuat >= 0 ? '#3b82f6' : '#ef4444'}`, paddingLeft: 8 }}>
+              <div style={{ fontSize: 10.5, color: '#64748b', fontWeight: 500, marginBottom: 1 }}>Khối lượng Xuất ròng</div>
+              <div style={{ fontSize: 14.5, fontWeight: 700, color: totalXuat < 0 ? '#dc2626' : '#3b82f6' }}>
+                {totalXuat.toLocaleString('vi-VN', { maximumFractionDigits: 3 })}
+              </div>
+            </div>
+          </div>
+        )}
 
         {currentConfig && compiledRows.length > 0 && (
           <button
@@ -3487,7 +3638,11 @@ function SummaryCompilationTab({ giaoRows, nhanRows, configs = [], selectedProje
               boxShadow: '0 2px 4px rgba(16,185,129,0.2)',
               display: 'flex',
               alignItems: 'center',
-              gap: 6
+              gap: 6,
+              height: 32,
+              padding: '0 12px',
+              fontSize: 13,
+              borderRadius: 6
             }}
           >
             <Download size={14} /> Xuất Excel Tổng hợp
@@ -3497,61 +3652,17 @@ function SummaryCompilationTab({ giaoRows, nhanRows, configs = [], selectedProje
 
       {currentConfig ? (
         <>
-          {/* Stats Bar */}
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
-            gap: 12
-          }}>
-            {/* Stat Item 1: Total records */}
-            <div className="stats-card" style={{ padding: '10px 16px', display: 'flex', alignItems: 'center', gap: 12 }}>
-              <div style={{ width: 36, height: 36, borderRadius: 8, background: '#f1f5f9', display: 'flex', alignItems: 'center', justifyItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                <FileSpreadsheet size={18} color="#475569" />
-              </div>
-              <div>
-                <span className="stats-label" style={{ fontSize: 12, color: '#64748b', display: 'block', marginBottom: 1 }}>Dòng tổng hợp sau phân bổ</span>
-                <span className="stats-val" style={{ fontSize: 16, fontWeight: 700, color: '#0f172a' }}>{statsTotalRows.toLocaleString('vi-VN')} dòng</span>
-              </div>
-            </div>
-
-            {/* Stat Item 2: Consolidated Import Volume */}
-            <div className="stats-card" style={{ padding: '10px 16px', display: 'flex', alignItems: 'center', gap: 12 }}>
-              <div style={{ width: 36, height: 36, borderRadius: 8, background: totalNhap >= 0 ? '#ecfdf5' : '#fff1f2', display: 'flex', alignItems: 'center', justifyItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                {totalNhap >= 0 ? <CheckCircle2 size={18} color="#10b981" /> : <AlertCircle size={18} color="#ef4444" />}
-              </div>
-              <div>
-                <span className="stats-label" style={{ fontSize: 12, color: '#64748b', display: 'block', marginBottom: 1 }}>Khối lượng Nhập ròng</span>
-                <span className="stats-val" style={{ fontSize: 16, fontWeight: 700, color: totalNhap < 0 ? '#dc2626' : '#10b981' }}>
-                  {totalNhap.toLocaleString('vi-VN', { maximumFractionDigits: 3 })}
-                </span>
-              </div>
-            </div>
-
-            {/* Stat Item 3: Consolidated Export Volume */}
-            <div className="stats-card" style={{ padding: '10px 16px', display: 'flex', alignItems: 'center', gap: 12 }}>
-              <div style={{ width: 36, height: 36, borderRadius: 8, background: totalXuat >= 0 ? '#eff6ff' : '#fff1f2', display: 'flex', alignItems: 'center', justifyItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                {totalXuat >= 0 ? <Truck size={18} color="#3b82f6" /> : <AlertCircle size={18} color="#ef4444" />}
-              </div>
-              <div>
-                <span className="stats-label" style={{ fontSize: 12, color: '#64748b', display: 'block', marginBottom: 1 }}>Khối lượng Xuất ròng</span>
-                <span className="stats-val" style={{ fontSize: 16, fontWeight: 700, color: totalXuat < 0 ? '#dc2626' : '#3b82f6' }}>
-                  {totalXuat.toLocaleString('vi-VN', { maximumFractionDigits: 3 })}
-                </span>
-              </div>
-            </div>
-          </div>
-
           {/* Filter Bar */}
           <div style={{
             background: '#ffffff',
             border: '1px solid #cbd5e1',
-            borderRadius: 12,
-            padding: '16px',
+            borderRadius: 8,
+            padding: '10px 14px',
             display: 'flex',
             flexWrap: 'wrap',
             alignItems: 'center',
             justifyContent: 'space-between',
-            gap: 16
+            gap: 12
           }}>
             {/* Left search */}
             <div style={{ position: 'relative', flex: 1, minWidth: 260 }}>
