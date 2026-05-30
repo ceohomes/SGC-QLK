@@ -1381,18 +1381,32 @@ function SummaryConfigTab({ giaoRows, nhanRows, selectedProject, allProjects }) 
             Tạo và quản lý các loại tổng hợp theo từng dự án — cấu hình đơn vị giao và nhận riêng biệt
           </p>
         </div>
-        <button
-          onClick={() => setShowCreateModal(true)}
-          style={{
-            background: 'linear-gradient(135deg, #0f58a7 0%, #1a6abf 100%)',
-            color: '#fff', border: 'none', borderRadius: 8,
-            padding: '9px 18px', fontSize: 14, fontWeight: 700,
-            cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6,
-            boxShadow: '0 2px 8px rgba(15,88,167,0.25)'
-          }}
-        >
-          <span style={{ fontSize: 18, lineHeight: 1 }}>+</span> Tạo Loại Tổng hợp
-        </button>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
+          <button
+            onClick={() => selectedProject ? setShowCreateModal(true) : null}
+            disabled={!selectedProject}
+            title={!selectedProject ? 'Vui lòng chọn một Kho dự án cụ thể trước khi tạo' : ''}
+            style={{
+              background: selectedProject
+                ? 'linear-gradient(135deg, #0f58a7 0%, #1a6abf 100%)'
+                : '#cbd5e1',
+              color: selectedProject ? '#fff' : '#94a3b8',
+              border: 'none', borderRadius: 8,
+              padding: '9px 18px', fontSize: 14, fontWeight: 700,
+              cursor: selectedProject ? 'pointer' : 'not-allowed',
+              display: 'flex', alignItems: 'center', gap: 6,
+              boxShadow: selectedProject ? '0 2px 8px rgba(15,88,167,0.25)' : 'none',
+              transition: 'all 0.15s'
+            }}
+          >
+            <span style={{ fontSize: 18, lineHeight: 1 }}>+</span> Tạo Loại Tổng hợp
+          </button>
+          {!selectedProject && (
+            <span style={{ fontSize: 11, color: '#f59e0b', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}>
+              <AlertCircle size={11} color="#f59e0b" /> Vui lòng chọn Kho dự án trước
+            </span>
+          )}
+        </div>
       </div>
 
       {/* Empty state */}
