@@ -1283,16 +1283,16 @@ function SummaryConfigTab({ giaoRows, nhanRows, selectedProject, allProjects }) 
   // Persist on change
   React.useEffect(() => { saveSummaryConfigs(configs) }, [configs])
 
-  // Get unique donViGiao for a project
+  // Bảng Đơn Giao hiển thị list Đơn vị Nhận (từ nhanRows)
   const getUniqueGiao = (proj) => {
-    const rows = proj ? giaoRows.filter(r => (r.ten_du_an || r.tenDuAn || r.duAn || '') === proj) : giaoRows
-    return [...new Set(rows.map(r => r.donViGiao).filter(Boolean))].sort()
-  }
-
-  // Get unique donViNhan for a project
-  const getUniqueNhan = (proj) => {
     const rows = proj ? nhanRows.filter(r => (r.ten_du_an || r.tenDuAn || r.duAn || '') === proj) : nhanRows
     return [...new Set(rows.map(r => r.donViNhan).filter(Boolean))].sort()
+  }
+
+  // Bảng Đơn Nhận hiển thị list Đơn vị Giao (từ giaoRows)
+  const getUniqueNhan = (proj) => {
+    const rows = proj ? giaoRows.filter(r => (r.ten_du_an || r.tenDuAn || r.duAn || '') === proj) : giaoRows
+    return [...new Set(rows.map(r => r.donViGiao).filter(Boolean))].sort()
   }
 
   const handleCreateConfig = (name, proj) => {
@@ -1525,20 +1525,20 @@ function SummaryConfigTab({ giaoRows, nhanRows, selectedProject, allProjects }) 
                       </div>
                     ) : (
                       <div style={{ overflowX: 'auto', borderRadius: 8, border: '1px solid #e2e8f0' }}>
-                        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, tableLayout: 'fixed' }}>
                           <thead>
                             <tr>
-                              <th style={{ ...thStyle, minWidth: 160, textAlign: 'left' }}>Đơn vị giao</th>
-                              <th style={{ ...thStyle, width: 100 }}>Giảm trừ</th>
-                              <th style={{ ...thStyle, width: 80 }}>Bỏ qua</th>
-                              <th style={{ ...thStyle, width: 100 }}>Tính toán</th>
+                              <th style={{ ...thStyle, textAlign: 'left' }}>Đơn vị nhận</th>
+                              <th style={{ ...thStyle, width: 110, minWidth: 110, maxWidth: 110 }}>Giảm trừ</th>
+                              <th style={{ ...thStyle, width: 80, minWidth: 80, maxWidth: 80 }}>Bỏ qua</th>
+                              <th style={{ ...thStyle, width: 100, minWidth: 100, maxWidth: 100 }}>Tính toán</th>
                             </tr>
                           </thead>
                           <tbody>
                             {cfg.giaoTable.map((row, rIdx) => (
                               <tr key={row.unit} style={{ background: rIdx % 2 === 0 ? '#fff' : '#f8fafc' }}>
                                 <td style={{ ...tdStyle, fontWeight: 600, color: '#0f172a' }}>{row.unit}</td>
-                                <td style={{ ...tdStyle, textAlign: 'center' }}>
+                                <td style={{ ...tdStyle, textAlign: 'center', width: 110, minWidth: 110, maxWidth: 110 }}>
                                   <input
                                     type="number"
                                     value={row.giamTru}
@@ -1554,7 +1554,7 @@ function SummaryConfigTab({ giaoRows, nhanRows, selectedProject, allProjects }) 
                                     disabled={row.boQua}
                                   />
                                 </td>
-                                <td style={{ ...tdStyle, textAlign: 'center' }}>
+                                <td style={{ ...tdStyle, textAlign: 'center', width: 80, minWidth: 80, maxWidth: 80 }}>
                                   <input
                                     type="checkbox"
                                     checked={row.boQua}
@@ -1562,7 +1562,7 @@ function SummaryConfigTab({ giaoRows, nhanRows, selectedProject, allProjects }) 
                                     style={{ width: 16, height: 16, cursor: 'pointer', accentColor: '#ef4444' }}
                                   />
                                 </td>
-                                <td style={{ ...tdStyle, textAlign: 'center' }}>
+                                <td style={{ ...tdStyle, textAlign: 'center', width: 100, minWidth: 100, maxWidth: 100 }}>
                                   <input
                                     type="checkbox"
                                     checked={row.tinhToan && !row.boQua}
@@ -1604,20 +1604,20 @@ function SummaryConfigTab({ giaoRows, nhanRows, selectedProject, allProjects }) 
                       </div>
                     ) : (
                       <div style={{ overflowX: 'auto', borderRadius: 8, border: '1px solid #e2e8f0' }}>
-                        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, tableLayout: 'fixed' }}>
                           <thead>
                             <tr>
-                              <th style={{ ...thStyle, minWidth: 160, textAlign: 'left', background: '#065f46' }}>Đơn vị nhận</th>
-                              <th style={{ ...thStyle, width: 100, background: '#065f46' }}>Giảm trừ</th>
-                              <th style={{ ...thStyle, width: 80, background: '#065f46' }}>Bỏ qua</th>
-                              <th style={{ ...thStyle, width: 100, background: '#065f46' }}>Tính toán</th>
+                              <th style={{ ...thStyle, textAlign: 'left', background: '#065f46' }}>Đơn vị giao</th>
+                              <th style={{ ...thStyle, width: 110, minWidth: 110, maxWidth: 110, background: '#065f46' }}>Giảm trừ</th>
+                              <th style={{ ...thStyle, width: 80, minWidth: 80, maxWidth: 80, background: '#065f46' }}>Bỏ qua</th>
+                              <th style={{ ...thStyle, width: 100, minWidth: 100, maxWidth: 100, background: '#065f46' }}>Tính toán</th>
                             </tr>
                           </thead>
                           <tbody>
                             {cfg.nhanTable.map((row, rIdx) => (
                               <tr key={row.unit} style={{ background: rIdx % 2 === 0 ? '#fff' : '#f8fafc' }}>
                                 <td style={{ ...tdStyle, fontWeight: 600, color: '#0f172a' }}>{row.unit}</td>
-                                <td style={{ ...tdStyle, textAlign: 'center' }}>
+                                <td style={{ ...tdStyle, textAlign: 'center', width: 110, minWidth: 110, maxWidth: 110 }}>
                                   <input
                                     type="number"
                                     value={row.giamTru}
@@ -1633,7 +1633,7 @@ function SummaryConfigTab({ giaoRows, nhanRows, selectedProject, allProjects }) 
                                     disabled={row.boQua}
                                   />
                                 </td>
-                                <td style={{ ...tdStyle, textAlign: 'center' }}>
+                                <td style={{ ...tdStyle, textAlign: 'center', width: 80, minWidth: 80, maxWidth: 80 }}>
                                   <input
                                     type="checkbox"
                                     checked={row.boQua}
@@ -1641,7 +1641,7 @@ function SummaryConfigTab({ giaoRows, nhanRows, selectedProject, allProjects }) 
                                     style={{ width: 16, height: 16, cursor: 'pointer', accentColor: '#ef4444' }}
                                   />
                                 </td>
-                                <td style={{ ...tdStyle, textAlign: 'center' }}>
+                                <td style={{ ...tdStyle, textAlign: 'center', width: 100, minWidth: 100, maxWidth: 100 }}>
                                   <input
                                     type="checkbox"
                                     checked={row.tinhToan && !row.boQua}
