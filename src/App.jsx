@@ -105,19 +105,19 @@ function SearchableSelect({ value, onChange, options, placeholder = 'Tất cả 
   }
 
   return (
-    <div ref={containerRef} style={{ position: 'relative', display: 'inline-block' }}>
+    <div ref={containerRef} style={{ position: 'relative', display: isHeader ? 'inline-block' : 'block', width: isHeader ? 'auto' : '100%' }}>
       {/* Trigger */}
       <div onClick={() => setIsOpen(!isOpen)} style={triggerStyle}>
         <span style={{
           textOverflow: 'ellipsis',
           whiteSpace: 'nowrap',
           overflow: 'hidden',
-          marginRight: 4,
-          display: 'flex',
-          alignItems: 'center',
-          height: '100%',
+          marginRight: 16,
+          display: 'block',
+          flex: '1 1 0%',
+          minWidth: 0,
           lineHeight: 'normal'
-        }}>
+        }} title={displaySelected}>
           {displaySelected}
         </span>
         <ChevronDown size={isHeader ? 14 : 16} color={isHeader ? '#0f58a7' : 'var(--text-muted)'} style={{
@@ -589,22 +589,34 @@ function StatsBar({ rows }) {
 // ─── Filter Bar ───────────────────────────────────────────────────────────────
 function FilterBar({ search, setSearch, trangThai, setTrangThai, trangThaiOptions, duAn, setDuAn, duAnOptions, onClear, onEditProject }) {
   return (
-    <div style={{ display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap', alignItems: 'center', flexShrink: 0 }}>
-      <div style={{ position: 'relative', flex: '1 1 200px', minWidth: 160 }}>
-        <Search size={14} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-light)' }} />
+    <div style={{ display: 'flex', gap: 10, marginBottom: 12, flexWrap: 'wrap', alignItems: 'center', flexShrink: 0 }}>
+      <div style={{ position: 'relative', flex: '1 1 240px', minWidth: 200 }}>
+        <Search size={14} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-light)' }} />
         <input
           className="input"
-          style={{ paddingLeft: 32, width: '100%' }}
+          style={{ paddingLeft: 34, width: '100%', height: 44 }}
           placeholder="Tìm kiếm tên vật tư, mã đơn, đơn vị..."
           value={search}
           onChange={e => setSearch(e.target.value)}
         />
       </div>
-      <select className="input" style={{ flex: '0 0 160px' }} value={trangThai} onChange={e => setTrangThai(e.target.value)}>
+      <select 
+        className="input" 
+        style={{ 
+          flex: '0 0 auto', 
+          width: 'auto', 
+          minWidth: 160, 
+          height: 44,
+          paddingRight: 28,
+          cursor: 'pointer'
+        }} 
+        value={trangThai} 
+        onChange={e => setTrangThai(e.target.value)}
+      >
         <option value="">Tất cả trạng thái</option>
         {trangThaiOptions.map(o => <option key={o} value={o}>{o}</option>)}
       </select>
-      <div style={{ flex: '0 0 180px', minWidth: 180 }}>
+      <div style={{ flex: '0 1 auto', minWidth: 220, maxWidth: 460 }}>
         <SearchableSelect
           value={duAn}
           onChange={setDuAn}
@@ -615,7 +627,16 @@ function FilterBar({ search, setSearch, trangThai, setTrangThai, trangThaiOption
         />
       </div>
       {(search || trangThai || duAn) && (
-        <button className="btn btn-outline btn-sm" onClick={onClear}>
+        <button 
+          className="btn btn-outline btn-sm" 
+          style={{ 
+            height: 44, 
+            padding: '0 16px', 
+            borderRadius: 'var(--radius)', 
+            flexShrink: 0 
+          }} 
+          onClick={onClear}
+        >
           <X size={12} /> Xóa lọc
         </button>
       )}
@@ -1075,7 +1096,9 @@ function OrderTab({
     })
 
     // Set range ref
-    ws['!ref'] = `A1:${getColLabel(columns.length - 1)}${excelRowIdx}`
+    const excelRangeRef = `A1:${getColLabel(columns.length - 1)}${excelRowIdx}`
+    ws['!ref'] = excelRangeRef
+    ws['!autofilter'] = { ref: excelRangeRef }
 
     XLSXStyle.utils.book_append_sheet(wb, ws, isGiao ? "Đơn Giao" : "Đơn Nhận")
     
@@ -1324,8 +1347,7 @@ const PRESET_COLORS = [
   { name: 'Hồng phấn', value: '#fff1f2', border: '#fecdd3', text: '#881337' },
 ]
 
-function SummaryConfigTab({ giaoRows, nhanRows, selectedProject, allProjects }) {
-  const [configs, setConfigs] = React.useState(() => loadSummaryConfigs())
+function SummaryConfigTab({ giaoRows, nhanRows, selectedProject, allProjects, configs, setConfigs }) {
   const [showCreateModal, setShowCreateModal] = React.useState(false)
   const [expandedConfig, setExpandedConfig] = React.useState(null) // index of expanded config
   const [configToDeleteIdx, setConfigToDeleteIdx] = React.useState(null)
@@ -1479,8 +1501,8 @@ function SummaryConfigTab({ giaoRows, nhanRows, selectedProject, allProjects }) 
       id: tempId,
       name,
       project: proj,
-      giaoTable: giaoUnits.map(u => ({ unit: u, giamTru: '', boQua: false, tinhToan: true })),
-      nhanTable: nhanUnits.map(u => ({ unit: u, giamTru: '', boQua: false, tinhToan: true })),
+      giaoTable: giaoUnits.map(u => ({ unit: u, giamTru: '', boQua: false, tinhToan: false })),
+      nhanTable: nhanUnits.map(u => ({ unit: u, giamTru: '', boQua: false, tinhToan: false })),
       bgColor: bgColor || '#eff6ff',
     }
 
@@ -1651,15 +1673,22 @@ function SummaryConfigTab({ giaoRows, nhanRows, selectedProject, allProjects }) 
     const nhanUnits = getUniqueNhan(cfg.project)
     setConfigs(prev => prev.map((c, i) => {
       if (i !== cfgIdx) return c
-      // Merge: keep existing settings for known units, add new ones
-      const newGiao = giaoUnits.map(u => {
-        const exist = c.giaoTable.find(r => r.unit === u)
-        return exist || { unit: u, giamTru: '', boQua: false, tinhToan: true }
-      })
-      const newNhan = nhanUnits.map(u => {
-        const exist = c.nhanTable.find(r => r.unit === u)
-        return exist || { unit: u, giamTru: '', boQua: false, tinhToan: true }
-      })
+      
+      // 1. Keep ALL existing units in c.giaoTable (especially those already configured).
+      const existingGiaoKeys = new Set(c.giaoTable.map(r => r.unit))
+      // Append any new units from current active files that aren't already in c.giaoTable
+      const addedGiao = giaoUnits
+        .filter(u => !existingGiaoKeys.has(u))
+        .map(u => ({ unit: u, giamTru: '', boQua: false, tinhToan: false }))
+      const newGiao = [...c.giaoTable, ...addedGiao]
+
+      // 2. Same for nhanTable
+      const existingNhanKeys = new Set(c.nhanTable.map(r => r.unit))
+      const addedNhan = nhanUnits
+        .filter(u => !existingNhanKeys.has(u))
+        .map(u => ({ unit: u, giamTru: '', boQua: false, tinhToan: false }))
+      const newNhan = [...c.nhanTable, ...addedNhan]
+
       return { ...c, giaoTable: newGiao, nhanTable: newNhan }
     }))
   }
@@ -1880,326 +1909,385 @@ function SummaryConfigTab({ giaoRows, nhanRows, selectedProject, allProjects }) 
                         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, tableLayout: 'fixed' }}>
                           <thead>
                             <tr>
-                              <th style={{ ...thStyle, textAlign: 'left', width: '25%', minWidth: '25%' }}>Đơn vị nhận</th>
+                              <th colSpan={4} style={{
+                                padding: '10px 12px', fontSize: 13, fontWeight: 700, color: '#fff',
+                                background: '#0f58a7', textAlign: 'center', whiteSpace: 'nowrap',
+                                border: '1px solid #0a3d73', textTransform: 'uppercase', letterSpacing: '0.05em'
+                              }}>
+                                Đơn vị nhận
+                              </th>
+                            </tr>
+                            <tr>
+                              <th style={{ ...thStyle, textAlign: 'center', width: '25%', minWidth: '25%' }}>Chưa phân bổ</th>
                               <th style={{ ...thStyle, width: '25%', minWidth: '25%', maxWidth: '25%' }}>Giảm trừ</th>
                               <th style={{ ...thStyle, width: '25%', minWidth: '25%', maxWidth: '25%' }}>Bỏ qua</th>
                               <th style={{ ...thStyle, width: '25%', minWidth: '25%', maxWidth: '25%' }}>Tính toán</th>
                             </tr>
                           </thead>
                           <tbody>
-                            {cfg.giaoTable.map((row, rIdx) => {
-                              const isGiamTru = !!row.giamTru
-                              const isBoQua = !!row.boQua
-                              const isTinhToan = !isGiamTru && !isBoQua
+                            {(() => {
+                              const giaoUnits = getUniqueGiao(cfg.project);
 
-                              return (
-                                <tr key={row.unit} style={{ background: rIdx % 2 === 0 ? '#fff' : '#f8fafc', transition: 'background 0.15s' }}>
-                                  {/* Col 1: Unit Identity */}
-                                  <td 
-                                    draggable={true}
-                                    onDragStart={(e) => {
-                                      e.dataTransfer.setData('text/plain', row.unit);
-                                      e.dataTransfer.setData('application/sgc-unit-type', 'giao');
-                                      e.dataTransfer.setData('application/sgc-row-index', String(rIdx));
-                                      e.dataTransfer.effectAllowed = 'copyMove';
-                                    }}
-                                    style={{ 
-                                      ...tdStyle, 
-                                      fontWeight: 600, 
-                                      color: '#0f172a',
-                                      width: '25%',
-                                      minWidth: '25%',
-                                      cursor: 'grab',
-                                      userSelect: 'none',
-                                      borderRight: '1px solid #f1f5f9'
-                                    }}
-                                    title="Nhấp giữ kéo sang các cột bên cạnh"
-                                  >
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, width: '100%', overflow: 'hidden' }}>
-                                      <span style={{ color: '#94a3b8', fontSize: 13, cursor: 'grab', userSelect: 'none', flexShrink: 0 }}>☰</span>
-                                      <span style={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', flex: 1 }} title={row.unit}>
-                                        {row.unit}
-                                      </span>
-                                    </div>
-                                  </td>
+                              const listGiamTruGiao = cfg.giaoTable
+                                .map((row, idx) => ({ row, idx }))
+                                .filter(item => !!item.row.giamTru);
 
-                                  {/* Col 2: Giảm trừ */}
-                                  <td 
-                                    style={{ 
-                                      ...tdStyle, 
-                                      textAlign: 'center', 
-                                      width: '25%', 
-                                      minWidth: '25%', 
-                                      maxWidth: '25%',
-                                      borderRight: '1px solid #f1f5f9',
-                                      transition: 'all 0.15s',
-                                      cursor: 'pointer',
-                                      position: 'relative',
-                                      padding: '8px'
-                                    }}
-                                    onClick={() => setUnitColumn(cfgIdx, rIdx, 'giamTru', 'giao')}
-                                    onDragOver={(e) => {
-                                      e.preventDefault();
-                                      e.currentTarget.style.backgroundColor = '#eff6ff';
-                                      e.currentTarget.style.outline = '2px dashed #3b82f6';
-                                    }}
-                                    onDragLeave={(e) => {
-                                      e.preventDefault();
-                                      e.currentTarget.style.backgroundColor = '';
-                                      e.currentTarget.style.outline = 'none';
-                                    }}
-                                    onDrop={(e) => {
-                                      e.preventDefault();
-                                      e.currentTarget.style.backgroundColor = '';
-                                      e.currentTarget.style.outline = 'none';
-                                      const typeStr = e.dataTransfer.getData('application/sgc-unit-type');
-                                      const draggedIdxStr = e.dataTransfer.getData('application/sgc-row-index');
-                                      if (typeStr === 'giao' && draggedIdxStr !== '') {
-                                        const draggedIdx = Number(draggedIdxStr);
-                                        updateGiaoRow(cfgIdx, draggedIdx, { giamTru: '1', boQua: false, tinhToan: false });
-                                      }
-                                    }}
-                                  >
-                                    {isGiamTru ? (
-                                      <div 
-                                        draggable={true}
-                                        onDragStart={(e) => {
-                                          e.dataTransfer.setData('text/plain', row.unit);
-                                          e.dataTransfer.setData('application/sgc-unit-type', 'giao');
-                                          e.dataTransfer.setData('application/sgc-row-index', String(rIdx));
-                                          e.dataTransfer.effectAllowed = 'copyMove';
-                                        }}
-                                        style={{
-                                          background: '#eff6ff',
-                                          border: '1px solid #bfdbfe',
-                                          color: '#1e40af',
-                                          borderRadius: 6,
-                                          padding: '4px 8px',
-                                          fontSize: '11.5px',
-                                          fontWeight: 600,
-                                          display: 'inline-flex',
-                                          alignItems: 'center',
-                                          gap: 4,
-                                          cursor: 'grab',
-                                          boxShadow: '0 1px 2px rgba(30,64,175,0.05)',
-                                          maxWidth: '100%'
-                                        }}
-                                      >
-                                        <span style={{ flexShrink: 0, color: '#3b82f6' }}>☰</span>
-                                        <span style={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }} title={row.unit}>{row.unit}</span>
-                                        <button 
-                                          type="button" 
-                                          onClick={(e) => {
-                                            e.stopPropagation()
-                                            updateGiaoRow(cfgIdx, rIdx, { giamTru: '', boQua: false, tinhToan: true })
+                              const listBoQuaGiao = cfg.giaoTable
+                                .map((row, idx) => ({ row, idx }))
+                                .filter(item => !!item.row.boQua);
+
+                              const listTinhToanGiao = cfg.giaoTable
+                                .map((row, idx) => ({ row, idx }))
+                                .filter(item => !!item.row.tinhToan);
+
+                              const listChuaPhanBoGiao = cfg.giaoTable
+                                .map((row, idx) => ({ row, idx }))
+                                .filter(item => !item.row.giamTru && !item.row.boQua && !item.row.tinhToan)
+                                .filter(item => giaoUnits.includes(item.row.unit));
+
+                              const maxRowsGiao = Math.max(
+                                listChuaPhanBoGiao.length,
+                                listGiamTruGiao.length,
+                                listBoQuaGiao.length,
+                                listTinhToanGiao.length
+                              );
+
+                              const renderRowsGiao = maxRowsGiao > 0 ? maxRowsGiao : 1;
+
+                              return Array.from({ length: renderRowsGiao }).map((_, rIdx) => {
+                                const itemChuaPhanBo = listChuaPhanBoGiao[rIdx];
+                                const itemGiamTru = listGiamTruGiao[rIdx];
+                                const itemBoQua = listBoQuaGiao[rIdx];
+                                const itemTinhToan = listTinhToanGiao[rIdx];
+
+                                return (
+                                  <tr key={rIdx} style={{ background: rIdx % 2 === 0 ? '#fff' : '#f8fafc', transition: 'background 0.15s' }}>
+                                    {/* Col 1: Chưa phân bổ */}
+                                    <td 
+                                      style={{ 
+                                        ...tdStyle, 
+                                        fontWeight: 600, 
+                                        color: '#0f172a',
+                                        width: '25%',
+                                        minWidth: '25%',
+                                        borderRight: '1px solid #f1f5f9',
+                                        padding: '8px',
+                                        background: '#fff7ed'
+                                      }}
+                                      onDragOver={(e) => {
+                                        e.preventDefault();
+                                        e.currentTarget.style.backgroundColor = '#fed7aa';
+                                      }}
+                                      onDragLeave={(e) => {
+                                        e.preventDefault();
+                                        e.currentTarget.style.backgroundColor = '';
+                                      }}
+                                      onDrop={(e) => {
+                                        e.preventDefault();
+                                        e.currentTarget.style.backgroundColor = '';
+                                        const typeStr = e.dataTransfer.getData('application/sgc-unit-type');
+                                        const draggedIdxStr = e.dataTransfer.getData('application/sgc-row-index');
+                                        if (typeStr === 'giao' && draggedIdxStr !== '') {
+                                          const draggedIdx = Number(draggedIdxStr);
+                                          updateGiaoRow(cfgIdx, draggedIdx, { giamTru: '', boQua: false, tinhToan: false });
+                                        }
+                                      }}
+                                    >
+                                      {itemChuaPhanBo ? (
+                                        <div 
+                                          draggable={true}
+                                          onDragStart={(e) => {
+                                            e.dataTransfer.setData('text/plain', itemChuaPhanBo.row.unit);
+                                            e.dataTransfer.setData('application/sgc-unit-type', 'giao');
+                                            e.dataTransfer.setData('application/sgc-row-index', String(itemChuaPhanBo.idx));
+                                            e.dataTransfer.effectAllowed = 'copyMove';
+                                          }}
+                                          onClick={() => {
+                                            updateGiaoRow(cfgIdx, itemChuaPhanBo.idx, { giamTru: '', boQua: false, tinhToan: true });
+                                          }}
+                                          style={{ display: 'flex', alignItems: 'center', gap: 6, width: '100%', cursor: 'grab', userSelect: 'none' }}
+                                          title="Nhấp giữ kéo sang các cột bên cạnh, hoặc Click để chuyển sang Tính Toán"
+                                        >
+                                          <span style={{ color: '#94a3b8', fontSize: 13, flexShrink: 0 }}>☰</span>
+                                          <span style={{ wordBreak: 'break-word', whiteSpace: 'normal', flex: 1 }} title={itemChuaPhanBo.row.unit}>
+                                            {itemChuaPhanBo.row.unit}
+                                          </span>
+                                        </div>
+                                      ) : null}
+                                    </td>
+
+                                    {/* Col 2: Giảm trừ */}
+                                    <td 
+                                      style={{ 
+                                        ...tdStyle, 
+                                        textAlign: 'left', 
+                                        width: '25%', 
+                                        minWidth: '25%', 
+                                        maxWidth: '25%',
+                                        borderRight: '1px solid #f1f5f9',
+                                        transition: 'all 0.15s',
+                                        position: 'relative',
+                                        padding: '8px'
+                                      }}
+                                      onDragOver={(e) => {
+                                        e.preventDefault();
+                                        e.currentTarget.style.backgroundColor = '#eff6ff';
+                                        e.currentTarget.style.outline = '2px dashed #3b82f6';
+                                      }}
+                                      onDragLeave={(e) => {
+                                        e.preventDefault();
+                                        e.currentTarget.style.backgroundColor = '';
+                                        e.currentTarget.style.outline = 'none';
+                                      }}
+                                      onDrop={(e) => {
+                                        e.preventDefault();
+                                        e.currentTarget.style.backgroundColor = '';
+                                        e.currentTarget.style.outline = 'none';
+                                        const typeStr = e.dataTransfer.getData('application/sgc-unit-type');
+                                        const draggedIdxStr = e.dataTransfer.getData('application/sgc-row-index');
+                                        if (typeStr === 'giao' && draggedIdxStr !== '') {
+                                          const draggedIdx = Number(draggedIdxStr);
+                                          updateGiaoRow(cfgIdx, draggedIdx, { giamTru: '1', boQua: false, tinhToan: false });
+                                        }
+                                      }}
+                                    >
+                                      {itemGiamTru ? (
+                                        <div 
+                                          draggable={true}
+                                          onDragStart={(e) => {
+                                            e.dataTransfer.setData('text/plain', itemGiamTru.row.unit);
+                                            e.dataTransfer.setData('application/sgc-unit-type', 'giao');
+                                            e.dataTransfer.setData('application/sgc-row-index', String(itemGiamTru.idx));
+                                            e.dataTransfer.effectAllowed = 'copyMove';
                                           }}
                                           style={{
-                                            background: 'transparent',
-                                            border: 'none',
+                                            background: '#eff6ff',
+                                            border: '1px solid #bfdbfe',
                                             color: '#1e40af',
-                                            cursor: 'pointer',
-                                            padding: 0,
-                                            marginLeft: 4,
-                                            fontSize: 14,
-                                            lineHeight: 1,
-                                            display: 'flex',
-                                            alignItems: 'center'
+                                            borderRadius: 6,
+                                            padding: '4px 8px',
+                                            fontSize: '11.5px',
+                                            fontWeight: 600,
+                                            display: 'inline-flex',
+                                            alignItems: 'center',
+                                            gap: 4,
+                                            cursor: 'grab',
+                                            boxShadow: '0 1px 2px rgba(30,64,175,0.05)',
+                                            maxWidth: '100%'
                                           }}
-                                          title="Bỏ thiết lập"
                                         >
-                                          ×
-                                        </button>
-                                      </div>
-                                    ) : (
-                                      <span style={{ fontSize: 11, color: '#cbd5e1', fontStyle: 'italic', pointerEvents: 'none' }}>Kéo thả hoặc Click</span>
-                                    )}
-                                  </td>
+                                          <span style={{ flexShrink: 0, color: '#3b82f6' }}>☰</span>
+                                          <span style={{ wordBreak: 'break-word', whiteSpace: 'normal' }} title={itemGiamTru.row.unit}>{itemGiamTru.row.unit}</span>
+                                          <button 
+                                            type="button" 
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              updateGiaoRow(cfgIdx, itemGiamTru.idx, { giamTru: '', boQua: false, tinhToan: false });
+                                            }}
+                                            style={{
+                                              background: 'transparent',
+                                              border: 'none',
+                                              color: '#1e40af',
+                                              cursor: 'pointer',
+                                              padding: 0,
+                                              marginLeft: 4,
+                                              fontSize: 14,
+                                              lineHeight: 1,
+                                              display: 'flex',
+                                              alignItems: 'center'
+                                            }}
+                                            title="Bỏ thiết lập"
+                                          >
+                                            ×
+                                          </button>
+                                        </div>
+                                      ) : (
+                                        <span style={{ fontSize: 11, color: '#cbd5e1', fontStyle: 'italic', pointerEvents: 'none', userSelect: 'none' }}>Kéo thả vào đây</span>
+                                      )}
+                                    </td>
 
-                                  {/* Col 3: Bỏ qua */}
-                                  <td 
-                                    style={{ 
-                                      ...tdStyle, 
-                                      textAlign: 'center', 
-                                      width: '25%', 
-                                      minWidth: '25%', 
-                                      maxWidth: '25%',
-                                      borderRight: '1px solid #f1f5f9',
-                                      transition: 'all 0.15s',
-                                      cursor: 'pointer',
-                                      position: 'relative',
-                                      padding: '8px'
-                                    }}
-                                    onClick={() => setUnitColumn(cfgIdx, rIdx, 'boQua', 'giao')}
-                                    onDragOver={(e) => {
-                                      e.preventDefault();
-                                      e.currentTarget.style.backgroundColor = '#fff1f2';
-                                      e.currentTarget.style.outline = '2px dashed #f43f5e';
-                                    }}
-                                    onDragLeave={(e) => {
-                                      e.preventDefault();
-                                      e.currentTarget.style.backgroundColor = '';
-                                      e.currentTarget.style.outline = 'none';
-                                    }}
-                                    onDrop={(e) => {
-                                      e.preventDefault();
-                                      e.currentTarget.style.backgroundColor = '';
-                                      e.currentTarget.style.outline = 'none';
-                                      const typeStr = e.dataTransfer.getData('application/sgc-unit-type');
-                                      const draggedIdxStr = e.dataTransfer.getData('application/sgc-row-index');
-                                      if (typeStr === 'giao' && draggedIdxStr !== '') {
-                                        const draggedIdx = Number(draggedIdxStr);
-                                        updateGiaoRow(cfgIdx, draggedIdx, { giamTru: '', boQua: true, tinhToan: false });
-                                      }
-                                    }}
-                                  >
-                                    {isBoQua ? (
-                                      <div 
-                                        draggable={true}
-                                        onDragStart={(e) => {
-                                          e.dataTransfer.setData('text/plain', row.unit);
-                                          e.dataTransfer.setData('application/sgc-unit-type', 'giao');
-                                          e.dataTransfer.setData('application/sgc-row-index', String(rIdx));
-                                          e.dataTransfer.effectAllowed = 'copyMove';
-                                        }}
-                                        style={{
-                                          background: '#fff1f2',
-                                          border: '1px solid #fecdd3',
-                                          color: '#9f1239',
-                                          borderRadius: 6,
-                                          padding: '4px 8px',
-                                          fontSize: '11.5px',
-                                          fontWeight: 600,
-                                          display: 'inline-flex',
-                                          alignItems: 'center',
-                                          gap: 4,
-                                          cursor: 'grab',
-                                          boxShadow: '0 1px 2px rgba(159,18,57,0.05)',
-                                          maxWidth: '100%'
-                                        }}
-                                      >
-                                        <span style={{ flexShrink: 0, color: '#f43f5e' }}>☰</span>
-                                        <span style={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }} title={row.unit}>{row.unit}</span>
-                                        <button 
-                                          type="button" 
-                                          onClick={(e) => {
-                                            e.stopPropagation()
-                                            updateGiaoRow(cfgIdx, rIdx, { giamTru: '', boQua: false, tinhToan: true })
+                                    {/* Col 3: Bỏ qua */}
+                                    <td 
+                                      style={{ 
+                                        ...tdStyle, 
+                                        textAlign: 'left', 
+                                        width: '25%', 
+                                        minWidth: '25%', 
+                                        maxWidth: '25%',
+                                        borderRight: '1px solid #f1f5f9',
+                                        transition: 'all 0.15s',
+                                        position: 'relative',
+                                        padding: '8px'
+                                      }}
+                                      onDragOver={(e) => {
+                                        e.preventDefault();
+                                        e.currentTarget.style.backgroundColor = '#fff1f2';
+                                        e.currentTarget.style.outline = '2px dashed #f43f5e';
+                                      }}
+                                      onDragLeave={(e) => {
+                                        e.preventDefault();
+                                        e.currentTarget.style.backgroundColor = '';
+                                        e.currentTarget.style.outline = 'none';
+                                      }}
+                                      onDrop={(e) => {
+                                        e.preventDefault();
+                                        e.currentTarget.style.backgroundColor = '';
+                                        e.currentTarget.style.outline = 'none';
+                                        const typeStr = e.dataTransfer.getData('application/sgc-unit-type');
+                                        const draggedIdxStr = e.dataTransfer.getData('application/sgc-row-index');
+                                        if (typeStr === 'giao' && draggedIdxStr !== '') {
+                                          const draggedIdx = Number(draggedIdxStr);
+                                          updateGiaoRow(cfgIdx, draggedIdx, { giamTru: '', boQua: true, tinhToan: false });
+                                        }
+                                      }}
+                                    >
+                                      {itemBoQua ? (
+                                        <div 
+                                          draggable={true}
+                                          onDragStart={(e) => {
+                                            e.dataTransfer.setData('text/plain', itemBoQua.row.unit);
+                                            e.dataTransfer.setData('application/sgc-unit-type', 'giao');
+                                            e.dataTransfer.setData('application/sgc-row-index', String(itemBoQua.idx));
+                                            e.dataTransfer.effectAllowed = 'copyMove';
                                           }}
                                           style={{
-                                            background: 'transparent',
-                                            border: 'none',
+                                            background: '#fff1f2',
+                                            border: '1px solid #fecdd3',
                                             color: '#9f1239',
-                                            cursor: 'pointer',
-                                            padding: 0,
-                                            marginLeft: 4,
-                                            fontSize: 14,
-                                            lineHeight: 1,
-                                            display: 'flex',
-                                            alignItems: 'center'
+                                            borderRadius: 6,
+                                            padding: '4px 8px',
+                                            fontSize: '11.5px',
+                                            fontWeight: 600,
+                                            display: 'inline-flex',
+                                            alignItems: 'center',
+                                            gap: 4,
+                                            cursor: 'grab',
+                                            boxShadow: '0 1px 2px rgba(159,18,57,0.05)',
+                                            maxWidth: '100%'
                                           }}
-                                          title="Bỏ thiết lập"
                                         >
-                                          ×
-                                        </button>
-                                      </div>
-                                    ) : (
-                                      <span style={{ fontSize: 11, color: '#cbd5e1', fontStyle: 'italic', pointerEvents: 'none' }}>Kéo thả hoặc Click</span>
-                                    )}
-                                  </td>
+                                          <span style={{ flexShrink: 0, color: '#f43f5e' }}>☰</span>
+                                          <span style={{ wordBreak: 'break-word', whiteSpace: 'normal' }} title={itemBoQua.row.unit}>{itemBoQua.row.unit}</span>
+                                          <button 
+                                            type="button" 
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              updateGiaoRow(cfgIdx, itemBoQua.idx, { giamTru: '', boQua: false, tinhToan: false });
+                                            }}
+                                            style={{
+                                              background: 'transparent',
+                                              border: 'none',
+                                              color: '#9f1239',
+                                              cursor: 'pointer',
+                                              padding: 0,
+                                              marginLeft: 4,
+                                              fontSize: 14,
+                                              lineHeight: 1,
+                                              display: 'flex',
+                                              alignItems: 'center'
+                                            }}
+                                            title="Bỏ thiết lập"
+                                          >
+                                            ×
+                                          </button>
+                                        </div>
+                                      ) : (
+                                        <span style={{ fontSize: 11, color: '#cbd5e1', fontStyle: 'italic', pointerEvents: 'none', userSelect: 'none' }}>Kéo thả vào đây</span>
+                                      )}
+                                    </td>
 
-                                  {/* Col 4: Tính toán */}
-                                  <td 
-                                    style={{ 
-                                      ...tdStyle, 
-                                      textAlign: 'center', 
-                                      width: '25%', 
-                                      minWidth: '25%', 
-                                      maxWidth: '25%',
-                                      transition: 'all 0.15s',
-                                      cursor: 'pointer',
-                                      position: 'relative',
-                                      padding: '8px'
-                                    }}
-                                    onClick={() => setUnitColumn(cfgIdx, rIdx, 'tinhToan', 'giao')}
-                                    onDragOver={(e) => {
-                                      e.preventDefault();
-                                      e.currentTarget.style.backgroundColor = '#ecfdf5';
-                                      e.currentTarget.style.outline = '2px dashed #10b981';
-                                    }}
-                                    onDragLeave={(e) => {
-                                      e.preventDefault();
-                                      e.currentTarget.style.backgroundColor = '';
-                                      e.currentTarget.style.outline = 'none';
-                                    }}
-                                    onDrop={(e) => {
-                                      e.preventDefault();
-                                      e.currentTarget.style.backgroundColor = '';
-                                      e.currentTarget.style.outline = 'none';
-                                      const typeStr = e.dataTransfer.getData('application/sgc-unit-type');
-                                      const draggedIdxStr = e.dataTransfer.getData('application/sgc-row-index');
-                                      if (typeStr === 'giao' && draggedIdxStr !== '') {
-                                        const draggedIdx = Number(draggedIdxStr);
-                                        updateGiaoRow(cfgIdx, draggedIdx, { giamTru: '', boQua: false, tinhToan: true });
-                                      }
-                                    }}
-                                  >
-                                    {isTinhToan ? (
-                                      <div 
-                                        draggable={true}
-                                        onDragStart={(e) => {
-                                          e.dataTransfer.setData('text/plain', row.unit);
-                                          e.dataTransfer.setData('application/sgc-unit-type', 'giao');
-                                          e.dataTransfer.setData('application/sgc-row-index', String(rIdx));
-                                          e.dataTransfer.effectAllowed = 'copyMove';
-                                        }}
-                                        style={{
-                                          background: '#ecfdf5',
-                                          border: '1px solid #a7f3d0',
-                                          color: '#065f46',
-                                          borderRadius: 6,
-                                          padding: '4px 8px',
-                                          fontSize: '11.5px',
-                                          fontWeight: 600,
-                                          display: 'inline-flex',
-                                          alignItems: 'center',
-                                          gap: 4,
-                                          cursor: 'grab',
-                                          boxShadow: '0 1px 2px rgba(6,95,70,0.05)',
-                                          maxWidth: '100%'
-                                        }}
-                                      >
-                                        <span style={{ flexShrink: 0, color: '#10b981' }}>☰</span>
-                                        <span style={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }} title={row.unit}>{row.unit}</span>
-                                        <button 
-                                          type="button" 
-                                          onClick={(e) => {
-                                            e.stopPropagation()
-                                            updateGiaoRow(cfgIdx, rIdx, { giamTru: '', boQua: true, tinhToan: false })
+                                    {/* Col 4: Tính toán */}
+                                    <td 
+                                      style={{ 
+                                        ...tdStyle, 
+                                        textAlign: 'left', 
+                                        width: '25%', 
+                                        minWidth: '25%', 
+                                        maxWidth: '25%',
+                                        transition: 'all 0.15s',
+                                        position: 'relative',
+                                        padding: '8px'
+                                      }}
+                                      onDragOver={(e) => {
+                                        e.preventDefault();
+                                        e.currentTarget.style.backgroundColor = '#ecfdf5';
+                                        e.currentTarget.style.outline = '2px dashed #10b981';
+                                      }}
+                                      onDragLeave={(e) => {
+                                        e.preventDefault();
+                                        e.currentTarget.style.backgroundColor = '';
+                                        e.currentTarget.style.outline = 'none';
+                                      }}
+                                      onDrop={(e) => {
+                                        e.preventDefault();
+                                        e.currentTarget.style.backgroundColor = '';
+                                        e.currentTarget.style.outline = 'none';
+                                        const typeStr = e.dataTransfer.getData('application/sgc-unit-type');
+                                        const draggedIdxStr = e.dataTransfer.getData('application/sgc-row-index');
+                                        if (typeStr === 'giao' && draggedIdxStr !== '') {
+                                          const draggedIdx = Number(draggedIdxStr);
+                                          updateGiaoRow(cfgIdx, draggedIdx, { giamTru: '', boQua: false, tinhToan: true });
+                                        }
+                                      }}
+                                    >
+                                      {itemTinhToan ? (
+                                        <div 
+                                          draggable={true}
+                                          onDragStart={(e) => {
+                                            e.dataTransfer.setData('text/plain', itemTinhToan.row.unit);
+                                            e.dataTransfer.setData('application/sgc-unit-type', 'giao');
+                                            e.dataTransfer.setData('application/sgc-row-index', String(itemTinhToan.idx));
+                                            e.dataTransfer.effectAllowed = 'copyMove';
                                           }}
                                           style={{
-                                            background: 'transparent',
-                                            border: 'none',
+                                            background: '#ecfdf5',
+                                            border: '1px solid #a7f3d0',
                                             color: '#065f46',
-                                            cursor: 'pointer',
-                                            padding: 0,
-                                            marginLeft: 4,
-                                            fontSize: 14,
-                                            lineHeight: 1,
-                                            display: 'flex',
-                                            alignItems: 'center'
+                                            borderRadius: 6,
+                                            padding: '4px 8px',
+                                            fontSize: '11.5px',
+                                            fontWeight: 600,
+                                            display: 'inline-flex',
+                                            alignItems: 'center',
+                                            gap: 4,
+                                            cursor: 'grab',
+                                            boxShadow: '0 1px 2px rgba(6,95,70,0.05)',
+                                            maxWidth: '100%'
                                           }}
-                                          title="Bỏ thiết lập"
                                         >
-                                          ×
-                                        </button>
-                                      </div>
-                                    ) : (
-                                      <span style={{ fontSize: 11, color: '#cbd5e1', fontStyle: 'italic', pointerEvents: 'none' }}>Kéo thả hoặc Click</span>
-                                    )}
-                                  </td>
-                                </tr>
-                              )
-                            })}
+                                          <span style={{ flexShrink: 0, color: '#10b981' }}>☰</span>
+                                          <span style={{ wordBreak: 'break-word', whiteSpace: 'normal' }} title={itemTinhToan.row.unit}>{itemTinhToan.row.unit}</span>
+                                          <button 
+                                            type="button" 
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              updateGiaoRow(cfgIdx, itemTinhToan.idx, { giamTru: '', boQua: false, tinhToan: false });
+                                            }}
+                                            style={{
+                                              background: 'transparent',
+                                              border: 'none',
+                                              color: '#065f46',
+                                              cursor: 'pointer',
+                                              padding: 0,
+                                              marginLeft: 4,
+                                              fontSize: 14,
+                                              lineHeight: 1,
+                                              display: 'flex',
+                                              alignItems: 'center'
+                                            }}
+                                            title="Bỏ thiết lập"
+                                          >
+                                            ×
+                                          </button>
+                                        </div>
+                                      ) : (
+                                        <span style={{ fontSize: 11, color: '#cbd5e1', fontStyle: 'italic', pointerEvents: 'none', userSelect: 'none' }}>Kéo thả vào đây</span>
+                                      )}
+                                    </td>
+                                  </tr>
+                                );
+                              });
+                            })()}
                           </tbody>
                         </table>
                       </div>
@@ -2234,326 +2322,385 @@ function SummaryConfigTab({ giaoRows, nhanRows, selectedProject, allProjects }) 
                         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, tableLayout: 'fixed' }}>
                           <thead>
                             <tr>
-                              <th style={{ ...thStyle, textAlign: 'left', width: '25%', minWidth: '25%', background: '#065f46', border: '1px solid #04432e' }}>Đơn vị giao</th>
+                              <th colSpan={4} style={{
+                                padding: '10px 12px', fontSize: 13, fontWeight: 700, color: '#fff',
+                                background: '#065f46', textAlign: 'center', whiteSpace: 'nowrap',
+                                border: '1px solid #04432e', textTransform: 'uppercase', letterSpacing: '0.05em'
+                              }}>
+                                Đơn vị giao
+                              </th>
+                            </tr>
+                            <tr>
+                              <th style={{ ...thStyle, textAlign: 'center', width: '25%', minWidth: '25%', background: '#065f46', border: '1px solid #04432e' }}>Chưa phân bổ</th>
                               <th style={{ ...thStyle, width: '25%', minWidth: '25%', maxWidth: '25%', background: '#065f46', border: '1px solid #04432e' }}>Giảm trừ</th>
                               <th style={{ ...thStyle, width: '25%', minWidth: '25%', maxWidth: '25%', background: '#065f46', border: '1px solid #04432e' }}>Bỏ qua</th>
                               <th style={{ ...thStyle, width: '25%', minWidth: '25%', maxWidth: '25%', background: '#065f46', border: '1px solid #04432e' }}>Tính toán</th>
                             </tr>
                           </thead>
                           <tbody>
-                            {cfg.nhanTable.map((row, rIdx) => {
-                              const isGiamTru = !!row.giamTru
-                              const isBoQua = !!row.boQua
-                              const isTinhToan = !isGiamTru && !isBoQua
+                            {(() => {
+                              const nhanUnits = getUniqueNhan(cfg.project);
 
-                              return (
-                                <tr key={row.unit} style={{ background: rIdx % 2 === 0 ? '#fff' : '#f8fafc', transition: 'background 0.15s' }}>
-                                  {/* Col 1: Unit Identity */}
-                                  <td 
-                                    draggable={true}
-                                    onDragStart={(e) => {
-                                      e.dataTransfer.setData('text/plain', row.unit);
-                                      e.dataTransfer.setData('application/sgc-unit-type', 'nhan');
-                                      e.dataTransfer.setData('application/sgc-row-index', String(rIdx));
-                                      e.dataTransfer.effectAllowed = 'copyMove';
-                                    }}
-                                    style={{ 
-                                      ...tdStyle, 
-                                      fontWeight: 600, 
-                                      color: '#0f172a',
-                                      width: '25%',
-                                      minWidth: '25%',
-                                      cursor: 'grab',
-                                      userSelect: 'none',
-                                      borderRight: '1px solid #f1f5f9'
-                                    }}
-                                    title="Nhấp giữ kéo sang các cột bên cạnh"
-                                  >
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, width: '100%', overflow: 'hidden' }}>
-                                      <span style={{ color: '#94a3b8', fontSize: 13, cursor: 'grab', userSelect: 'none', flexShrink: 0 }}>☰</span>
-                                      <span style={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', flex: 1 }} title={row.unit}>
-                                        {row.unit}
-                                      </span>
-                                    </div>
-                                  </td>
+                              const listGiamTruNhan = cfg.nhanTable
+                                .map((row, idx) => ({ row, idx }))
+                                .filter(item => !!item.row.giamTru);
 
-                                  {/* Col 2: Giảm trừ */}
-                                  <td 
-                                    style={{ 
-                                      ...tdStyle, 
-                                      textAlign: 'center', 
-                                      width: '25%', 
-                                      minWidth: '25%', 
-                                      maxWidth: '25%',
-                                      borderRight: '1px solid #f1f5f9',
-                                      transition: 'all 0.15s',
-                                      cursor: 'pointer',
-                                      position: 'relative',
-                                      padding: '8px'
-                                    }}
-                                    onClick={() => setUnitColumn(cfgIdx, rIdx, 'giamTru', 'nhan')}
-                                    onDragOver={(e) => {
-                                      e.preventDefault();
-                                      e.currentTarget.style.backgroundColor = '#eff6ff';
-                                      e.currentTarget.style.outline = '2px dashed #3b82f6';
-                                    }}
-                                    onDragLeave={(e) => {
-                                      e.preventDefault();
-                                      e.currentTarget.style.backgroundColor = '';
-                                      e.currentTarget.style.outline = 'none';
-                                    }}
-                                    onDrop={(e) => {
-                                      e.preventDefault();
-                                      e.currentTarget.style.backgroundColor = '';
-                                      e.currentTarget.style.outline = 'none';
-                                      const typeStr = e.dataTransfer.getData('application/sgc-unit-type');
-                                      const draggedIdxStr = e.dataTransfer.getData('application/sgc-row-index');
-                                      if (typeStr === 'nhan' && draggedIdxStr !== '') {
-                                        const draggedIdx = Number(draggedIdxStr);
-                                        updateNhanRow(cfgIdx, draggedIdx, { giamTru: '1', boQua: false, tinhToan: false });
-                                      }
-                                    }}
-                                  >
-                                    {isGiamTru ? (
-                                      <div 
-                                        draggable={true}
-                                        onDragStart={(e) => {
-                                          e.dataTransfer.setData('text/plain', row.unit);
-                                          e.dataTransfer.setData('application/sgc-unit-type', 'nhan');
-                                          e.dataTransfer.setData('application/sgc-row-index', String(rIdx));
-                                          e.dataTransfer.effectAllowed = 'copyMove';
-                                        }}
-                                        style={{
-                                          background: '#eff6ff',
-                                          border: '1px solid #bfdbfe',
-                                          color: '#1e40af',
-                                          borderRadius: 6,
-                                          padding: '4px 8px',
-                                          fontSize: '11.5px',
-                                          fontWeight: 600,
-                                          display: 'inline-flex',
-                                          alignItems: 'center',
-                                          gap: 4,
-                                          cursor: 'grab',
-                                          boxShadow: '0 1px 2px rgba(30,64,175,0.05)',
-                                          maxWidth: '100%'
-                                        }}
-                                      >
-                                        <span style={{ flexShrink: 0, color: '#3b82f6' }}>☰</span>
-                                        <span style={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }} title={row.unit}>{row.unit}</span>
-                                        <button 
-                                          type="button" 
-                                          onClick={(e) => {
-                                            e.stopPropagation()
-                                            updateNhanRow(cfgIdx, rIdx, { giamTru: '', boQua: false, tinhToan: true })
+                              const listBoQuaNhan = cfg.nhanTable
+                                .map((row, idx) => ({ row, idx }))
+                                .filter(item => !!item.row.boQua);
+
+                              const listTinhToanNhan = cfg.nhanTable
+                                .map((row, idx) => ({ row, idx }))
+                                .filter(item => !!item.row.tinhToan);
+
+                              const listChuaPhanBoNhan = cfg.nhanTable
+                                .map((row, idx) => ({ row, idx }))
+                                .filter(item => !item.row.giamTru && !item.row.boQua && !item.row.tinhToan)
+                                .filter(item => nhanUnits.includes(item.row.unit));
+
+                              const maxRowsNhan = Math.max(
+                                listChuaPhanBoNhan.length,
+                                listGiamTruNhan.length,
+                                listBoQuaNhan.length,
+                                listTinhToanNhan.length
+                              );
+
+                              const renderRowsNhan = maxRowsNhan > 0 ? maxRowsNhan : 1;
+
+                              return Array.from({ length: renderRowsNhan }).map((_, rIdx) => {
+                                const itemChuaPhanBo = listChuaPhanBoNhan[rIdx];
+                                const itemGiamTru = listGiamTruNhan[rIdx];
+                                const itemBoQua = listBoQuaNhan[rIdx];
+                                const itemTinhToan = listTinhToanNhan[rIdx];
+
+                                return (
+                                  <tr key={rIdx} style={{ background: rIdx % 2 === 0 ? '#fff' : '#f8fafc', transition: 'background 0.15s' }}>
+                                    {/* Col 1: Chưa phân bổ */}
+                                    <td 
+                                      style={{ 
+                                        ...tdStyle, 
+                                        fontWeight: 600, 
+                                        color: '#0f172a',
+                                        width: '25%',
+                                        minWidth: '25%',
+                                        borderRight: '1px solid #f1f5f9',
+                                        padding: '8px',
+                                        background: '#fff7ed'
+                                      }}
+                                      onDragOver={(e) => {
+                                        e.preventDefault();
+                                        e.currentTarget.style.backgroundColor = '#fed7aa';
+                                      }}
+                                      onDragLeave={(e) => {
+                                        e.preventDefault();
+                                        e.currentTarget.style.backgroundColor = '';
+                                      }}
+                                      onDrop={(e) => {
+                                        e.preventDefault();
+                                        e.currentTarget.style.backgroundColor = '';
+                                        const typeStr = e.dataTransfer.getData('application/sgc-unit-type');
+                                        const draggedIdxStr = e.dataTransfer.getData('application/sgc-row-index');
+                                        if (typeStr === 'nhan' && draggedIdxStr !== '') {
+                                          const draggedIdx = Number(draggedIdxStr);
+                                          updateNhanRow(cfgIdx, draggedIdx, { giamTru: '', boQua: false, tinhToan: false });
+                                        }
+                                      }}
+                                    >
+                                      {itemChuaPhanBo ? (
+                                        <div 
+                                          draggable={true}
+                                          onDragStart={(e) => {
+                                            e.dataTransfer.setData('text/plain', itemChuaPhanBo.row.unit);
+                                            e.dataTransfer.setData('application/sgc-unit-type', 'nhan');
+                                            e.dataTransfer.setData('application/sgc-row-index', String(itemChuaPhanBo.idx));
+                                            e.dataTransfer.effectAllowed = 'copyMove';
+                                          }}
+                                          onClick={() => {
+                                            updateNhanRow(cfgIdx, itemChuaPhanBo.idx, { giamTru: '', boQua: false, tinhToan: true });
+                                          }}
+                                          style={{ display: 'flex', alignItems: 'center', gap: 6, width: '100%', cursor: 'grab', userSelect: 'none' }}
+                                          title="Nhấp giữ kéo sang các cột bên cạnh, hoặc Click để chuyển sang Tính Toán"
+                                        >
+                                          <span style={{ color: '#94a3b8', fontSize: 13, flexShrink: 0 }}>☰</span>
+                                          <span style={{ wordBreak: 'break-word', whiteSpace: 'normal', flex: 1 }} title={itemChuaPhanBo.row.unit}>
+                                            {itemChuaPhanBo.row.unit}
+                                          </span>
+                                        </div>
+                                      ) : null}
+                                    </td>
+
+                                    {/* Col 2: Giảm trừ */}
+                                    <td 
+                                      style={{ 
+                                        ...tdStyle, 
+                                        textAlign: 'left', 
+                                        width: '25%', 
+                                        minWidth: '25%', 
+                                        maxWidth: '25%',
+                                        borderRight: '1px solid #f1f5f9',
+                                        transition: 'all 0.15s',
+                                        position: 'relative',
+                                        padding: '8px'
+                                      }}
+                                      onDragOver={(e) => {
+                                        e.preventDefault();
+                                        e.currentTarget.style.backgroundColor = '#eff6ff';
+                                        e.currentTarget.style.outline = '2px dashed #3b82f6';
+                                      }}
+                                      onDragLeave={(e) => {
+                                        e.preventDefault();
+                                        e.currentTarget.style.backgroundColor = '';
+                                        e.currentTarget.style.outline = 'none';
+                                      }}
+                                      onDrop={(e) => {
+                                        e.preventDefault();
+                                        e.currentTarget.style.backgroundColor = '';
+                                        e.currentTarget.style.outline = 'none';
+                                        const typeStr = e.dataTransfer.getData('application/sgc-unit-type');
+                                        const draggedIdxStr = e.dataTransfer.getData('application/sgc-row-index');
+                                        if (typeStr === 'nhan' && draggedIdxStr !== '') {
+                                          const draggedIdx = Number(draggedIdxStr);
+                                          updateNhanRow(cfgIdx, draggedIdx, { giamTru: '1', boQua: false, tinhToan: false });
+                                        }
+                                      }}
+                                    >
+                                      {itemGiamTru ? (
+                                        <div 
+                                          draggable={true}
+                                          onDragStart={(e) => {
+                                            e.dataTransfer.setData('text/plain', itemGiamTru.row.unit);
+                                            e.dataTransfer.setData('application/sgc-unit-type', 'nhan');
+                                            e.dataTransfer.setData('application/sgc-row-index', String(itemGiamTru.idx));
+                                            e.dataTransfer.effectAllowed = 'copyMove';
                                           }}
                                           style={{
-                                            background: 'transparent',
-                                            border: 'none',
+                                            background: '#eff6ff',
+                                            border: '1px solid #bfdbfe',
                                             color: '#1e40af',
-                                            cursor: 'pointer',
-                                            padding: 0,
-                                            marginLeft: 4,
-                                            fontSize: 14,
-                                            lineHeight: 1,
-                                            display: 'flex',
-                                            alignItems: 'center'
+                                            borderRadius: 6,
+                                            padding: '4px 8px',
+                                            fontSize: '11.5px',
+                                            fontWeight: 600,
+                                            display: 'inline-flex',
+                                            alignItems: 'center',
+                                            gap: 4,
+                                            cursor: 'grab',
+                                            boxShadow: '0 1px 2px rgba(30,64,175,0.05)',
+                                            maxWidth: '100%'
                                           }}
-                                          title="Bỏ thiết lập"
                                         >
-                                          ×
-                                        </button>
-                                      </div>
-                                    ) : (
-                                      <span style={{ fontSize: 11, color: '#cbd5e1', fontStyle: 'italic', pointerEvents: 'none' }}>Kéo thả hoặc Click</span>
-                                    )}
-                                  </td>
+                                          <span style={{ flexShrink: 0, color: '#3b82f6' }}>☰</span>
+                                          <span style={{ wordBreak: 'break-word', whiteSpace: 'normal' }} title={itemGiamTru.row.unit}>{itemGiamTru.row.unit}</span>
+                                          <button 
+                                            type="button" 
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              updateNhanRow(cfgIdx, itemGiamTru.idx, { giamTru: '', boQua: false, tinhToan: false });
+                                            }}
+                                            style={{
+                                              background: 'transparent',
+                                              border: 'none',
+                                              color: '#1e40af',
+                                              cursor: 'pointer',
+                                              padding: 0,
+                                              marginLeft: 4,
+                                              fontSize: 14,
+                                              lineHeight: 1,
+                                              display: 'flex',
+                                              alignItems: 'center'
+                                            }}
+                                            title="Bỏ thiết lập"
+                                          >
+                                            ×
+                                          </button>
+                                        </div>
+                                      ) : (
+                                        <span style={{ fontSize: 11, color: '#cbd5e1', fontStyle: 'italic', pointerEvents: 'none', userSelect: 'none' }}>Kéo thả vào đây</span>
+                                      )}
+                                    </td>
 
-                                  {/* Col 3: Bỏ qua */}
-                                  <td 
-                                    style={{ 
-                                      ...tdStyle, 
-                                      textAlign: 'center', 
-                                      width: '25%', 
-                                      minWidth: '25%', 
-                                      maxWidth: '25%',
-                                      borderRight: '1px solid #f1f5f9',
-                                      transition: 'all 0.15s',
-                                      cursor: 'pointer',
-                                      position: 'relative',
-                                      padding: '8px'
-                                    }}
-                                    onClick={() => setUnitColumn(cfgIdx, rIdx, 'boQua', 'nhan')}
-                                    onDragOver={(e) => {
-                                      e.preventDefault();
-                                      e.currentTarget.style.backgroundColor = '#fff1f2';
-                                      e.currentTarget.style.outline = '2px dashed #f43f5e';
-                                    }}
-                                    onDragLeave={(e) => {
-                                      e.preventDefault();
-                                      e.currentTarget.style.backgroundColor = '';
-                                      e.currentTarget.style.outline = 'none';
-                                    }}
-                                    onDrop={(e) => {
-                                      e.preventDefault();
-                                      e.currentTarget.style.backgroundColor = '';
-                                      e.currentTarget.style.outline = 'none';
-                                      const typeStr = e.dataTransfer.getData('application/sgc-unit-type');
-                                      const draggedIdxStr = e.dataTransfer.getData('application/sgc-row-index');
-                                      if (typeStr === 'nhan' && draggedIdxStr !== '') {
-                                        const draggedIdx = Number(draggedIdxStr);
-                                        updateNhanRow(cfgIdx, draggedIdx, { giamTru: '', boQua: true, tinhToan: false });
-                                      }
-                                    }}
-                                  >
-                                    {isBoQua ? (
-                                      <div 
-                                        draggable={true}
-                                        onDragStart={(e) => {
-                                          e.dataTransfer.setData('text/plain', row.unit);
-                                          e.dataTransfer.setData('application/sgc-unit-type', 'nhan');
-                                          e.dataTransfer.setData('application/sgc-row-index', String(rIdx));
-                                          e.dataTransfer.effectAllowed = 'copyMove';
-                                        }}
-                                        style={{
-                                          background: '#fff1f2',
-                                          border: '1px solid #fecdd3',
-                                          color: '#9f1239',
-                                          borderRadius: 6,
-                                          padding: '4px 8px',
-                                          fontSize: '11.5px',
-                                          fontWeight: 600,
-                                          display: 'inline-flex',
-                                          alignItems: 'center',
-                                          gap: 4,
-                                          cursor: 'grab',
-                                          boxShadow: '0 1px 2px rgba(159,18,57,0.05)',
-                                          maxWidth: '100%'
-                                        }}
-                                      >
-                                        <span style={{ flexShrink: 0, color: '#f43f5e' }}>☰</span>
-                                        <span style={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }} title={row.unit}>{row.unit}</span>
-                                        <button 
-                                          type="button" 
-                                          onClick={(e) => {
-                                            e.stopPropagation()
-                                            updateNhanRow(cfgIdx, rIdx, { giamTru: '', boQua: false, tinhToan: true })
+                                    {/* Col 3: Bỏ qua */}
+                                    <td 
+                                      style={{ 
+                                        ...tdStyle, 
+                                        textAlign: 'left', 
+                                        width: '25%', 
+                                        minWidth: '25%', 
+                                        maxWidth: '25%',
+                                        borderRight: '1px solid #f1f5f9',
+                                        transition: 'all 0.15s',
+                                        position: 'relative',
+                                        padding: '8px'
+                                      }}
+                                      onDragOver={(e) => {
+                                        e.preventDefault();
+                                        e.currentTarget.style.backgroundColor = '#fff1f2';
+                                        e.currentTarget.style.outline = '2px dashed #f43f5e';
+                                      }}
+                                      onDragLeave={(e) => {
+                                        e.preventDefault();
+                                        e.currentTarget.style.backgroundColor = '';
+                                        e.currentTarget.style.outline = 'none';
+                                      }}
+                                      onDrop={(e) => {
+                                        e.preventDefault();
+                                        e.currentTarget.style.backgroundColor = '';
+                                        e.currentTarget.style.outline = 'none';
+                                        const typeStr = e.dataTransfer.getData('application/sgc-unit-type');
+                                        const draggedIdxStr = e.dataTransfer.getData('application/sgc-row-index');
+                                        if (typeStr === 'nhan' && draggedIdxStr !== '') {
+                                          const draggedIdx = Number(draggedIdxStr);
+                                          updateNhanRow(cfgIdx, draggedIdx, { giamTru: '', boQua: true, tinhToan: false });
+                                        }
+                                      }}
+                                    >
+                                      {itemBoQua ? (
+                                        <div 
+                                          draggable={true}
+                                          onDragStart={(e) => {
+                                            e.dataTransfer.setData('text/plain', itemBoQua.row.unit);
+                                            e.dataTransfer.setData('application/sgc-unit-type', 'nhan');
+                                            e.dataTransfer.setData('application/sgc-row-index', String(itemBoQua.idx));
+                                            e.dataTransfer.effectAllowed = 'copyMove';
                                           }}
                                           style={{
-                                            background: 'transparent',
-                                            border: 'none',
+                                            background: '#fff1f2',
+                                            border: '1px solid #fecdd3',
                                             color: '#9f1239',
-                                            cursor: 'pointer',
-                                            padding: 0,
-                                            marginLeft: 4,
-                                            fontSize: 14,
-                                            lineHeight: 1,
-                                            display: 'flex',
-                                            alignItems: 'center'
+                                            borderRadius: 6,
+                                            padding: '4px 8px',
+                                            fontSize: '11.5px',
+                                            fontWeight: 600,
+                                            display: 'inline-flex',
+                                            alignItems: 'center',
+                                            gap: 4,
+                                            cursor: 'grab',
+                                            boxShadow: '0 1px 2px rgba(159,18,57,0.05)',
+                                            maxWidth: '100%'
                                           }}
-                                          title="Bỏ thiết lập"
                                         >
-                                          ×
-                                        </button>
-                                      </div>
-                                    ) : (
-                                      <span style={{ fontSize: 11, color: '#cbd5e1', fontStyle: 'italic', pointerEvents: 'none' }}>Kéo thả hoặc Click</span>
-                                    )}
-                                  </td>
+                                          <span style={{ flexShrink: 0, color: '#f43f5e' }}>☰</span>
+                                          <span style={{ wordBreak: 'break-word', whiteSpace: 'normal' }} title={itemBoQua.row.unit}>{itemBoQua.row.unit}</span>
+                                          <button 
+                                            type="button" 
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              updateNhanRow(cfgIdx, itemBoQua.idx, { giamTru: '', boQua: false, tinhToan: false });
+                                            }}
+                                            style={{
+                                              background: 'transparent',
+                                              border: 'none',
+                                              color: '#9f1239',
+                                              cursor: 'pointer',
+                                              padding: 0,
+                                              marginLeft: 4,
+                                              fontSize: 14,
+                                              lineHeight: 1,
+                                              display: 'flex',
+                                              alignItems: 'center'
+                                            }}
+                                            title="Bỏ thiết lập"
+                                          >
+                                            ×
+                                          </button>
+                                        </div>
+                                      ) : (
+                                        <span style={{ fontSize: 11, color: '#cbd5e1', fontStyle: 'italic', pointerEvents: 'none', userSelect: 'none' }}>Kéo thả vào đây</span>
+                                      )}
+                                    </td>
 
-                                  {/* Col 4: Tính toán */}
-                                  <td 
-                                    style={{ 
-                                      ...tdStyle, 
-                                      textAlign: 'center', 
-                                      width: '25%', 
-                                      minWidth: '25%', 
-                                      maxWidth: '25%',
-                                      transition: 'all 0.15s',
-                                      cursor: 'pointer',
-                                      position: 'relative',
-                                      padding: '8px'
-                                    }}
-                                    onClick={() => setUnitColumn(cfgIdx, rIdx, 'tinhToan', 'nhan')}
-                                    onDragOver={(e) => {
-                                      e.preventDefault();
-                                      e.currentTarget.style.backgroundColor = '#ecfdf5';
-                                      e.currentTarget.style.outline = '2px dashed #10b981';
-                                    }}
-                                    onDragLeave={(e) => {
-                                      e.preventDefault();
-                                      e.currentTarget.style.backgroundColor = '';
-                                      e.currentTarget.style.outline = 'none';
-                                    }}
-                                    onDrop={(e) => {
-                                      e.preventDefault();
-                                      e.currentTarget.style.backgroundColor = '';
-                                      e.currentTarget.style.outline = 'none';
-                                      const typeStr = e.dataTransfer.getData('application/sgc-unit-type');
-                                      const draggedIdxStr = e.dataTransfer.getData('application/sgc-row-index');
-                                      if (typeStr === 'nhan' && draggedIdxStr !== '') {
-                                        const draggedIdx = Number(draggedIdxStr);
-                                        updateNhanRow(cfgIdx, draggedIdx, { giamTru: '', boQua: false, tinhToan: true });
-                                      }
-                                    }}
-                                  >
-                                    {isTinhToan ? (
-                                      <div 
-                                        draggable={true}
-                                        onDragStart={(e) => {
-                                          e.dataTransfer.setData('text/plain', row.unit);
-                                          e.dataTransfer.setData('application/sgc-unit-type', 'nhan');
-                                          e.dataTransfer.setData('application/sgc-row-index', String(rIdx));
-                                          e.dataTransfer.effectAllowed = 'copyMove';
-                                        }}
-                                        style={{
-                                          background: '#ecfdf5',
-                                          border: '1px solid #a7f3d0',
-                                          color: '#065f46',
-                                          borderRadius: 6,
-                                          padding: '4px 8px',
-                                          fontSize: '11.5px',
-                                          fontWeight: 600,
-                                          display: 'inline-flex',
-                                          alignItems: 'center',
-                                          gap: 4,
-                                          cursor: 'grab',
-                                          boxShadow: '0 1px 2px rgba(6,95,70,0.05)',
-                                          maxWidth: '100%'
-                                        }}
-                                      >
-                                        <span style={{ flexShrink: 0, color: '#10b981' }}>☰</span>
-                                        <span style={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }} title={row.unit}>{row.unit}</span>
-                                        <button 
-                                          type="button" 
-                                          onClick={(e) => {
-                                            e.stopPropagation()
-                                            updateNhanRow(cfgIdx, rIdx, { giamTru: '', boQua: true, tinhToan: false })
+                                    {/* Col 4: Tính toán */}
+                                    <td 
+                                      style={{ 
+                                        ...tdStyle, 
+                                        textAlign: 'left', 
+                                        width: '25%', 
+                                        minWidth: '25%', 
+                                        maxWidth: '25%',
+                                        transition: 'all 0.15s',
+                                        position: 'relative',
+                                        padding: '8px'
+                                      }}
+                                      onDragOver={(e) => {
+                                        e.preventDefault();
+                                        e.currentTarget.style.backgroundColor = '#ecfdf5';
+                                        e.currentTarget.style.outline = '2px dashed #10b981';
+                                      }}
+                                      onDragLeave={(e) => {
+                                        e.preventDefault();
+                                        e.currentTarget.style.backgroundColor = '';
+                                        e.currentTarget.style.outline = 'none';
+                                      }}
+                                      onDrop={(e) => {
+                                        e.preventDefault();
+                                        e.currentTarget.style.backgroundColor = '';
+                                        e.currentTarget.style.outline = 'none';
+                                        const typeStr = e.dataTransfer.getData('application/sgc-unit-type');
+                                        const draggedIdxStr = e.dataTransfer.getData('application/sgc-row-index');
+                                        if (typeStr === 'nhan' && draggedIdxStr !== '') {
+                                          const draggedIdx = Number(draggedIdxStr);
+                                          updateNhanRow(cfgIdx, draggedIdx, { giamTru: '', boQua: false, tinhToan: true });
+                                        }
+                                      }}
+                                    >
+                                      {itemTinhToan ? (
+                                        <div 
+                                          draggable={true}
+                                          onDragStart={(e) => {
+                                            e.dataTransfer.setData('text/plain', itemTinhToan.row.unit);
+                                            e.dataTransfer.setData('application/sgc-unit-type', 'nhan');
+                                            e.dataTransfer.setData('application/sgc-row-index', String(itemTinhToan.idx));
+                                            e.dataTransfer.effectAllowed = 'copyMove';
                                           }}
                                           style={{
-                                            background: 'transparent',
-                                            border: 'none',
+                                            background: '#ecfdf5',
+                                            border: '1px solid #a7f3d0',
                                             color: '#065f46',
-                                            cursor: 'pointer',
-                                            padding: 0,
-                                            marginLeft: 4,
-                                            fontSize: 14,
-                                            lineHeight: 1,
-                                            display: 'flex',
-                                            alignItems: 'center'
+                                            borderRadius: 6,
+                                            padding: '4px 8px',
+                                            fontSize: '11.5px',
+                                            fontWeight: 600,
+                                            display: 'inline-flex',
+                                            alignItems: 'center',
+                                            gap: 4,
+                                            cursor: 'grab',
+                                            boxShadow: '0 1px 2px rgba(6,95,70,0.05)',
+                                            maxWidth: '100%'
                                           }}
-                                          title="Bỏ thiết lập"
                                         >
-                                          ×
-                                        </button>
-                                      </div>
-                                    ) : (
-                                      <span style={{ fontSize: 11, color: '#cbd5e1', fontStyle: 'italic', pointerEvents: 'none' }}>Kéo thả hoặc Click</span>
-                                    )}
-                                  </td>
-                                </tr>
-                              )
-                            })}
+                                          <span style={{ flexShrink: 0, color: '#10b981' }}>☰</span>
+                                          <span style={{ wordBreak: 'break-word', whiteSpace: 'normal' }} title={itemTinhToan.row.unit}>{itemTinhToan.row.unit}</span>
+                                          <button 
+                                            type="button" 
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              updateNhanRow(cfgIdx, itemTinhToan.idx, { giamTru: '', boQua: false, tinhToan: false });
+                                            }}
+                                            style={{
+                                              background: 'transparent',
+                                              border: 'none',
+                                              color: '#065f46',
+                                              cursor: 'pointer',
+                                              padding: 0,
+                                              marginLeft: 4,
+                                              fontSize: 14,
+                                              lineHeight: 1,
+                                              display: 'flex',
+                                              alignItems: 'center'
+                                            }}
+                                            title="Bỏ thiết lập"
+                                          >
+                                            ×
+                                          </button>
+                                        </div>
+                                      ) : (
+                                        <span style={{ fontSize: 11, color: '#cbd5e1', fontStyle: 'italic', pointerEvents: 'none', userSelect: 'none' }}>Kéo thả vào đây</span>
+                                      )}
+                                    </td>
+                                  </tr>
+                                );
+                              });
+                            })()}
                           </tbody>
                         </table>
                       </div>
@@ -2892,6 +3039,822 @@ function DeleteConfigConfirmModal({ isOpen, onClose, onConfirm, configName, proj
           </button>
         </div>
       </div>
+    </div>
+  )
+}
+
+// ─── Summary Compilation Tab ──────────────────────────────────────────────────
+function SummaryCompilationTab({ giaoRows, nhanRows, configs = [], selectedProject, allProjects }) {
+  const [selectedConfigId, setSelectedConfigId] = React.useState(null)
+  const [searchTerm, setSearchTerm] = React.useState('')
+  const [groupFilter, setGroupFilter] = React.useState('all') // 'all' | 'tinhToan' | 'giamTru'
+  const [sourceFilter, setSourceFilter] = React.useState('all') // 'all' | 'giao' | 'nhan'
+  const [currentPage, setCurrentPage] = React.useState(1)
+  const [pageSize, setPageSize] = React.useState(100)
+
+  // Auto-select config based on selected project or configs list
+  React.useEffect(() => {
+    if (configs && configs.length > 0) {
+      if (selectedProject) {
+        const match = configs.find(c => c.project === selectedProject)
+        if (match) {
+          setSelectedConfigId(match.id)
+          return
+        }
+      }
+      // If we don't have a match or selectedConfigId is invalid, fall back
+      if (!selectedConfigId || !configs.some(c => c.id === selectedConfigId)) {
+        // Look for configs that have selectedProject, otherwise take configs[0]
+        const matchedProj = configs.find(c => c.project === selectedProject)
+        setSelectedConfigId(matchedProj ? matchedProj.id : configs[0].id)
+      }
+    }
+  }, [configs, selectedProject])
+
+  const currentConfig = React.useMemo(() => {
+    return configs.find(c => c.id === selectedConfigId) || null
+  }, [configs, selectedConfigId])
+
+  // Reset pagination on filter or config change
+  React.useEffect(() => {
+    setCurrentPage(1)
+  }, [selectedConfigId, searchTerm, groupFilter, sourceFilter])
+
+  // Compile data directly
+  const compiledRows = React.useMemo(() => {
+    if (!currentConfig) return []
+
+    const result = []
+
+    // 1. Process giaoRows (ĐƠN GIAO)
+    const filteredGiao = currentConfig.project
+      ? giaoRows.filter(r => (r.ten_du_an || r.tenDuAn || r.duAn || '') === currentConfig.project)
+      : giaoRows
+
+    filteredGiao.forEach((row, originalIdx) => {
+      const unitName = row.donViNhan
+      if (!unitName) return
+
+      const unitCfg = currentConfig.giaoTable?.find(item => item.unit === unitName)
+      const isBoQua = unitCfg ? !!unitCfg.boQua : false
+      const isGiamTru = unitCfg ? !!unitCfg.giamTru : false
+
+      if (isBoQua) return // Skip row
+
+      let originalNhap = row.khoiLuongNhap !== null && row.khoiLuongNhap !== undefined ? parseFloat(String(row.khoiLuongNhap).replace(/[^\d.-]/g, '').replace(',', '.')) : 0
+      if (isNaN(originalNhap)) originalNhap = 0
+
+      let originalXuat = row.khoiLuongXuat !== null && row.khoiLuongXuat !== undefined ? parseFloat(String(row.khoiLuongXuat).replace(/[^\d.-]/g, '').replace(',', '.')) : 0
+      if (isNaN(originalXuat)) originalXuat = 0
+
+      const compiledNhap = isGiamTru ? -Math.abs(originalNhap) : Math.abs(originalNhap)
+      const compiledXuat = isGiamTru ? -Math.abs(originalXuat) : Math.abs(originalXuat)
+
+      result.push({
+        ...row,
+        compiledSource: 'Đơn Giao',
+        compiledUnit: unitName,
+        compiledGroup: isGiamTru ? 'Giảm trừ' : 'Tính toán',
+        khoiLuongNhap: compiledNhap,
+        khoiLuongXuat: compiledXuat,
+        originalNhap,
+        originalXuat,
+        key: `compiled-giao-${row.id || originalIdx}`
+      })
+    })
+
+    // 2. Process nhanRows (ĐƠN NHẬN)
+    const filteredNhan = currentConfig.project
+      ? nhanRows.filter(r => (r.ten_du_an || r.tenDuAn || r.duAn || '') === currentConfig.project)
+      : nhanRows
+
+    filteredNhan.forEach((row, originalIdx) => {
+      const unitName = row.donViGiao
+      if (!unitName) return
+
+      const unitCfg = currentConfig.nhanTable?.find(item => item.unit === unitName)
+      const isBoQua = unitCfg ? !!unitCfg.boQua : false
+      const isGiamTru = unitCfg ? !!unitCfg.giamTru : false
+
+      if (isBoQua) return // Skip row
+
+      let originalNhap = row.khoiLuongNhap !== null && row.khoiLuongNhap !== undefined ? parseFloat(String(row.khoiLuongNhap).replace(/[^\d.-]/g, '').replace(',', '.')) : 0
+      if (isNaN(originalNhap)) originalNhap = 0
+
+      let originalXuat = row.khoiLuongXuat !== null && row.khoiLuongXuat !== undefined ? parseFloat(String(row.khoiLuongXuat).replace(/[^\d.-]/g, '').replace(',', '.')) : 0
+      if (isNaN(originalXuat)) originalXuat = 0
+
+      const compiledNhap = isGiamTru ? -Math.abs(originalNhap) : Math.abs(originalNhap)
+      const compiledXuat = isGiamTru ? -Math.abs(originalXuat) : Math.abs(originalXuat)
+
+      result.push({
+        ...row,
+        compiledSource: 'Đơn Nhận',
+        compiledUnit: unitName,
+        compiledGroup: isGiamTru ? 'Giảm trừ' : 'Tính toán',
+        khoiLuongNhap: compiledNhap,
+        khoiLuongXuat: compiledXuat,
+        originalNhap,
+        originalXuat,
+        key: `compiled-nhan-${row.id || originalIdx}`
+      })
+    })
+
+    return result
+  }, [currentConfig, giaoRows, nhanRows])
+
+  // Filter compiled rows
+  const filteredRows = React.useMemo(() => {
+    let r = compiledRows
+
+    if (groupFilter === 'tinhToan') {
+      r = r.filter(row => row.compiledGroup === 'Tính toán')
+    } else if (groupFilter === 'giamTru') {
+      r = r.filter(row => row.compiledGroup === 'Giảm trừ')
+    }
+
+    if (sourceFilter === 'giao') {
+      r = r.filter(row => row.compiledSource === 'Đơn Giao')
+    } else if (sourceFilter === 'nhan') {
+      r = r.filter(row => row.compiledSource === 'Đơn Nhận')
+    }
+
+    if (searchTerm) {
+      const q = searchTerm.toLowerCase()
+      r = r.filter(row =>
+        String(row.tenVatTu || '').toLowerCase().includes(q) ||
+        String(row.maVatTu || '').toLowerCase().includes(q) ||
+        String(row.maSAP || '').toLowerCase().includes(q) ||
+        String(row.compiledUnit || '').toLowerCase().includes(q) ||
+        String(row.duAn || '').toLowerCase().includes(q) ||
+        String(row.maDonNhapKho || '').toLowerCase().includes(q) ||
+        String(row.maDonXuatKho || '').toLowerCase().includes(q) ||
+        String(row.donViGiao || '').toLowerCase().includes(q) ||
+        String(row.donViNhan || '').toLowerCase().includes(q)
+      )
+    }
+
+    return r
+  }, [compiledRows, searchTerm, groupFilter, sourceFilter])
+
+  // Stats calculation
+  const totalNhap = React.useMemo(() => {
+    return filteredRows.reduce((sum, r) => sum + r.khoiLuongNhap, 0)
+  }, [filteredRows])
+
+  const totalXuat = React.useMemo(() => {
+    return filteredRows.reduce((sum, r) => sum + r.khoiLuongXuat, 0)
+  }, [filteredRows])
+
+  // Stats cards values based on all items vs filtered items
+  const statsTotalRows = filteredRows.length
+  
+  // Pagination
+  const paginatedRows = React.useMemo(() => {
+    const start = (currentPage - 1) * pageSize
+    return filteredRows.slice(start, start + pageSize)
+  }, [filteredRows, currentPage, pageSize])
+
+  const totalPages = Math.ceil(filteredRows.length / pageSize) || 1
+
+  const handleExportCompiledExcel = () => {
+    const wb = XLSXStyle.utils.book_new()
+    const ws = {}
+
+    const exportCols = [
+      { key: 'STT', label: 'STT', width: 50 },
+      { key: 'compiledGroup', label: 'Nhóm tổng hợp', width: 120 },
+      { key: 'compiledSource', label: 'Nguồn dữ liệu', width: 100 },
+      { key: 'duAn', label: 'Dự án', width: 150 },
+      { key: 'ngayXuatNhap', label: 'Ngày xuất nhập', width: 100 },
+      { key: 'maVatTu', label: 'Mã vật tư', width: 90 },
+      { key: 'maSAP', label: 'Mã SAP', width: 90 },
+      { key: 'thongSoKyThuat', label: 'Thông số kỹ thuật', width: 150 },
+      { key: 'tenVatTu', label: 'Tên vật tư', width: 180 },
+      { key: 'dvt', label: 'ĐVT', width: 60 },
+      { key: 'maDonNhapKho', label: 'Mã đơn nhập kho', width: 160 },
+      { key: 'maDonXuatKho', label: 'Mã đơn xuất kho', width: 160 },
+      { key: 'donViGiao', label: 'Đơn vị giao', width: 160 },
+      { key: 'donViNhan', label: 'Đơn vị nhận', width: 160 },
+      { key: 'compiledUnit', label: 'Đơn vị đối tác', width: 150 },
+      { key: 'khoiLuongNhap', label: 'Khối lượng nhập', width: 110 },
+      { key: 'khoiLuongXuat', label: 'Khối lượng xuất', width: 110 },
+      { key: 'trangThai', label: 'Trạng thái', width: 100 },
+      { key: 'ghiChu', label: 'Ghi chú', width: 150 }
+    ]
+
+    ws['!cols'] = exportCols.map(c => ({ wpx: c.width }))
+
+    let excelRowIdx = 1
+
+    // Header stylings
+    exportCols.forEach((col, colIdx) => {
+      const colChar = getColLabel(colIdx)
+      const cellRef = `${colChar}${excelRowIdx}`
+      ws[cellRef] = {
+        v: col.label,
+        t: 's',
+        s: {
+          fill: { patternType: 'solid', fgColor: { rgb: '0F58A7' } },
+          font: { name: 'Segoe UI', sz: 9.5, bold: true, color: { rgb: 'FFFFFF' } },
+          alignment: { horizontal: 'center', vertical: 'center', wrapText: true },
+          border: {
+            top: { style: 'thin', color: { rgb: '0A3D73' } },
+            bottom: { style: 'medium', color: { rgb: '0A3D73' } },
+            left: { style: 'thin', color: { rgb: '0A3D73' } },
+            right: { style: 'thin', color: { rgb: '0A3D73' } }
+          }
+        }
+      }
+    })
+
+    // Write content
+    filteredRows.forEach((row, rowIndex) => {
+      excelRowIdx++
+      const isEvenNum = (rowIndex % 2 === 1)
+      const rowBgColor = isEvenNum ? 'F8FAFC' : 'FFFFFF'
+
+      exportCols.forEach((col, colIdx) => {
+        const colChar = getColLabel(colIdx)
+        const cellRef = `${colChar}${excelRowIdx}`
+
+        let val = ''
+        let cellType = 's'
+        let numFormat = undefined
+        let cellStyleColor = '1B1919'
+        let isBoldFont = false
+
+        if (col.key === 'STT') {
+          val = rowIndex + 1
+          cellType = 'n'
+        } else if (col.key === 'khoiLuongNhap' || col.key === 'khoiLuongXuat') {
+          const rawNum = row[col.key]
+          val = rawNum !== null && rawNum !== undefined ? Number(rawNum) : 0
+          cellType = 'n'
+          numFormat = '#,##0.000'
+          if (val < 0) {
+            cellStyleColor = '9F1239'
+            isBoldFont = true
+          }
+        } else {
+          const rawVal = row[col.key]
+          val = rawVal !== null && rawVal !== undefined ? String(rawVal) : ''
+        }
+
+        const isCenteredCol = [
+          'STT', 'compiledGroup', 'compiledSource', 'ngayXuatNhap', 'maVatTu', 'maSAP', 'dvt', 'trangThai', 'maDonNhapKho', 'maDonXuatKho'
+        ].includes(col.key)
+        
+        const isRightAligned = ['khoiLuongNhap', 'khoiLuongXuat'].includes(col.key)
+
+        const cellStyle = {
+          font: {
+            name: 'Segoe UI',
+            sz: 9,
+            color: { rgb: cellStyleColor },
+            bold: isBoldFont
+          },
+          alignment: {
+            horizontal: isCenteredCol ? 'center' : (isRightAligned ? 'right' : 'left'),
+            vertical: 'center',
+            wrapText: true
+          },
+          border: {
+            top: { style: 'thin', color: { rgb: 'E2E8F0' } },
+            bottom: { style: 'thin', color: { rgb: 'E2E8F0' } },
+            left: { style: 'thin', color: { rgb: 'E2E8F0' } },
+            right: { style: 'thin', color: { rgb: 'E2E8F0' } }
+          },
+          fill: {
+            patternType: 'solid',
+            fgColor: { rgb: rowBgColor }
+          }
+        }
+
+        if (col.key === 'compiledGroup') {
+          if (val === 'Giảm trừ') {
+            cellStyle.fill.fgColor = { rgb: 'FFF1F2' }
+            cellStyle.font.color = { rgb: '9F1239' }
+            cellStyle.font.bold = true
+          } else {
+            cellStyle.fill.fgColor = { rgb: 'ECFDF5' }
+            cellStyle.font.color = { rgb: '065F46' }
+            cellStyle.font.bold = true
+          }
+        } else if (col.key === 'compiledSource') {
+          if (val === 'Đơn Giao') {
+            cellStyle.fill.fgColor = { rgb: 'EFF6FF' }
+            cellStyle.font.color = { rgb: '1E40AF' }
+          } else {
+            cellStyle.fill.fgColor = { rgb: 'ECFEFF' }
+            cellStyle.font.color = { rgb: '083344' }
+          }
+        }
+
+        const cellObj = { v: val, t: cellType, s: cellStyle }
+        if (numFormat) cellObj.z = numFormat
+
+        ws[cellRef] = cellObj
+      })
+    })
+
+    const excelRangeRef = `A1:${getColLabel(exportCols.length - 1)}${excelRowIdx}`
+    ws['!ref'] = excelRangeRef
+    ws['!autofilter'] = { ref: excelRangeRef }
+
+    XLSXStyle.utils.book_append_sheet(wb, ws, "Tổng hợp thông tin")
+
+    const wbout = XLSXStyle.write(wb, { bookType: 'xlsx', type: 'binary' })
+    const buf = new ArrayBuffer(wbout.length)
+    const view = new Uint8Array(buf)
+    for (let i = 0; i < wbout.length; i++) view[i] = wbout.charCodeAt(i) & 0xFF
+    
+    const blob = new Blob([buf], { type: 'application/octet-stream' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `SGC_Bao_cao_tong_hop_${currentConfig?.name || 'Chung'}_${new Date().toISOString().slice(0, 10)}.xlsx`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+  }
+
+  function getColLabel(index) {
+    let label = ''
+    let temp = index
+    while (temp >= 0) {
+      label = String.fromCharCode((temp % 26) + 65) + label
+      temp = Math.floor(temp / 26) - 1
+    }
+    return label
+  }
+
+  // Format negative/positive values beautifully
+  const formatValueWithNegColor = (val) => {
+    if (val === null || val === undefined) return '0'
+    const isNeg = val < 0
+    const str = val.toLocaleString('vi-VN', { minimumFractionDigits: 0, maximumFractionDigits: 3 })
+    return (
+      <span style={{ color: isNeg ? '#ef4444' : '#1e293b', fontWeight: isNeg ? '600' : '400' }}>
+        {str}
+      </span>
+    )
+  }
+
+  if (configs.length === 0) {
+    return (
+      <div style={{ padding: 24 }}>
+        <div className="empty-state" style={{ minHeight: 400 }}>
+          <div style={{
+            width: 64, height: 64, background: '#f1f5f9',
+            borderRadius: 18, display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>
+            <BarChart3 size={28} color="var(--text-light)" />
+          </div>
+          <h3>Chưa có cấu hình tổng hợp</h3>
+          <p style={{ maxWidth: 360, textAlign: 'center' }}>
+            Vui lòng tạo hoặc đồng bộ Cấu hình tổng hợp ở tab "Cấu hình tổng hợp" trước để tiến hành phân tích và tổng hợp dữ liệu.
+          </p>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 20, padding: '24px' }}>
+      
+      {/* Configuration Selection dropdown & Actions Row */}
+      <div style={{
+        background: '#ffffff',
+        border: '1px solid #cbd5e1',
+        borderRadius: 12,
+        padding: '16px 20px',
+        display: 'flex',
+        flexWrap: 'wrap',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: 16
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+          <span style={{ fontWeight: 600, fontSize: 14.5, color: '#334155' }}>Cấu hình tổng hợp:</span>
+          <select 
+            value={selectedConfigId || ''} 
+            onChange={(e) => setSelectedConfigId(Number(e.target.value))}
+            style={{
+              padding: '8px 16px',
+              borderRadius: 8,
+              border: '1px solid #cbd5e1',
+              background: '#ffffff',
+              fontSize: 14,
+              fontWeight: 600,
+              color: '#1e293b',
+              boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+              cursor: 'pointer',
+              minWidth: 260
+            }}
+          >
+            {configs.map(cfg => (
+              <option key={cfg.id} value={cfg.id}>
+                {cfg.name} {cfg.project ? `(${cfg.project})` : '(Tất cả dự án)'}
+              </option>
+            ))}
+          </select>
+          
+          {currentConfig && (
+            <div style={{
+              background: currentConfig.bgColor || '#eff6ff',
+              border: `1px solid ${getBorderColor(currentConfig.bgColor)}`,
+              color: getContrastColor(currentConfig.bgColor),
+              borderRadius: 6,
+              padding: '4px 10px',
+              fontSize: 12.5,
+              fontWeight: 550
+            }}>
+              Dự án liên quan: {currentConfig.project || 'Tất cả'}
+            </div>
+          )}
+        </div>
+
+        {currentConfig && compiledRows.length > 0 && (
+          <button
+            onClick={handleExportCompiledExcel}
+            className="btn btn-sm"
+            style={{
+              background: 'linear-gradient(135deg, #059669 0%, #10b981 100%)',
+              color: '#ffffff',
+              border: 'none',
+              boxShadow: '0 2px 4px rgba(16,185,129,0.2)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6
+            }}
+          >
+            <Download size={14} /> Xuất Excel Tổng hợp
+          </button>
+        )}
+      </div>
+
+      {currentConfig ? (
+        <>
+          {/* Stats Bar */}
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
+            gap: 12
+          }}>
+            {/* Stat Item 1: Total records */}
+            <div className="stats-card" style={{ padding: '10px 16px', display: 'flex', alignItems: 'center', gap: 12 }}>
+              <div style={{ width: 36, height: 36, borderRadius: 8, background: '#f1f5f9', display: 'flex', alignItems: 'center', justifyItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <FileSpreadsheet size={18} color="#475569" />
+              </div>
+              <div>
+                <span className="stats-label" style={{ fontSize: 12, color: '#64748b', display: 'block', marginBottom: 1 }}>Dòng tổng hợp sau phân bổ</span>
+                <span className="stats-val" style={{ fontSize: 16, fontWeight: 700, color: '#0f172a' }}>{statsTotalRows.toLocaleString('vi-VN')} dòng</span>
+              </div>
+            </div>
+
+            {/* Stat Item 2: Consolidated Import Volume */}
+            <div className="stats-card" style={{ padding: '10px 16px', display: 'flex', alignItems: 'center', gap: 12 }}>
+              <div style={{ width: 36, height: 36, borderRadius: 8, background: totalNhap >= 0 ? '#ecfdf5' : '#fff1f2', display: 'flex', alignItems: 'center', justifyItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                {totalNhap >= 0 ? <CheckCircle2 size={18} color="#10b981" /> : <AlertCircle size={18} color="#ef4444" />}
+              </div>
+              <div>
+                <span className="stats-label" style={{ fontSize: 12, color: '#64748b', display: 'block', marginBottom: 1 }}>Khối lượng Nhập ròng</span>
+                <span className="stats-val" style={{ fontSize: 16, fontWeight: 700, color: totalNhap < 0 ? '#dc2626' : '#10b981' }}>
+                  {totalNhap.toLocaleString('vi-VN', { maximumFractionDigits: 3 })}
+                </span>
+              </div>
+            </div>
+
+            {/* Stat Item 3: Consolidated Export Volume */}
+            <div className="stats-card" style={{ padding: '10px 16px', display: 'flex', alignItems: 'center', gap: 12 }}>
+              <div style={{ width: 36, height: 36, borderRadius: 8, background: totalXuat >= 0 ? '#eff6ff' : '#fff1f2', display: 'flex', alignItems: 'center', justifyItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                {totalXuat >= 0 ? <Truck size={18} color="#3b82f6" /> : <AlertCircle size={18} color="#ef4444" />}
+              </div>
+              <div>
+                <span className="stats-label" style={{ fontSize: 12, color: '#64748b', display: 'block', marginBottom: 1 }}>Khối lượng Xuất ròng</span>
+                <span className="stats-val" style={{ fontSize: 16, fontWeight: 700, color: totalXuat < 0 ? '#dc2626' : '#3b82f6' }}>
+                  {totalXuat.toLocaleString('vi-VN', { maximumFractionDigits: 3 })}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Filter Bar */}
+          <div style={{
+            background: '#ffffff',
+            border: '1px solid #cbd5e1',
+            borderRadius: 12,
+            padding: '16px',
+            display: 'flex',
+            flexWrap: 'wrap',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 16
+          }}>
+            {/* Left search */}
+            <div style={{ position: 'relative', flex: 1, minWidth: 260 }}>
+              <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', display: 'flex', alignItems: 'center' }}>
+                <Search size={16} color="#94a3b8" />
+              </span>
+              <input
+                type="text"
+                placeholder="Tìm kiếm vật tư, mã, đơn vị..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '8px 12px 8px 36px',
+                  borderRadius: 8,
+                  border: '1px solid #cbd5e1',
+                  background: '#ffffff',
+                  fontSize: 14,
+                  outline: 'none',
+                }}
+              />
+              {searchTerm && (
+                <button
+                  onClick={() => setSearchTerm('')}
+                  style={{
+                    position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)',
+                    background: 'transparent', border: 'none', cursor: 'pointer', display: 'flex'
+                  }}
+                >
+                  <X size={15} color="#cbd5e1" />
+                </button>
+              )}
+            </div>
+
+            {/* Right filters */}
+            <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 12 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span style={{ fontSize: 13, fontWeight: 550, color: '#64748b' }}>Nhóm:</span>
+                <select 
+                  value={groupFilter} 
+                  onChange={(e) => setGroupFilter(e.target.value)} 
+                  style={{ padding: '7px 12px', border: '1px solid #cbd5e1', borderRadius: 8, fontSize: 13.5, background: '#ffffff', fontWeight: 550 }}
+                >
+                  <option value="all">Tất cả</option>
+                  <option value="tinhToan">Tính toán</option>
+                  <option value="giamTru">Giảm trừ</option>
+                </select>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span style={{ fontSize: 13, fontWeight: 550, color: '#64748b' }}>Nguồn:</span>
+                <select 
+                  value={sourceFilter} 
+                  onChange={(e) => setSourceFilter(e.target.value)} 
+                  style={{ padding: '7px 12px', border: '1px solid #cbd5e1', borderRadius: 8, fontSize: 13.5, background: '#ffffff', fontWeight: 550 }}
+                >
+                  <option value="all">Tất cả nguồn</option>
+                  <option value="giao">Đơn Giao</option>
+                  <option value="nhan">Đơn Nhận</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          {/* Compiled Rows Table */}
+          {filteredRows.length > 0 ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <div style={{ background: '#ffffff', border: '1px solid #cbd5e1', borderRadius: 12, overflow: 'hidden' }}>
+                <div style={{ overflowX: 'auto', maxHeight: '55vh' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: 1600 }}>
+                    <thead style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0', position: 'sticky', top: 0, zIndex: 10 }}>
+                      <tr>
+                        <th style={{ padding: '12px 14px', fontSize: 12.5, fontWeight: 700, color: '#475569', textTransform: 'uppercase', width: 60, textAlign: 'center' }}>STT</th>
+                        <th style={{ padding: '12px 14px', fontSize: 12.5, fontWeight: 700, color: '#475569', textTransform: 'uppercase', width: 115, textAlign: 'center' }}>Nhóm</th>
+                        <th style={{ padding: '12px 14px', fontSize: 12.5, fontWeight: 700, color: '#475569', textTransform: 'uppercase', width: 105, textAlign: 'center' }}>Nguồn</th>
+                        <th style={{ padding: '12px 14px', fontSize: 12.5, fontWeight: 700, color: '#475569', textTransform: 'uppercase', width: 110, textAlign: 'center' }}>Ngày</th>
+                        <th style={{ padding: '12px 14px', fontSize: 12.5, fontWeight: 700, color: '#475569', textTransform: 'uppercase', width: 105 }}>Mã Vật tư</th>
+                        <th style={{ padding: '12px 14px', fontSize: 12.5, fontWeight: 700, color: '#475569', textTransform: 'uppercase', width: 220 }}>Tên Vật tư</th>
+                        <th style={{ padding: '12px 14px', fontSize: 12.5, fontWeight: 700, color: '#475569', textTransform: 'uppercase', width: 65, textAlign: 'center' }}>ĐVT</th>
+                        <th style={{ padding: '12px 14px', fontSize: 12.5, fontWeight: 700, color: '#475569', textTransform: 'uppercase', width: 170 }}>Mã đơn nhập kho</th>
+                        <th style={{ padding: '12px 14px', fontSize: 12.5, fontWeight: 700, color: '#475569', textTransform: 'uppercase', width: 170 }}>Mã đơn xuất kho</th>
+                        <th style={{ padding: '12px 14px', fontSize: 12.5, fontWeight: 700, color: '#475569', textTransform: 'uppercase', width: 160 }}>Đơn vị giao</th>
+                        <th style={{ padding: '12px 14px', fontSize: 12.5, fontWeight: 700, color: '#475569', textTransform: 'uppercase', width: 160 }}>Đơn vị nhận</th>
+                        <th style={{ padding: '12px 14px', fontSize: 12.5, fontWeight: 700, color: '#475569', textTransform: 'uppercase', width: 180 }}>Đơn vị đối tác</th>
+                        <th style={{ padding: '12px 14px', fontSize: 12.5, fontWeight: 700, color: '#475569', textTransform: 'uppercase', width: 140, textAlign: 'right' }}>KL Nhập</th>
+                        <th style={{ padding: '12px 14px', fontSize: 12.5, fontWeight: 700, color: '#475569', textTransform: 'uppercase', width: 140, textAlign: 'right' }}>KL Xuất</th>
+                        <th style={{ padding: '12px 14px', fontSize: 12.5, fontWeight: 700, color: '#475569', textTransform: 'uppercase', width: 115, textAlign: 'center' }}>Trạng thái</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {paginatedRows.map((row, index) => {
+                        const globalIndex = (currentPage - 1) * pageSize + index + 1
+                        const isGiamTru = row.compiledGroup === 'Giảm trừ'
+                        const isGiao = row.compiledSource === 'Đơn Giao'
+
+                        return (
+                          <tr key={row.key} style={{
+                            borderBottom: '1px solid #f1f5f9',
+                            background: index % 2 === 1 ? '#f8fafc' : '#ffffff',
+                            transition: 'background 0.1s'
+                          }}
+                          className="table-row-hover"
+                          >
+                            <td style={{ padding: '10px 14px', textAlign: 'center', fontSize: 13.5, color: '#64748b' }}>{globalIndex}</td>
+                            
+                            {/* Nhóm Badge */}
+                            <td style={{ padding: '10px 14px', textAlign: 'center' }}>
+                              <span style={{
+                                display: 'inline-block',
+                                padding: '3px 8px',
+                                borderRadius: 6,
+                                fontSize: 12,
+                                fontWeight: 700,
+                                background: isGiamTru ? '#fff1f2' : '#ecfdf5',
+                                color: isGiamTru ? '#be123c' : '#047857',
+                                border: `1px solid ${isGiamTru ? '#fecdd3' : '#a7f3d0'}`
+                              }}>
+                                {row.compiledGroup}
+                              </span>
+                            </td>
+
+                            {/* Nguồn Badge */}
+                            <td style={{ padding: '10px 14px', textAlign: 'center' }}>
+                              <span style={{
+                                display: 'inline-block',
+                                padding: '3px 8px',
+                                borderRadius: 6,
+                                fontSize: 12,
+                                fontWeight: 700,
+                                background: isGiao ? '#eff6ff' : '#ecfeff',
+                                color: isGiao ? '#1d4ed8' : '#0e7490',
+                                border: `1px solid ${isGiao ? '#bfdbfe' : '#a5f3fc'}`
+                              }}>
+                                {row.compiledSource}
+                              </span>
+                            </td>
+
+                            {/* Date */}
+                            <td style={{ padding: '10px 14px', textAlign: 'center', fontSize: 13, color: '#334155' }}>
+                              {row.ngayXuatNhap}
+                            </td>
+
+                            {/* Mã SAP/Mã vật tư */}
+                            <td style={{ padding: '10px 14px', fontSize: 13, fontWeight: 500, color: '#475569' }}>
+                              {row.maSAP || row.maVatTu || '-'}
+                            </td>
+
+                            {/* Tên vật tư */}
+                            <td style={{ padding: '10px 14px', fontSize: 13.5, color: '#0f172a', fontWeight: 500 }}>
+                              <div style={{ maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={row.tenVatTu}>
+                                {row.tenVatTu}
+                              </div>
+                              {row.thongSoKyThuat && (
+                                <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 2, maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={row.thongSoKyThuat}>
+                                  {row.thongSoKyThuat}
+                                </div>
+                              )}
+                            </td>
+
+                            {/* ĐVT */}
+                            <td style={{ padding: '10px 14px', textAlign: 'center', fontSize: 13, color: '#475569' }}>{row.dvt || '-'}</td>
+
+                            {/* Mã đơn nhập kho */}
+                            <td style={{ padding: '10px 14px', fontSize: 13, color: '#475569' }}>
+                              <div style={{ maxWidth: 150, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={row.maDonNhapKho || ''}>
+                                {row.maDonNhapKho || '-'}
+                              </div>
+                            </td>
+
+                            {/* Mã đơn xuất kho */}
+                            <td style={{ padding: '10px 14px', fontSize: 13, color: '#475569' }}>
+                              <div style={{ maxWidth: 150, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={row.maDonXuatKho || ''}>
+                                {row.maDonXuatKho || '-'}
+                              </div>
+                            </td>
+
+                            {/* Đơn vị giao */}
+                            <td style={{ padding: '10px 14px', fontSize: 13, color: '#334155', fontWeight: 500 }}>
+                              <div style={{ maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={row.donViGiao || ''}>
+                                {row.donViGiao || '-'}
+                              </div>
+                            </td>
+
+                            {/* Đơn vị nhận */}
+                            <td style={{ padding: '10px 14px', fontSize: 13, color: '#334155', fontWeight: 500 }}>
+                              <div style={{ maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={row.donViNhan || ''}>
+                                {row.donViNhan || '-'}
+                              </div>
+                            </td>
+
+                            {/* Đơn vị đối tác */}
+                            <td style={{ padding: '10px 14px', fontSize: 13, color: '#334155', fontWeight: 500 }}>
+                              <div style={{ maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={row.compiledUnit}>
+                                {row.compiledUnit}
+                              </div>
+                            </td>
+
+                            {/* Khối lượng Nhập */}
+                            <td style={{ padding: '10px 14px', textAlign: 'right', fontSize: 13.5 }}>
+                              {formatValueWithNegColor(row.khoiLuongNhap)}
+                            </td>
+
+                            {/* Khối lượng Xuất */}
+                            <td style={{ padding: '10px 14px', textAlign: 'right', fontSize: 13.5 }}>
+                              {formatValueWithNegColor(row.khoiLuongXuat)}
+                            </td>
+
+                            {/* Trạng thái badge */}
+                            <td style={{ padding: '10px 14px', textAlign: 'center' }}>
+                              <span className={`badge ${getTrangThaiColor(row.trangThai)}`} style={{ fontSize: 11.5 }}>
+                                {row.trangThai || 'Chưa duyệt'}
+                              </span>
+                            </td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Pagination controls */}
+              <div style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                padding: '12px 18px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 10
+              }}>
+                <div style={{ fontSize: 13.5, color: '#64748b' }}>
+                  Hiển thị dòng <strong>{((currentPage - 1) * pageSize + 1).toLocaleString('vi-VN')}</strong> đến <strong>{Math.min(currentPage * pageSize, filteredRows.length).toLocaleString('vi-VN')}</strong> trong tổng số <strong>{filteredRows.length.toLocaleString('vi-VN')}</strong> dòng kết quả
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  {/* Select page size */}
+                  <select
+                    value={pageSize}
+                    onChange={(e) => {
+                      setPageSize(Number(e.target.value))
+                      setCurrentPage(1)
+                    }}
+                    style={{
+                      padding: '5px 8px', border: '1px solid #cbd5e1', borderRadius: 6,
+                      fontSize: 12.5, background: '#ffffff', marginRight: 12
+                    }}
+                  >
+                    <option value={50}>50 dòng/trang</option>
+                    <option value={100}>100 dòng/trang</option>
+                    <option value={200}>200 dòng/trang</option>
+                    <option value={500}>500 dòng/trang</option>
+                  </select>
+
+                  <button
+                    disabled={currentPage === 1}
+                    onClick={() => setCurrentPage(1)}
+                    className="btn btn-outline btn-xs"
+                    style={{ padding: '4px 8px', border: '1px solid #cbd5e1', opacity: currentPage === 1 ? 0.5 : 1, cursor: currentPage === 1 ? 'not-allowed' : 'pointer' }}
+                  >
+                    Đầu
+                  </button>
+                  <button
+                    disabled={currentPage === 1}
+                    onClick={() => setCurrentPage(prev => prev - 1)}
+                    className="btn btn-outline btn-xs"
+                    style={{ padding: '4px 8px', border: '1px solid #cbd5e1', opacity: currentPage === 1 ? 0.5 : 1, cursor: currentPage === 1 ? 'not-allowed' : 'pointer' }}
+                  >
+                    Trước
+                  </button>
+                  <span style={{ fontSize: 13, fontWeight: 600, padding: '0 8px', color: '#334155' }}>
+                    Trang {currentPage} / {totalPages}
+                  </span>
+                  <button
+                    disabled={currentPage === totalPages}
+                    onClick={() => setCurrentPage(prev => prev + 1)}
+                    className="btn btn-outline btn-xs"
+                    style={{ padding: '4px 8px', border: '1px solid #cbd5e1', opacity: currentPage === totalPages ? 0.5 : 1, cursor: currentPage === totalPages ? 'not-allowed' : 'pointer' }}
+                  >
+                    Sau
+                  </button>
+                  <button
+                    disabled={currentPage === totalPages}
+                    onClick={() => setCurrentPage(totalPages)}
+                    className="btn btn-outline btn-xs"
+                    style={{ padding: '4px 8px', border: '1px solid #cbd5e1', opacity: currentPage === totalPages ? 0.5 : 1, cursor: currentPage === totalPages ? 'not-allowed' : 'pointer' }}
+                  >
+                    Cuối
+                  </button>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div style={{ padding: 24, background: '#f8fafc', borderRadius: 12, border: '1px solid #e2e8f0' }}>
+              <div className="empty-state" style={{ minHeight: 180 }}>
+                <span className="text-muted" style={{ fontSize: 14 }}>Không tìm thấy dòng kết quả nào phù hợp với bộ lọc hiện tại.</span>
+              </div>
+            </div>
+          )}
+        </>
+      ) : (
+        <div style={{ padding: 24 }}>
+          <div className="empty-state" style={{ minHeight: 240 }}>
+            <span className="text-muted" style={{ fontSize: 14 }}>Vui lòng chọn hoặc cấu hình một loại tổng hợp để xem dữ liệu.</span>
+          </div>
+        </div>
+      )}
+
     </div>
   )
 }
@@ -4431,6 +5394,38 @@ export default function App() {
   const [syncingType, setSyncingType] = useState(null) // 'giao' | 'nhan' | null
   const [supabaseMessage, setSupabaseMessage] = useState(null) // { text, type: 'success' | 'error' | 'info' }
 
+  const [configs, setConfigs] = useState(() => loadSummaryConfigs())
+
+  const fetchConfigsFromSupabaseInApp = React.useCallback(async () => {
+    if (!isSupabaseConfigured) return
+    try {
+      const { data, error } = await supabase
+        .from('sgc_summary_configs')
+        .select('*')
+        .order('id', { ascending: true })
+
+      if (error) {
+        console.error('Lỗi tải cấu hình tổng hợp từ Supabase (App):', error.message)
+        return
+      }
+
+      if (data) {
+        const mapped = data.map(dbRow => ({
+          id: dbRow.id,
+          name: dbRow.name,
+          project: dbRow.project,
+          giaoTable: dbRow.giao_table || [],
+          nhanTable: dbRow.nhan_table || [],
+          bgColor: dbRow.bg_color || '#eff6ff',
+        }))
+        setConfigs(mapped)
+        saveSummaryConfigs(mapped)
+      }
+    } catch (err) {
+      console.error('Lỗi kết nối Supabase khi tải configs (App):', err)
+    }
+  }, [])
+
   // Danh sách columns cần fetch (bỏ qua metadata Supabase như created_at, updated_at)
   const SELECT_COLS = 'id,ngay_xuat_nhap,ma_vat_tu,ma_s_a_p,thong_so_ky_thuat,ten_vat_tu,dvt,loai_don,ma_don_nhap_kho,ma_don_xuat_kho,khoi_luong_nhap,ma_don_vi_giao,don_vi_giao,nguoi_giao,khoi_luong_xuat,ma_don_vi_nhan,don_vi_nhan,nguoi_phe_duyet,ten_nguon,ma_nguon,lo,hang_muc,so_hop_dong,thu_kho,bien_so_xe,phan_khu,du_an,tinh_trang,nguoi_nhan,ma_don_lien_quan,nha_cung_cap,ma_don_chuyen_tiep_l_c,ma_don_chuyen_tiep_n_b,ghi_chu,ghi_chu_vat_tu,trang_thai,nhan_hieu,ten_du_an,tenDuAn'
 
@@ -4534,8 +5529,9 @@ export default function App() {
       loadProjectsFromSupabase(),
       loadTableFromSupabase('giao'),
       loadTableFromSupabase('nhan'),
+      fetchConfigsFromSupabaseInApp(),
     ])
-  }, [loadProjectsFromSupabase, loadTableFromSupabase])
+  }, [loadProjectsFromSupabase, loadTableFromSupabase, fetchConfigsFromSupabaseInApp])
 
   // Fetch initial data from Supabase if connected
   React.useEffect(() => {
@@ -5160,13 +6156,17 @@ export default function App() {
             nhanRows={nhanRows}
             selectedProject={selectedProject}
             allProjects={allProjects}
+            configs={configs}
+            setConfigs={setConfigs}
           />
         )}
         {tab === 'summary' && (
-          <PlaceholderTab
-            icon={<BarChart3 />}
-            title="Tổng hợp"
-            desc="Tính năng tổng hợp và phân tích dữ liệu sẽ được triển khai trong phiên bản tiếp theo."
+          <SummaryCompilationTab
+            giaoRows={giaoRows}
+            nhanRows={nhanRows}
+            configs={configs}
+            selectedProject={selectedProject}
+            allProjects={allProjects}
           />
         )}
       </div>
