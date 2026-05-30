@@ -2591,24 +2591,29 @@ async function deleteFromTableAdaptive(tableName, possibleColumns, targetValue) 
   try {
     let columns = null
     
-    // Try 1: OpenAPI Schema detection (highly robust, zero 400 bad requests)
-    try {
-      const response = await fetch(`${supabaseUrl}/rest/v1/`, {
-        headers: {
-          'apikey': supabaseAnonKey,
-          'Authorization': `Bearer ${supabaseAnonKey}`
+    // Try 1: Dùng cache schema nếu đã có (tránh fetch lại nhiều lần)
+    if (tableSchemaCache[tableName]) {
+      columns = tableSchemaCache[tableName]
+    } else {
+      try {
+        const response = await fetch(`${supabaseUrl}/rest/v1/`, {
+          headers: {
+            'apikey': supabaseAnonKey,
+            'Authorization': `Bearer ${supabaseAnonKey}`
+          }
+        })
+        if (response.ok) {
+          const schema = await response.json()
+          const def = schema.definitions?.[tableName]
+          if (def && def.properties) {
+            columns = Object.keys(def.properties)
+            tableSchemaCache[tableName] = columns // Lưu cache
+            console.log(`[Schema Finder] Phát hiện và cache các cột của bảng "${tableName}":`, columns)
+          }
         }
-      })
-      if (response.ok) {
-        const schema = await response.json()
-        const def = schema.definitions?.[tableName]
-        if (def && def.properties) {
-          columns = Object.keys(def.properties)
-          console.log(`[Schema Finder] Phát hiện các cột của bảng "${tableName}" từ OpenAPI schema:`, columns)
-        }
+      } catch (schemaErr) {
+        console.warn('[Schema Finder] Lỗi khi tải OpenAPI schema từ Supabase:', schemaErr.message)
       }
-    } catch (schemaErr) {
-      console.warn('[Schema Finder] Lỗi khi tải OpenAPI schema từ Supabase:', schemaErr.message)
     }
 
     // Try 2: Row inspection fallback (if OpenAPI schema was unreachable or failed)
@@ -2616,7 +2621,8 @@ async function deleteFromTableAdaptive(tableName, possibleColumns, targetValue) 
       const { data, error } = await supabase.from(tableName).select('*').limit(1)
       if (!error && data && data.length > 0) {
         columns = Object.keys(data[0])
-        console.log(`[Schema Finder] Phát hiện các cột của bảng "${tableName}" từ truy vấn dòng mẫu:`, columns)
+        tableSchemaCache[tableName] = columns // Lưu cache
+        console.log(`[Schema Finder] Phát hiện và cache các cột của bảng "${tableName}" từ dòng mẫu:`, columns)
       } else if (!error && (!data || data.length === 0)) {
         // Table is empty, no-op is safe
         console.log(`[Schema Finder] Bảng "${tableName}" đang trống hoàn toàn. Không cần gửi lệnh DELETE.`)
@@ -2642,13 +2648,6 @@ async function deleteFromTableAdaptive(tableName, possibleColumns, targetValue) 
           throw delErr
         }
 
-        // Verify if the item actually deleted from Supabase to catch silent RLS denials (PostgreSQL RLS silent bypass returns 200 OK)
-        const { data: checkData, error: checkErr } = await supabase.from(tableName).select(exactCol).eq(exactCol, targetValue).limit(1)
-        if (!checkErr && checkData && checkData.length > 0) {
-          console.warn(`[Adaptive Delete] Phát hiện dòng có "${exactCol}" = "${targetValue}" vẫn hiện diện trên "${tableName}" mặc dù lệnh DELETE trả về thành công! Đây chắc chắn là do chính sách bảo mật RLS (Row Level Security) đang chặn quyền DELETE.`)
-          throw new Error(`Supabase từ chối xóa dòng này (bị chặn bởi cấu hình bảo mật RLS - Row Level Security). Vui lòng tạo chính sách "DELETE" cho vai trò "anon" (hoặc "public") trên bảng "${tableName}" trong trang quản trị.`)
-        }
-
         return { success: true }
       }
     }
@@ -2659,12 +2658,6 @@ async function deleteFromTableAdaptive(tableName, possibleColumns, targetValue) 
     for (const col of possibleColumns) {
       const { error: delErr } = await supabase.from(tableName).delete().eq(col, targetValue)
       if (!delErr) {
-        // Verify delete on fallback
-        const { data: checkData, error: checkErr } = await supabase.from(tableName).select(col).eq(col, targetValue).limit(1)
-        if (!checkErr && checkData && checkData.length > 0) {
-          lastError = new Error(`Cập nhật bị chặn bởi RLS: Bảng "${tableName}" không cho phép xóa cột "${col}" bằng vai trò hiện tại.`)
-          continue
-        }
         console.log(`[Adaptive Delete] Xóa thành công trên "${tableName}" bằng cột fallback "${col}"`)
         return { success: true }
       }
@@ -2681,6 +2674,7 @@ async function deleteFromTableAdaptive(tableName, possibleColumns, targetValue) 
 // ─── App ──────────────────────────────────────────────────────────────────────
 export default function App() {
   const [tab, setTab] = useState('giao')
+  const syncInProgressRef = React.useRef(false) // Tạm dừng Realtime khi đang sync để tránh flood request
   const [selectedProject, setSelectedProject] = useState('')
   const [showAddProjectModal, setShowAddProjectModal] = useState(false)
   const [showEditProjectModal, setShowEditProjectModal] = useState(false)
@@ -2872,14 +2866,17 @@ export default function App() {
     const channel = supabase
       .channel('schema-changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'don_giao' }, () => {
+        if (syncInProgressRef.current) return // Bỏ qua khi đang sync
         console.log('[Supabase Realtime] Tự động cập nhật bảng Đơn Giao...')
         loadDataFromSupabase()
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'don_nhan' }, () => {
+        if (syncInProgressRef.current) return // Bỏ qua khi đang sync
         console.log('[Supabase Realtime] Tự động cập nhật bảng Đơn Nhận...')
         loadDataFromSupabase()
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'du_an' }, () => {
+        if (syncInProgressRef.current) return // Bỏ qua khi đang sync
         console.log('[Supabase Realtime] Tự động cập nhật danh sách Dự Án...')
         loadDataFromSupabase()
       })
@@ -2902,6 +2899,7 @@ export default function App() {
       return
     }
 
+    syncInProgressRef.current = true // Tạm dừng Realtime trong khi sync
     setSyncingType(type)
     setSupabaseMessage({
       text: isAuto 
@@ -3048,6 +3046,7 @@ export default function App() {
       setTimeout(() => setSupabaseMessage(null), 6000)
     } finally {
       setSyncingType(null)
+      syncInProgressRef.current = false // Bật lại Realtime sau khi sync xong
     }
   }
 
