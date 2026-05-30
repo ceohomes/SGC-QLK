@@ -1399,6 +1399,10 @@ function SummaryConfigTab({ giaoRows, nhanRows, selectedProject, allProjects, co
   const [expandedConfig, setExpandedConfig] = React.useState(null) // index of expanded config
   const [configToDeleteIdx, setConfigToDeleteIdx] = React.useState(null)
   
+  const filteredConfigs = selectedProject
+    ? configs.filter(cfg => cfg.project === selectedProject)
+    : []
+  
   // Supabase sync states
   const [dbState, setDbState] = React.useState('idle') // 'idle' | 'loading' | 'success' | 'saving' | 'error'
   const [dbMessage, setDbMessage] = React.useState('')
@@ -1820,7 +1824,7 @@ function SummaryConfigTab({ giaoRows, nhanRows, selectedProject, allProjects, co
       </div>
 
       {/* Empty state */}
-      {configs.length === 0 && (
+      {!selectedProject ? (
         <div style={{
           background: '#f8fafc', border: '2px dashed #cbd5e1', borderRadius: 12,
           padding: '48px 24px', textAlign: 'center', color: '#64748b'
@@ -1833,16 +1837,38 @@ function SummaryConfigTab({ giaoRows, nhanRows, selectedProject, allProjects, co
             <Settings size={28} color="#94a3b8" />
           </div>
           <h3 style={{ margin: '0 0 8px', fontSize: 16, fontWeight: 700, color: '#334155' }}>
-            Chưa có loại tổng hợp nào
+            Chưa chọn Kho dự án
           </h3>
           <p style={{ margin: 0, fontSize: 14 }}>
-            Nhấn <strong>"+ Tạo Loại Tổng hợp"</strong> để bắt đầu cấu hình đơn vị giao nhận cho từng dự án.
+            Vui lòng chọn Kho dự án trên thanh menu ở góc trên để cấu hình loại tổng hợp.
           </p>
         </div>
-      )}
+      ) : filteredConfigs.length === 0 ? (
+        <div style={{
+          background: '#f8fafc', border: '2px dashed #cbd5e1', borderRadius: 12,
+          padding: '48px 24px', textAlign: 'center', color: '#64748b'
+        }}>
+          <div style={{
+            width: 64, height: 64, background: '#e2e8f0', borderRadius: 16,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            margin: '0 auto 16px'
+          }}>
+            <Settings size={28} color="#94a3b8" />
+          </div>
+          <h3 style={{ margin: '0 0 8px', fontSize: 16, fontWeight: 700, color: '#334155' }}>
+            Chưa có loại tổng hợp cho dự án này
+          </h3>
+          <p style={{ margin: 0, fontSize: 14 }}>
+            Nhấn <strong>"+ Tạo Loại Tổng hợp"</strong> để bắt đầu cấu hình đơn vị giao nhận cho dự án này.
+          </p>
+        </div>
+      ) : null}
 
       {/* Config list */}
-      {configs.map((cfg, cfgIdx) => {
+      {filteredConfigs.map((cfg) => {
+        const cfgIdx = configs.findIndex(c => c.id === cfg.id)
+        if (cfgIdx === -1) return null
+
         const isExpanded = expandedConfig === cfgIdx
         const cardBorderColor = cfg.bgColor ? getBorderColor(cfg.bgColor) : '#e2e8f0'
         const contrastColor = cfg.bgColor ? getContrastColor(cfg.bgColor) : '#0f172a'
