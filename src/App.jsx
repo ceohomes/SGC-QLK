@@ -285,7 +285,7 @@ function SearchableSelect({ value, onChange, options, placeholder = 'Tất cả 
 }
 
 // ─── Header ──────────────────────────────────────────────────────────────────
-function Header({ selectedProject, setSelectedProject, duAnOptions, onOpenAddProjectModal, onEditProject, onDeleteProject, onOpenConfigModal }) {
+function Header({ selectedProject, setSelectedProject, duAnOptions, onOpenAddProjectModal, onEditProject, onDeleteProject, onOpenConfigModal, onForceRefresh }) {
   return (
     <header style={{
       background: 'linear-gradient(135deg, #0a3d73 0%, #0f58a7 60%, #1a6abf 100%)', // Original professional blue system
@@ -366,6 +366,53 @@ function Header({ selectedProject, setSelectedProject, duAnOptions, onOpenAddPro
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        {isSupabaseConfigured && (
+          <button
+            onClick={async (e) => {
+              const btn = e.currentTarget
+              const originalText = btn.innerHTML
+              btn.disabled = true
+              btn.style.opacity = '0.6'
+              btn.innerHTML = '<span style="display:flex;align-items:center;gap:4px;"><svg class="animate-spin" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg> Đang tải...</span>'
+              try {
+                await onForceRefresh()
+              } catch (err) {
+                console.error(err)
+              } finally {
+                btn.disabled = false
+                btn.style.opacity = '1'
+                btn.innerHTML = originalText
+              }
+            }}
+            title="Tải lại toàn bộ dữ liệu sạch trực tiếp từ Supabase (Bỏ qua Caching)"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              background: 'rgba(255, 255, 255, 0.12)',
+              border: '1px solid rgba(255, 255, 255, 0.2)',
+              borderRadius: 6,
+              padding: '4px 10px',
+              color: '#ffffff',
+              fontSize: 12,
+              fontWeight: 600,
+              whiteSpace: 'nowrap',
+              cursor: 'pointer',
+              transition: 'all 0.15s ease',
+              height: 28,
+              boxSizing: 'border-box'
+            }}
+            onMouseOver={(e) => {
+              e.currentTarget.style.background = 'rgba(255, 255, 255, 0.25)'
+            }}
+            onMouseOut={(e) => {
+              e.currentTarget.style.background = 'rgba(255, 255, 255, 0.12)'
+            }}
+          >
+            <RefreshCw size={12} style={{ marginRight: 5, color: '#e0f2fe' }} />
+            <span>Tải lại DB</span>
+          </button>
+        )}
+
         <button
           onClick={onOpenConfigModal}
           title="Cấu hình kết nối cơ sở dữ liệu Supabase"
@@ -5496,11 +5543,58 @@ export default function App() {
   })
 
   // Hold rows and sheet file names globally so state is retained across tab switches!
-  const [giaoRows, setGiaoRows] = useState([])
-  const [giaoFileName, setGiaoFileName] = useState('')
+  const [giaoRows, setGiaoRows] = useState(() => {
+    try {
+      const saved = localStorage.getItem('sgc_giao_rows')
+      return saved ? JSON.parse(saved) : []
+    } catch (e) {
+      return []
+    }
+  })
+  const [giaoFileName, setGiaoFileName] = useState(() => {
+    try {
+      const saved = localStorage.getItem('sgc_giao_rows')
+      const parsed = saved ? JSON.parse(saved) : []
+      return parsed.length > 0 ? 'Report_Orders_Don_giao (Cached)' : ''
+    } catch (e) {
+      return ''
+    }
+  })
 
-  const [nhanRows, setNhanRows] = useState([])
-  const [nhanFileName, setNhanFileName] = useState('')
+  const [nhanRows, setNhanRows] = useState(() => {
+    try {
+      const saved = localStorage.getItem('sgc_nhan_rows')
+      return saved ? JSON.parse(saved) : []
+    } catch (e) {
+      return []
+    }
+  })
+  const [nhanFileName, setNhanFileName] = useState(() => {
+    try {
+      const saved = localStorage.getItem('sgc_nhan_rows')
+      const parsed = saved ? JSON.parse(saved) : []
+      return parsed.length > 0 ? 'Report_Orders_Don_nhan (Cached)' : ''
+    } catch (e) {
+      return ''
+    }
+  })
+
+  // Automatically persist rows to localStorage to keep cache synced and allow instant loading
+  React.useEffect(() => {
+    try {
+      localStorage.setItem('sgc_giao_rows', JSON.stringify(giaoRows || []))
+    } catch (e) {
+      console.warn('LocalStorage error persisting sgc_giao_rows:', e)
+    }
+  }, [giaoRows])
+
+  React.useEffect(() => {
+    try {
+      localStorage.setItem('sgc_nhan_rows', JSON.stringify(nhanRows || []))
+    } catch (e) {
+      console.warn('LocalStorage error persisting sgc_nhan_rows:', e)
+    }
+  }, [nhanRows])
 
   const [syncingType, setSyncingType] = useState(null) // 'giao' | 'nhan' | null
   const [supabaseMessage, setSupabaseMessage] = useState(null) // { text, type: 'success' | 'error' | 'info' }
@@ -5585,9 +5679,55 @@ export default function App() {
     }
   }, [])
 
-  const loadTableFromSupabase = React.useCallback(async (tableType) => {
+  const loadTableFromSupabase = React.useCallback(async (tableType, forceBypassCache = false) => {
     if (!isSupabaseConfigured) return
     const tableName = tableType === 'giao' ? 'don_giao' : 'don_nhan'
+
+    if (!forceBypassCache) {
+      try {
+        // 1. Fetch exact total row count on Supabase (uses almost zero bandwidth/egress since there is no data body)
+        const { count, error: countErr } = await supabase
+          .from(tableName)
+          .select('*', { count: 'exact', head: true })
+
+        if (!countErr && count !== null) {
+          // 2. Fetch highest record ID (uses almost zero bandwidth/egress)
+          const { data: maxIdData, error: maxIdErr } = await supabase
+            .from(tableName)
+            .select('id')
+            .order('id', { ascending: false })
+            .limit(1)
+
+          const maxRemoteId = maxIdData && maxIdData.length > 0 ? Number(maxIdData[0].id) : 0
+
+          // Get our current cached rows
+          const cachedKey = tableType === 'giao' ? 'sgc_giao_rows' : 'sgc_nhan_rows'
+          const rawCached = localStorage.getItem(cachedKey)
+          if (rawCached) {
+            const cachedJson = JSON.parse(rawCached)
+            const maxLocalId = cachedJson.length > 0 ? Math.max(...cachedJson.map(r => Number(r.id) || 0)) : 0
+
+            // If count and high ID match, we can skip fetching from Supabase!
+            if (count === cachedJson.length && maxRemoteId === maxLocalId) {
+              console.log(`[Cache Tối Ưu] ${tableName} trùng khớp dữ liệu (Egress = 0). Dùng cache gốc.`);
+              if (tableType === 'giao') {
+                setGiaoRows(cachedJson)
+                setGiaoFileName(cachedJson.length > 0 ? 'Report_Orders_Don_giao (Cached DB)' : '')
+              } else {
+                setNhanRows(cachedJson)
+                setNhanFileName(cachedJson.length > 0 ? 'Report_Orders_Don_nhan (Cached DB)' : '')
+              }
+              return
+            }
+          }
+        }
+      } catch (cacheErr) {
+        console.warn(`[Cache Check Bypass] Lỗi kiểm tra trùng khớp cho ${tableName}:`, cacheErr)
+      }
+    }
+
+    // Cache miss or force reload triggered -> Fetch fresh rows
+    console.log(`[Tải DB] Bắt đầu tải mới từ Supabase cho bảng "${tableName}"...`)
     const PAGE_SIZE = 1000
     let allData = []
     let from = 0
@@ -5634,12 +5774,12 @@ export default function App() {
     }
   }, [])
 
-  const loadDataFromSupabase = React.useCallback(async () => {
+  const loadDataFromSupabase = React.useCallback(async (forceBypassCache = false) => {
     if (!isSupabaseConfigured) return
     await Promise.all([
       loadProjectsFromSupabase(),
-      loadTableFromSupabase('giao'),
-      loadTableFromSupabase('nhan'),
+      loadTableFromSupabase('giao', forceBypassCache),
+      loadTableFromSupabase('nhan', forceBypassCache),
       fetchConfigsFromSupabaseInApp(),
     ])
   }, [loadProjectsFromSupabase, loadTableFromSupabase, fetchConfigsFromSupabaseInApp])
@@ -6174,6 +6314,7 @@ export default function App() {
         }}
         onDeleteProject={handleDeleteProject}
         onOpenConfigModal={() => setShowConfigModal(true)}
+        onForceRefresh={() => loadDataFromSupabase(true)}
       />
       <TabBar tabs={tabs} active={tab} onChange={setTab} />
 
