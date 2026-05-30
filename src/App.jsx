@@ -1224,7 +1224,7 @@ function OrderTab({
                   <Download size={12} /> Xuất Excel
                 </button>
               )}
-              <button className="btn btn-outline btn-sm" onClick={() => { if (onDeleteFile) { onDeleteFile() } else { if (window.confirm('Bạn có chắc chắn muốn xóa toàn bộ dữ liệu này?\n\nHành động này không thể hoàn tác.')) { setRows([]); setFileName(''); setSearch(''); setTrangThai('') } } }} style={{ display: selectedProject ? 'flex' : 'none' }}>
+              <button className="btn btn-outline btn-sm" onClick={() => { if (onDeleteFile) { onDeleteFile() } else { setRows([]); setFileName(''); setSearch(''); setTrangThai('') } }} style={{ display: selectedProject ? 'flex' : 'none' }}>
                 <X size={12} /> Xóa file
               </button>
             </div>
@@ -1751,6 +1751,126 @@ function EditProjectModal({ isOpen, onClose, onSave, currentName }) {
             }}
           >
             Cập nhật
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─── Delete File Modal ────────────────────────────────────────────────────
+function DeleteFileModal({ isOpen, onClose, onConfirm, type, selectedProject, rowCount }) {
+  if (!isOpen) return null
+  const label = type === 'giao' ? 'Đơn Giao' : 'Đơn Nhận'
+  const hasData = rowCount > 0
+
+  return (
+    <div style={{
+      position: 'fixed',
+      top: 0, left: 0, right: 0, bottom: 0,
+      backgroundColor: 'rgba(15, 23, 42, 0.65)',
+      backdropFilter: 'blur(4px)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      zIndex: 10002
+    }}>
+      <div style={{
+        background: '#ffffff',
+        borderRadius: 12,
+        width: '100%',
+        maxWidth: 440,
+        padding: 24,
+        boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04)',
+        border: '1px solid #fee2e2',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 16
+      }}>
+        {/* Header */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #f1f5f9', paddingBottom: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div style={{ width: 36, height: 36, borderRadius: 10, background: '#fee2e2', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Trash2 size={18} color="#ef4444" />
+            </div>
+            <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: '#991b1b' }}>Xác nhận xóa dữ liệu</h3>
+          </div>
+          <button onClick={onClose} style={{ background: 'transparent', border: 'none', color: '#64748b', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
+            <X size={18} />
+          </button>
+        </div>
+
+        {/* Body */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <p style={{ margin: 0, fontSize: 14, color: '#334155', lineHeight: '1.6' }}>
+            Bạn có chắc chắn muốn xóa toàn bộ dữ liệu <strong style={{ color: '#0f172a' }}>{label}</strong>
+            {selectedProject ? <> của kho dự án <strong style={{ color: '#0f172a' }}>"{selectedProject}"</strong></> : ''}?
+          </p>
+
+          {hasData ? (
+            <div style={{
+              background: '#fff1f2',
+              border: '1.5px solid #fecdd3',
+              borderRadius: 10,
+              padding: '12px 14px',
+              display: 'flex',
+              gap: 10,
+              alignItems: 'flex-start'
+            }}>
+              <AlertCircle size={18} color="#ef4444" style={{ flexShrink: 0, marginTop: 1 }} />
+              <div style={{ fontSize: 13, color: '#9f1239', lineHeight: '1.6' }}>
+                <strong>File này đang có dữ liệu!</strong>
+                <div style={{ marginTop: 6 }}>
+                  <span>• <strong>{rowCount.toLocaleString()} dòng</strong> {label} sẽ bị xóa vĩnh viễn</span>
+                </div>
+                <div style={{ marginTop: 8, fontWeight: 600 }}>
+                  Thao tác này không thể hoàn tác. Bạn có chắc chắn muốn tiếp tục?
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div style={{
+              background: '#fffbeb',
+              border: '1px solid #fef3c7',
+              borderRadius: 8,
+              padding: '10px 12px',
+              display: 'flex',
+              gap: 8,
+              alignItems: 'flex-start'
+            }}>
+              <AlertCircle size={16} color="#d97706" style={{ flexShrink: 0, marginTop: 2 }} />
+              <p style={{ margin: 0, fontSize: 12, color: '#b45309', lineHeight: '1.4', fontWeight: 500 }}>
+                File chưa có dữ liệu. Thao tác này sẽ xóa trắng dữ liệu hiện tại.
+              </p>
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 4 }}>
+          <button
+            onClick={onClose}
+            style={{
+              padding: '8px 16px', borderRadius: 6,
+              border: '1px solid #cbd5e1', background: '#ffffff',
+              color: '#475569', fontSize: 13, fontWeight: 600, cursor: 'pointer'
+            }}
+          >
+            Hủy bỏ
+          </button>
+          <button
+            onClick={onConfirm}
+            style={{
+              padding: '8px 18px', borderRadius: 6, border: 'none',
+              background: '#dc2626',
+              color: '#ffffff', fontSize: 13, fontWeight: 700,
+              cursor: 'pointer',
+              boxShadow: '0 2px 8px rgba(220,38,38,0.35)',
+              display: 'flex', alignItems: 'center', gap: 6
+            }}
+          >
+            <Trash2 size={14} />
+            Xóa dữ liệu
           </button>
         </div>
       </div>
@@ -2587,6 +2707,7 @@ async function resetTableSequence(tableName) {
 }
 
 // Adaptive database row deletion helper which detects table columns from OpenAPI schema or fallback methods
+const tableSchemaCache = {}
 async function deleteFromTableAdaptive(tableName, possibleColumns, targetValue) {
   try {
     let columns = null
@@ -2678,6 +2799,8 @@ export default function App() {
   const [selectedProject, setSelectedProject] = useState('')
   const [showAddProjectModal, setShowAddProjectModal] = useState(false)
   const [showEditProjectModal, setShowEditProjectModal] = useState(false)
+  const [showDeleteFileModal, setShowDeleteFileModal] = useState(false)
+  const [deleteFileType, setDeleteFileType] = useState(null) // 'giao' | 'nhan'
   const [showDeleteProjectModal, setShowDeleteProjectModal] = useState(false)
   const [showConfigModal, setShowConfigModal] = useState(false)
   const [supabaseAuthError, setSupabaseAuthError] = useState(false)
@@ -3105,12 +3228,15 @@ export default function App() {
     }
   }
 
-  const handleDeleteFile = async (type) => {
-    // Hiển thị hộp thoại xác nhận trước khi xóa
-    const label = type === 'giao' ? 'Đơn Giao' : 'Đơn Nhận'
-    const projectMsg = selectedProject ? ` của kho dự án "${selectedProject}"` : ''
-    const confirmed = window.confirm(`Bạn có chắc chắn muốn xóa toàn bộ dữ liệu ${label}${projectMsg}?\n\nHành động này không thể hoàn tác.`)
-    if (!confirmed) return
+  const handleDeleteFile = (type) => {
+    setDeleteFileType(type)
+    setShowDeleteFileModal(true)
+  }
+
+  const handleConfirmDeleteFile = async () => {
+    const type = deleteFileType
+    setShowDeleteFileModal(false)
+    setDeleteFileType(null)
 
     // 1. Xóa dữ liệu local - chỉ xóa rows thuộc selectedProject, không xóa dữ liệu kho khác
     if (type === 'giao') {
@@ -3119,7 +3245,6 @@ export default function App() {
           const rowProject = r.ten_du_an || r.tenDuAn || r.tenduan || r.duAn || r.du_an || ''
           return rowProject !== selectedProject
         }))
-        // Reset fileName nếu không còn dữ liệu của dự án này
         setGiaoFileName(prev => prev)
       } else {
         setGiaoRows([])
@@ -3131,7 +3256,6 @@ export default function App() {
           const rowProject = r.ten_du_an || r.tenDuAn || r.tenduan || r.duAn || r.du_an || ''
           return rowProject !== selectedProject
         }))
-        // Reset fileName nếu không còn dữ liệu của dự án này
         setNhanFileName(prev => prev)
       } else {
         setNhanRows([])
@@ -3146,13 +3270,11 @@ export default function App() {
       setSupabaseMessage({ text: `Đang xóa dữ liệu Đơn ${type === 'giao' ? 'Giao' : 'Nhận'} trên Supabase...`, type: 'info' })
       try {
         if (selectedProject) {
-          // Xóa theo dự án đang chọn sử dụng cơ chế Adaptive cực kỳ tối ưu
           const deleteRes = await deleteFromTableAdaptive(tableName, ['ten_du_an', 'tenDuAn', 'tenduan', 'du_an'], selectedProject)
           if (!deleteRes.success && deleteRes.reason !== 'table_empty') {
             throw deleteRes.error || new Error('Không tìm thấy cột phù hợp hoặc không được phân quyền xóa.')
           }
         } else {
-          // Không có dự án cụ thể → xóa hết bảng
           const { error } = await supabase.from(tableName).delete().neq('id', -999)
           if (error) throw error
         }
@@ -3552,6 +3674,18 @@ export default function App() {
       <SupabaseConfigModal
         isOpen={showConfigModal}
         onClose={() => setShowConfigModal(false)}
+      />
+
+      <DeleteFileModal
+        isOpen={showDeleteFileModal}
+        onClose={() => { setShowDeleteFileModal(false); setDeleteFileType(null) }}
+        onConfirm={handleConfirmDeleteFile}
+        type={deleteFileType}
+        selectedProject={selectedProject}
+        rowCount={deleteFileType === 'giao'
+          ? (selectedProject ? giaoRows.filter(r => (r.ten_du_an || r.tenDuAn || r.tenduan || r.duAn || r.du_an || '') === selectedProject).length : giaoRows.length)
+          : (selectedProject ? nhanRows.filter(r => (r.ten_du_an || r.tenDuAn || r.tenduan || r.duAn || r.du_an || '') === selectedProject).length : nhanRows.length)
+        }
       />
 
       <DeleteProjectModal
