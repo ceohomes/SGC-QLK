@@ -933,14 +933,9 @@ function DataTable({ rows, setRows, type }) {
     }
   }, [rows, pageSize])
 
-  if (rows.length === 0) return (
-    <div className="empty-state">
-      <Search size={48} />
-      <h3>Không có dữ liệu</h3>
-      <p>Không tìm thấy kết quả phù hợp với bộ lọc hiện tại.</p>
-    </div>
-  )
-
+  // Các hook bên dưới PHẢI nằm trước mọi early-return để tuân thủ Rules of Hooks
+  // (tránh lỗi "Rendered fewer hooks than expected" / React error #300 gây màn hình trắng
+  // khi rows.length chuyển từ >0 về 0 hoặc ngược lại, ví dụ khi lọc ra 0 kết quả)
   const totalPages = Math.ceil(rows.length / pageSize)
   const startIdx = (currentPage - 1) * pageSize
   const endIdx = Math.min(startIdx + pageSize, rows.length)
@@ -952,6 +947,14 @@ function DataTable({ rows, setRows, type }) {
     if (rows.length === 0) return false
     return rows.every(r => selectedIds.has(r.id))
   }, [rows, selectedIds])
+
+  if (rows.length === 0) return (
+    <div className="empty-state">
+      <Search size={48} />
+      <h3>Không có dữ liệu</h3>
+      <p>Không tìm thấy kết quả phù hợp với bộ lọc hiện tại.</p>
+    </div>
+  )
 
   const handleSelectAll = (e) => {
     const checked = e.target.checked
@@ -4573,20 +4576,16 @@ function DeleteConfigConfirmModal({ isOpen, onClose, onConfirm, configName, proj
 
 // ─── Inventory Report (Báo cáo xuất nhập tồn) ──────────────────────────────────
 function BaoCaoXuatNhapTonTab({ chungRows = [], giaoRows = [], nhanRows = [], selectedProject, setSelectedProject, allProjects = [] }) {
-  const [localProject, setLocalProject] = React.useState(selectedProject || '')
+  // Bộ lọc Kho/Dự án của tab này hoàn toàn độc lập (local), không lấy theo
+  // và không đồng bộ ngược lại selectedProject toàn cục — tránh ảnh hưởng
+  // tới các tab/sheet khác như Đơn chung, Kho dự án.
+  const [localProject, setLocalProject] = React.useState('')
   const [searchTerm, setSearchTerm] = React.useState('')
   const [statusFilter, setStatusFilter] = React.useState('approved_only') // 'approved_only' | 'all'
   const [currentPage, setCurrentPage] = React.useState(1)
   const [pageSize, setPageSize] = React.useState(50)
   const [sortField, setSortField] = React.useState('maSAP') // 'maSAP' | 'received' | 'issued' | 'stock'
   const [sortDirection, setSortDirection] = React.useState('asc') // 'asc' | 'desc'
-
-  // Synchronize localProject with selectedProject prop when it changes
-  React.useEffect(() => {
-    if (selectedProject !== localProject) {
-      setLocalProject(selectedProject || '')
-    }
-  }, [selectedProject])
 
   // Extract all unique warehouses
   const uniqueWarehouses = React.useMemo(() => {
@@ -5005,7 +5004,6 @@ function BaoCaoXuatNhapTonTab({ chungRows = [], giaoRows = [], nhanRows = [], se
   const handleWarehouseChange = (e) => {
     const val = e.target.value
     setLocalProject(val)
-    setSelectedProject(val) // Sync to global selectedProject
   }
 
   const toggleSort = (field) => {
