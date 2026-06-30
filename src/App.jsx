@@ -4789,6 +4789,89 @@ function BaoCaoXuatNhapTonTab({ chungRows = [], giaoRows = [], nhanRows = [], se
     return filtered
   }, [chungRows, giaoRows, nhanRows, localProject, searchTerm, statusFilter, sortField, sortDirection])
 
+  // Chi tiết các đơn nhận / đơn xuất cấu thành nên khối lượng nhận - khối lượng xuất ở bảng tổng hợp.
+  // Dùng đúng logic lọc (Kho/Dự án + trạng thái) như reportData để đảm bảo số liệu khớp 100%.
+  const detailRows = React.useMemo(() => {
+    const projLower = localProject ? localProject.trim().toLowerCase() : ''
+    const parseVal = (val) => {
+      if (val === null || val === undefined) return 0
+      if (typeof val === 'number') return val
+      const cleaned = String(val).replace(/[^\d.-]/g, '').replace(',', '.')
+      const num = parseFloat(cleaned)
+      return isNaN(num) ? 0 : num
+    }
+
+    const sourceRows = (chungRows && chungRows.length > 0)
+      ? chungRows
+      : [...giaoRows, ...nhanRows]
+
+    const nhanList = []
+    const xuatList = []
+
+    sourceRows.forEach(r => {
+      if (statusFilter === 'approved_only' && !isApprovedStatus(r.trangThai)) return
+
+      const sap = String(r.maSAP || '').trim()
+      if (!sap) return
+
+      const nhanUnit = String(r.donViNhan || '').trim().toLowerCase()
+      const giaoUnit = String(r.donViGiao || '').trim().toLowerCase()
+
+      let isNhan = false
+      let isGiao = false
+      if (localProject) {
+        isNhan = nhanUnit === projLower
+        isGiao = giaoUnit === projLower
+        if (!isNhan && !isGiao) return
+      } else {
+        isNhan = true
+        isGiao = true
+      }
+
+      const baseInfo = {
+        ngayXuatNhap: r.ngayXuatNhap || '',
+        maSAP: sap,
+        maVatTu: String(r.maVatTu || '').trim(),
+        tenVatTu: String(r.tenVatTu || '').trim(),
+        dvt: String(r.dvt || '').trim(),
+        thongSoKyThuat: String(r.thongSoKyThuat || '').trim(),
+        donViGiao: String(r.donViGiao || '').trim(),
+        donViNhan: String(r.donViNhan || '').trim(),
+        nguoiGiao: String(r.nguoiGiao || '').trim(),
+        nguoiNhan: String(r.nguoiNhan || '').trim(),
+        trangThai: String(r.trangThai || '').trim(),
+        duAn: String(r.duAn || '').trim(),
+        ghiChu: String(r.ghiChu || '').trim()
+      }
+
+      if (localProject) {
+        if (isNhan) {
+          const soLuong = parseVal(r.khoiLuongNhap) || parseVal(r.khoiLuongXuat)
+          if (soLuong) {
+            nhanList.push({ ...baseInfo, maDon: String(r.maDonNhapKho || r.maDonXuatKho || '').trim(), khoiLuong: soLuong })
+          }
+        }
+        if (isGiao) {
+          const soLuong = parseVal(r.khoiLuongXuat) || parseVal(r.khoiLuongNhap)
+          if (soLuong) {
+            xuatList.push({ ...baseInfo, maDon: String(r.maDonXuatKho || r.maDonNhapKho || '').trim(), khoiLuong: soLuong })
+          }
+        }
+      } else {
+        const soNhan = parseVal(r.khoiLuongNhap)
+        if (soNhan) {
+          nhanList.push({ ...baseInfo, maDon: String(r.maDonNhapKho || '').trim(), khoiLuong: soNhan })
+        }
+        const soXuat = parseVal(r.khoiLuongXuat)
+        if (soXuat) {
+          xuatList.push({ ...baseInfo, maDon: String(r.maDonXuatKho || '').trim(), khoiLuong: soXuat })
+        }
+      }
+    })
+
+    return { nhanList, xuatList }
+  }, [chungRows, giaoRows, nhanRows, localProject, statusFilter])
+
   // Metrics
   const metrics = React.useMemo(() => {
     let totalReceived = 0
@@ -4863,6 +4946,16 @@ function BaoCaoXuatNhapTonTab({ chungRows = [], giaoRows = [], nhanRows = [], se
       s: {
         font: { name: 'Segoe UI', sz: 10, italic: true },
         alignment: { horizontal: 'left', vertical: 'center' }
+      }
+    }
+    ws['A4'] = {
+      v: localProject
+        ? `Công thức: Khối lượng nhận = Tổng "Khối lượng nhập/xuất" của các đơn có Đơn vị nhận = "${localProject}" (xem chi tiết sheet Don_Nhan)  |  Khối lượng xuất = Tổng "Khối lượng nhập/xuất" của các đơn có Đơn vị giao = "${localProject}" (xem chi tiết sheet Don_Xuat)  |  Tồn kho = Khối lượng nhận - Khối lượng xuất`
+        : `Công thức: Khối lượng nhận = Tổng cột "Khối lượng nhập" của toàn bộ đơn (xem chi tiết sheet Don_Nhan)  |  Khối lượng xuất = Tổng cột "Khối lượng xuất" của toàn bộ đơn (xem chi tiết sheet Don_Xuat)  |  Tồn kho = Khối lượng nhận - Khối lượng xuất`,
+      t: 's',
+      s: {
+        font: { name: 'Segoe UI', sz: 9.5, italic: true, color: { rgb: '64748B' } },
+        alignment: { horizontal: 'left', vertical: 'center', wrapText: true }
       }
     }
 
@@ -5033,6 +5126,149 @@ function BaoCaoXuatNhapTonTab({ chungRows = [], giaoRows = [], nhanRows = [], se
     ws['!ref'] = `A1:I${rowIdx}`
 
     XLSXStyle.utils.book_append_sheet(wb, ws, "Xuat_Nhap_Ton")
+
+    // ── Sheet "Đơn nhận" và "Đơn xuất": liệt kê chi tiết từng đơn cấu thành nên
+    // cột Khối lượng nhận / Khối lượng xuất ở sheet tổng hợp phía trên ──────────
+    const buildDetailSheet = (list, title, qtyLabel) => {
+      const dws = {}
+      const dcols = [
+        { key: 'maDon', label: 'Mã đơn', width: 160 },
+        { key: 'ngayXuatNhap', label: 'Ngày xuất nhập', width: 100 },
+        { key: 'maSAP', label: 'Mã SAP', width: 100 },
+        { key: 'maVatTu', label: 'Mã vật tư', width: 100 },
+        { key: 'tenVatTu', label: 'Tên vật tư', width: 220 },
+        { key: 'dvt', label: 'ĐVT', width: 70 },
+        { key: 'thongSoKyThuat', label: 'Thông số kỹ thuật', width: 160 },
+        { key: 'donViGiao', label: 'Đơn vị giao', width: 150 },
+        { key: 'donViNhan', label: 'Đơn vị nhận', width: 150 },
+        { key: 'khoiLuong', label: qtyLabel, width: 130 },
+        { key: 'nguoiGiao', label: 'Người giao', width: 120 },
+        { key: 'nguoiNhan', label: 'Người nhận', width: 120 },
+        { key: 'duAn', label: 'Dự án', width: 160 },
+        { key: 'trangThai', label: 'Trạng thái', width: 120 },
+        { key: 'ghiChu', label: 'Ghi chú', width: 200 }
+      ]
+      dws['!cols'] = dcols.map(c => ({ wpx: c.width }))
+
+      dws['A1'] = {
+        v: title,
+        t: 's',
+        s: { font: { name: 'Segoe UI', sz: 14, bold: true, color: { rgb: '0A3D73' } }, alignment: { horizontal: 'left', vertical: 'center' } }
+      }
+      dws['A2'] = {
+        v: `Kho / Dự án: ${localProject || 'Tất cả'}  |  Tổng số dòng: ${list.length.toLocaleString('vi-VN')}`,
+        t: 's',
+        s: { font: { name: 'Segoe UI', sz: 10, italic: true }, alignment: { horizontal: 'left', vertical: 'center' } }
+      }
+
+      let dRowIdx = 4
+      dcols.forEach((col, colIdx) => {
+        const cellRef = `${String.fromCharCode(65 + colIdx)}${dRowIdx}`
+        dws[cellRef] = {
+          v: col.label,
+          t: 's',
+          s: {
+            fill: { patternType: 'solid', fgColor: { rgb: '0F58A7' } },
+            font: { name: 'Segoe UI', sz: 10, bold: true, color: { rgb: 'FFFFFF' } },
+            alignment: { horizontal: 'center', vertical: 'center' },
+            border: {
+              top: { style: 'thin', color: { rgb: '0A3D73' } },
+              bottom: { style: 'medium', color: { rgb: '0A3D73' } },
+              left: { style: 'thin', color: { rgb: '0A3D73' } },
+              right: { style: 'thin', color: { rgb: '0A3D73' } }
+            }
+          }
+        }
+      })
+
+      let totalQty = 0
+      list.forEach(item => {
+        dRowIdx++
+        totalQty += item.khoiLuong || 0
+        dcols.forEach((col, colIdx) => {
+          const val = item[col.key]
+          const cellRef = `${String.fromCharCode(65 + colIdx)}${dRowIdx}`
+          const isNum = typeof val === 'number'
+          dws[cellRef] = {
+            v: val ?? '',
+            t: isNum ? 'n' : 's',
+            s: {
+              font: { name: 'Segoe UI', sz: 9.5 },
+              alignment: {
+                horizontal: col.key === 'tenVatTu' || col.key === 'thongSoKyThuat' || col.key === 'ghiChu' ? 'left' : (isNum ? 'right' : 'center'),
+                vertical: 'center'
+              },
+              border: {
+                top: { style: 'thin', color: { rgb: 'E2E8F0' } },
+                bottom: { style: 'thin', color: { rgb: 'E2E8F0' } },
+                left: { style: 'thin', color: { rgb: 'E2E8F0' } },
+                right: { style: 'thin', color: { rgb: 'E2E8F0' } }
+              }
+            }
+          }
+          if (isNum) dws[cellRef].z = '#,##0.000'
+        })
+      })
+
+      // Total row
+      dRowIdx++
+      dws[`A${dRowIdx}`] = {
+        v: 'TỔNG CỘNG',
+        t: 's',
+        s: {
+          font: { name: 'Segoe UI', sz: 10, bold: true },
+          alignment: { horizontal: 'center', vertical: 'center' },
+          fill: { patternType: 'solid', fgColor: { rgb: 'F1F5F9' } },
+          border: {
+            top: { style: 'medium', color: { rgb: '0A3D73' } },
+            bottom: { style: 'medium', color: { rgb: '0A3D73' } },
+            left: { style: 'thin', color: { rgb: 'E2E8F0' } },
+            right: { style: 'thin', color: { rgb: 'E2E8F0' } }
+          }
+        }
+      }
+      dws['!merges'] = [{ s: { r: dRowIdx - 1, c: 0 }, e: { r: dRowIdx - 1, c: 8 } }]
+      for (let c = 1; c <= 8; c++) {
+        const cellRef = `${String.fromCharCode(65 + c)}${dRowIdx}`
+        dws[cellRef] = {
+          v: '', t: 's',
+          s: {
+            fill: { patternType: 'solid', fgColor: { rgb: 'F1F5F9' } },
+            border: {
+              top: { style: 'medium', color: { rgb: '0A3D73' } },
+              bottom: { style: 'medium', color: { rgb: '0A3D73' } },
+              left: { style: 'thin', color: { rgb: 'E2E8F0' } },
+              right: { style: 'thin', color: { rgb: 'E2E8F0' } }
+            }
+          }
+        }
+      }
+      const totalCellRef = `${String.fromCharCode(65 + 9)}${dRowIdx}`
+      dws[totalCellRef] = {
+        v: totalQty, t: 'n', z: '#,##0.000',
+        s: {
+          font: { name: 'Segoe UI', sz: 10, bold: true },
+          alignment: { horizontal: 'right', vertical: 'center' },
+          fill: { patternType: 'solid', fgColor: { rgb: 'F1F5F9' } },
+          border: {
+            top: { style: 'medium', color: { rgb: '0A3D73' } },
+            bottom: { style: 'medium', color: { rgb: '0A3D73' } },
+            left: { style: 'thin', color: { rgb: 'E2E8F0' } },
+            right: { style: 'thin', color: { rgb: 'E2E8F0' } }
+          }
+        }
+      }
+
+      dws['!ref'] = `A1:O${dRowIdx}`
+      return dws
+    }
+
+    const nhanSheet = buildDetailSheet(detailRows.nhanList, 'CHI TIẾT ĐƠN NHẬN (cấu thành Khối lượng nhận)', 'Khối lượng nhận')
+    XLSXStyle.utils.book_append_sheet(wb, nhanSheet, "Don_Nhan")
+
+    const xuatSheet = buildDetailSheet(detailRows.xuatList, 'CHI TIẾT ĐƠN XUẤT (cấu thành Khối lượng xuất)', 'Khối lượng xuất')
+    XLSXStyle.utils.book_append_sheet(wb, xuatSheet, "Don_Xuat")
+
     const wbout = XLSXStyle.write(wb, { bookType: 'xlsx', type: 'binary' })
 
     const s2ab = (s) => {
