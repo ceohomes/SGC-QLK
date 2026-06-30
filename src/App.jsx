@@ -4637,12 +4637,18 @@ function BaoCaoXuatNhapTonTab({ chungRows = [], giaoRows = [], nhanRows = [], se
 
   // Hàm kiểm tra 1 dòng có được tính vào báo cáo hay không, theo statusFilter hiện tại:
   // - approved_only: chỉ tính đơn Đã phê duyệt
-  // - approved_pending: tính cả đơn Đã phê duyệt + Chưa phê duyệt (loại trừ đơn bị Từ chối/Hủy)
+  // - approved_pending: tính cả đơn Đã phê duyệt + Chưa phê duyệt/Chưa duyệt/Chờ phê duyệt,
+  //   LOẠI TRỪ "Chưa xác nhận" (chưa phải là Chưa phê duyệt) và Từ chối/Hủy
   // - all: tính tất cả các đơn, không loại trừ gì
   const matchStatusFilter = React.useCallback((trangThai) => {
-    if (statusFilter === 'approved_only') return isApprovedStatus(trangThai)
-    if (statusFilter === 'approved_pending') return isApprovedStatus(trangThai) || isPendingStatus(trangThai)
-    return true
+    if (statusFilter === 'all') return true
+    if (isApprovedStatus(trangThai)) return true
+    if (statusFilter !== 'approved_pending') return false
+
+    const raw = String(trangThai || '').trim().toLowerCase()
+    if (raw.includes('xác nhận')) return false // "Chưa xác nhận" không được tính là "Chưa phê duyệt"
+    if (isRejectedStatus(trangThai)) return false
+    return isPendingStatus(trangThai)
   }, [statusFilter])
   const [currentPage, setCurrentPage] = React.useState(1)
   const [pageSize, setPageSize] = React.useState(50)
