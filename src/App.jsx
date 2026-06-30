@@ -1754,22 +1754,6 @@ function OrderTab({
     <div style={{ padding: '16px 24px 24px 24px', height: '100%', display: 'flex', flexDirection: 'column', boxSizing: 'border-box', overflow: 'hidden' }}>
       {!rows.length && !loading ? (
         <div style={{ maxWidth: 560, margin: '40px auto' }}>
-          <div style={{ marginBottom: 20, textAlign: 'center' }}>
-            <div style={{
-              width: 56, height: 56, background: 'var(--primary-light)',
-              borderRadius: 16, display: 'flex', alignItems: 'center', justifyContent: 'center',
-              margin: '0 auto 12px'
-            }}>
-              {type === 'giao' ? <Truck size={26} color="var(--primary)" /> : type === 'nhan' ? <PackageCheck size={26} color="var(--primary)" /> : type === 'kho' ? <Warehouse size={26} color="var(--primary)" /> : <ClipboardList size={26} color="var(--primary)" />}
-            </div>
-            <h2 style={{ fontSize: 19, fontWeight: 800, color: 'var(--text)', marginBottom: 6 }}>
-              Tab {label}
-            </h2>
-            <p style={{ color: 'var(--text-muted)', fontSize: 15 }}>
-              Import file Excel để xem dữ liệu báo cáo theo dõi giao nhận.
-            </p>
-          </div>
-
           <div style={{
             background: 'var(--primary-light)',
             border: '1px solid #bdd4f0',
@@ -2033,18 +2017,24 @@ function KhoDuAnTab({ chungRows, selectedProject, setSelectedProject, allProject
   }
 
   // 1. Extract unique units (both Giao and Nhan combined) from all chungRows
+  // Chuẩn hóa tên (gộp khoảng trắng thừa + không phân biệt hoa/thường) để gộp các
+  // bản ghi trùng lặp do lệch hoa/thường hoặc dư khoảng trắng trong dữ liệu gốc,
+  // tránh hiển thị trùng trên webapp và tránh đẩy dữ liệu trùng lên Supabase.
+  const normalizeUnitName = (s) => (s || '').trim().replace(/\s+/g, ' ')
   const uniqueDonVi = useMemo(() => {
     const counts = {}
     chungRows.forEach(r => {
-      const g = (r.donViGiao || '').trim()
-      const n = (r.donViNhan || '').trim()
-      if (g) {
-        if (!counts[g]) counts[g] = { name: g, giaoCount: 0, nhanCount: 0 }
-        counts[g].giaoCount++
+      const gRaw = normalizeUnitName(r.donViGiao)
+      const nRaw = normalizeUnitName(r.donViNhan)
+      if (gRaw) {
+        const key = gRaw.toLowerCase()
+        if (!counts[key]) counts[key] = { name: gRaw, giaoCount: 0, nhanCount: 0 }
+        counts[key].giaoCount++
       }
-      if (n) {
-        if (!counts[n]) counts[n] = { name: n, giaoCount: 0, nhanCount: 0 }
-        counts[n].nhanCount++
+      if (nRaw) {
+        const key = nRaw.toLowerCase()
+        if (!counts[key]) counts[key] = { name: nRaw, giaoCount: 0, nhanCount: 0 }
+        counts[key].nhanCount++
       }
     })
     return Object.values(counts)
