@@ -4633,7 +4633,17 @@ function BaoCaoXuatNhapTonTab({ chungRows = [], giaoRows = [], nhanRows = [], se
   // tới các tab/sheet khác như Đơn chung, Kho dự án.
   const [localProject, setLocalProject] = React.useState('')
   const [searchTerm, setSearchTerm] = React.useState('')
-  const [statusFilter, setStatusFilter] = React.useState('approved_only') // 'approved_only' | 'all'
+  const [statusFilter, setStatusFilter] = React.useState('approved_only') // 'approved_only' | 'approved_pending' | 'all'
+
+  // Hàm kiểm tra 1 dòng có được tính vào báo cáo hay không, theo statusFilter hiện tại:
+  // - approved_only: chỉ tính đơn Đã phê duyệt
+  // - approved_pending: tính cả đơn Đã phê duyệt + Chưa phê duyệt (loại trừ đơn bị Từ chối/Hủy)
+  // - all: tính tất cả các đơn, không loại trừ gì
+  const matchStatusFilter = React.useCallback((trangThai) => {
+    if (statusFilter === 'approved_only') return isApprovedStatus(trangThai)
+    if (statusFilter === 'approved_pending') return isApprovedStatus(trangThai) || isPendingStatus(trangThai)
+    return true
+  }, [statusFilter])
   const [currentPage, setCurrentPage] = React.useState(1)
   const [pageSize, setPageSize] = React.useState(50)
   const [sortField, setSortField] = React.useState('maSAP') // 'maSAP' | 'received' | 'issued' | 'stock'
@@ -4684,7 +4694,7 @@ function BaoCaoXuatNhapTonTab({ chungRows = [], giaoRows = [], nhanRows = [], se
 
     sourceRows.forEach(r => {
       // Apply status filter
-      if (statusFilter === 'approved_only' && !isApprovedStatus(r.trangThai)) {
+      if (!matchStatusFilter(r.trangThai)) {
         return
       }
 
@@ -4787,7 +4797,7 @@ function BaoCaoXuatNhapTonTab({ chungRows = [], giaoRows = [], nhanRows = [], se
     })
 
     return filtered
-  }, [chungRows, giaoRows, nhanRows, localProject, searchTerm, statusFilter, sortField, sortDirection])
+  }, [chungRows, giaoRows, nhanRows, localProject, searchTerm, matchStatusFilter, sortField, sortDirection])
 
   // Chi tiết các đơn nhận / đơn xuất cấu thành nên khối lượng nhận - khối lượng xuất ở bảng tổng hợp.
   // Dùng đúng logic lọc (Kho/Dự án + trạng thái) như reportData để đảm bảo số liệu khớp 100%.
@@ -4809,7 +4819,7 @@ function BaoCaoXuatNhapTonTab({ chungRows = [], giaoRows = [], nhanRows = [], se
     const xuatList = []
 
     sourceRows.forEach(r => {
-      if (statusFilter === 'approved_only' && !isApprovedStatus(r.trangThai)) return
+      if (!matchStatusFilter(r.trangThai)) return
 
       const sap = String(r.maSAP || '').trim()
       if (!sap) return
@@ -4870,7 +4880,7 @@ function BaoCaoXuatNhapTonTab({ chungRows = [], giaoRows = [], nhanRows = [], se
     })
 
     return { nhanList, xuatList }
-  }, [chungRows, giaoRows, nhanRows, localProject, statusFilter])
+  }, [chungRows, giaoRows, nhanRows, localProject, matchStatusFilter])
 
   // Metrics
   const metrics = React.useMemo(() => {
@@ -4941,7 +4951,11 @@ function BaoCaoXuatNhapTonTab({ chungRows = [], giaoRows = [], nhanRows = [], se
       }
     }
     ws['A3'] = {
-      v: `Trạng thái dữ liệu: ${statusFilter === 'approved_only' ? 'Chỉ tính đơn đã phê duyệt' : 'Tính tất cả các đơn'}`,
+      v: `Trạng thái dữ liệu: ${
+        statusFilter === 'approved_only' ? 'Chỉ tính đơn đã phê duyệt'
+        : statusFilter === 'approved_pending' ? 'Tính đơn Đã phê duyệt + Chưa phê duyệt'
+        : 'Tính tất cả các đơn'
+      }`,
       t: 's',
       s: {
         font: { name: 'Segoe UI', sz: 10, italic: true },
@@ -5349,7 +5363,7 @@ function BaoCaoXuatNhapTonTab({ chungRows = [], giaoRows = [], nhanRows = [], se
   ]
 
   return (
-    <div id="baocao-xuat-nhap-ton-root" style={{ padding: '16px 24px 24px 24px', height: '100%', display: 'flex', flexDirection: 'column', boxSizing: 'border-box', overflow: 'hidden' }}>
+    <div id="baocao-xuat-nhap-ton-root" style={{ padding: '16px 24px 24px 24px', height: '100%', display: 'flex', flexDirection: 'column', boxSizing: 'border-box', overflow: 'hidden', fontFamily: "'Roboto', sans-serif" }}>
       {/* Title Header Card */}
       <div style={{
         background: '#ffffff',
@@ -5465,6 +5479,26 @@ function BaoCaoXuatNhapTonTab({ chungRows = [], giaoRows = [], nhanRows = [], se
               }}
             >
               Chỉ Đã phê duyệt
+            </button>
+            <button
+              id="btn-inventory-status-approved-pending"
+              onClick={() => setStatusFilter('approved_pending')}
+              style={{
+                padding: '0 12px',
+                height: '100%',
+                borderRadius: 6,
+                fontSize: '12.5px',
+                fontWeight: 600,
+                transition: 'all 0.1s',
+                background: statusFilter === 'approved_pending' ? '#ffffff' : 'transparent',
+                color: statusFilter === 'approved_pending' ? 'var(--primary)' : 'var(--text-muted)',
+                border: 'none',
+                boxShadow: statusFilter === 'approved_pending' ? 'var(--shadow-sm)' : 'none',
+                cursor: 'pointer',
+                whiteSpace: 'nowrap'
+              }}
+            >
+              Đã PD + Chưa PD
             </button>
             <button
               id="btn-inventory-status-all"
@@ -5602,10 +5636,10 @@ function BaoCaoXuatNhapTonTab({ chungRows = [], giaoRows = [], nhanRows = [], se
                       <td style={{ width: 50, minWidth: 50, maxWidth: 50, textAlign: 'center', fontSize: '12px', color: 'var(--text-muted)', padding: '6px 10px' }}>
                         {stt}
                       </td>
-                      <td style={{ width: 130, minWidth: 130, fontSize: '13px', fontWeight: 700, fontFamily: 'monospace', color: 'var(--text)', padding: '6px 10px' }}>
+                      <td style={{ width: 130, minWidth: 130, fontSize: '13px', fontWeight: 700, fontFamily: "'Roboto', sans-serif", color: 'var(--text)', padding: '6px 10px' }}>
                         {item.maSAP}
                       </td>
-                      <td style={{ width: 130, minWidth: 130, fontSize: '13px', fontFamily: 'monospace', color: 'var(--text-muted)', padding: '6px 10px' }}>
+                      <td style={{ width: 130, minWidth: 130, fontSize: '13px', fontFamily: "'Roboto', sans-serif", color: 'var(--text-muted)', padding: '6px 10px' }}>
                         {item.maVatTu || '—'}
                       </td>
                       <td style={{ minWidth: 200, fontSize: '13px', fontWeight: 600, color: 'var(--text)', whiteSpace: 'normal', wordBreak: 'break-word', padding: '6px 10px' }}>
