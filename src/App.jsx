@@ -4,9 +4,9 @@ import * as XLSXStyleRaw from 'xlsx-js-style'
 const XLSXStyle = XLSXStyleRaw.default || XLSXStyleRaw
 import {
   Upload, FileSpreadsheet, Search, X, RefreshCw, Info,
-  ChevronDown, Download, Truck, PackageCheck, Settings, BarChart3,
+  ChevronDown, ChevronRight, Download, Truck, PackageCheck, Settings, BarChart3,
   AlertCircle, CheckCircle2, Filter, ArrowUpDown, Clock, CloudUpload, Database, Save,
-  Pencil, Trash2, Lock
+  Pencil, Trash2, Lock, ClipboardList, Warehouse
 } from 'lucide-react'
 import { COLS_GIAO_NHAN, parseXlsxToRows, formatVal, getTrangThaiColor, isApprovedStatus, isPendingStatus, isRejectedStatus } from './constants.js'
 import { supabase, isSupabaseConfigured, supabaseUrl, supabaseAnonKey } from './supabaseClient.js'
@@ -285,7 +285,7 @@ function SearchableSelect({ value, onChange, options, placeholder = 'Tất cả 
 }
 
 // ─── Header ──────────────────────────────────────────────────────────────────
-function Header({ selectedProject, setSelectedProject, duAnOptions, onOpenAddProjectModal, onEditProject, onDeleteProject, onOpenConfigModal, onForceRefresh }) {
+function Header({ selectedProject, setSelectedProject, duAnOptions, onOpenAddProjectModal, onEditProject, onDeleteProject, onOpenConfigModal, onForceRefresh, onMouseEnterLogo }) {
   return (
     <header style={{
       background: 'linear-gradient(135deg, #0a3d73 0%, #0f58a7 60%, #1a6abf 100%)', // Original professional blue system
@@ -300,7 +300,10 @@ function Header({ selectedProject, setSelectedProject, duAnOptions, onOpenAddPro
       zIndex: 100,
       borderBottom: '1px solid rgba(255, 255, 255, 0.1)'
     }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+      <div 
+        onMouseEnter={onMouseEnterLogo}
+        style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer' }}
+      >
         <div style={{
           width: 36, height: 36, background: '#ffffff',
           borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -413,9 +416,8 @@ function Header({ selectedProject, setSelectedProject, duAnOptions, onOpenAddPro
           </button>
         )}
 
-        <button
-          onClick={onOpenConfigModal}
-          title="Cấu hình kết nối cơ sở dữ liệu Supabase"
+        <div
+          title={isSupabaseConfigured ? "Đã kết nối cơ sở dữ liệu Supabase" : "Chưa kết nối cơ sở dữ liệu Supabase"}
           style={{
             display: 'flex',
             alignItems: 'center',
@@ -427,16 +429,9 @@ function Header({ selectedProject, setSelectedProject, duAnOptions, onOpenAddPro
             fontSize: 12,
             fontWeight: 600,
             whiteSpace: 'nowrap',
-            cursor: 'pointer',
-            transition: 'all 0.15s ease',
+            cursor: 'default',
             height: 28,
             boxSizing: 'border-box'
-          }}
-          onMouseOver={(e) => {
-            e.currentTarget.style.background = isSupabaseConfigured ? 'rgba(16, 185, 129, 0.3)' : 'rgba(245, 158, 11, 0.3)'
-          }}
-          onMouseOut={(e) => {
-            e.currentTarget.style.background = isSupabaseConfigured ? 'rgba(16, 185, 129, 0.15)' : 'rgba(245, 158, 11, 0.15)'
           }}
         >
           <Database size={13} style={{ marginRight: 5, color: isSupabaseConfigured ? '#34d399' : '#fbbf24' }} />
@@ -450,7 +445,7 @@ function Header({ selectedProject, setSelectedProject, duAnOptions, onOpenAddPro
             display: 'inline-block',
             boxShadow: isSupabaseConfigured ? '0 0 8px #10b981' : '0 0 8px #f59e0b'
           }} />
-        </button>
+        </div>
 
         <div style={{
           background: 'rgba(255,255,255,0.15)',
@@ -912,15 +907,18 @@ function OrderTab({
   onImportFile,
   onDeleteFile
 }) {
-  const isGiao = type === 'giao'
   const [loading, setLoading] = useState(false)
   const [search, setSearch] = useState('')
   const [trangThai, setTrangThai] = useState('')
 
-  const label = isGiao ? 'Đơn Giao' : 'Đơn Nhận'
-  const uploadLabel = isGiao
+  const label = type === 'giao' ? 'Đơn Giao' : type === 'nhan' ? 'Đơn Nhận' : type === 'kho' ? 'Kho dự án' : 'Đơn chung'
+  const uploadLabel = type === 'giao'
     ? 'Tải lên file Report_Orders_Đơn giao'
-    : 'Tải lên file Report_Orders_Đơn nhận'
+    : type === 'nhan'
+    ? 'Tải lên file Report_Orders_Đơn nhận'
+    : type === 'kho'
+    ? 'Tải lên file Report_Orders_Kho_du_an'
+    : 'Tải lên file Report_Orders_Đơn chung'
 
   const handleFile = useCallback((data, name) => {
     setLoading(true)
@@ -1147,7 +1145,8 @@ function OrderTab({
     ws['!ref'] = excelRangeRef
     ws['!autofilter'] = { ref: excelRangeRef }
 
-    XLSXStyle.utils.book_append_sheet(wb, ws, isGiao ? "Đơn Giao" : "Đơn Nhận")
+    const sheetName = type === 'giao' ? "Đơn Giao" : type === 'nhan' ? "Đơn Nhận" : type === 'kho' ? "Kho dự án" : "Đơn chung"
+    XLSXStyle.utils.book_append_sheet(wb, ws, sheetName)
     
     // Save
     const wbout = XLSXStyle.write(wb, { bookType: 'xlsx', type: 'binary' })
@@ -1161,12 +1160,13 @@ function OrderTab({
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `Export_${isGiao ? 'Don_giao' : 'Don_nhan'}_${new Date().toISOString().slice(0, 10)}.xlsx`
+    const fileSuffix = type === 'giao' ? 'Don_giao' : type === 'nhan' ? 'Don_nhan' : type === 'kho' ? 'Kho_du_an' : 'Don_chung'
+    a.download = `Export_${fileSuffix}_${new Date().toISOString().slice(0, 10)}.xlsx`
     document.body.appendChild(a)
     a.click()
     document.body.removeChild(a)
     URL.revokeObjectURL(url)
-  }, [filtered, isGiao])
+  }, [filtered, type])
 
   return (
     <div style={{ padding: '16px 24px 24px 24px', height: '100%', display: 'flex', flexDirection: 'column', boxSizing: 'border-box', overflow: 'hidden' }}>
@@ -1178,7 +1178,7 @@ function OrderTab({
               borderRadius: 16, display: 'flex', alignItems: 'center', justifyContent: 'center',
               margin: '0 auto 12px'
             }}>
-              {isGiao ? <Truck size={26} color="var(--primary)" /> : <PackageCheck size={26} color="var(--primary)" />}
+              {type === 'giao' ? <Truck size={26} color="var(--primary)" /> : type === 'nhan' ? <PackageCheck size={26} color="var(--primary)" /> : type === 'kho' ? <Warehouse size={26} color="var(--primary)" /> : <ClipboardList size={26} color="var(--primary)" />}
             </div>
             <h2 style={{ fontSize: 19, fontWeight: 800, color: 'var(--text)', marginBottom: 6 }}>
               Tab {label}
@@ -1206,8 +1206,8 @@ function OrderTab({
 
           {!selectedProject && (
             <div style={{
-              background: '#fff8e1',
-              border: '1px solid #f59e0b',
+              background: 'var(--primary-light)',
+              border: '1px solid #bdd4f0',
               borderRadius: 10,
               padding: '10px 14px',
               marginBottom: 16,
@@ -1215,13 +1215,13 @@ function OrderTab({
               gap: 8,
               alignItems: 'flex-start',
             }}>
-              <Info size={14} color="#d97706" style={{ marginTop: 1, flexShrink: 0 }} />
-              <div style={{ fontSize: 14, color: '#92400e' }}>
-                <strong>Lưu ý:</strong> Vui lòng chọn <strong>Kho dự án</strong> ở góc trên trước khi upload file. Dữ liệu sẽ được gán vào dự án đang chọn. Chức năng tải file đang tạm thời bị khóa cho đến khi chọn dự án.
+              <Info size={14} color="var(--primary)" style={{ marginTop: 1, flexShrink: 0 }} />
+              <div style={{ fontSize: 14, color: 'var(--primary-dark)' }}>
+                <strong>Lưu ý:</strong> Bạn đang chọn <strong>Tất cả dự án</strong>. Khi tải file lên, hệ thống sẽ tự động phân tích và gán dữ liệu vào các dự án tương ứng dựa trên cột dữ liệu gốc của từng dòng!
               </div>
             </div>
           )}
-          <UploadZone onFile={handleFile} label={uploadLabel} disabled={!selectedProject} />
+          <UploadZone onFile={handleFile} label={uploadLabel} disabled={false} />
         </div>
       ) : loading ? (
         <div className="empty-state">
@@ -1230,21 +1230,7 @@ function OrderTab({
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, gap: 12, flexShrink: 0 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <div style={{
-                background: 'var(--primary-light)', borderRadius: 8, padding: '6px 12px',
-                display: 'flex', alignItems: 'center', gap: 6
-              }}>
-                <FileSpreadsheet size={14} color="var(--primary)" />
-                <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--primary)', maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {fileName}
-                </span>
-              </div>
-              <span style={{ fontSize: 14, color: 'var(--text-muted)' }}>
-                {rows.length.toLocaleString()} dòng dữ liệu · {filtered.length.toLocaleString()} hiển thị
-              </span>
-            </div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', marginBottom: 16, gap: 12, flexShrink: 0 }}>
             <div style={{ display: 'flex', gap: 8 }}>
               {rows.length > 0 && (
                 <button
@@ -4627,13 +4613,14 @@ function DeleteFileModal({ isOpen, onClose, onConfirm, type, selectedProject, ro
 }
 
 // ─── Delete Project Modal ──────────────────────────────────────────────────
-function DeleteProjectModal({ isOpen, onClose, onConfirm, projectName, giaoRows, nhanRows }) {
+function DeleteProjectModal({ isOpen, onClose, onConfirm, projectName, giaoRows, nhanRows, khoRows }) {
   if (!isOpen) return null
 
   // Đếm số dòng dữ liệu thuộc dự án này
   const giaoCount = (giaoRows || []).filter(r => (r.ten_du_an || r.tenDuAn || r.duAn) === projectName).length
   const nhanCount = (nhanRows || []).filter(r => (r.ten_du_an || r.tenDuAn || r.duAn) === projectName).length
-  const hasData = giaoCount > 0 || nhanCount > 0
+  const khoCount = (khoRows || []).filter(r => (r.ten_du_an || r.tenDuAn || r.duAn) === projectName).length
+  const hasData = giaoCount > 0 || nhanCount > 0 || khoCount > 0
 
   return (
     <div style={{
@@ -4697,6 +4684,9 @@ function DeleteProjectModal({ isOpen, onClose, onConfirm, projectName, giaoRows,
                   )}
                   {nhanCount > 0 && (
                     <span>• <strong>{nhanCount.toLocaleString()} dòng</strong> Đơn Nhận sẽ bị xóa vĩnh viễn</span>
+                  )}
+                  {khoCount > 0 && (
+                    <span>• <strong>{khoCount.toLocaleString()} dòng</strong> Kho dự án sẽ bị xóa vĩnh viễn</span>
                   )}
                 </div>
                 <div style={{ marginTop: 8, fontWeight: 600 }}>
@@ -4931,85 +4921,101 @@ function SupabaseConfigModal({ isOpen, onClose }) {
           </div>
         </div>
 
-        {/* Edit Fields */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-            <label style={{ fontSize: 12, fontWeight: 600, color: '#475569', textAlign: 'left' }}>
-              Supabase Project URL (VITE_SUPABASE_URL)
-            </label>
-            <input
-              type="text"
-              className="input"
-              style={{ width: '100%', fontFamily: 'monospace', fontSize: 12 }}
-              placeholder="Ví dụ: https://your-project-id.supabase.co"
-              value={url}
-              onChange={(e) => setUrl(e.target.value)}
-            />
-          </div>
+        {/* Collapsible advanced connection settings block */}
+        <details style={{
+          fontSize: 12,
+          color: '#475569',
+          border: '1px solid #cbd5e1',
+          borderRadius: 8,
+          padding: '8px 12px',
+          background: '#f8fafc',
+          textAlign: 'left'
+        }}>
+          <summary style={{ fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, userSelect: 'none' }}>
+            <Settings size={14} color="#0f58a7" />
+            <span>Hiển thị thông tin cấu hình kết nối (URL / API Key)</span>
+          </summary>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-            <label style={{ fontSize: 12, fontWeight: 600, color: '#475569', textAlign: 'left' }}>
-              Supabase Project API Anon Key (VITE_SUPABASE_ANON_KEY)
-            </label>
-            <textarea
-              className="input"
-              rows={3}
-              style={{ width: '100%', fontFamily: 'monospace', fontSize: 11, resize: 'vertical', padding: '6px 10px', lineHeight: '1.4' }}
-              placeholder="Nhập chuỗi Anon Key..."
-              value={key}
-              onChange={(e) => setKey(e.target.value)}
-            />
-          </div>
-        </div>
-
-        {/* Live Test connection button & results */}
-        <div style={{ border: '1px dashed #cbd5e1', borderRadius: 8, padding: 12, background: '#f8fafc' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ fontSize: 12, fontWeight: 600, color: '#334155' }}>Kiểm tra trạng thái kết nối trực tiếp:</span>
-            <button
-              type="button"
-              onClick={handleTestConnection}
-              disabled={testing}
-              style={{
-                background: testing ? '#e2e8f0' : '#f1f5f9',
-                border: '1px solid #cbd5e1',
-                padding: '4px 10px',
-                borderRadius: 4,
-                fontSize: 11,
-                fontWeight: 600,
-                color: '#1e293b',
-                cursor: testing ? 'not-allowed' : 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 4
-              }}
-            >
-              {testing ? (
-                <>
-                  <RefreshCw size={11} className="animate-spin" />
-                  Đang kiểm tra...
-                </>
-              ) : 'Bấm để Test'}
-            </button>
-          </div>
-
-          {testResult && (
-            <div style={{
-              marginTop: 8,
-              padding: 8,
-              borderRadius: 6,
-              fontSize: 11,
-              fontWeight: 500,
-              backgroundColor: testResult.success ? '#f0fdf4' : '#fef2f2',
-              border: `1px solid ${testResult.success ? '#bbf7d0' : '#fca5a5'}`,
-              color: testResult.success ? '#15803d' : '#b91c1c',
-              textAlign: 'left',
-              lineHeight: '1.4'
-            }}>
-              {testResult.message}
+          <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {/* Edit Fields */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <label style={{ fontSize: 11, fontWeight: 600, color: '#475569', textAlign: 'left' }}>
+                Supabase Project URL (VITE_SUPABASE_URL)
+              </label>
+              <input
+                type="text"
+                className="input"
+                style={{ width: '100%', fontFamily: 'monospace', fontSize: 11, height: '36px', padding: '0 10px' }}
+                placeholder="Ví dụ: https://your-project-id.supabase.co"
+                value={url}
+                onChange={(e) => setUrl(e.target.value)}
+              />
             </div>
-          )}
-        </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <label style={{ fontSize: 11, fontWeight: 600, color: '#475569', textAlign: 'left' }}>
+                Supabase Project API Anon Key (VITE_SUPABASE_ANON_KEY)
+              </label>
+              <textarea
+                className="input"
+                rows={3}
+                style={{ width: '100%', fontFamily: 'monospace', fontSize: 10, resize: 'vertical', padding: '6px 10px', lineHeight: '1.4' }}
+                placeholder="Nhập chuỗi Anon Key..."
+                value={key}
+                onChange={(e) => setKey(e.target.value)}
+              />
+            </div>
+
+            {/* Live Test connection button & results */}
+            <div style={{ border: '1px dashed #cbd5e1', borderRadius: 8, padding: 12, background: '#ffffff' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontSize: 11, fontWeight: 600, color: '#334155' }}>Kiểm tra trạng thái kết nối trực tiếp:</span>
+                <button
+                  type="button"
+                  onClick={handleTestConnection}
+                  disabled={testing}
+                  style={{
+                    background: testing ? '#e2e8f0' : '#f1f5f9',
+                    border: '1px solid #cbd5e1',
+                    padding: '4px 10px',
+                    borderRadius: 4,
+                    fontSize: 10,
+                    fontWeight: 600,
+                    color: '#1e293b',
+                    cursor: testing ? 'not-allowed' : 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 4
+                  }}
+                >
+                  {testing ? (
+                    <>
+                      <RefreshCw size={10} className="animate-spin" />
+                      Đang kiểm tra...
+                    </>
+                  ) : 'Bấm để Test'}
+                </button>
+              </div>
+
+              {testResult && (
+                <div style={{
+                  marginTop: 8,
+                  padding: 8,
+                  borderRadius: 6,
+                  fontSize: 10,
+                  fontWeight: 500,
+                  backgroundColor: testResult.success ? '#f0fdf4' : '#fef2f2',
+                  border: `1px solid ${testResult.success ? '#bbf7d0' : '#fca5a5'}`,
+                  color: testResult.success ? '#15803d' : '#b91c1c',
+                  textAlign: 'left',
+                  lineHeight: '1.4'
+                }}>
+                  {testResult.message}
+                </div>
+              )}
+            </div>
+          </div>
+        </details>
 
         {/* Info detail block */}
         <details style={{ fontSize: 12, color: '#475569', border: '1px solid #e2e8f0', borderRadius: 8, padding: '8px 12px', background: '#f8fafc' }}>
@@ -5060,7 +5066,17 @@ CREATE POLICY "Allow public don_giao" ON public.don_giao FOR ALL USING (true) WI
 -- 3. Cấp quyền đầy đủ cho bảng don_nhan (Báo cáo đơn vị nhận)
 ALTER TABLE public.don_nhan ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Allow public don_nhan" ON public.don_nhan;
-CREATE POLICY "Allow public don_nhan" ON public.don_nhan FOR ALL USING (true) WITH CHECK (true);`}
+CREATE POLICY "Allow public don_nhan" ON public.don_nhan FOR ALL USING (true) WITH CHECK (true);
+
+-- 4. Cấp quyền đầy đủ cho bảng don_chung (Báo cáo đơn chung)
+ALTER TABLE public.don_chung ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow public don_chung" ON public.don_chung;
+CREATE POLICY "Allow public don_chung" ON public.don_chung FOR ALL USING (true) WITH CHECK (true);
+
+-- 5. Cấp quyền đầy đủ cho bảng don_kho (Kho dự án)
+ALTER TABLE public.don_kho ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow public don_kho" ON public.don_kho;
+CREATE POLICY "Allow public don_kho" ON public.don_kho FOR ALL USING (true) WITH CHECK (true);`}
             </pre>
           </div>
         </details>
@@ -5086,13 +5102,17 @@ CREATE POLICY "Allow public don_nhan" ON public.don_nhan FOR ALL USING (true) WI
               fontFamily: 'monospace',
               lineHeight: '1.4'
             }}>
-{`-- A. Tạo cột ten_du_an mới cho bảng don_giao & don_nhan (nếu chưa có)
+{`-- A. Tạo cột ten_du_an mới cho bảng don_giao & don_nhan & don_chung & don_kho (nếu chưa có)
 ALTER TABLE public.don_giao ADD COLUMN IF NOT EXISTS ten_du_an text;
 ALTER TABLE public.don_nhan ADD COLUMN IF NOT EXISTS ten_du_an text;
+ALTER TABLE public.don_chung ADD COLUMN IF NOT EXISTS ten_du_an text;
+ALTER TABLE public.don_kho ADD COLUMN IF NOT EXISTS ten_du_an text;
 
 -- B. Di chuyển tự động toàn bộ dữ liệu dự án cũ sang cột mới (Bảo toàn dữ liệu cũ)
 UPDATE public.don_giao SET ten_du_an = du_an WHERE ten_du_an IS NULL OR ten_du_an = '';
 UPDATE public.don_nhan SET ten_du_an = du_an WHERE ten_du_an IS NULL OR ten_du_an = '';
+UPDATE public.don_chung SET ten_du_an = du_an WHERE ten_du_an IS NULL OR ten_du_an = '';
+UPDATE public.don_kho SET ten_du_an = du_an WHERE ten_du_an IS NULL OR ten_du_an = '';
 
 -- C. Đảm bảo cột ten_du_an trong bảng du_an có ràng buộc duy nhất (Bắt buộc để làm Khóa Ngoại)
 ALTER TABLE public.du_an DROP CONSTRAINT IF EXISTS du_an_ten_du_an_key;
@@ -5101,6 +5121,8 @@ ALTER TABLE public.du_an ADD CONSTRAINT du_an_ten_du_an_key UNIQUE (ten_du_an);
 -- D. Loại bỏ khóa ngoại cũ liên kết trực tiếp vào cột du_an cũ (nếu có)
 ALTER TABLE public.don_giao DROP CONSTRAINT IF EXISTS don_giao_du_an_fkey;
 ALTER TABLE public.don_nhan DROP CONSTRAINT IF EXISTS don_nhan_du_an_fkey;
+ALTER TABLE public.don_chung DROP CONSTRAINT IF EXISTS don_chung_du_an_fkey;
+ALTER TABLE public.don_kho DROP CONSTRAINT IF EXISTS don_kho_du_an_fkey;
 
 -- E. Thiết lập khóa ngoại liên kết chuẩn xác đến cột ten_du_an của bảng du_an
 ALTER TABLE public.don_giao ADD CONSTRAINT don_giao_ten_du_an_fkey 
@@ -5109,9 +5131,17 @@ ALTER TABLE public.don_giao ADD CONSTRAINT don_giao_ten_du_an_fkey
 ALTER TABLE public.don_nhan ADD CONSTRAINT don_nhan_ten_du_an_fkey 
   FOREIGN KEY (ten_du_an) REFERENCES public.du_an (ten_du_an) ON UPDATE CASCADE ON DELETE SET NULL;
 
--- F. (Tùy chọn) Xóa hẳn hai cột du_an cũ thừa thãi để sơ đồ Supabase sạch đẹp 100%
+ALTER TABLE public.don_chung ADD CONSTRAINT don_chung_ten_du_an_fkey 
+  FOREIGN KEY (ten_du_an) REFERENCES public.du_an (ten_du_an) ON UPDATE CASCADE ON DELETE SET NULL;
+
+ALTER TABLE public.don_kho ADD CONSTRAINT don_kho_ten_du_an_fkey 
+  FOREIGN KEY (ten_du_an) REFERENCES public.du_an (ten_du_an) ON UPDATE CASCADE ON DELETE SET NULL;
+
+-- F. (Tùy chọn) Xóa hẳn các cột du_an cũ thừa thãi để sơ đồ Supabase sạch đẹp 100%
 -- ALTER TABLE public.don_giao DROP COLUMN IF EXISTS du_an;
--- ALTER TABLE public.don_nhan DROP COLUMN IF EXISTS du_an;`}
+-- ALTER TABLE public.don_nhan DROP COLUMN IF EXISTS du_an;
+-- ALTER TABLE public.don_chung DROP COLUMN IF EXISTS du_an;
+-- ALTER TABLE public.don_kho DROP COLUMN IF EXISTS du_an;`}
             </pre>
             <p style={{ margin: 0, fontSize: 11, color: '#16a34a', fontWeight: 500 }}>
               ✔️ <strong>Lưu ý:</strong> Ứng dụng đã được tích hợp cơ chế <strong>Tự phục hồi (Self-Healing)</strong> thông minh. Bất kể bạn đang sử dụng cấu trúc cũ (cột <code>du_an</code>) hay cấu trúc mới (cột <code>ten_du_an</code>), phần mềm sẽ tự phát hiện lỗi column, tự gỡ bỏ cột thừa và lưu trữ trơn tru mà không làm ngắt quãng công việc của bạn!
@@ -5458,6 +5488,7 @@ async function resetTableSequence(tableName) {
 const tableSchemaCache = {
   don_giao: ['id', 'ten_du_an', 'tenDuAn', 'tenduan', 'du_an'],
   don_nhan: ['id', 'ten_du_an', 'tenDuAn', 'tenduan', 'du_an'],
+  don_kho:  ['id', 'ten_du_an', 'tenDuAn', 'tenduan', 'du_an'],
   du_an:    ['id', 'ten_du_an', 'tenduan', 'tenDuAn'],
 }
 async function deleteFromTableAdaptive(tableName, possibleColumns, targetValue) {
@@ -5542,7 +5573,36 @@ async function deleteFromTableAdaptive(tableName, possibleColumns, targetValue) 
 
 // ─── App ──────────────────────────────────────────────────────────────────────
 export default function App() {
-  const [tab, setTab] = useState('giao')
+  const [tab, setTab] = useState('chung')
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false)
+  const [isSidebarPinned, setIsSidebarPinned] = useState(() => {
+    try {
+      return localStorage.getItem('sgc_sidebar_pinned') === 'true'
+    } catch (e) {
+      return false
+    }
+  })
+  const sidebarTimerRef = useRef(null)
+
+  const handleMouseEnter = () => {
+    if (sidebarTimerRef.current) clearTimeout(sidebarTimerRef.current)
+    setIsSidebarOpen(true)
+  }
+
+  const handleMouseLeave = () => {
+    sidebarTimerRef.current = setTimeout(() => {
+      setIsSidebarOpen(false)
+    }, 250)
+  }
+
+  const handleTogglePin = () => {
+    const newPinned = !isSidebarPinned
+    setIsSidebarPinned(newPinned)
+    try {
+      localStorage.setItem('sgc_sidebar_pinned', String(newPinned))
+    } catch (e) {}
+  }
+
   const syncInProgressRef = React.useRef(false) // Tạm dừng Realtime khi đang sync để tránh flood request
   const realtimeDebounceRef = React.useRef(null) // Debounce timer cho Realtime callbacks
   const [selectedProject, setSelectedProject] = useState('')
@@ -5605,6 +5665,42 @@ export default function App() {
     }
   })
 
+  const [chungRows, setChungRows] = useState(() => {
+    try {
+      const saved = localStorage.getItem('sgc_chung_rows')
+      return saved ? JSON.parse(saved) : []
+    } catch (e) {
+      return []
+    }
+  })
+  const [chungFileName, setChungFileName] = useState(() => {
+    try {
+      const saved = localStorage.getItem('sgc_chung_rows')
+      const parsed = saved ? JSON.parse(saved) : []
+      return parsed.length > 0 ? 'Report_Orders_Don_chung (Cached)' : ''
+    } catch (e) {
+      return ''
+    }
+  })
+
+  const [khoRows, setKhoRows] = useState(() => {
+    try {
+      const saved = localStorage.getItem('sgc_kho_rows')
+      return saved ? JSON.parse(saved) : []
+    } catch (e) {
+      return []
+    }
+  })
+  const [khoFileName, setKhoFileName] = useState(() => {
+    try {
+      const saved = localStorage.getItem('sgc_kho_rows')
+      const parsed = saved ? JSON.parse(saved) : []
+      return parsed.length > 0 ? 'Report_Orders_Kho_du_an (Cached)' : ''
+    } catch (e) {
+      return ''
+    }
+  })
+
   // Automatically persist rows to localStorage to keep cache synced and allow instant loading
   React.useEffect(() => {
     try {
@@ -5621,6 +5717,22 @@ export default function App() {
       console.warn('LocalStorage error persisting sgc_nhan_rows:', e)
     }
   }, [nhanRows])
+
+  React.useEffect(() => {
+    try {
+      localStorage.setItem('sgc_chung_rows', JSON.stringify(chungRows || []))
+    } catch (e) {
+      console.warn('LocalStorage error persisting sgc_chung_rows:', e)
+    }
+  }, [chungRows])
+
+  React.useEffect(() => {
+    try {
+      localStorage.setItem('sgc_kho_rows', JSON.stringify(khoRows || []))
+    } catch (e) {
+      console.warn('LocalStorage error persisting sgc_kho_rows:', e)
+    }
+  }, [khoRows])
 
   const [syncingType, setSyncingType] = useState(null) // 'giao' | 'nhan' | null
   const [supabaseMessage, setSupabaseMessage] = useState(null) // { text, type: 'success' | 'error' | 'info' }
@@ -5707,7 +5819,7 @@ export default function App() {
 
   const loadTableFromSupabase = React.useCallback(async (tableType, forceBypassCache = false) => {
     if (!isSupabaseConfigured) return
-    const tableName = tableType === 'giao' ? 'don_giao' : 'don_nhan'
+    const tableName = tableType === 'chung' ? 'don_chung' : tableType === 'giao' ? 'don_giao' : tableType === 'nhan' ? 'don_nhan' : 'don_kho'
 
     if (!forceBypassCache) {
       try {
@@ -5727,7 +5839,7 @@ export default function App() {
           const maxRemoteId = maxIdData && maxIdData.length > 0 ? Number(maxIdData[0].id) : 0
 
           // Get our current cached rows
-          const cachedKey = tableType === 'giao' ? 'sgc_giao_rows' : 'sgc_nhan_rows'
+          const cachedKey = tableType === 'chung' ? 'sgc_chung_rows' : tableType === 'giao' ? 'sgc_giao_rows' : tableType === 'nhan' ? 'sgc_nhan_rows' : 'sgc_kho_rows'
           const rawCached = localStorage.getItem(cachedKey)
           if (rawCached) {
             const cachedJson = JSON.parse(rawCached)
@@ -5739,9 +5851,15 @@ export default function App() {
               if (tableType === 'giao') {
                 setGiaoRows(cachedJson)
                 setGiaoFileName(cachedJson.length > 0 ? 'Report_Orders_Don_giao (Cached DB)' : '')
-              } else {
+              } else if (tableType === 'nhan') {
                 setNhanRows(cachedJson)
                 setNhanFileName(cachedJson.length > 0 ? 'Report_Orders_Don_nhan (Cached DB)' : '')
+              } else if (tableType === 'kho') {
+                setKhoRows(cachedJson)
+                setKhoFileName(cachedJson.length > 0 ? 'Report_Orders_Kho_du_an (Cached DB)' : '')
+              } else {
+                setChungRows(cachedJson)
+                setChungFileName(cachedJson.length > 0 ? 'Report_Orders_Don_chung (Cached DB)' : '')
               }
               return
             }
@@ -5791,9 +5909,15 @@ export default function App() {
       if (tableType === 'giao') {
         setGiaoRows(mapped)
         setGiaoFileName(mapped.length > 0 ? 'Report_Orders_Don_giao (Supabase DB)' : '')
-      } else {
+      } else if (tableType === 'nhan') {
         setNhanRows(mapped)
         setNhanFileName(mapped.length > 0 ? 'Report_Orders_Don_nhan (Supabase DB)' : '')
+      } else if (tableType === 'kho') {
+        setKhoRows(mapped)
+        setKhoFileName(mapped.length > 0 ? 'Report_Orders_Kho_du_an (Supabase DB)' : '')
+      } else {
+        setChungRows(mapped)
+        setChungFileName(mapped.length > 0 ? 'Report_Orders_Don_chung (Supabase DB)' : '')
       }
     } catch (e) {
       console.error(`Lỗi tải bảng ${tableName}:`, e)
@@ -5806,6 +5930,8 @@ export default function App() {
       loadProjectsFromSupabase(),
       loadTableFromSupabase('giao', forceBypassCache),
       loadTableFromSupabase('nhan', forceBypassCache),
+      loadTableFromSupabase('chung', forceBypassCache),
+      loadTableFromSupabase('kho', forceBypassCache),
       fetchConfigsFromSupabaseInApp(),
     ])
   }, [loadProjectsFromSupabase, loadTableFromSupabase, fetchConfigsFromSupabaseInApp])
@@ -5859,12 +5985,12 @@ export default function App() {
     setSupabaseMessage({
       text: isAuto 
         ? `Đang tự động đồng bộ ${rowsToSync.length} dòng lên Supabase...`
-        : `Đang lưu dữ liệu Đơn ${type === 'giao' ? 'Giao' : 'Nhận'} lên Supabase...`,
+        : `Đang lưu dữ liệu Đơn ${type === 'giao' ? 'Giao' : type === 'nhan' ? 'Nhận' : type === 'kho' ? 'Kho dự án' : 'Chung'} lên Supabase...`,
       type: 'info'
     })
 
     try {
-      const tableName = type === 'giao' ? 'don_giao' : 'don_nhan'
+      const tableName = type === 'chung' ? 'don_chung' : type === 'giao' ? 'don_giao' : type === 'nhan' ? 'don_nhan' : type === 'kho' ? 'don_kho' : 'don_chung'
 
       // 1. Delete existing records belonging to the synced projects to avoid wiping other unrelated projects.
       // If no projects are found in the sync list, delete all table rows as fallback.
@@ -5967,7 +6093,7 @@ export default function App() {
   }
 
   const handleSyncToSupabase = async (type) => {
-    const rowsToSync = type === 'giao' ? giaoRows : nhanRows
+    const rowsToSync = type === 'giao' ? giaoRows : type === 'nhan' ? nhanRows : type === 'kho' ? khoRows : chungRows
     await syncRowsToSupabase(type, rowsToSync, false)
   }
 
@@ -5981,14 +6107,20 @@ export default function App() {
     const { type, rows: parsedRows, fileName: name } = previewModal
     setPreviewModal(null)
 
-    const unitKey = type === 'giao' ? 'donViGiao' : 'donViNhan'
-
     // Bước 1: Lọc các dòng có Đơn vị giao/nhận trùng khớp với Kho dự án đang chọn (trùng khớp hoàn toàn, không phân biệt chữ hoa thường)
     const matchedByUnit = selectedProject
       ? parsedRows.filter(r => {
-          const unit = String(r[unitKey] || '').trim().toLowerCase()
-          const proj = selectedProject.trim().toLowerCase()
-          return unit === proj
+          if (type === 'chung') {
+            const unitGiao = String(r.donViGiao || '').trim().toLowerCase()
+            const unitNhan = String(r.donViNhan || '').trim().toLowerCase()
+            const proj = selectedProject.trim().toLowerCase()
+            return unitGiao === proj || unitNhan === proj
+          } else {
+            const unitKey = type === 'giao' ? 'donViGiao' : 'donViNhan'
+            const unit = String(r[unitKey] || '').trim().toLowerCase()
+            const proj = selectedProject.trim().toLowerCase()
+            return unit === proj
+          }
         })
       : parsedRows
 
@@ -6009,15 +6141,139 @@ export default function App() {
     })
 
     if (type === 'giao') {
-      setGiaoRows(rowsToStore)
+      setGiaoRows(prev => {
+        const projectsInNewRows = new Set(rowsToStore.map(r => String(r.ten_du_an || r.tenDuAn || r.duAn || '').trim().toLowerCase()).filter(Boolean))
+        const otherProjects = prev.filter(r => {
+          const rowProject = String(r.ten_du_an || r.tenDuAn || r.tenduan || r.duAn || r.du_an || '').trim().toLowerCase()
+          if (selectedProject) {
+            return rowProject !== selectedProject.trim().toLowerCase()
+          } else {
+            return !projectsInNewRows.has(rowProject)
+          }
+        })
+        return [...otherProjects, ...rowsToStore]
+      })
       setGiaoFileName(name)
-    } else {
-      setNhanRows(rowsToStore)
+      if (isSupabaseConfigured) {
+        await syncRowsToSupabase('giao', rowsToStore, true)
+      }
+    } else if (type === 'nhan') {
+      setNhanRows(prev => {
+        const projectsInNewRows = new Set(rowsToStore.map(r => String(r.ten_du_an || r.tenDuAn || r.duAn || '').trim().toLowerCase()).filter(Boolean))
+        const otherProjects = prev.filter(r => {
+          const rowProject = String(r.ten_du_an || r.tenDuAn || r.tenduan || r.duAn || r.du_an || '').trim().toLowerCase()
+          if (selectedProject) {
+            return rowProject !== selectedProject.trim().toLowerCase()
+          } else {
+            return !projectsInNewRows.has(rowProject)
+          }
+        })
+        return [...otherProjects, ...rowsToStore]
+      })
       setNhanFileName(name)
-    }
+      if (isSupabaseConfigured) {
+        await syncRowsToSupabase('nhan', rowsToStore, true)
+      }
+    } else if (type === 'kho') {
+      setKhoRows(prev => {
+        const projectsInNewRows = new Set(rowsToStore.map(r => String(r.ten_du_an || r.tenDuAn || r.duAn || '').trim().toLowerCase()).filter(Boolean))
+        const otherProjects = prev.filter(r => {
+          const rowProject = String(r.ten_du_an || r.tenDuAn || r.tenduan || r.duAn || r.du_an || '').trim().toLowerCase()
+          if (selectedProject) {
+            return rowProject !== selectedProject.trim().toLowerCase()
+          } else {
+            return !projectsInNewRows.has(rowProject)
+          }
+        })
+        return [...otherProjects, ...rowsToStore]
+      })
+      setKhoFileName(name)
+      if (isSupabaseConfigured) {
+        await syncRowsToSupabase('kho', rowsToStore, true)
+      }
+    } else {
+      // type === 'chung'
+      // 1. Lưu Đơn chung
+      setChungRows(prev => {
+        const projectsInNewRows = new Set(rowsToStore.map(r => String(r.ten_du_an || r.tenDuAn || r.duAn || '').trim().toLowerCase()).filter(Boolean))
+        const otherProjects = prev.filter(r => {
+          const rowProject = String(r.ten_du_an || r.tenDuAn || r.tenduan || r.duAn || r.du_an || '').trim().toLowerCase()
+          if (selectedProject) {
+            return rowProject !== selectedProject.trim().toLowerCase()
+          } else {
+            return !projectsInNewRows.has(rowProject)
+          }
+        })
+        return [...otherProjects, ...rowsToStore]
+      })
+      setChungFileName(name)
 
-    if (isSupabaseConfigured) {
-      await syncRowsToSupabase(type, rowsToStore, true)
+      // 2. Trích xuất Đơn Giao (đơn vị giao trùng khớp với Kho dự án đang chọn)
+      const extractedGiaoRows = rowsToStore.filter(r => {
+        const unitGiao = String(r.donViGiao || '').trim()
+        if (selectedProject) {
+          return unitGiao.toLowerCase() === selectedProject.trim().toLowerCase()
+        }
+        return unitGiao !== ''
+      }).map(r => {
+        if (!selectedProject) {
+          const unitGiao = String(r.donViGiao || '').trim()
+          return { ...r, ten_du_an: unitGiao, tenDuAn: unitGiao }
+        }
+        return r
+      })
+      setGiaoRows(prev => {
+        const projectsInNewRows = new Set(extractedGiaoRows.map(r => String(r.ten_du_an || r.tenDuAn || r.duAn || '').trim().toLowerCase()).filter(Boolean))
+        const otherProjects = prev.filter(r => {
+          const rowProject = String(r.ten_du_an || r.tenDuAn || r.tenduan || r.duAn || r.du_an || '').trim().toLowerCase()
+          if (selectedProject) {
+            return rowProject !== selectedProject.trim().toLowerCase()
+          } else {
+            return !projectsInNewRows.has(rowProject)
+          }
+        })
+        return [...otherProjects, ...extractedGiaoRows]
+      })
+      setGiaoFileName(name ? `${name} (Trích xuất)` : '')
+
+      // 3. Trích xuất Đơn Nhận (đơn vị nhận trùng khớp với Kho dự án đang chọn)
+      const extractedNhanRows = rowsToStore.filter(r => {
+        const unitNhan = String(r.donViNhan || '').trim()
+        if (selectedProject) {
+          return unitNhan.toLowerCase() === selectedProject.trim().toLowerCase()
+        }
+        return unitNhan !== ''
+      }).map(r => {
+        if (!selectedProject) {
+          const unitNhan = String(r.donViNhan || '').trim()
+          return { ...r, ten_du_an: unitNhan, tenDuAn: unitNhan }
+        }
+        return r
+      })
+      setNhanRows(prev => {
+        const projectsInNewRows = new Set(extractedNhanRows.map(r => String(r.ten_du_an || r.tenDuAn || r.duAn || '').trim().toLowerCase()).filter(Boolean))
+        const otherProjects = prev.filter(r => {
+          const rowProject = String(r.ten_du_an || r.tenDuAn || r.tenduan || r.duAn || r.du_an || '').trim().toLowerCase()
+          if (selectedProject) {
+            return rowProject !== selectedProject.trim().toLowerCase()
+          } else {
+            return !projectsInNewRows.has(rowProject)
+          }
+        })
+        return [...otherProjects, ...extractedNhanRows]
+      })
+      setNhanFileName(name ? `${name} (Trích xuất)` : '')
+
+      // 4. Đồng bộ lên Supabase nếu có kết nối
+      if (isSupabaseConfigured) {
+        await syncRowsToSupabase('chung', rowsToStore, true)
+        if (extractedGiaoRows.length > 0) {
+          await syncRowsToSupabase('giao', extractedGiaoRows, true)
+        }
+        if (extractedNhanRows.length > 0) {
+          await syncRowsToSupabase('nhan', extractedNhanRows, true)
+        }
+      }
     }
   }
 
@@ -6043,7 +6299,7 @@ export default function App() {
         setGiaoRows([])
         setGiaoFileName('')
       }
-    } else {
+    } else if (type === 'nhan') {
       if (selectedProject) {
         setNhanRows(prev => prev.filter(r => {
           const rowProject = r.ten_du_an || r.tenDuAn || r.tenduan || r.duAn || r.du_an || ''
@@ -6054,13 +6310,35 @@ export default function App() {
         setNhanRows([])
         setNhanFileName('')
       }
+    } else if (type === 'kho') {
+      if (selectedProject) {
+        setKhoRows(prev => prev.filter(r => {
+          const rowProject = r.ten_du_an || r.tenDuAn || r.tenduan || r.duAn || r.du_an || ''
+          return rowProject !== selectedProject
+        }))
+        setKhoFileName(prev => prev)
+      } else {
+        setKhoRows([])
+        setKhoFileName('')
+      }
+    } else {
+      if (selectedProject) {
+        setChungRows(prev => prev.filter(r => {
+          const rowProject = r.ten_du_an || r.tenDuAn || r.tenduan || r.duAn || r.du_an || ''
+          return rowProject !== selectedProject
+        }))
+        setChungFileName(prev => prev)
+      } else {
+        setChungRows([])
+        setChungFileName('')
+      }
     }
 
     // 2. Nếu đã kết nối Supabase, xóa các dòng tương ứng trên Supabase
     if (isSupabaseConfigured) {
-      const tableName = type === 'giao' ? 'don_giao' : 'don_nhan'
+      const tableName = type === 'giao' ? 'don_giao' : type === 'nhan' ? 'don_nhan' : type === 'kho' ? 'don_kho' : 'don_chung'
       setSyncingType(type)
-      setSupabaseMessage({ text: `Đang xóa dữ liệu Đơn ${type === 'giao' ? 'Giao' : 'Nhận'} trên Supabase...`, type: 'info' })
+      setSupabaseMessage({ text: `Đang xóa dữ liệu Đơn ${type === 'giao' ? 'Giao' : type === 'nhan' ? 'Nhận' : type === 'kho' ? 'Kho dự án' : 'Chung'} trên Supabase...`, type: 'info' })
       try {
         if (selectedProject) {
           const deleteRes = await deleteFromTableAdaptive(tableName, ['ten_du_an', 'tenDuAn', 'tenduan', 'du_an'], selectedProject)
@@ -6071,7 +6349,7 @@ export default function App() {
           const { error } = await supabase.from(tableName).delete().neq('id', -999)
           if (error) throw error
         }
-        setSupabaseMessage({ text: `Đã xóa dữ liệu Đơn ${type === 'giao' ? 'Giao' : 'Nhận'} khỏi Supabase thành công!`, type: 'success' })
+        setSupabaseMessage({ text: `Đã xóa dữ liệu Đơn ${type === 'giao' ? 'Giao' : type === 'nhan' ? 'Nhận' : type === 'kho' ? 'Kho dự án' : 'Chung'} khỏi Supabase thành công!`, type: 'success' })
         setTimeout(() => setSupabaseMessage(null), 4000)
       } catch (err) {
         setSupabaseMessage({ text: `Lỗi khi xóa trên Supabase: ${err.message || err}`, type: 'error' })
@@ -6149,6 +6427,12 @@ export default function App() {
       }
       return row
     }))
+    setKhoRows(prev => prev.map(row => {
+      if (row.duAn === trimmedOld || row.ten_du_an === trimmedOld || row.tenDuAn === trimmedOld) {
+        return { ...row, tenDuAn: trimmedNew, ten_du_an: trimmedNew }
+      }
+      return row
+    }))
 
     // Update active selection nếu đang chọn kho cũ
     if (selectedProject === trimmedOld) {
@@ -6194,6 +6478,9 @@ export default function App() {
 
         // Cập nhật bảng don_nhan
         await updateTable('don_nhan', ['ten_du_an', 'tenDuAn', 'tenduan'])
+
+        // Cập nhật bảng don_kho
+        await updateTable('don_kho', ['ten_du_an', 'tenDuAn', 'tenduan'])
 
         if (errors.length > 0) {
           setSupabaseMessage({
@@ -6311,8 +6598,9 @@ export default function App() {
     const list = new Set()
     giaoRows.forEach(r => { if (r.duAn) list.add(r.duAn) })
     nhanRows.forEach(r => { if (r.duAn) list.add(r.duAn) })
+    khoRows.forEach(r => { if (r.duAn) list.add(r.duAn) })
     return [...list].sort()
-  }, [giaoRows, nhanRows])
+  }, [giaoRows, nhanRows, khoRows])
 
   const allProjects = useMemo(() => {
     // Danh sách dự án chỉ lấy từ customProjects (do người dùng tạo bằng nút "+ Tạo mới")
@@ -6321,14 +6609,16 @@ export default function App() {
   }, [customProjects])
 
   const tabs = [
+    { id: 'chung', label: 'Đơn chung', icon: <ClipboardList size={15} /> },
     { id: 'giao', label: 'Đơn Giao', icon: <Truck size={15} /> },
     { id: 'nhan', label: 'Đơn Nhận', icon: <PackageCheck size={15} /> },
+    { id: 'kho', label: 'Kho dự án', icon: <Warehouse size={15} /> },
     { id: 'config', label: 'Cấu hình tổng hợp', icon: <Settings size={15} /> },
     { id: 'summary', label: 'Tổng hợp', icon: <BarChart3 size={15} /> },
   ]
 
   return (
-    <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+    <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative' }}>
       <Header
         selectedProject={selectedProject}
         setSelectedProject={setSelectedProject}
@@ -6341,112 +6631,613 @@ export default function App() {
         onDeleteProject={handleDeleteProject}
         onOpenConfigModal={() => setShowConfigModal(true)}
         onForceRefresh={() => loadDataFromSupabase(true)}
+        onMouseEnterLogo={() => setIsSidebarOpen(true)}
       />
-      <TabBar tabs={tabs} active={tab} onChange={setTab} />
 
-      {supabaseAuthError && (
-        <div style={{
-          margin: '16px 16px 0 16px',
-          padding: '12px 16px',
-          borderRadius: '12px',
-          border: '1px solid #fca5a5',
-          backgroundColor: '#fef2f2',
-          color: '#991b1b',
-          display: 'flex',
-          alignItems: 'flex-start',
-          gap: '12px',
-          boxShadow: '0 2px 4px rgba(0,0,0,0.02)',
-          textAlign: 'left'
-        }}>
-          <AlertCircle size={20} color="#dc2626" style={{ marginTop: '2px', flexShrink: 0 }} />
-          <div style={{ flex: 1 }}>
-            <h4 style={{ margin: 0, fontSize: '13px', fontWeight: 700 }}>⚠️ Lỗi xác thực kết nối Supabase (401 Unauthorized)</h4>
-            <p style={{ margin: '4px 0 0 0', fontSize: '12px', color: '#b91c1c', lineHeight: 1.4 }}>
-              Cơ sở dữ liệu Supabase đã từ chối yêu cầu truy cập vì Project URL hoặc Anon Key bị cấu hình sai hoặc đã bị thay đổi/hết hạn trên trang quản trị dự án của bạn (Lỗi 401 Unauthorized). 
-              Do đó, bạn <strong>không thể xem danh sách, cập nhật hay xóa dự án</strong> được. Vui lòng bấm vào nút cấu hình lại bên dưới.
-            </p>
+      <div style={{ flex: 1, display: 'flex', position: 'relative', overflow: 'hidden' }}>
+        {/* Small persistent handle showing when sidebar is closed & unpinned */}
+
+
+        {/* Dynamic sliding Sidebar Drawer */}
+        <div
+          onMouseEnter={handleMouseEnter}
+          onMouseLeave={handleMouseLeave}
+          style={{
+            position: 'absolute',
+            left: 0,
+            top: 0,
+            bottom: 0,
+            width: '270px',
+            background: 'linear-gradient(180deg, #0a3d73 0%, #153e75 100%)',
+            borderRight: '1px solid rgba(255, 255, 255, 0.12)',
+            boxShadow: '0 10px 30px -5px rgba(10, 61, 115, 0.2), 4px 0 20px -4px rgba(10, 61, 115, 0.1)',
+            display: 'flex',
+            flexDirection: 'column',
+            zIndex: 1000,
+            transform: isSidebarOpen || isSidebarPinned ? 'translateX(0)' : 'translateX(-270px)',
+            transition: 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+            textAlign: 'left'
+          }}
+        >
+          {/* Sidebar Header */}
+          <div style={{
+            padding: '22px 24px 18px 24px',
+            borderBottom: '1px solid rgba(255, 255, 255, 0.12)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            background: 'linear-gradient(180deg, #08325e 0%, #0a3d73 100%)'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center' }}>
+              <div style={{ display: 'flex', flexDirection: 'column' }}>
+                <span style={{ 
+                  fontFamily: 'var(--font-display)', 
+                  fontWeight: 800, 
+                  fontSize: '13.5px', 
+                  color: '#ffffff', 
+                  letterSpacing: '0.06em', 
+                  textTransform: 'uppercase' 
+                }}>
+                  Hệ thống Báo cáo
+                </span>
+              </div>
+            </div>
+            
+            {/* Pin Toggle Button */}
             <button
-              onClick={() => setShowConfigModal(true)}
+              onClick={handleTogglePin}
+              title={isSidebarPinned ? "Bỏ ghim (Dạng menu trượt ẩn)" : "Ghim menu (Giữ cố định)"}
               style={{
-                marginTop: '8px',
-                padding: '4px 10px',
-                fontSize: '11px',
-                fontWeight: 700,
-                color: '#ffffff',
-                backgroundColor: '#dc2626',
-                border: 'none',
-                borderRadius: '4px',
-                cursor: 'pointer'
+                background: isSidebarPinned ? 'rgba(255, 255, 255, 0.12)' : 'transparent',
+                border: isSidebarPinned ? '1px solid rgba(255, 255, 255, 0.2)' : '1px solid rgba(255, 255, 255, 0.1)',
+                color: isSidebarPinned ? '#38bdf8' : '#93c5fd',
+                cursor: 'pointer',
+                padding: '6px',
+                borderRadius: '8px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                transition: 'all 0.2s ease',
+                boxShadow: isSidebarPinned ? '0 1px 3px rgba(0, 0, 0, 0.1)' : 'none'
+              }}
+              onMouseOver={(e) => {
+                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.18)'
+                e.currentTarget.style.color = '#ffffff'
+                e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.3)'
+              }}
+              onMouseOut={(e) => {
+                e.currentTarget.style.background = isSidebarPinned ? 'rgba(255, 255, 255, 0.12)' : 'transparent'
+                e.currentTarget.style.color = isSidebarPinned ? '#38bdf8' : '#93c5fd'
+                e.currentTarget.style.borderColor = isSidebarPinned ? 'rgba(255, 255, 255, 0.2)' : 'rgba(255, 255, 255, 0.1)'
               }}
             >
-              Sửa & kiểm cấu hình kết nối ngay
+              <svg width="14" height="14" viewBox="0 0 24 24" fill={isSidebarPinned ? "#38bdf8" : "none"} stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="12" y1="17" x2="12" y2="22"></line>
+                <path d="M5 17h14v-1.76a2 2 0 0 0-.44-1.24l-2.78-3.5A2 2 0 0 1 15 9.24V5a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v4.24c0 .43-.14.85-.4 1.18l-2.78 3.5a2 2 0 0 0-.44 1.24z"></path>
+              </svg>
             </button>
           </div>
-        </div>
-      )}
+ 
+          {/* List of Sheet Items with Styled Groups */}
+          <div style={{ flex: 1, overflowY: 'auto', padding: '20px 16px', display: 'flex', flexDirection: 'column', gap: 24 }}>
+            
+            {/* GROUP 1: DỮ LIỆU ĐẦU VÀO */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+              <div style={{
+                fontSize: '10px',
+                fontWeight: 700,
+                color: '#93c5fd',
+                letterSpacing: '0.1em',
+                paddingLeft: '12px',
+                marginBottom: '8px',
+                textTransform: 'uppercase',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8
+              }}>
+                <span>Dữ liệu đầu vào</span>
+                <div style={{ flex: 1, height: '1px', background: 'rgba(255, 255, 255, 0.15)' }} />
+              </div>
+ 
+              {tabs.filter(t => t.id === 'giao' || t.id === 'nhan' || t.id === 'chung' || t.id === 'kho').map(t => {
+                const isSelected = tab === t.id
+                const count = t.id === 'giao' ? giaoRows.length : t.id === 'nhan' ? nhanRows.length : t.id === 'kho' ? khoRows.length : t.id === 'chung' ? chungRows.length : null
+ 
+                return (
+                  <button
+                    key={t.id}
+                    onClick={() => {
+                      setTab(t.id)
+                      if (!isSidebarPinned) {
+                        setIsSidebarOpen(false)
+                      }
+                    }}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      width: '100%',
+                      padding: '12px 14px',
+                      borderRadius: '10px',
+                      fontSize: '13.5px',
+                      fontWeight: isSelected ? 700 : 500,
+                      color: isSelected ? '#ffffff' : '#dbeafe',
+                      background: isSelected ? 'linear-gradient(135deg, #1e40af 0%, #3b82f6 100%)' : 'transparent',
+                      border: 'none',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                      boxShadow: isSelected ? '0 4px 14px rgba(0, 0, 0, 0.15)' : 'none',
+                      position: 'relative',
+                    }}
+                    onMouseOver={(e) => {
+                      if (!isSelected) {
+                        e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)'
+                        e.currentTarget.style.color = '#ffffff'
+                        e.currentTarget.style.transform = 'translateX(4px)'
+                      }
+                    }}
+                    onMouseOut={(e) => {
+                      if (!isSelected) {
+                        e.currentTarget.style.background = 'transparent'
+                        e.currentTarget.style.color = '#dbeafe'
+                        e.currentTarget.style.transform = 'none'
+                      }
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        width: 20,
+                        height: 20,
+                      }}>
+                        {React.cloneElement(t.icon, { size: 16, strokeWidth: isSelected ? 2.5 : 2, color: isSelected ? '#ffffff' : '#93c5fd' })}
+                      </div>
+                      <span>{t.label}</span>
+                    </div>
+ 
+                    {count !== null && count > 0 && (
+                      <span style={{
+                        background: isSelected ? 'rgba(255, 255, 255, 0.25)' : 'rgba(255, 255, 255, 0.12)',
+                        color: isSelected ? '#ffffff' : '#93c5fd',
+                        border: isSelected ? 'none' : '1px solid rgba(255, 255, 255, 0.15)',
+                        borderRadius: '20px',
+                        padding: '2px 8px',
+                        fontSize: '11px',
+                        fontWeight: 700,
+                        minWidth: '24px',
+                        textAlign: 'center',
+                        boxShadow: isSelected ? 'none' : '0 1px 2px rgba(0, 0, 0, 0.05)'
+                      }}>
+                        {count.toLocaleString()}
+                      </span>
+                    )}
+                  </button>
+                )
+              })}
+            </div>
+ 
+            {/* GROUP 2: XỬ LÝ & TỔNG HỢP */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+              <div style={{
+                fontSize: '10px',
+                fontWeight: 700,
+                color: '#93c5fd',
+                letterSpacing: '0.1em',
+                paddingLeft: '12px',
+                marginBottom: '8px',
+                textTransform: 'uppercase',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8
+              }}>
+                <span>Xử lý & Tổng hợp</span>
+                <div style={{ flex: 1, height: '1px', background: 'rgba(255, 255, 255, 0.15)' }} />
+              </div>
+ 
+              {tabs.filter(t => t.id === 'config' || t.id === 'summary').map(t => {
+                const isSelected = tab === t.id
+ 
+                return (
+                  <button
+                    key={t.id}
+                    onClick={() => {
+                      setTab(t.id)
+                      if (!isSidebarPinned) {
+                        setIsSidebarOpen(false)
+                      }
+                    }}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      width: '100%',
+                      padding: '12px 14px',
+                      borderRadius: '10px',
+                      fontSize: '13.5px',
+                      fontWeight: isSelected ? 700 : 500,
+                      color: isSelected ? '#ffffff' : '#dbeafe',
+                      background: isSelected ? 'linear-gradient(135deg, #1e40af 0%, #3b82f6 100%)' : 'transparent',
+                      border: 'none',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                      boxShadow: isSelected ? '0 4px 14px rgba(0, 0, 0, 0.15)' : 'none',
+                      position: 'relative',
+                    }}
+                    onMouseOver={(e) => {
+                      if (!isSelected) {
+                        e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)'
+                        e.currentTarget.style.color = '#ffffff'
+                        e.currentTarget.style.transform = 'translateX(4px)'
+                      }
+                    }}
+                    onMouseOut={(e) => {
+                      if (!isSelected) {
+                        e.currentTarget.style.background = 'transparent'
+                        e.currentTarget.style.color = '#dbeafe'
+                        e.currentTarget.style.transform = 'none'
+                      }
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        width: 20,
+                        height: 20,
+                      }}>
+                        {React.cloneElement(t.icon, { size: 16, strokeWidth: isSelected ? 2.5 : 2, color: isSelected ? '#ffffff' : '#93c5fd' })}
+                      </div>
+                      <span>{t.label}</span>
+                    </div>
+                  </button>
+                )
+              })}
+            </div>
+ 
+          </div>
 
-      <div style={{ flex: 1, overflow: 'hidden' }}>
-        {tab === 'giao' && (
-          <OrderTab
-            type="giao"
-            rows={giaoRows}
-            setRows={setGiaoRows}
-            fileName={giaoFileName}
-            setFileName={setGiaoFileName}
-            selectedProject={selectedProject}
-            setSelectedProject={setSelectedProject}
-            onSync={() => handleSyncToSupabase('giao')}
-            syncing={syncingType === 'giao'}
-            supabaseMessage={supabaseMessage}
-            onEditProject={(projectName) => {
-              setProjectToEdit(projectName)
-              setShowEditProjectModal(true)
-            }}
-            projectOptions={allProjects}
-            onImportFile={(rows, name) => handleImportFile('giao', rows, name)}
-            onDeleteFile={() => handleDeleteFile('giao')}
-          />
-        )}
-        {tab === 'nhan' && (
-          <OrderTab
-            type="nhan"
-            rows={nhanRows}
-            setRows={setNhanRows}
-            fileName={nhanFileName}
-            setFileName={setNhanFileName}
-            selectedProject={selectedProject}
-            setSelectedProject={setSelectedProject}
-            onSync={() => handleSyncToSupabase('nhan')}
-            syncing={syncingType === 'nhan'}
-            supabaseMessage={supabaseMessage}
-            onEditProject={(projectName) => {
-              setProjectToEdit(projectName)
-              setShowEditProjectModal(true)
-            }}
-            projectOptions={allProjects}
-            onImportFile={(rows, name) => handleImportFile('nhan', rows, name)}
-            onDeleteFile={() => handleDeleteFile('nhan')}
-          />
-        )}
-        {tab === 'config' && (
-          <SummaryConfigTab
-            giaoRows={giaoRows}
-            nhanRows={nhanRows}
-            selectedProject={selectedProject}
-            allProjects={allProjects}
-            configs={configs}
-            setConfigs={setConfigs}
-          />
-        )}
-        {tab === 'summary' && (
-          <SummaryCompilationTab
-            giaoRows={giaoRows}
-            nhanRows={nhanRows}
-            configs={configs}
-            selectedProject={selectedProject}
-            allProjects={allProjects}
-          />
-        )}
+          {/* List of Sheet Items with Styled Groups */}
+          <div style={{ display: 'none' }}> {/* DUP_CONTAINER_START */}
+            
+            {/* GROUP 1: DỮ LIỆU ĐẦU VÀO */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <div style={{
+                fontSize: '11px',
+                fontWeight: 700,
+                color: '#94a3b8',
+                letterSpacing: '0.08em',
+                paddingLeft: '12px',
+                marginBottom: '6px',
+                textTransform: 'uppercase',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6
+              }}>
+                <span style={{ width: 4, height: 4, borderRadius: '50%', background: '#cbd5e1' }} />
+                Dữ liệu đầu vào
+              </div>
+
+              {tabs.filter(t => t.id === 'giao' || t.id === 'nhan' || t.id === 'chung').map(t => {
+                const isSelected = tab === t.id
+                const count = t.id === 'giao' ? giaoRows.length : t.id === 'nhan' ? nhanRows.length : t.id === 'chung' ? chungRows.length : null
+
+                return (
+                  <button
+                    key={t.id}
+                    onClick={() => {
+                      setTab(t.id)
+                      if (!isSidebarPinned) {
+                        setIsSidebarOpen(false)
+                      }
+                    }}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      width: '100%',
+                      padding: '11px 14px',
+                      borderRadius: '8px',
+                      fontSize: '13.5px',
+                      fontWeight: isSelected ? 700 : 500,
+                      color: isSelected ? '#ffffff' : '#475569',
+                      background: isSelected ? 'linear-gradient(135deg, #0f58a7 0%, #083c75 100%)' : 'transparent',
+                      border: 'none',
+                      borderLeft: isSelected ? '4px solid #38bdf8' : '4px solid transparent',
+                      cursor: 'pointer',
+                      transition: 'all 0.15s ease-in-out',
+                      boxShadow: isSelected ? '0 4px 12px rgba(15,88,167,0.15)' : 'none',
+                      position: 'relative'
+                    }}
+                    onMouseOver={(e) => {
+                      if (!isSelected) {
+                        e.currentTarget.style.background = '#f0f7ff'
+                        e.currentTarget.style.color = '#0f58a7'
+                      }
+                    }}
+                    onMouseOut={(e) => {
+                      if (!isSelected) {
+                        e.currentTarget.style.background = 'transparent'
+                        e.currentTarget.style.color = '#475569'
+                      }
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      {React.cloneElement(t.icon, { size: 15, strokeWidth: isSelected ? 2.5 : 2, color: isSelected ? '#ffffff' : '#64748b' })}
+                      <span>{t.label}</span>
+                    </div>
+
+                    {count !== null && count > 0 && (
+                      <span style={{
+                        background: isSelected ? 'rgba(255, 255, 255, 0.2)' : '#e2e8f0',
+                        color: isSelected ? '#ffffff' : '#475569',
+                        borderRadius: '12px',
+                        padding: '1px 7px',
+                        fontSize: '11px',
+                        fontWeight: 700,
+                        minWidth: '24px',
+                        textAlign: 'center'
+                      }}>
+                        {count.toLocaleString()}
+                      </span>
+                    )}
+                  </button>
+                )
+              })}
+            </div>
+
+            {/* GROUP 2: XỬ LÝ & TỔNG HỢP */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <div style={{
+                fontSize: '11px',
+                fontWeight: 700,
+                color: '#94a3b8',
+                letterSpacing: '0.08em',
+                paddingLeft: '12px',
+                marginBottom: '6px',
+                textTransform: 'uppercase',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6
+              }}>
+                <span style={{ width: 4, height: 4, borderRadius: '50%', background: '#cbd5e1' }} />
+                Xử lý & Tổng hợp
+              </div>
+
+              {tabs.filter(t => t.id === 'config' || t.id === 'summary').map(t => {
+                const isSelected = tab === t.id
+
+                return (
+                  <button
+                    key={t.id}
+                    onClick={() => {
+                      setTab(t.id)
+                      if (!isSidebarPinned) {
+                        setIsSidebarOpen(false)
+                      }
+                    }}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      width: '100%',
+                      padding: '11px 14px',
+                      borderRadius: '8px',
+                      fontSize: '13.5px',
+                      fontWeight: isSelected ? 700 : 500,
+                      color: isSelected ? '#ffffff' : '#475569',
+                      background: isSelected ? 'linear-gradient(135deg, #0f58a7 0%, #083c75 100%)' : 'transparent',
+                      border: 'none',
+                      borderLeft: isSelected ? '4px solid #38bdf8' : '4px solid transparent',
+                      cursor: 'pointer',
+                      transition: 'all 0.15s ease-in-out',
+                      boxShadow: isSelected ? '0 4px 12px rgba(15,88,167,0.15)' : 'none',
+                      position: 'relative'
+                    }}
+                    onMouseOver={(e) => {
+                      if (!isSelected) {
+                        e.currentTarget.style.background = '#f0f7ff'
+                        e.currentTarget.style.color = '#0f58a7'
+                      }
+                    }}
+                    onMouseOut={(e) => {
+                      if (!isSelected) {
+                        e.currentTarget.style.background = 'transparent'
+                        e.currentTarget.style.color = '#475569'
+                      }
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      {React.cloneElement(t.icon, { size: 15, strokeWidth: isSelected ? 2.5 : 2, color: isSelected ? '#ffffff' : '#64748b' })}
+                      <span>{t.label}</span>
+                    </div>
+                  </button>
+                )
+              })}
+            </div>
+
+          </div>
+
+          {/* Footer of Sidebar */}
+          <div style={{
+            padding: '18px 24px',
+            borderTop: '1px solid rgba(255, 255, 255, 0.12)',
+            fontSize: '11px',
+            color: '#93c5fd',
+            textAlign: 'center',
+            background: 'linear-gradient(180deg, #153e75 0%, #0d284c 100%)',
+            fontWeight: 700,
+            letterSpacing: '0.04em',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 8
+          }}>
+            <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#22c55e', display: 'inline-block', boxShadow: '0 0 8px rgba(34, 197, 94, 0.6)' }} />
+            SGC REPORT SYSTEM v1.1.0
+          </div>
+        </div>
+        {/* END DUP DELETE */}
+
+        {/* Main Content Area */}
+        <div style={{
+          flex: 1,
+          display: 'flex',
+          flexDirection: 'column',
+          overflow: 'hidden',
+          paddingLeft: isSidebarPinned ? '270px' : '0px',
+          transition: 'padding-left 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+          backgroundColor: '#1d0ca2'
+        }}>
+          {supabaseAuthError && (
+            <div style={{
+              margin: '16px 16px 0 16px',
+              padding: '12px 16px',
+              borderRadius: '12px',
+              border: '1px solid #fca5a5',
+              backgroundColor: '#fef2f2',
+              color: '#991b1b',
+              display: 'flex',
+              alignItems: 'flex-start',
+              gap: '12px',
+              boxShadow: '0 2px 4px rgba(0,0,0,0.02)',
+              textAlign: 'left'
+            }}>
+              <AlertCircle size={20} color="#dc2626" style={{ marginTop: '2px', flexShrink: 0 }} />
+              <div style={{ flex: 1 }}>
+                <h4 style={{ margin: 0, fontSize: '13px', fontWeight: 700 }}>⚠️ Lỗi xác thực kết nối Supabase (401 Unauthorized)</h4>
+                <p style={{ margin: '4px 0 0 0', fontSize: '12px', color: '#b91c1c', lineHeight: 1.4 }}>
+                  Cơ sở dữ liệu Supabase đã từ chối yêu cầu truy cập vì Project URL hoặc Anon Key bị cấu hình sai hoặc đã bị thay đổi/hết hạn trên trang quản trị dự án của bạn (Lỗi 401 Unauthorized). 
+                  Do đó, bạn <strong>không thể xem danh sách, cập nhật hay xóa dự án</strong> được. Vui lòng bấm vào nút cấu hình lại bên dưới.
+                </p>
+                <button
+                  onClick={() => setShowConfigModal(true)}
+                  style={{
+                    marginTop: '8px',
+                    padding: '4px 10px',
+                    fontSize: '11px',
+                    fontWeight: 700,
+                    color: '#ffffff',
+                    backgroundColor: '#dc2626',
+                    border: 'none',
+                    borderRadius: '4px',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Sửa & kiểm cấu hình kết nối ngay
+                </button>
+              </div>
+            </div>
+          )}
+
+          <div style={{ flex: 1, overflow: 'hidden', backgroundColor: '#ededed' }}>
+            {tab === 'giao' && (
+              <OrderTab
+                type="giao"
+                rows={giaoRows}
+                setRows={setGiaoRows}
+                fileName={giaoFileName}
+                setFileName={setGiaoFileName}
+                selectedProject={selectedProject}
+                setSelectedProject={setSelectedProject}
+                onSync={() => handleSyncToSupabase('giao')}
+                syncing={syncingType === 'giao'}
+                supabaseMessage={supabaseMessage}
+                onEditProject={(projectName) => {
+                  setProjectToEdit(projectName)
+                  setShowEditProjectModal(true)
+                }}
+                projectOptions={allProjects}
+                onImportFile={(rows, name) => handleImportFile('giao', rows, name)}
+                onDeleteFile={() => handleDeleteFile('giao')}
+              />
+            )}
+            {tab === 'nhan' && (
+              <OrderTab
+                type="nhan"
+                rows={nhanRows}
+                setRows={setNhanRows}
+                fileName={nhanFileName}
+                setFileName={setNhanFileName}
+                selectedProject={selectedProject}
+                setSelectedProject={setSelectedProject}
+                onSync={() => handleSyncToSupabase('nhan')}
+                syncing={syncingType === 'nhan'}
+                supabaseMessage={supabaseMessage}
+                onEditProject={(projectName) => {
+                  setProjectToEdit(projectName)
+                  setShowEditProjectModal(true)
+                }}
+                projectOptions={allProjects}
+                onImportFile={(rows, name) => handleImportFile('nhan', rows, name)}
+                onDeleteFile={() => handleDeleteFile('nhan')}
+              />
+            )}
+            {tab === 'chung' && (
+              <OrderTab
+                type="chung"
+                rows={chungRows}
+                setRows={setChungRows}
+                fileName={chungFileName}
+                setFileName={setChungFileName}
+                selectedProject={selectedProject}
+                setSelectedProject={setSelectedProject}
+                onSync={() => handleSyncToSupabase('chung')}
+                syncing={syncingType === 'chung'}
+                supabaseMessage={supabaseMessage}
+                onEditProject={(projectName) => {
+                  setProjectToEdit(projectName)
+                  setShowEditProjectModal(true)
+                }}
+                projectOptions={allProjects}
+                onImportFile={(rows, name) => handleImportFile('chung', rows, name)}
+                onDeleteFile={() => handleDeleteFile('chung')}
+              />
+            )}
+            {tab === 'kho' && (
+              <OrderTab
+                type="kho"
+                rows={khoRows}
+                setRows={setKhoRows}
+                fileName={khoFileName}
+                setFileName={setKhoFileName}
+                selectedProject={selectedProject}
+                setSelectedProject={setSelectedProject}
+                onSync={() => handleSyncToSupabase('kho')}
+                syncing={syncingType === 'kho'}
+                supabaseMessage={supabaseMessage}
+                onEditProject={(projectName) => {
+                  setProjectToEdit(projectName)
+                  setShowEditProjectModal(true)
+                }}
+                projectOptions={allProjects}
+                onImportFile={(rows, name) => handleImportFile('kho', rows, name)}
+                onDeleteFile={() => handleDeleteFile('kho')}
+              />
+            )}
+            {tab === 'config' && (
+              <SummaryConfigTab
+                giaoRows={giaoRows}
+                nhanRows={nhanRows}
+                selectedProject={selectedProject}
+                allProjects={allProjects}
+                configs={configs}
+                setConfigs={setConfigs}
+              />
+            )}
+            {tab === 'summary' && (
+              <SummaryCompilationTab
+                giaoRows={giaoRows}
+                nhanRows={nhanRows}
+                configs={configs}
+                selectedProject={selectedProject}
+                allProjects={allProjects}
+              />
+            )}
+          </div>
+        </div>
       </div>
 
       <PreviewImportModal
@@ -6488,7 +7279,11 @@ export default function App() {
         selectedProject={selectedProject}
         rowCount={deleteFileType === 'giao'
           ? (selectedProject ? giaoRows.filter(r => (r.ten_du_an || r.tenDuAn || r.tenduan || r.duAn || r.du_an || '') === selectedProject).length : giaoRows.length)
-          : (selectedProject ? nhanRows.filter(r => (r.ten_du_an || r.tenDuAn || r.tenduan || r.duAn || r.du_an || '') === selectedProject).length : nhanRows.length)
+          : deleteFileType === 'nhan'
+          ? (selectedProject ? nhanRows.filter(r => (r.ten_du_an || r.tenDuAn || r.tenduan || r.duAn || r.du_an || '') === selectedProject).length : nhanRows.length)
+          : deleteFileType === 'kho'
+          ? (selectedProject ? khoRows.filter(r => (r.ten_du_an || r.tenDuAn || r.tenduan || r.duAn || r.du_an || '') === selectedProject).length : khoRows.length)
+          : (selectedProject ? chungRows.filter(r => (r.ten_du_an || r.tenDuAn || r.tenduan || r.duAn || r.du_an || '') === selectedProject).length : chungRows.length)
         }
       />
 
@@ -6502,6 +7297,7 @@ export default function App() {
         projectName={projectToDelete}
         giaoRows={giaoRows}
         nhanRows={nhanRows}
+        khoRows={khoRows}
       />
 
       <style>{`
