@@ -894,6 +894,8 @@ function DataTable({ rows, setRows, type }) {
   const [currentPage, setCurrentPage] = React.useState(1)
   const [selectedIds, setSelectedIds] = React.useState(new Set())
   const [showConfirmDelete, setShowConfirmDelete] = React.useState(false)
+  const [isDeleting, setIsDeleting] = React.useState(false)
+  const [deleteProgress, setDeleteProgress] = React.useState(null) // { done, total }
   const tableWrapRef = React.useRef(null)
   const mirrorRef = React.useRef(null)
 
@@ -990,19 +992,33 @@ function DataTable({ rows, setRows, type }) {
     const idsArr = Array.from(selectedIds)
 
     // 1. Delete on Supabase if connected
+    // Xóa theo từng đợt nhỏ (chunk) thay vì gửi toàn bộ ID trong 1 request, vì khi số
+    // lượng dòng được chọn quá lớn (hàng nghìn-hàng chục nghìn), URL request .in('id', [...])
+    // sẽ vượt quá giới hạn độ dài cho phép, gây lỗi "TypeError: Failed to fetch" ngay từ trình duyệt.
     if (isSupabaseConfigured) {
       const tableName = type === 'chung' ? 'don_chung' : type === 'giao' ? 'don_giao' : type === 'nhan' ? 'don_nhan' : type === 'kho' ? 'don_kho' : 'don_chung'
+      const chunkSize = 300
+      setIsDeleting(true)
+      setDeleteProgress({ done: 0, total: idsArr.length })
       try {
-        const { error } = await supabase
-          .from(tableName)
-          .delete()
-          .in('id', idsArr)
-        
-        if (error) throw error
+        for (let i = 0; i < idsArr.length; i += chunkSize) {
+          const chunk = idsArr.slice(i, i + chunkSize)
+          const { error } = await supabase
+            .from(tableName)
+            .delete()
+            .in('id', chunk)
+
+          if (error) throw error
+          setDeleteProgress({ done: Math.min(i + chunkSize, idsArr.length), total: idsArr.length })
+        }
       } catch (err) {
         alert(`Lỗi khi xóa dòng trên Supabase: ${err.message || err}`)
+        setIsDeleting(false)
+        setDeleteProgress(null)
         return
       }
+      setIsDeleting(false)
+      setDeleteProgress(null)
     }
 
     // 2. Delete locally
@@ -1145,6 +1161,42 @@ function DataTable({ rows, setRows, type }) {
                 Đồng ý (Yes)
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {isDeleting && (
+        <div style={{
+          position: 'fixed',
+          top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(15, 23, 42, 0.65)',
+          backdropFilter: 'blur(6px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 100000,
+        }}>
+          <div style={{
+            background: '#ffffff',
+            borderRadius: 16,
+            padding: 28,
+            width: '100%',
+            maxWidth: 360,
+            boxShadow: '0 25px 50px -12px rgba(15, 23, 42, 0.25)',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: 14,
+          }}>
+            <RefreshCw size={28} color="#dc2626" style={{ animation: 'spin 1s linear infinite' }} />
+            <h3 style={{ fontSize: 16, fontWeight: 700, color: '#0f172a', margin: 0 }}>
+              Đang xóa dữ liệu...
+            </h3>
+            {deleteProgress && (
+              <p style={{ fontSize: 13.5, color: '#475569', margin: 0 }}>
+                Đã xóa {deleteProgress.done.toLocaleString('vi-VN')} / {deleteProgress.total.toLocaleString('vi-VN')} dòng
+              </p>
+            )}
           </div>
         </div>
       )}
@@ -5130,18 +5182,16 @@ function BaoCaoXuatNhapTonTab({ chungRows = [], giaoRows = [], nhanRows = [], se
           <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
             Kho / Dự án:
           </span>
-          <select
-            id="select-inventory-project"
-            value={localProject}
-            onChange={handleWarehouseChange}
-            className="input"
-            style={{ height: 38, flex: 1, padding: '0 10px', fontSize: 13, minWidth: 180, border: '1px solid #cbd5e1' }}
-          >
-            <option value="">-- Tất cả Kho / Dự án --</option>
-            {uniqueWarehouses.map(w => (
-              <option key={w} value={w}>{w}</option>
-            ))}
-          </select>
+          <div style={{ flex: 1, minWidth: 180 }}>
+            <SearchableSelect
+              value={localProject}
+              onChange={(val) => setLocalProject(val)}
+              options={uniqueWarehouses}
+              placeholder="-- Tất cả Kho / Dự án --"
+              searchPlaceholder="Tìm tên Kho / Dự án..."
+              variant="form"
+            />
+          </div>
         </div>
 
         {/* Search */}
