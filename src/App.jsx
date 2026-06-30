@@ -7,7 +7,7 @@ import {
   ChevronDown, ChevronRight, Download, Truck, PackageCheck, Settings, BarChart3,
   AlertCircle, CheckCircle2, Filter, ArrowUpDown, Clock, CloudUpload, Database, Save,
   Pencil, Trash2, Lock, ClipboardList, Warehouse, Building2, Users, HelpCircle,
-  Calendar
+  Calendar, AlertTriangle
 } from 'lucide-react'
 import { COLS_GIAO_NHAN, parseXlsxToRows, formatVal, getTrangThaiColor, isApprovedStatus, isPendingStatus, isRejectedStatus } from './constants.js'
 import { supabase, isSupabaseConfigured, supabaseUrl, supabaseAnonKey } from './supabaseClient.js'
@@ -476,6 +476,16 @@ function UploadZone({ onFile, label, accept = '.xlsx,.xls', disabled = false }) 
     reader.onload = (e) => {
       const wb = XLSX.read(e.target.result, { type: 'array' })
       const ws = wb.Sheets[wb.SheetNames[0]]
+      if (ws && ws['!ref']) {
+        try {
+          const refRange = XLSX.utils.decode_range(ws['!ref'])
+          refRange.s.r = 0
+          refRange.s.c = 0
+          ws['!ref'] = XLSX.utils.encode_range(refRange)
+        } catch (err) {
+          console.error('Error rewriting sheet range:', err)
+        }
+      }
       const data = XLSX.utils.sheet_to_json(ws, { header: 1, defval: null })
       onFile(data, file.name)
     }
@@ -534,18 +544,70 @@ function UploadZone({ onFile, label, accept = '.xlsx,.xls', disabled = false }) 
 function StatsBar({ rows, onAppendFile }) {
   const stats = useMemo(() => {
     const total = rows.length
-    const daPheDuyet = rows.filter(r => isApprovedStatus(r.trangThai)).length;
-    const choPheDuyet = rows.filter(r => isPendingStatus(r.trangThai)).length;
-    const tuChoi = rows.filter(r => isRejectedStatus(r.trangThai)).length;
-
-    return { total, daPheDuyet, choPheDuyet, tuChoi }
+    
+    // Group rows exactly by their visible status string value
+    const counts = {}
+    rows.forEach(r => {
+      const status = (r.trangThai || 'Chưa duyệt').trim()
+      counts[status] = (counts[status] || 0) + 1
+    })
+    
+    const activeStatuses = Object.keys(counts).filter(status => counts[status] > 0)
+    
+    // Define ordering priority for cards
+    const priority = ['Đã phê duyệt', 'Chưa xác nhận', 'Chờ phê duyệt', 'Chưa phê duyệt', 'Chưa duyệt', 'Từ chối']
+    activeStatuses.sort((a, b) => {
+      const idxA = priority.indexOf(a)
+      const idxB = priority.indexOf(b)
+      if (idxA !== -1 && idxB !== -1) return idxA - idxB
+      if (idxA !== -1) return -1
+      if (idxB !== -1) return 1
+      return a.localeCompare(b, 'vi')
+    })
+    
+    const statusCards = activeStatuses.map(status => {
+      const count = counts[status]
+      
+      let color = 'var(--primary)'
+      let bg = 'var(--primary-light)'
+      let border = 'var(--border)'
+      let icon = <ClipboardList size={18} />
+      
+      const sLower = status.toLowerCase()
+      if (sLower === 'đã phê duyệt' || (isApprovedStatus(status) && !sLower.includes('chưa') && !sLower.includes('chờ'))) {
+        color = '#10b981'
+        bg = '#ecfdf5'
+        border = '#a7f3d0'
+        icon = <CheckCircle2 size={18} />
+      } else if (sLower === 'từ chối' || isRejectedStatus(status)) {
+        color = '#ef4444'
+        bg = '#fef2f2'
+        border = '#fca5a5'
+        icon = <AlertCircle size={18} />
+      } else {
+        color = '#b45309'
+        bg = '#fffbeb'
+        border = '#fde68a'
+        icon = <Clock size={18} />
+      }
+      
+      return {
+        label: status,
+        value: count.toLocaleString('vi-VN') + ' đơn',
+        color,
+        bg,
+        border,
+        icon,
+        count
+      }
+    })
+    
+    return { total, cards: statusCards }
   }, [rows])
 
   const cards = [
-    { label: 'Tổng số lượng đơn', value: stats.total.toLocaleString() + ' đơn', color: 'var(--primary)', bg: 'var(--primary-light)', border: 'var(--border)', icon: <FileSpreadsheet size={18} /> },
-    { label: 'Đã phê duyệt', value: stats.daPheDuyet.toLocaleString() + ' đơn', color: '#10b981', bg: '#ecfdf5', border: '#a7f3d0', icon: <CheckCircle2 size={18} /> },
-    { label: 'Chờ phê duyệt', value: stats.choPheDuyet.toLocaleString() + ' đơn', color: '#b45309', bg: '#fffbeb', border: '#fde68a', icon: <Clock size={18} /> },
-    { label: 'Từ chối', value: stats.tuChoi.toLocaleString() + ' đơn', color: '#ef4444', bg: '#fef2f2', border: '#fca5a5', icon: <AlertCircle size={18} /> },
+    { label: 'Tổng số lượng đơn', value: stats.total.toLocaleString('vi-VN') + ' đơn', color: 'var(--primary)', bg: 'var(--primary-light)', border: 'var(--border)', icon: <FileSpreadsheet size={18} /> },
+    ...stats.cards
   ]
 
   return (
@@ -629,7 +691,20 @@ function StatsBar({ rows, onAppendFile }) {
                 const reader = new FileReader();
                 reader.onload = (evt) => {
                   if (evt.target?.result) {
-                    onAppendFile(evt.target.result, file.name);
+                    const wb = XLSX.read(evt.target.result, { type: 'array' });
+                    const ws = wb.Sheets[wb.SheetNames[0]];
+                    if (ws && ws['!ref']) {
+                      try {
+                        const refRange = XLSX.utils.decode_range(ws['!ref'])
+                        refRange.s.r = 0
+                        refRange.s.c = 0
+                        ws['!ref'] = XLSX.utils.encode_range(refRange)
+                      } catch (err) {
+                        console.error('Error rewriting sheet range:', err)
+                      }
+                    }
+                    const data = XLSX.utils.sheet_to_json(ws, { header: 1, defval: null });
+                    onAppendFile(data, file.name);
                   }
                 };
                 reader.readAsArrayBuffer(file);
@@ -818,6 +893,7 @@ function DataTable({ rows, setRows, type }) {
   const [pageSize, setPageSize] = React.useState(100)
   const [currentPage, setCurrentPage] = React.useState(1)
   const [selectedIds, setSelectedIds] = React.useState(new Set())
+  const [showConfirmDelete, setShowConfirmDelete] = React.useState(false)
   const tableWrapRef = React.useRef(null)
   const mirrorRef = React.useRef(null)
 
@@ -826,11 +902,6 @@ function DataTable({ rows, setRows, type }) {
     setCurrentPage(1)
     setSelectedIds(new Set())
   }, [rows])
-
-  // Reset selection when page changes
-  React.useEffect(() => {
-    setSelectedIds(new Set())
-  }, [currentPage, pageSize])
 
   // Sync scroll giữa bảng và thanh cuộn mirror dưới
   React.useEffect(() => {
@@ -878,18 +949,18 @@ function DataTable({ rows, setRows, type }) {
   const pageRowIds = React.useMemo(() => pageRows.map(r => r.id), [pageRows])
 
   const isAllSelected = React.useMemo(() => {
-    if (pageRowIds.length === 0) return false
-    return pageRowIds.every(id => selectedIds.has(id))
-  }, [pageRowIds, selectedIds])
+    if (rows.length === 0) return false
+    return rows.every(r => selectedIds.has(r.id))
+  }, [rows, selectedIds])
 
   const handleSelectAll = (e) => {
     const checked = e.target.checked
     setSelectedIds(prev => {
       const next = new Set(prev)
       if (checked) {
-        pageRowIds.forEach(id => next.add(id))
+        rows.forEach(r => next.add(r.id))
       } else {
-        pageRowIds.forEach(id => next.delete(id))
+        rows.forEach(r => next.delete(r.id))
       }
       return next
     })
@@ -907,12 +978,12 @@ function DataTable({ rows, setRows, type }) {
     })
   }
 
-  const handleDeleteSelected = async () => {
+  const handleDeleteSelected = () => {
     if (selectedIds.size === 0) return
+    setShowConfirmDelete(true)
+  }
 
-    const confirmMessage = `Bạn có chắc chắn muốn xóa ${selectedIds.size} dòng dữ liệu đã chọn?\n\nHành động này không thể hoàn tác và sẽ xóa dữ liệu tương ứng trên cơ sở dữ liệu Supabase (nếu có kết nối).`
-    if (!window.confirm(confirmMessage)) return
-
+  const executeDelete = async () => {
     const idsArr = Array.from(selectedIds)
 
     // 1. Delete on Supabase if connected
@@ -968,6 +1039,113 @@ function DataTable({ rows, setRows, type }) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
+      {/* Custom Confirmation Dialog */}
+      {showConfirmDelete && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(15, 23, 42, 0.65)',
+          backdropFilter: 'blur(6px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 99999,
+        }}>
+          <div style={{
+            background: '#ffffff',
+            borderRadius: 16,
+            padding: 24,
+            width: '100%',
+            maxWidth: 440,
+            boxShadow: '0 25px 50px -12px rgba(15, 23, 42, 0.25)',
+            border: '1px solid #fee2e2',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 20,
+            margin: '0 16px',
+            boxSizing: 'border-box'
+          }}>
+            <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start' }}>
+              <div style={{
+                width: 48,
+                height: 48,
+                borderRadius: 24,
+                background: '#fee2e2',
+                color: '#ef4444',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0
+              }}>
+                <Trash2 size={24} />
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flex: 1 }}>
+                <h3 style={{ fontSize: 18, fontWeight: 700, color: '#0f172a', margin: 0, fontFamily: 'inherit' }}>
+                  Xác nhận xóa dữ liệu
+                </h3>
+                <p style={{ fontSize: 14, color: '#475569', margin: 0, lineHeight: '1.5', fontFamily: 'inherit' }}>
+                  Bạn có thực sự muốn xóa <strong>{selectedIds.size}</strong> dòng dữ liệu đã chọn? Hành động này không thể hoàn tác và sẽ xóa vĩnh viễn trên cơ sở dữ liệu Supabase.
+                </p>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
+              <button
+                onClick={() => setShowConfirmDelete(false)}
+                style={{
+                  padding: '10px 20px',
+                  borderRadius: 8,
+                  fontSize: 14,
+                  fontWeight: 600,
+                  background: '#f1f5f9',
+                  color: '#334155',
+                  cursor: 'pointer',
+                  border: '1px solid #cbd5e1',
+                  transition: 'all 0.15s ease',
+                  fontFamily: 'inherit'
+                }}
+                onMouseOver={e => {
+                  e.currentTarget.style.background = '#e2e8f0';
+                  e.currentTarget.style.color = '#0f172a';
+                }}
+                onMouseOut={e => {
+                  e.currentTarget.style.background = '#f1f5f9';
+                  e.currentTarget.style.color = '#334155';
+                }}
+              >
+                Hủy (No)
+              </button>
+              <button
+                onClick={async () => {
+                  setShowConfirmDelete(false)
+                  await executeDelete()
+                }}
+                style={{
+                  padding: '10px 20px',
+                  borderRadius: 8,
+                  fontSize: 14,
+                  fontWeight: 700,
+                  background: '#dc2626',
+                  color: '#ffffff',
+                  cursor: 'pointer',
+                  boxShadow: '0 2px 4px rgba(220, 38, 38, 0.2)',
+                  border: 'none',
+                  transition: 'all 0.15s ease',
+                  fontFamily: 'inherit'
+                }}
+                onMouseOver={e => e.currentTarget.style.background = '#b91c1c'}
+                onMouseOut={e => e.currentTarget.style.background = '#dc2626'}
+              >
+                Đồng ý (Yes)
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Floating Selection Alert Bar */}
       {setRows && selectedIds.size > 0 && (
         <div style={{
@@ -1351,7 +1529,17 @@ function OrderTab({
       })
     }
 
-    return r
+    // Sort descending by date (newest/most recent first)
+    const sorted = [...r].sort((a, b) => {
+      const dateA = parseRowDate(a.ngayXuatNhap)
+      const dateB = parseRowDate(b.ngayXuatNhap)
+      if (!dateA && !dateB) return 0
+      if (!dateA) return 1
+      if (!dateB) return -1
+      return dateB.getTime() - dateA.getTime()
+    })
+
+    return sorted
   }, [rows, search, trangThai, selectedProject, donViGiaoFilter, donViNhanFilter, startDate, endDate])
 
   const handleExportExcel = useCallback(() => {
@@ -1692,7 +1880,7 @@ function OrderTab({
                   borderRadius: 16, display: 'flex', alignItems: 'center', justifyContent: 'center',
                   margin: '0 auto 12px'
                 }}>
-                  {isGiao ? <Truck size={26} color="var(--primary)" /> : <PackageCheck size={26} color="var(--primary)" />}
+                  {type === 'giao' ? <Truck size={26} color="var(--primary)" /> : <PackageCheck size={26} color="var(--primary)" />}
                 </div>
                 <h3 style={{ fontSize: 17, fontWeight: 700, color: 'var(--text)', marginBottom: 6 }}>
                   Dự án <span style={{ color: 'var(--primary)' }}>"{selectedProject}"</span> chưa có dữ liệu
@@ -1885,7 +2073,7 @@ function KhoDuAnTab({ chungRows, selectedProject, setSelectedProject, allProject
   }, [uniqueDonVi, search])
 
   // 3. Categorize filtered units into 4 groups with default + manual classification mapping
-  // Sắp xếp hiển thị theo thứ tự A, b, c,... z
+  // Sắp xếp hiển thị theo thứ tự A, b, c,... z, ưu tiên các dữ liệu chưa lưu trên Supabase lên trên cùng
   const categorizedUnits = useMemo(() => {
     const groups = {
       chuaphanbo: [],
@@ -1898,13 +2086,22 @@ function KhoDuAnTab({ chungRows, selectedProject, setSelectedProject, allProject
       groups[cat].push(item)
     })
     
-    // Sort each group alphabetically (A,b,c,...z) using Vietnamese localeCompare
+    // Sắp xếp từng nhóm: các đơn vị chưa được lưu trên Supabase (hoặc bị đổi nhóm chưa lưu) lên trên cùng, sau đó sắp xếp theo bảng chữ cái tiếng Việt (A, b, c,...)
     Object.keys(groups).forEach(key => {
-      groups[key].sort((a, b) => a.name.localeCompare(b.name, 'vi', { sensitivity: 'base' }))
+      groups[key].sort((a, b) => {
+        const catA = customCategoryMap[a.name] || getUnitCategory(a.name)
+        const catB = customCategoryMap[b.name] || getUnitCategory(b.name)
+        const isUnsavedA = dbCategoryMap[a.name] === undefined || dbCategoryMap[a.name] !== catA
+        const isUnsavedB = dbCategoryMap[b.name] === undefined || dbCategoryMap[b.name] !== catB
+        
+        if (isUnsavedA && !isUnsavedB) return -1
+        if (!isUnsavedA && isUnsavedB) return 1
+        return a.name.localeCompare(b.name, 'vi', { sensitivity: 'base' })
+      })
     })
     
     return groups
-  }, [filteredDonVi, customCategoryMap])
+  }, [filteredDonVi, customCategoryMap, dbCategoryMap])
 
   const handleSaveToSupabase = useCallback(async () => {
     if (!isSupabaseConfigured) {
@@ -1930,43 +2127,33 @@ function KhoDuAnTab({ chungRows, selectedProject, setSelectedProject, allProject
         }
       })
       
-      const toInsert = []
-      const toUpdate = []
+      const toUpsert = []
       
       uniqueDonVi.forEach(item => {
         const cat = customCategoryMap[item.name] || getUnitCategory(item.name)
         const matched = existingMap[item.name.trim().toLowerCase()]
         if (matched) {
           if (matched.nhom_don_vi !== cat) {
-            toUpdate.push({
+            toUpsert.push({
               id: matched.id,
               ten_don_vi: item.name,
               nhom_don_vi: cat
             })
           }
         } else {
-          toInsert.push({
+          toUpsert.push({
             ten_don_vi: item.name,
             nhom_don_vi: cat
           })
         }
       })
       
-      // Perform updates
-      for (const row of toUpdate) {
-        const { error: updErr } = await supabase
+      // Perform bulk upsert
+      if (toUpsert.length > 0) {
+        const { error: upsertErr } = await supabase
           .from('phan_loai_don_vi')
-          .update({ nhom_don_vi: row.nhom_don_vi })
-          .eq('id', row.id)
-        if (updErr) throw updErr
-      }
-      
-      // Perform inserts
-      if (toInsert.length > 0) {
-        const { error: insErr } = await supabase
-          .from('phan_loai_don_vi')
-          .insert(toInsert)
-        if (insErr) throw insErr
+          .upsert(toUpsert)
+        if (upsertErr) throw upsertErr
       }
       
       // Update our reference map representing the database
@@ -2402,29 +2589,33 @@ function KhoDuAnTab({ chungRows, selectedProject, setSelectedProject, allProject
                         {col.emptyText}
                       </div>
                     ) : (
-                      col.list.map((item, idx) => (
-                        <div 
-                          key={idx} 
-                          draggable
-                          onDragStart={(e) => handleDragStart(e, item.name)}
-                          onDragEnd={() => {
-                            setDraggedItemName(null)
-                            setDragOverCol(null)
-                          }}
-                          style={{
-                            padding: '10px 12px',
-                            borderBottom: '1px solid #f1f5f9',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: 8,
-                            background: idx % 2 === 1 ? '#f8fafc' : '#ffffff',
-                            opacity: draggedItemName === item.name ? 0.4 : 1,
-                            cursor: 'grab',
-                            userSelect: 'none',
-                            transition: 'background 0.1s, opacity 0.1s'
-                          }} 
-                          className="hover:bg-blue-50/40"
-                        >
+                      col.list.map((item, idx) => {
+                        const currentCat = customCategoryMap[item.name] || getUnitCategory(item.name)
+                        const isUnsaved = dbCategoryMap[item.name] === undefined || dbCategoryMap[item.name] !== currentCat
+
+                        return (
+                          <div 
+                            key={idx} 
+                            draggable
+                            onDragStart={(e) => handleDragStart(e, item.name)}
+                            onDragEnd={() => {
+                              setDraggedItemName(null)
+                              setDragOverCol(null)
+                            }}
+                            style={{
+                              padding: '10px 12px',
+                              borderBottom: isUnsaved ? '1px solid #fca5a5' : '1px solid #f1f5f9',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 8,
+                              background: isUnsaved ? '#fee2e2' : (idx % 2 === 1 ? '#f8fafc' : '#ffffff'),
+                              opacity: draggedItemName === item.name ? 0.4 : 1,
+                              cursor: 'grab',
+                              userSelect: 'none',
+                              transition: 'background 0.1s, opacity 0.1s'
+                            }} 
+                            className={isUnsaved ? "hover:bg-red-200/50" : "hover:bg-blue-50/40"}
+                          >
                           {/* STT */}
                           <div style={{ fontSize: 11, color: '#94a3b8', width: 20, textAlign: 'center', fontWeight: 600 }}>
                             {idx + 1}
@@ -2447,8 +2638,9 @@ function KhoDuAnTab({ chungRows, selectedProject, setSelectedProject, allProject
                             </div>
                           </div>
                         </div>
-                      ))
-                    )}
+                      )
+                    })
+                  )}
                   </div>
                 </div>
               ))}
@@ -2523,7 +2715,16 @@ const PRESET_COLORS = [
   { name: 'Hồng phấn', value: '#fff1f2', border: '#fecdd3', text: '#881337' },
 ]
 
-function SummaryConfigTab({ giaoRows, nhanRows, selectedProject, allProjects, configs, setConfigs }) {
+function SummaryConfigTab({ 
+  giaoRows, 
+  nhanRows, 
+  selectedProject, 
+  allProjects, 
+  configs, 
+  setConfigs,
+  isSgcSummaryConfigsMissing,
+  setIsSgcSummaryConfigsMissing 
+}) {
   const [showCreateModal, setShowCreateModal] = React.useState(false)
   const [expandedConfig, setExpandedConfig] = React.useState(null) // index of expanded config
   const [configToDeleteIdx, setConfigToDeleteIdx] = React.useState(null)
@@ -2561,12 +2762,18 @@ function SummaryConfigTab({ giaoRows, nhanRows, selectedProject, allProjects, co
         .order('id', { ascending: true })
 
       if (error) {
-        console.error('Lỗi tải cấu hình tổng hợp từ Supabase:', error.message)
+        if (error.message.includes('Could not find the table') || error.message.includes('sgc_summary_configs')) {
+          console.warn('Lỗi tải cấu hình tổng hợp từ Supabase: Bảng sgc_summary_configs chưa được tạo trong database Supabase.')
+          if (setIsSgcSummaryConfigsMissing) setIsSgcSummaryConfigsMissing(true)
+        } else {
+          console.error('Lỗi tải cấu hình tổng hợp từ Supabase:', error.message)
+        }
         setDbState('error')
         setDbMessage('Lỗi tải từ Supabase: ' + error.message)
         return
       }
 
+      if (setIsSgcSummaryConfigsMissing) setIsSgcSummaryConfigsMissing(false)
       if (data) {
         const mapped = data.map(dbRow => ({
           id: dbRow.id,
@@ -2951,6 +3158,105 @@ function SummaryConfigTab({ giaoRows, nhanRows, selectedProject, allProjects, co
           )}
         </div>
       </div>
+
+      {/* Missing table SQL installation card */}
+      {isSgcSummaryConfigsMissing && (
+        <div style={{
+          background: '#fffbeb',
+          border: '1px solid #fef3c7',
+          borderRadius: 12,
+          padding: '20px',
+          marginBottom: '24px',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+        }}>
+          <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
+            <AlertTriangle color="#d97706" size={24} style={{ flexShrink: 0, marginTop: '2px' }} />
+            <div style={{ flex: 1 }}>
+              <h3 style={{ margin: '0 0 8px', fontSize: 16, fontWeight: 700, color: '#92400e' }}>
+                Thiếu bảng sgc_summary_configs trong Supabase
+              </h3>
+              <p style={{ margin: '0 0 16px', color: '#b45309', fontSize: 14, lineHeight: '1.6' }}>
+                Hệ thống phát hiện cơ sở dữ liệu Supabase của bạn chưa được khởi tạo bảng cấu hình tổng hợp <code>sgc_summary_configs</code>. 
+                Vui lòng sao chép câu lệnh SQL bên dưới, dán và chạy trong phần <strong>SQL Editor</strong> trên trang quản lý Supabase của bạn để kích hoạt đầy đủ tính năng đồng bộ trực tuyến:
+              </p>
+              
+              <div style={{ position: 'relative', background: '#1e293b', borderRadius: '8px', padding: '16px', marginBottom: '16px' }}>
+                <pre style={{
+                  margin: 0, 
+                  fontFamily: 'JetBrains Mono, monospace', 
+                  fontSize: '12px', 
+                  color: '#f8fafc', 
+                  overflowX: 'auto',
+                  whiteSpace: 'pre-wrap',
+                  wordBreak: 'break-all'
+                }}>
+{`CREATE TABLE IF NOT EXISTS public.sgc_summary_configs (
+  id bigint generated by default as identity primary key,
+  name text not null,
+  project text not null,
+  giao_table jsonb default '[]'::jsonb,
+  nhan_table jsonb default '[]'::jsonb,
+  bg_color text default '#eff6ff',
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
+
+-- Bật Row Level Security (RLS)
+ALTER TABLE public.sgc_summary_configs ENABLE ROW LEVEL SECURITY;
+
+-- Tạo chính sách cho phép đọc ghi công khai
+CREATE POLICY "Allow public read and write" ON public.sgc_summary_configs FOR ALL USING (true) WITH CHECK (true);`}
+                </pre>
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(`CREATE TABLE IF NOT EXISTS public.sgc_summary_configs (
+  id bigint generated by default as identity primary key,
+  name text not null,
+  project text not null,
+  giao_table jsonb default '[]'::jsonb,
+  nhan_table jsonb default '[]'::jsonb,
+  bg_color text default '#eff6ff',
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
+
+ALTER TABLE public.sgc_summary_configs ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Allow public read and write" ON public.sgc_summary_configs FOR ALL USING (true) WITH CHECK (true);`);
+                    const btn = document.getElementById('copy-sql-btn');
+                    if (btn) {
+                      const oldTxt = btn.innerText;
+                      btn.innerText = 'Đã sao chép!';
+                      setTimeout(() => { btn.innerText = oldTxt; }, 3000);
+                    }
+                  }}
+                  id="copy-sql-btn"
+                  style={{
+                    position: 'absolute',
+                    top: '12px',
+                    right: '12px',
+                    background: '#334155',
+                    color: '#f8fafc',
+                    border: 'none',
+                    borderRadius: '6px',
+                    padding: '6px 12px',
+                    fontSize: '12px',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    transition: 'background 0.2s'
+                  }}
+                  onMouseOver={(e) => e.currentTarget.style.background = '#475569'}
+                  onMouseOut={(e) => e.currentTarget.style.background = '#334155'}
+                >
+                  Sao chép SQL
+                </button>
+              </div>
+              
+              <p style={{ margin: 0, color: '#b45309', fontSize: 13, fontStyle: 'italic' }}>
+                * Lưu ý: Khi chưa tạo bảng này, mọi thay đổi cấu hình vẫn hoạt động bình thường và được tự động lưu tạm tại trình duyệt này (LocalStorage).
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Empty state */}
       {!selectedProject ? (
@@ -4245,6 +4551,851 @@ function DeleteConfigConfirmModal({ isOpen, onClose, onConfirm, configName, proj
   )
 }
 
+// ─── Inventory Report (Báo cáo xuất nhập tồn) ──────────────────────────────────
+function BaoCaoXuatNhapTonTab({ chungRows = [], giaoRows = [], nhanRows = [], selectedProject, setSelectedProject, allProjects = [] }) {
+  const [localProject, setLocalProject] = React.useState(selectedProject || '')
+  const [searchTerm, setSearchTerm] = React.useState('')
+  const [statusFilter, setStatusFilter] = React.useState('approved_only') // 'approved_only' | 'all'
+  const [currentPage, setCurrentPage] = React.useState(1)
+  const [pageSize, setPageSize] = React.useState(50)
+  const [sortField, setSortField] = React.useState('maSAP') // 'maSAP' | 'received' | 'issued' | 'stock'
+  const [sortDirection, setSortDirection] = React.useState('asc') // 'asc' | 'desc'
+
+  // Synchronize localProject with selectedProject prop when it changes
+  React.useEffect(() => {
+    if (selectedProject !== localProject) {
+      setLocalProject(selectedProject || '')
+    }
+  }, [selectedProject])
+
+  // Extract all unique warehouses
+  const uniqueWarehouses = React.useMemo(() => {
+    const list = new Set()
+    allProjects.forEach(p => { if (p) list.add(p.trim()) })
+    chungRows.forEach(r => {
+      const g = (r.donViGiao || '').trim()
+      const n = (r.donViNhan || '').trim()
+      if (g) list.add(g)
+      if (n) list.add(n)
+    })
+    giaoRows.forEach(r => {
+      const g = (r.donViGiao || '').trim()
+      const n = (r.donViNhan || '').trim()
+      if (g) list.add(g)
+      if (n) list.add(n)
+    })
+    nhanRows.forEach(r => {
+      const g = (r.donViGiao || '').trim()
+      const n = (r.donViNhan || '').trim()
+      if (g) list.add(g)
+      if (n) list.add(n)
+    })
+    return [...list].sort()
+  }, [allProjects, chungRows, giaoRows, nhanRows])
+
+  // Process rows and group by maSAP
+  const reportData = React.useMemo(() => {
+    const groups = {}
+    const projLower = localProject ? localProject.trim().toLowerCase() : ''
+
+    // Helper to parse double values safely
+    const parseVal = (val) => {
+      if (val === null || val === undefined) return 0
+      if (typeof val === 'number') return val
+      const cleaned = String(val).replace(/[^\d.-]/g, '').replace(',', '.')
+      const num = parseFloat(cleaned)
+      return isNaN(num) ? 0 : num
+    }
+
+    const sourceRows = (chungRows && chungRows.length > 0) 
+      ? chungRows 
+      : [...giaoRows, ...nhanRows]
+
+    sourceRows.forEach(r => {
+      // Apply status filter
+      if (statusFilter === 'approved_only' && !isApprovedStatus(r.trangThai)) {
+        return
+      }
+
+      const nhanUnit = String(r.donViNhan || '').trim().toLowerCase()
+      const giaoUnit = String(r.donViGiao || '').trim().toLowerCase()
+
+      let isNhan = false
+      let isGiao = false
+
+      if (localProject) {
+        isNhan = nhanUnit === projLower
+        isGiao = giaoUnit === projLower
+        // If this row is not related to our selected warehouse, skip
+        if (!isNhan && !isGiao) return
+      } else {
+        isNhan = true
+        isGiao = true
+      }
+
+      // Use maSAP as grouping key (fallback to empty string if not present)
+      const sap = String(r.maSAP || '').trim()
+      if (!sap) return // Skip rows without SAP code as per requirement: "thống kê báo cáo với Mã SAP"
+
+      // Initialize group if not exists
+      if (!groups[sap]) {
+        groups[sap] = {
+          maSAP: sap,
+          maVatTu: String(r.maVatTu || '').trim(),
+          tenVatTu: String(r.tenVatTu || '').trim(),
+          dvt: String(r.dvt || '').trim(),
+          thongSoKyThuat: String(r.thongSoKyThuat || '').trim(),
+          received: 0,
+          issued: 0
+        }
+      } else {
+        // Fallbacks for empty info
+        if (!groups[sap].maVatTu && r.maVatTu) groups[sap].maVatTu = String(r.maVatTu).trim()
+        if (!groups[sap].tenVatTu && r.tenVatTu) groups[sap].tenVatTu = String(r.tenVatTu).trim()
+        if (!groups[sap].dvt && r.dvt) groups[sap].dvt = String(r.dvt).trim()
+        if (!groups[sap].thongSoKyThuat && r.thongSoKyThuat) groups[sap].thongSoKyThuat = String(r.thongSoKyThuat).trim()
+      }
+
+      // Add to received/issued
+      if (localProject) {
+        if (isNhan) {
+          // Receiving unit: add to received
+          groups[sap].received += parseVal(r.khoiLuongNhap) || parseVal(r.khoiLuongXuat)
+        }
+        if (isGiao) {
+          // Issuing/delivery unit: add to issued
+          groups[sap].issued += parseVal(r.khoiLuongXuat) || parseVal(r.khoiLuongNhap)
+        }
+      } else {
+        // Global aggregation
+        groups[sap].received += parseVal(r.khoiLuongNhap)
+        groups[sap].issued += parseVal(r.khoiLuongXuat)
+      }
+    })
+
+    // Map groups to list and compute stock/inventory
+    const result = Object.values(groups).map(g => {
+      const stock = g.received - g.issued
+      return {
+        ...g,
+        stock
+      }
+    })
+
+    // Filter by search term
+    const s = searchTerm.trim().toLowerCase()
+    const filtered = s
+      ? result.filter(item => 
+          item.maSAP.toLowerCase().includes(s) ||
+          item.maVatTu.toLowerCase().includes(s) ||
+          item.tenVatTu.toLowerCase().includes(s) ||
+          item.thongSoKyThuat.toLowerCase().includes(s)
+        )
+      : result
+
+    // Sort
+    filtered.sort((a, b) => {
+      let valA, valB
+      if (sortField === 'maSAP') {
+        valA = a.maSAP.toLowerCase()
+        valB = b.maSAP.toLowerCase()
+      } else if (sortField === 'received') {
+        valA = a.received
+        valB = b.received
+      } else if (sortField === 'issued') {
+        valA = a.issued
+        valB = b.issued
+      } else if (sortField === 'stock') {
+        valA = a.stock
+        valB = b.stock
+      }
+
+      if (valA < valB) return sortDirection === 'asc' ? -1 : 1
+      if (valA > valB) return sortDirection === 'asc' ? 1 : -1
+      return 0
+    })
+
+    return filtered
+  }, [chungRows, giaoRows, nhanRows, localProject, searchTerm, statusFilter, sortField, sortDirection])
+
+  // Metrics
+  const metrics = React.useMemo(() => {
+    let totalReceived = 0
+    let totalIssued = 0
+    let totalStock = 0
+    reportData.forEach(item => {
+      totalReceived += item.received
+      totalIssued += item.issued
+      totalStock += item.stock
+    })
+    return {
+      totalReceived,
+      totalIssued,
+      totalStock,
+      totalItems: reportData.length
+    }
+  }, [reportData])
+
+  // Reset pagination on search/filter/project change
+  React.useEffect(() => {
+    setCurrentPage(1)
+  }, [localProject, searchTerm, statusFilter])
+
+  // Pagination calculation
+  const totalPages = Math.ceil(reportData.length / pageSize) || 1
+  const paginatedData = React.useMemo(() => {
+    const startIndex = (currentPage - 1) * pageSize
+    return reportData.slice(startIndex, startIndex + pageSize)
+  }, [reportData, currentPage, pageSize])
+
+  // Excel export using xlsx-js-style
+  const handleExportExcel = () => {
+    if (reportData.length === 0) return
+
+    const wb = XLSXStyle.utils.book_new()
+    const ws = {}
+
+    // Set columns widths
+    const cols = [
+      { key: 'STT', label: 'STT', width: 60 },
+      { key: 'maSAP', label: 'Mã SAP', width: 120 },
+      { key: 'maVatTu', label: 'Mã vật tư', width: 120 },
+      { key: 'tenVatTu', label: 'Tên vật tư', width: 250 },
+      { key: 'dvt', label: 'ĐVT', width: 80 },
+      { key: 'thongSoKyThuat', label: 'Thông số kỹ thuật', width: 200 },
+      { key: 'received', label: 'Khối lượng nhận', width: 150 },
+      { key: 'issued', label: 'Khối lượng xuất', width: 150 },
+      { key: 'stock', label: 'Khối lượng tồn kho', width: 150 }
+    ]
+    ws['!cols'] = cols.map(c => ({ wpx: c.width }))
+
+    // Title Row
+    ws['A1'] = {
+      v: `BÁO CÁO XUẤT NHẬP TỒN VẬT TƯ THIẾT BỊ`,
+      t: 's',
+      s: {
+        font: { name: 'Segoe UI', sz: 14, bold: true, color: { rgb: '0A3D73' } },
+        alignment: { horizontal: 'left', vertical: 'center' }
+      }
+    }
+    ws['A2'] = {
+      v: `Kho / Dự án: ${localProject || 'Tất cả'}`,
+      t: 's',
+      s: {
+        font: { name: 'Segoe UI', sz: 11, italic: true },
+        alignment: { horizontal: 'left', vertical: 'center' }
+      }
+    }
+    ws['A3'] = {
+      v: `Trạng thái dữ liệu: ${statusFilter === 'approved_only' ? 'Chỉ tính đơn đã phê duyệt' : 'Tính tất cả các đơn'}`,
+      t: 's',
+      s: {
+        font: { name: 'Segoe UI', sz: 10, italic: true },
+        alignment: { horizontal: 'left', vertical: 'center' }
+      }
+    }
+
+    // Header starting from row 5
+    let rowIdx = 5
+    cols.forEach((col, colIdx) => {
+      const cellRef = `${String.fromCharCode(65 + colIdx)}${rowIdx}`
+      ws[cellRef] = {
+        v: col.label,
+        t: 's',
+        s: {
+          fill: { patternType: 'solid', fgColor: { rgb: '0F58A7' } },
+          font: { name: 'Segoe UI', sz: 10, bold: true, color: { rgb: 'FFFFFF' } },
+          alignment: { horizontal: 'center', vertical: 'center' },
+          border: {
+            top: { style: 'thin', color: { rgb: '0A3D73' } },
+            bottom: { style: 'medium', color: { rgb: '0A3D73' } },
+            left: { style: 'thin', color: { rgb: '0A3D73' } },
+            right: { style: 'thin', color: { rgb: '0A3D73' } }
+          }
+        }
+      }
+    })
+
+    // Write Data rows
+    reportData.forEach((item, idx) => {
+      rowIdx++
+      const cells = [
+        idx + 1,
+        item.maSAP,
+        item.maVatTu,
+        item.tenVatTu,
+        item.dvt,
+        item.thongSoKyThuat,
+        item.received,
+        item.issued,
+        item.stock
+      ]
+
+      cells.forEach((val, colIdx) => {
+        const cellRef = `${String.fromCharCode(65 + colIdx)}${rowIdx}`
+        const isNum = typeof val === 'number'
+
+        ws[cellRef] = {
+          v: val,
+          t: isNum ? 'n' : 's',
+          s: {
+            font: { name: 'Segoe UI', sz: 9.5 },
+            alignment: { 
+              horizontal: colIdx === 3 || colIdx === 5 ? 'left' : (isNum ? 'right' : 'center'), 
+              vertical: 'center' 
+            },
+            border: {
+              top: { style: 'thin', color: { rgb: 'E2E8F0' } },
+              bottom: { style: 'thin', color: { rgb: 'E2E8F0' } },
+              left: { style: 'thin', color: { rgb: 'E2E8F0' } },
+              right: { style: 'thin', color: { rgb: 'E2E8F0' } }
+            }
+          }
+        }
+
+        // Apply number format
+        if (isNum && colIdx >= 6) {
+          ws[cellRef].z = '#,##0.000'
+        }
+      })
+    })
+
+    // Total row
+    rowIdx++
+    const totalLabelCell = `A${rowIdx}`
+    ws[totalLabelCell] = {
+      v: 'TỔNG CỘNG',
+      t: 's',
+      s: {
+        font: { name: 'Segoe UI', sz: 10, bold: true },
+        alignment: { horizontal: 'center', vertical: 'center' },
+        fill: { patternType: 'solid', fgColor: { rgb: 'F1F5F9' } },
+        border: {
+          top: { style: 'medium', color: { rgb: '0A3D73' } },
+          bottom: { style: 'medium', color: { rgb: '0A3D73' } },
+          left: { style: 'thin', color: { rgb: 'E2E8F0' } },
+          right: { style: 'thin', color: { rgb: 'E2E8F0' } }
+        }
+      }
+    }
+
+    // Merge cells for 'TỔNG CỘNG' label (columns A to F)
+    ws['!merges'] = [
+      { s: { r: rowIdx - 1, c: 0 }, e: { r: rowIdx - 1, c: 5 } }
+    ]
+
+    // Style merged empty cells so they have the border/fill
+    for (let c = 1; c <= 5; c++) {
+      const cellRef = `${String.fromCharCode(65 + c)}${rowIdx}`
+      ws[cellRef] = {
+        v: '',
+        t: 's',
+        s: {
+          fill: { patternType: 'solid', fgColor: { rgb: 'F1F5F9' } },
+          border: {
+            top: { style: 'medium', color: { rgb: '0A3D73' } },
+            bottom: { style: 'medium', color: { rgb: '0A3D73' } },
+            left: { style: 'thin', color: { rgb: 'E2E8F0' } },
+            right: { style: 'thin', color: { rgb: 'E2E8F0' } }
+          }
+        }
+      }
+    }
+
+    // Sum cells for G, H, I
+    const totalReceivedCell = `${String.fromCharCode(65 + 6)}${rowIdx}`
+    const totalIssuedCell = `${String.fromCharCode(65 + 7)}${rowIdx}`
+    const totalStockCell = `${String.fromCharCode(65 + 8)}${rowIdx}`
+
+    ws[totalReceivedCell] = {
+      v: metrics.totalReceived,
+      t: 'n',
+      z: '#,##0.000',
+      s: {
+        font: { name: 'Segoe UI', sz: 10, bold: true },
+        alignment: { horizontal: 'right', vertical: 'center' },
+        fill: { patternType: 'solid', fgColor: { rgb: 'F1F5F9' } },
+        border: {
+          top: { style: 'medium', color: { rgb: '0A3D73' } },
+          bottom: { style: 'medium', color: { rgb: '0A3D73' } },
+          left: { style: 'thin', color: { rgb: 'E2E8F0' } },
+          right: { style: 'thin', color: { rgb: 'E2E8F0' } }
+        }
+      }
+    }
+
+    ws[totalIssuedCell] = {
+      v: metrics.totalIssued,
+      t: 'n',
+      z: '#,##0.000',
+      s: {
+        font: { name: 'Segoe UI', sz: 10, bold: true },
+        alignment: { horizontal: 'right', vertical: 'center' },
+        fill: { patternType: 'solid', fgColor: { rgb: 'F1F5F9' } },
+        border: {
+          top: { style: 'medium', color: { rgb: '0A3D73' } },
+          bottom: { style: 'medium', color: { rgb: '0A3D73' } },
+          left: { style: 'thin', color: { rgb: 'E2E8F0' } },
+          right: { style: 'thin', color: { rgb: 'E2E8F0' } }
+        }
+      }
+    }
+
+    ws[totalStockCell] = {
+      v: metrics.totalStock,
+      t: 'n',
+      z: '#,##0.000',
+      s: {
+        font: { name: 'Segoe UI', sz: 10, bold: true },
+        alignment: { horizontal: 'right', vertical: 'center' },
+        fill: { patternType: 'solid', fgColor: { rgb: 'F1F5F9' } },
+        border: {
+          top: { style: 'medium', color: { rgb: '0A3D73' } },
+          bottom: { style: 'medium', color: { rgb: '0A3D73' } },
+          left: { style: 'thin', color: { rgb: 'E2E8F0' } },
+          right: { style: 'thin', color: { rgb: 'E2E8F0' } }
+        }
+      }
+    }
+
+    // Set sheet range bounds
+    ws['!ref'] = `A1:I${rowIdx}`
+
+    XLSXStyle.utils.book_append_sheet(wb, ws, "Xuat_Nhap_Ton")
+    const wbout = XLSXStyle.write(wb, { bookType: 'xlsx', type: 'binary' })
+
+    const s2ab = (s) => {
+      const buf = new ArrayBuffer(s.length)
+      const view = new Uint8Array(buf)
+      for (let i = 0; i < s.length; i++) view[i] = s.charCodeAt(i) & 0xFF
+      return buf
+    }
+
+    const blob = new Blob([s2ab(wbout)], { type: 'application/octet-stream' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `Bao_Cao_Xuat_Nhap_Ton_${(localProject || 'all').replace(/\s+/g, '_')}.xlsx`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+  }
+
+  const handleWarehouseChange = (e) => {
+    const val = e.target.value
+    setLocalProject(val)
+    setSelectedProject(val) // Sync to global selectedProject
+  }
+
+  const toggleSort = (field) => {
+    if (sortField === field) {
+      setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc')
+    } else {
+      setSortField(field)
+      setSortDirection('asc')
+    }
+  }
+
+  const btnBase = {
+    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+    height: 30, minWidth: 30, padding: '0 8px',
+    border: '1px solid #e2e8f0', borderRadius: 6,
+    fontSize: 13, fontWeight: 500, cursor: 'pointer',
+    background: '#fff', color: '#374151', transition: 'all 0.15s',
+    userSelect: 'none'
+  }
+  const btnActive = { ...btnBase, background: 'var(--primary)', color: '#fff', borderColor: 'var(--primary)', fontWeight: 700 }
+  const btnDisabled = { ...btnBase, opacity: 0.4, cursor: 'not-allowed', pointerEvents: 'none' }
+
+  const metricsCards = [
+    {
+      label: 'Tổng khối lượng nhận',
+      value: metrics.totalReceived.toLocaleString('vi-VN', { maximumFractionDigits: 3 }),
+      color: '#10b981',
+      bg: '#ecfdf5',
+      border: '#a7f3d0',
+      icon: <Truck size={18} />
+    },
+    {
+      label: 'Tổng khối lượng xuất',
+      value: metrics.totalIssued.toLocaleString('vi-VN', { maximumFractionDigits: 3 }),
+      color: '#f97316',
+      bg: '#fff7ed',
+      border: '#fed7aa',
+      icon: <Download size={18} style={{ transform: 'rotate(180deg)' }} />
+    },
+    {
+      label: 'Khối lượng tồn kho',
+      value: metrics.totalStock.toLocaleString('vi-VN', { maximumFractionDigits: 3 }),
+      color: metrics.totalStock >= 0 ? 'var(--primary)' : '#ef4444',
+      bg: metrics.totalStock >= 0 ? 'var(--primary-light)' : '#fef2f2',
+      border: metrics.totalStock >= 0 ? 'var(--border)' : '#fca5a5',
+      icon: <Database size={18} />
+    },
+    {
+      label: 'Tổng số mặt hàng',
+      value: metrics.totalItems.toLocaleString('vi-VN'),
+      color: '#8b5cf6',
+      bg: '#f5f3ff',
+      border: '#ddd6fe',
+      icon: <PackageCheck size={18} />
+    }
+  ]
+
+  return (
+    <div id="baocao-xuat-nhap-ton-root" style={{ padding: '16px 24px 24px 24px', height: '100%', display: 'flex', flexDirection: 'column', boxSizing: 'border-box', overflow: 'hidden' }}>
+      {/* Title Header Card */}
+      <div style={{
+        background: '#ffffff',
+        borderRadius: 8,
+        border: '1px solid var(--border)',
+        padding: '14px 20px',
+        marginBottom: 12,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        boxShadow: 'var(--shadow-sm)',
+        flexShrink: 0
+      }}>
+        <div>
+          <h2 style={{ fontSize: 18, fontWeight: 800, color: 'var(--text)', margin: 0 }}>
+            Báo cáo xuất nhập tồn vật tư thiết bị
+          </h2>
+          <p style={{ color: 'var(--text-muted)', fontSize: 13, margin: '4px 0 0 0' }}>
+            Báo cáo chi tiết theo Mã SAP về khối lượng nhập, khối lượng xuất và tồn kho tương ứng của mỗi dự án.
+          </p>
+        </div>
+        {reportData.length > 0 && (
+          <button
+            id="btn-export-inventory"
+            onClick={handleExportExcel}
+            className="btn btn-success"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              height: 36,
+              padding: '0 16px',
+              borderRadius: 6,
+              fontWeight: 600,
+              fontSize: '13px',
+              background: '#10b981',
+              color: '#ffffff',
+              border: 'none',
+              cursor: 'pointer',
+              boxShadow: '0 2px 4px rgba(16, 185, 129, 0.2)'
+            }}
+          >
+            <Download size={14} />
+            <span>Xuất Excel</span>
+          </button>
+        )}
+      </div>
+
+      {/* Filter and selector row */}
+      <div style={{
+        background: '#ffffff',
+        borderRadius: 8,
+        border: '1px solid var(--border)',
+        padding: '12px 16px',
+        marginBottom: 12,
+        display: 'flex',
+        gap: 12,
+        flexWrap: 'wrap',
+        alignItems: 'center',
+        boxShadow: 'var(--shadow-sm)',
+        flexShrink: 0
+      }}>
+        {/* Selector */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 280 }}>
+          <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+            Kho / Dự án:
+          </span>
+          <select
+            id="select-inventory-project"
+            value={localProject}
+            onChange={handleWarehouseChange}
+            className="input"
+            style={{ height: 38, flex: 1, padding: '0 10px', fontSize: 13, minWidth: 180, border: '1px solid #cbd5e1' }}
+          >
+            <option value="">-- Tất cả Kho / Dự án --</option>
+            {uniqueWarehouses.map(w => (
+              <option key={w} value={w}>{w}</option>
+            ))}
+          </select>
+        </div>
+
+        {/* Search */}
+        <div style={{ position: 'relative', flex: 1, minWidth: 200 }}>
+          <Search size={14} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-light)' }} />
+          <input
+            id="input-inventory-search"
+            type="text"
+            className="input"
+            style={{ paddingLeft: 30, width: '100%', height: 38, fontSize: 13, border: '1px solid #cbd5e1' }}
+            placeholder="Tìm theo Mã SAP, Mã vật tư, Tên vật tư..."
+            value={searchTerm}
+            onChange={e => setSearchTerm(e.target.value)}
+          />
+        </div>
+
+        {/* Status Filter Toggle */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+          <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-muted)' }}>Trạng thái:</span>
+          <div style={{ display: 'flex', background: 'var(--surface2)', borderRadius: 8, padding: 2, border: '1px solid var(--border)', height: 38, alignItems: 'center' }}>
+            <button
+              id="btn-inventory-status-approved"
+              onClick={() => setStatusFilter('approved_only')}
+              style={{
+                padding: '0 12px',
+                height: '100%',
+                borderRadius: 6,
+                fontSize: '12.5px',
+                fontWeight: 600,
+                transition: 'all 0.1s',
+                background: statusFilter === 'approved_only' ? '#ffffff' : 'transparent',
+                color: statusFilter === 'approved_only' ? 'var(--primary)' : 'var(--text-muted)',
+                border: 'none',
+                boxShadow: statusFilter === 'approved_only' ? 'var(--shadow-sm)' : 'none',
+                cursor: 'pointer'
+              }}
+            >
+              Chỉ Đã phê duyệt
+            </button>
+            <button
+              id="btn-inventory-status-all"
+              onClick={() => setStatusFilter('all')}
+              style={{
+                padding: '0 12px',
+                height: '100%',
+                borderRadius: 6,
+                fontSize: '12.5px',
+                fontWeight: 600,
+                transition: 'all 0.1s',
+                background: statusFilter === 'all' ? '#ffffff' : 'transparent',
+                color: statusFilter === 'all' ? 'var(--primary)' : 'var(--text-muted)',
+                border: 'none',
+                boxShadow: statusFilter === 'all' ? 'var(--shadow-sm)' : 'none',
+                cursor: 'pointer'
+              }}
+            >
+              Tất cả
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Summary Metrics Cards */}
+      <div style={{ display: 'flex', gap: 12, marginBottom: 12, flexWrap: 'wrap', flexShrink: 0 }}>
+        {metricsCards.map(c => (
+          <div key={c.label} style={{
+            background: c.bg,
+            border: `1px solid ${c.border}`,
+            borderRadius: 8,
+            padding: '10px 16px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            flex: '1 1 200px',
+            minWidth: 180,
+            boxShadow: 'var(--shadow-sm)'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+              <span style={{ color: 'var(--text-muted)', fontSize: 13, fontWeight: 500 }}>{c.label}:</span>
+              <span style={{ color: c.color, fontSize: 16, fontWeight: 700, letterSpacing: '-0.01em' }}>{c.value}</span>
+            </div>
+            <div style={{
+              width: 32, height: 32, borderRadius: 8,
+              background: '#ffffff', color: c.color,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              border: `1px solid ${c.border}`,
+              flexShrink: 0
+            }}>
+              {c.icon}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Table container / main body */}
+      {reportData.length === 0 ? (
+        <div style={{ flex: 1, background: '#ffffff', border: '1px solid var(--border)', borderRadius: 8, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 48, boxShadow: 'var(--shadow-sm)' }}>
+          <div style={{ width: 56, height: 56, borderRadius: 28, background: '#fef2f2', color: '#ef4444', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
+            <AlertCircle size={28} />
+          </div>
+          <h3 style={{ fontSize: 16, fontWeight: 700, color: 'var(--text)', margin: '0 0 8px 0' }}>Không có dữ liệu phát sinh</h3>
+          <p style={{ color: 'var(--text-muted)', fontSize: 13.5, margin: 0, maxWidth: 420, textAlign: 'center', lineHeight: '1.5' }}>
+            Không tìm thấy bản ghi giao nhận nào{localProject ? ` liên quan đến kho "${localProject}"` : ''}{statusFilter === 'approved_only' ? ' ở trạng thái đã phê duyệt' : ''} trong dữ liệu Đơn chung hiện tại.
+          </p>
+        </div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
+          <div className="table-wrap" style={{ flex: 1, overflowX: 'hidden', overflowY: 'auto' }}>
+            <table>
+              <thead>
+                <tr>
+                  <th style={{ width: 50, minWidth: 50, maxWidth: 50, textAlign: 'center', verticalAlign: 'middle', fontSize: '12px', padding: '8px 10px' }}>
+                    STT
+                  </th>
+                  <th 
+                    onClick={() => toggleSort('maSAP')}
+                    style={{ width: 130, minWidth: 130, cursor: 'pointer', fontSize: '12px', padding: '8px 10px', textAlign: 'left', verticalAlign: 'middle' }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                      <span>Mã SAP</span>
+                      <ArrowUpDown size={12} style={{ opacity: 0.7 }} />
+                    </div>
+                  </th>
+                  <th style={{ width: 130, minWidth: 130, fontSize: '12px', padding: '8px 10px', textAlign: 'left', verticalAlign: 'middle' }}>
+                    Mã vật tư
+                  </th>
+                  <th style={{ minWidth: 200, fontSize: '12px', padding: '8px 10px', textAlign: 'left', verticalAlign: 'middle' }}>
+                    Tên vật tư
+                  </th>
+                  <th style={{ width: 80, minWidth: 80, textAlign: 'center', fontSize: '12px', padding: '8px 10px', verticalAlign: 'middle' }}>
+                    ĐVT
+                  </th>
+                  <th style={{ minWidth: 150, fontSize: '12px', padding: '8px 10px', textAlign: 'left', verticalAlign: 'middle' }}>
+                    Thông số kỹ thuật
+                  </th>
+                  <th 
+                    onClick={() => toggleSort('received')}
+                    style={{ width: 150, minWidth: 150, cursor: 'pointer', fontSize: '12px', padding: '8px 10px', textAlign: 'right', verticalAlign: 'middle' }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 4, justifyContent: 'flex-end' }}>
+                      <span>Khối lượng nhận</span>
+                      <ArrowUpDown size={12} style={{ opacity: 0.7 }} />
+                    </div>
+                  </th>
+                  <th 
+                    onClick={() => toggleSort('issued')}
+                    style={{ width: 150, minWidth: 150, cursor: 'pointer', fontSize: '12px', padding: '8px 10px', textAlign: 'right', verticalAlign: 'middle' }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 4, justifyContent: 'flex-end' }}>
+                      <span>Khối lượng xuất</span>
+                      <ArrowUpDown size={12} style={{ opacity: 0.7 }} />
+                    </div>
+                  </th>
+                  <th 
+                    onClick={() => toggleSort('stock')}
+                    style={{ width: 160, minWidth: 160, cursor: 'pointer', fontSize: '12px', padding: '8px 10px', textAlign: 'right', verticalAlign: 'middle' }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 4, justifyContent: 'flex-end' }}>
+                      <span>Tồn kho</span>
+                      <ArrowUpDown size={12} style={{ opacity: 0.7 }} />
+                    </div>
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {paginatedData.map((item, index) => {
+                  const stt = (currentPage - 1) * pageSize + index + 1
+                  const isNegative = item.stock < 0
+                  const isZero = item.stock === 0
+
+                  return (
+                    <tr key={item.maSAP}>
+                      <td style={{ width: 50, minWidth: 50, maxWidth: 50, textAlign: 'center', fontSize: '12px', color: 'var(--text-muted)', padding: '6px 10px' }}>
+                        {stt}
+                      </td>
+                      <td style={{ width: 130, minWidth: 130, fontSize: '13px', fontWeight: 700, fontFamily: 'monospace', color: 'var(--text)', padding: '6px 10px' }}>
+                        {item.maSAP}
+                      </td>
+                      <td style={{ width: 130, minWidth: 130, fontSize: '13px', fontFamily: 'monospace', color: 'var(--text-muted)', padding: '6px 10px' }}>
+                        {item.maVatTu || '—'}
+                      </td>
+                      <td style={{ minWidth: 200, fontSize: '13px', fontWeight: 600, color: 'var(--text)', whiteSpace: 'normal', wordBreak: 'break-word', padding: '6px 10px' }}>
+                        {item.tenVatTu || '—'}
+                      </td>
+                      <td style={{ width: 80, minWidth: 80, textAlign: 'center', padding: '6px 10px' }}>
+                        <span className="badge badge-gray" style={{ fontSize: '11px', padding: '2px 6px' }}>{item.dvt || '—'}</span>
+                      </td>
+                      <td style={{ minWidth: 150, fontSize: '13px', color: 'var(--text-muted)', whiteSpace: 'normal', wordBreak: 'break-word', padding: '6px 10px' }}>
+                        {item.thongSoKyThuat || '—'}
+                      </td>
+                      <td style={{ width: 150, minWidth: 150, textAlign: 'right', fontSize: '13px', fontWeight: 700, color: '#10b981', padding: '6px 10px' }}>
+                        {item.received > 0 ? item.received.toLocaleString('vi-VN', { maximumFractionDigits: 3 }) : '0'}
+                      </td>
+                      <td style={{ width: 150, minWidth: 150, textAlign: 'right', fontSize: '13px', fontWeight: 700, color: '#f97316', padding: '6px 10px' }}>
+                        {item.issued > 0 ? item.issued.toLocaleString('vi-VN', { maximumFractionDigits: 3 }) : '0'}
+                      </td>
+                      <td style={{
+                        width: 160, minWidth: 160, textAlign: 'right', fontSize: '13px', fontWeight: 800,
+                        color: isNegative ? '#ef4444' : (isZero ? 'var(--text-muted)' : 'var(--primary)'),
+                        background: isNegative ? '#fef2f2' : (isZero ? 'transparent' : 'var(--primary-light)'),
+                        padding: '6px 10px'
+                      }}>
+                        {item.stock.toLocaleString('vi-VN', { maximumFractionDigits: 3 })}
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Pagination Footer */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: '12px 16px',
+            background: '#ffffff',
+            border: '1px solid var(--border)',
+            borderTop: 'none',
+            borderRadius: '0 0 8px 8px',
+            flexShrink: 0,
+            boxShadow: 'var(--shadow-sm)'
+          }}>
+            <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>
+              Hiển thị từ <strong>{Math.min(reportData.length, (currentPage - 1) * pageSize + 1)}</strong> đến{' '}
+              <strong>{Math.min(reportData.length, currentPage * pageSize)}</strong> trong tổng số{' '}
+              <strong>{reportData.length.toLocaleString()}</strong> mặt hàng
+            </div>
+
+            {totalPages > 1 && (
+              <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                <button
+                  disabled={currentPage === 1}
+                  onClick={() => setCurrentPage(1)}
+                  style={currentPage === 1 ? btnDisabled : btnBase}
+                >
+                  «
+                </button>
+                <button
+                  disabled={currentPage === 1}
+                  onClick={() => setCurrentPage(prev => prev - 1)}
+                  style={currentPage === 1 ? btnDisabled : btnBase}
+                >
+                  ‹
+                </button>
+                <span style={{ fontSize: 13, color: 'var(--text)', fontWeight: 500, padding: '0 4px' }}>
+                  Trang <strong>{currentPage}</strong> / {totalPages}
+                </span>
+                <button
+                  disabled={currentPage === totalPages}
+                  onClick={() => setCurrentPage(prev => prev + 1)}
+                  style={currentPage === totalPages ? btnDisabled : btnBase}
+                >
+                  ›
+                </button>
+                <button
+                  disabled={currentPage === totalPages}
+                  onClick={() => setCurrentPage(totalPages)}
+                  style={currentPage === totalPages ? btnDisabled : btnBase}
+                >
+                  »
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ─── Summary Compilation Tab ──────────────────────────────────────────────────
 function SummaryCompilationTab({ giaoRows, nhanRows, configs = [], selectedProject, allProjects }) {
   const [selectedConfigId, setSelectedConfigId] = React.useState(null)
@@ -4396,7 +5547,17 @@ function SummaryCompilationTab({ giaoRows, nhanRows, configs = [], selectedProje
       )
     }
 
-    return r
+    // Sort descending by date (newest/most recent first)
+    const sorted = [...r].sort((a, b) => {
+      const dateA = parseRowDate(a.ngayXuatNhap)
+      const dateB = parseRowDate(b.ngayXuatNhap)
+      if (!dateA && !dateB) return 0
+      if (!dateA) return 1
+      if (!dateB) return -1
+      return dateB.getTime() - dateA.getTime()
+    })
+
+    return sorted
   }, [compiledRows, searchTerm, groupFilter, sourceFilter])
 
   // Stats calculation
@@ -5202,8 +6363,27 @@ function PlaceholderTab({ icon, title, desc }) {
   )
 }
 
+// Helper functions to check duplicate rows more accurately (avoiding flagging separate items in the same warehouse receipt/delivery as duplicates)
+function cleanNumStr(val) {
+  if (val === null || val === undefined) return '0'
+  const str = String(val).trim()
+  if (!str) return '0'
+  const cleaned = str.replace(/[^\d.,-]/g, '').replace(',', '.')
+  const num = parseFloat(cleaned)
+  return isNaN(num) ? '0' : String(num)
+}
+
+function getRowUniqueKey(r) {
+  const ngay = String(r.ngayXuatNhap || '').trim().toLowerCase()
+  const maSAP = String(r.maSAP || '').trim().toLowerCase()
+  const nhap = String(r.maDonNhapKho || '').trim().toLowerCase()
+  const xuat = String(r.maDonXuatKho || '').trim().toLowerCase()
+  
+  return `${nhap || '_'}|${xuat || '_'}|${ngay}|${maSAP}`
+}
+
 // ─── Preview Import Modal ─────────────────────────────────────────────────────
-function PreviewImportModal({ isOpen, onClose, onConfirm, rows, fileName, type, selectedProject, isAppend }) {
+function PreviewImportModal({ isOpen, onClose, onConfirm, rows, fileName, type, selectedProject, isAppend, existingRows }) {
   // Nhấn Esc để đóng modal
   React.useEffect(() => {
     if (!isOpen) return
@@ -5214,17 +6394,28 @@ function PreviewImportModal({ isOpen, onClose, onConfirm, rows, fileName, type, 
 
   if (!isOpen) return null
   const label = type === 'giao' ? 'Đơn Giao' : 'Đơn Nhận'
-  const previewRows = rows.slice(0, 10)
 
   const unitKey = type === 'giao' ? 'donViGiao' : 'donViNhan'
   const unitLabel = type === 'giao' ? 'Đơn vị giao' : 'Đơn vị nhận'
 
+  // Lọc các bản ghi đã có sẵn trong cơ sở dữ liệu để tìm trùng lặp bằng key định danh dòng
+  const existingRowKeys = new Set(
+    (existingRows || []).map(r => getRowUniqueKey(r))
+  )
+
   // Lọc các dòng có Đơn vị giao/nhận trùng khớp với Kho dự án đang chọn (trùng khớp hoàn toàn, không phân biệt chữ hoa thường)
   const matchedByUnit = selectedProject
     ? rows.filter(r => {
-        const unit = String(r[unitKey] || '').trim().toLowerCase()
-        const proj = selectedProject.trim().toLowerCase()
-        return unit === proj
+        if (type === 'chung') {
+          const unitGiao = String(r.donViGiao || '').trim().toLowerCase()
+          const unitNhan = String(r.donViNhan || '').trim().toLowerCase()
+          const proj = selectedProject.trim().toLowerCase()
+          return unitGiao === proj || unitNhan === proj
+        } else {
+          const unit = String(r[unitKey] || '').trim().toLowerCase()
+          const proj = selectedProject.trim().toLowerCase()
+          return unit === proj
+        }
       })
     : rows
 
@@ -5232,15 +6423,23 @@ function PreviewImportModal({ isOpen, onClose, onConfirm, rows, fileName, type, 
   const mismatchCount = rows.length - matchedByUnit.length
 
   // Lấy các đơn vị trong file KHÔNG khớp (để thông báo)
-  const uniqueUnits = [...new Set(rows.map(r => String(r[unitKey] || '').trim()).filter(Boolean))]
+  const uniqueUnits = [...new Set(rows.map(r => String(r[unitKey] || r.donViGiao || r.donViNhan || '').trim()).filter(Boolean))]
   const mismatchUnits = uniqueUnits.filter(u => {
     const proj = (selectedProject || '').trim().toLowerCase()
     return u.toLowerCase() !== proj
   })
 
-  // Trong số các dòng khớp đơn vị, chỉ lấy dòng Đã phê duyệt
-  const approvedRows = matchedByUnit.filter(r => isApprovedStatus(r.trangThai))
-  const skippedStatusCount = matchedByUnit.length - approvedRows.length
+  // Trong số các dòng khớp đơn vị, bỏ qua lọc theo Đã phê duyệt (cứ thế cho phép tải lên bất kể trạng thái)
+  const approvedRows = matchedByUnit
+  const skippedStatusCount = 0
+
+  // Người dùng yêu cầu bỏ qua hoàn toàn logic kiểm tra trùng lặp dòng, cho phép lưu hết
+  const finalApprovedRows = approvedRows
+  const duplicateRows = []
+  const duplicateCount = 0
+
+  // Chỉ hiển thị 10 dòng đầu của dữ liệu sẽ thực sự được lưu (hoặc fallback nếu trống)
+  const previewRows = finalApprovedRows.length > 0 ? finalApprovedRows.slice(0, 10) : rows.slice(0, 10)
 
   return (
     <div style={{
@@ -5271,7 +6470,7 @@ function PreviewImportModal({ isOpen, onClose, onConfirm, rows, fileName, type, 
               </div>
               <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 2 }}>
                 {fileName} · {rows.length.toLocaleString()} dòng dữ liệu
-                {rows.length > 10 && <span style={{ color: '#f59e0b', marginLeft: 4 }}>(hiển thị 10 dòng đầu)</span>}
+                {finalApprovedRows.length > 10 && <span style={{ color: '#f59e0b', marginLeft: 4 }}>(hiển thị 10 dòng đầu)</span>}
               </div>
             </div>
           </div>
@@ -5309,10 +6508,10 @@ function PreviewImportModal({ isOpen, onClose, onConfirm, rows, fileName, type, 
         {/* Warning notification banner for matching rules */}
         {mismatchCount > 0 && (
           <div style={{
-            background: approvedRows.length === 0 ? '#fef2f2' : '#fffbeb',
-            borderBottom: approvedRows.length === 0 ? '1px solid #fee2e2' : '1px solid #fef3c7',
+            background: finalApprovedRows.length === 0 ? '#fef2f2' : '#fffbeb',
+            borderBottom: finalApprovedRows.length === 0 ? '1px solid #fee2e2' : '1px solid #fef3c7',
             padding: '12px 24px',
-            color: approvedRows.length === 0 ? '#991b1b' : '#92400e',
+            color: finalApprovedRows.length === 0 ? '#991b1b' : '#92400e',
             fontSize: 13,
             display: 'flex',
             alignItems: 'flex-start',
@@ -5320,12 +6519,12 @@ function PreviewImportModal({ isOpen, onClose, onConfirm, rows, fileName, type, 
             flexShrink: 0,
             textAlign: 'left'
           }}>
-            <AlertCircle size={18} color={approvedRows.length === 0 ? '#dc2626' : '#d97706'} style={{ flexShrink: 0, marginTop: '2px' }} />
+            <AlertCircle size={18} color={finalApprovedRows.length === 0 ? '#dc2626' : '#d97706'} style={{ flexShrink: 0, marginTop: '2px' }} />
             <div style={{ flex: 1, lineHeight: 1.5 }}>
-              {approvedRows.length === 0 ? (
+              {finalApprovedRows.length === 0 ? (
                 <span>
                   <strong style={{ fontSize: '14px', display: 'block', marginBottom: '4px', color: '#b91c1c' }}>⚠️ KIỂM TRA LỖI KHỚP DÀNH CHO KHO DỰ ÁN</strong>
-                  Không có bất kỳ dòng dữ liệu nào trong tệp tải lên có cột <strong>{unitLabel}</strong> khớp hoàn toàn với Kho dự án đã chọn <strong>"{selectedProject}"</strong>. Hệ thống sẽ <strong>bỏ qua toàn bộ dữ liệu</strong> và không thể lưu tệp này.
+                  Không có bất kỳ dòng dữ liệu hợp lệ nào trong tệp tải lên khớp với Kho dự án đã chọn <strong>"{selectedProject}"</strong> hoặc chưa được duyệt hoặc bị trùng lặp. Hệ thống sẽ <strong>bỏ qua toàn bộ dữ liệu</strong> và không thể lưu tệp này.
                   {uniqueUnits.length > 0 && (
                     <div style={{ marginTop: 8, padding: '8px 12px', background: '#fff', borderRadius: '6px', border: '1px solid #fee2e2', fontWeight: 500, color: '#b91c1c' }}>
                       Các giá trị {unitLabel} được tìm thấy trong tệp hiện tại: <strong>{uniqueUnits.join(', ')}</strong>
@@ -5334,10 +6533,34 @@ function PreviewImportModal({ isOpen, onClose, onConfirm, rows, fileName, type, 
                 </span>
               ) : (
                 <span>
-                  <strong style={{ fontSize: '14px', display: 'block', marginBottom: '4px' }}>⚠️ LƯU Ý BỎ QUA DỮ LIỆU KHÔNG TRÙNG KHỚP</strong>
-                  Phát hiện <strong>{mismatchCount.toLocaleString()} dòng</strong> có cột <strong>{unitLabel}</strong> không trùng khớp hoàn toàn với tên Kho dự án đang chọn <strong>"{selectedProject}"</strong>. Hệ thống sẽ tự động <strong>bỏ qua {mismatchCount.toLocaleString()} dòng này</strong> và chỉ nhập/lưu {approvedRows.length.toLocaleString()} dòng trùng khớp có trạng thái đã phê duyệt.
+                  <strong style={{ fontSize: '14px', display: 'block', marginBottom: '4px' }}>⚠️ LƯU Ý BỎ QUA DỮ LIỆU KHÔNG TRÙNG KHỚP KHO</strong>
+                  Phát hiện <strong>{mismatchCount.toLocaleString()} dòng</strong> có cột <strong>{unitLabel}</strong> không trùng khớp hoàn toàn với tên Kho dự án đang chọn <strong>"{selectedProject}"</strong>. Hệ thống sẽ tự động <strong>bỏ qua {mismatchCount.toLocaleString()} dòng này</strong> và chỉ nhập/lưu {finalApprovedRows.length.toLocaleString()} dòng hợp lệ.
                 </span>
               )}
+            </div>
+          </div>
+        )}
+
+        {/* Warning notification banner for duplicate entries */}
+        {duplicateCount > 0 && (
+          <div style={{
+            background: '#fff7ed',
+            borderBottom: '1px solid #fed7aa',
+            padding: '12px 24px',
+            color: '#c2410c',
+            fontSize: 13,
+            display: 'flex',
+            alignItems: 'flex-start',
+            gap: 10,
+            flexShrink: 0,
+            textAlign: 'left'
+          }}>
+            <AlertTriangle size={18} color="#ea580c" style={{ flexShrink: 0, marginTop: '2px' }} />
+            <div style={{ flex: 1, lineHeight: 1.5 }}>
+              <span>
+                <strong style={{ fontSize: '14px', display: 'block', marginBottom: '4px' }}>⚠️ PHÁT HIỆN DỮ LIỆU BỊ TRÙNG LẶP CHI TIẾT DÒNG</strong>
+                Phát hiện <strong>{duplicateCount.toLocaleString()} dòng</strong> dữ liệu trong file bị <strong>TRÙNG LẶP HOÀN TOÀN</strong> (các thông tin chi tiết của dòng đã tồn tại trên cơ sở dữ liệu hiện tại hoặc bị lặp lại nội bộ trong file). Hệ thống sẽ tự động <strong>BỎ QUA {duplicateCount.toLocaleString()} dòng này</strong> để giữ an toàn cho dữ liệu gốc.
+              </span>
             </div>
           </div>
         )}
@@ -5374,9 +6597,23 @@ function PreviewImportModal({ isOpen, onClose, onConfirm, rows, fileName, type, 
             }}>
               <CheckCircle2 size={15} color="#10b981" />
               <span>
-                <strong>{approvedRows.length.toLocaleString()} dòng</strong> khớp <strong>{unitLabel} "{selectedProject || 'tất cả'}"</strong> &amp; trạng thái <strong>Đã phê duyệt</strong> → sẽ được lưu
+                <strong>{finalApprovedRows.length.toLocaleString()} dòng</strong> khớp <strong>{unitLabel} "{selectedProject || 'tất cả'}"</strong> → sẽ được lưu
               </span>
             </div>
+
+            {/* Dòng trùng lặp → bị loại */}
+            {duplicateCount > 0 && (
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: 7,
+                background: '#fff7ed', border: '1px solid #fed7aa',
+                borderRadius: 8, padding: '7px 14px', fontSize: 13, color: '#c2410c', flex: 1, minWidth: 220
+              }}>
+                <AlertTriangle size={15} color="#ea580c" style={{ flexShrink: 0 }} />
+                <span>
+                  <strong>{duplicateCount.toLocaleString()} dòng</strong> trùng lặp chi tiết (Bỏ qua) → <strong>sẽ không được lưu</strong>
+                </span>
+              </div>
+            )}
 
             {/* Dòng không khớp đơn vị → bị loại */}
             {mismatchCount > 0 && (
@@ -5416,10 +6653,10 @@ function PreviewImportModal({ isOpen, onClose, onConfirm, rows, fileName, type, 
             <button
               onClick={onConfirm}
               className="btn btn-primary"
-              style={{ minWidth: 160, opacity: approvedRows.length === 0 ? 0.5 : 1, cursor: approvedRows.length === 0 ? 'not-allowed' : 'pointer' }}
-              disabled={approvedRows.length === 0}
+              style={{ minWidth: 160, opacity: finalApprovedRows.length === 0 ? 0.5 : 1, cursor: finalApprovedRows.length === 0 ? 'not-allowed' : 'pointer' }}
+              disabled={finalApprovedRows.length === 0}
             >
-              <Save size={14} /> Lưu {approvedRows.length.toLocaleString()} dòng đã duyệt
+              <Save size={14} /> Lưu {finalApprovedRows.length.toLocaleString()} dòng dữ liệu
             </button>
           </div>
         </div>
@@ -6794,77 +8031,17 @@ export default function App() {
   })
 
   // Hold rows and sheet file names globally so state is retained across tab switches!
-  const [giaoRows, setGiaoRows] = useState(() => {
-    try {
-      const saved = localStorage.getItem('sgc_giao_rows')
-      return saved ? JSON.parse(saved) : []
-    } catch (e) {
-      return []
-    }
-  })
-  const [giaoFileName, setGiaoFileName] = useState(() => {
-    try {
-      const saved = localStorage.getItem('sgc_giao_rows')
-      const parsed = saved ? JSON.parse(saved) : []
-      return parsed.length > 0 ? 'Report_Orders_Don_giao (Cached)' : ''
-    } catch (e) {
-      return ''
-    }
-  })
+  const [giaoRows, setGiaoRows] = useState([])
+  const [giaoFileName, setGiaoFileName] = useState('')
 
-  const [nhanRows, setNhanRows] = useState(() => {
-    try {
-      const saved = localStorage.getItem('sgc_nhan_rows')
-      return saved ? JSON.parse(saved) : []
-    } catch (e) {
-      return []
-    }
-  })
-  const [nhanFileName, setNhanFileName] = useState(() => {
-    try {
-      const saved = localStorage.getItem('sgc_nhan_rows')
-      const parsed = saved ? JSON.parse(saved) : []
-      return parsed.length > 0 ? 'Report_Orders_Don_nhan (Cached)' : ''
-    } catch (e) {
-      return ''
-    }
-  })
+  const [nhanRows, setNhanRows] = useState([])
+  const [nhanFileName, setNhanFileName] = useState('')
 
-  const [chungRows, setChungRows] = useState(() => {
-    try {
-      const saved = localStorage.getItem('sgc_chung_rows')
-      return saved ? JSON.parse(saved) : []
-    } catch (e) {
-      return []
-    }
-  })
-  const [chungFileName, setChungFileName] = useState(() => {
-    try {
-      const saved = localStorage.getItem('sgc_chung_rows')
-      const parsed = saved ? JSON.parse(saved) : []
-      return parsed.length > 0 ? 'Report_Orders_Don_chung (Cached)' : ''
-    } catch (e) {
-      return ''
-    }
-  })
+  const [chungRows, setChungRows] = useState([])
+  const [chungFileName, setChungFileName] = useState('')
 
-  const [khoRows, setKhoRows] = useState(() => {
-    try {
-      const saved = localStorage.getItem('sgc_kho_rows')
-      return saved ? JSON.parse(saved) : []
-    } catch (e) {
-      return []
-    }
-  })
-  const [khoFileName, setKhoFileName] = useState(() => {
-    try {
-      const saved = localStorage.getItem('sgc_kho_rows')
-      const parsed = saved ? JSON.parse(saved) : []
-      return parsed.length > 0 ? 'Report_Orders_Kho_du_an (Cached)' : ''
-    } catch (e) {
-      return ''
-    }
-  })
+  const [khoRows, setKhoRows] = useState([])
+  const [khoFileName, setKhoFileName] = useState('')
 
   // Automatically persist rows to localStorage to keep cache synced and allow instant loading
   React.useEffect(() => {
@@ -6903,6 +8080,7 @@ export default function App() {
   const [supabaseMessage, setSupabaseMessage] = useState(null) // { text, type: 'success' | 'error' | 'info' }
 
   const [configs, setConfigs] = useState(() => loadSummaryConfigs())
+  const [isSgcSummaryConfigsMissing, setIsSgcSummaryConfigsMissing] = useState(false)
 
   const fetchConfigsFromSupabaseInApp = React.useCallback(async () => {
     if (!isSupabaseConfigured) return
@@ -6913,10 +8091,16 @@ export default function App() {
         .order('id', { ascending: true })
 
       if (error) {
-        console.error('Lỗi tải cấu hình tổng hợp từ Supabase (App):', error.message)
+        if (error.message.includes('Could not find the table') || error.message.includes('sgc_summary_configs')) {
+          console.warn('Lỗi tải cấu hình tổng hợp từ Supabase (App): Bảng sgc_summary_configs chưa được tạo trong database Supabase.')
+          setIsSgcSummaryConfigsMissing(true)
+        } else {
+          console.error('Lỗi tải cấu hình tổng hợp từ Supabase (App):', error.message)
+        }
         return
       }
 
+      setIsSgcSummaryConfigsMissing(false)
       if (data) {
         const mapped = data.map(dbRow => ({
           id: dbRow.id,
@@ -6946,7 +8130,11 @@ export default function App() {
         .select('*')
 
       if (projError) {
-        console.error('Lỗi tải danh mục dự án:', projError)
+        if (projError.message && (projError.message.includes('Could not find the table') || projError.message.includes('du_an'))) {
+          // Bỏ qua lỗi thiếu bảng du_an
+        } else {
+          console.error('Lỗi tải danh mục dự án:', projError.message || projError)
+        }
         if (projError.status === 401) setSupabaseAuthError(true)
         return
       }
@@ -7275,6 +8463,17 @@ export default function App() {
     const { type, rows: parsedRows, fileName: name, isAppend } = previewModal
     setPreviewModal(null)
 
+    // Lấy danh sách các dòng đã tồn tại của bảng tương ứng
+    const existingRows =
+      type === 'giao' ? giaoRows :
+      type === 'nhan' ? nhanRows :
+      type === 'chung' ? chungRows :
+      type === 'kho' ? khoRows : []
+
+    const existingRowKeys = new Set(
+      (existingRows || []).map(r => getRowUniqueKey(r))
+    )
+
     // Bước 1: Lọc các dòng có Đơn vị giao/nhận trùng khớp với Kho dự án đang chọn (trùng khớp hoàn toàn, không phân biệt chữ hoa thường)
     const matchedByUnit = selectedProject
       ? parsedRows.filter(r => {
@@ -7292,11 +8491,11 @@ export default function App() {
         })
       : parsedRows
 
-    // Bước 2: Chỉ lấy các dòng có trạng thái "Đã phê duyệt"
-    const approvedRows = matchedByUnit.filter(r => isApprovedStatus(r.trangThai))
+    // Bước 2: Cho phép lưu tất cả các dòng, bất kể trạng thái (bỏ qua lọc Đã phê duyệt) và bỏ qua lọc trùng lặp hoàn toàn (cho lưu hết)
+    const finalApprovedRows = matchedByUnit
 
     // Bước 3: Gán ten_du_an theo Kho dự án đang chọn, nhưng GIỮ NGUYÊN duAn gốc của từng dòng
-    const rowsToStore = approvedRows.map(row => {
+    const rowsToStore = finalApprovedRows.map(row => {
       const originalDuAn = row.duAn && String(row.duAn).trim() !== '' ? String(row.duAn).trim() : ''
       // Không thay đổi duAn gốc - chỉ set ten_du_an theo kho đang chọn
       const tenDuAnVal = selectedProject || originalDuAn || ''
@@ -7803,8 +9002,7 @@ export default function App() {
   const tabs = [
     { id: 'chung', label: 'Đơn chung', icon: <ClipboardList size={15} /> },
     { id: 'kho', label: 'Kho dự án', icon: <Warehouse size={15} /> },
-    { id: 'config', label: 'Cấu hình tổng hợp', icon: <Settings size={15} /> },
-    { id: 'summary', label: 'Tổng hợp', icon: <BarChart3 size={15} /> },
+    { id: 'inventory', label: 'Báo cáo xuất nhập tồn', icon: <Database size={15} /> },
   ]
 
   return (
@@ -8026,7 +9224,7 @@ export default function App() {
                 <div style={{ flex: 1, height: '1px', background: 'rgba(255, 255, 255, 0.15)' }} />
               </div>
  
-              {tabs.filter(t => t.id === 'config' || t.id === 'summary').map(t => {
+              {tabs.filter(t => t.id === 'inventory').map(t => {
                 const isSelected = tab === t.id
  
                 return (
@@ -8196,7 +9394,7 @@ export default function App() {
                 Xử lý & Tổng hợp
               </div>
 
-              {tabs.filter(t => t.id === 'config' || t.id === 'summary').map(t => {
+              {tabs.filter(t => t.id === 'inventory').map(t => {
                 const isSelected = tab === t.id
 
                 return (
@@ -8394,22 +9592,13 @@ export default function App() {
                 allProjects={allProjects}
               />
             )}
-            {tab === 'config' && (
-              <SummaryConfigTab
+            {tab === 'inventory' && (
+              <BaoCaoXuatNhapTonTab
+                chungRows={chungRows}
                 giaoRows={giaoRows}
                 nhanRows={nhanRows}
                 selectedProject={selectedProject}
-                allProjects={allProjects}
-                configs={configs}
-                setConfigs={setConfigs}
-              />
-            )}
-            {tab === 'summary' && (
-              <SummaryCompilationTab
-                giaoRows={giaoRows}
-                nhanRows={nhanRows}
-                configs={configs}
-                selectedProject={selectedProject}
+                setSelectedProject={setSelectedProject}
                 allProjects={allProjects}
               />
             )}
@@ -8426,6 +9615,12 @@ export default function App() {
         type={previewModal?.type || 'giao'}
         selectedProject={selectedProject}
         isAppend={previewModal?.isAppend || false}
+        existingRows={
+          previewModal?.type === 'giao' ? giaoRows :
+          previewModal?.type === 'nhan' ? nhanRows :
+          previewModal?.type === 'chung' ? chungRows :
+          previewModal?.type === 'kho' ? khoRows : []
+        }
       />
 
       <AddProjectModal

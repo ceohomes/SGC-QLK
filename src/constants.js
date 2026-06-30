@@ -40,50 +40,107 @@ export const COLS_GIAO_NHAN = [
 
 export function parseXlsxToRows(data) {
   // data is array of arrays (from XLSX.utils.sheet_to_json with header:1)
-  // Row 0 = group headers, Row 1 = sub-headers, Row 2+ = data
-  if (!data || data.length < 3) return []
+  // Row 1 (index 0) = empty/title
+  // Row 2 (index 1) = report title
+  // Row 3 (index 2) = empty
+  // Row 4 (index 3) = group headers
+  // Row 5 (index 4) = sub-headers
+  // Row 6 (index 5) onwards = actual data
+  if (!data || data.length === 0) return []
+
+  // Always start strictly from index 5 (Row 6) as per request: "lấy dữ liệu từ dòng số 6 trở đi"
+  const startIndex = 5
+
+  // Helper to check if a value looks like a date or serial date
+  function isDateValue(val) {
+    if (val === null || val === undefined) return false
+    const s = String(val).trim()
+    if (/^\d{1,2}[\/\-]\d{1,2}[\/\-]\d{4}$/.test(s)) return true
+    if (/^\d{4}[\/\-]\d{1,2}[\/\-]\d{1,2}$/.test(s)) return true
+    const num = Number(val)
+    if (!isNaN(num) && num > 30000 && num < 60000) return true
+    return false
+  }
+
+  let offset = 0
+  // Method 1: Check header row 4 (index 3) and row 5 (index 4)
+  for (const hRowIdx of [3, 4]) {
+    const hRow = data[hRowIdx]
+    if (hRow && Array.isArray(hRow)) {
+      const idx = hRow.findIndex(cell => {
+        if (!cell) return false
+        const s = String(cell).toLowerCase().trim()
+        return s.includes('ngày') || s.includes('ngay') || s.includes('date')
+      })
+      if (idx !== -1) {
+        offset = idx
+        break
+      }
+    }
+  }
+
+  // Method 2 (Fallback): Check first few data rows
+  if (offset === 0) {
+    for (let i = startIndex; i < Math.min(data.length, startIndex + 5); i++) {
+      const r = data[i]
+      if (r && Array.isArray(r)) {
+        if (isDateValue(r[1]) && !isDateValue(r[0])) {
+          offset = 1
+          break
+        }
+      }
+    }
+  }
+
   const rows = []
-  for (let i = 2; i < data.length; i++) {
+  for (let i = startIndex; i < data.length; i++) {
     const r = data[i]
-    if (!r || r.every(v => v === null || v === undefined || v === '')) continue
+    if (!r) continue
+
+    // Only process row if Column for ngayXuatNhap is not empty
+    const cellDate = r[offset]
+    if (cellDate === null || cellDate === undefined || String(cellDate).trim() === '') {
+      continue
+    }
+
     rows.push({
       id: i,
-      ngayXuatNhap: r[0] ?? '',
-      maVatTu: r[1] ?? '',
-      maSAP: r[2] ?? '',
-      thongSoKyThuat: r[3] ?? '',
-      tenVatTu: r[4] ?? '',
-      dvt: r[5] ?? '',
-      loaiDon: r[6] ?? '',
-      maDonNhapKho: r[7] ?? '',
-      maDonXuatKho: r[8] ?? '',
-      khoiLuongNhap: r[9] ?? '',
-      maDonViGiao: r[10] ?? '',
-      donViGiao: r[11] ?? '',
-      nguoiGiao: r[12] ?? '',
-      khoiLuongXuat: r[13] ?? '',
-      maDonViNhan: r[14] ?? '',
-      donViNhan: r[15] ?? '',
-      nguoiPheDuyet: r[16] ?? '',
-      tenNguon: r[17] ?? '',
-      maNguon: r[18] ?? '',
-      lo: r[19] ?? '',
-      hangMuc: r[20] ?? '',
-      soHopDong: r[21] ?? '',
-      thuKho: r[22] ?? '',
-      bienSoXe: r[23] ?? '',
-      phanKhu: r[24] ?? '',
-      duAn: r[25] ?? '',
-      tinhTrang: r[26] ?? '',
-      nguoiNhan: r[27] ?? '',
-      maDonLienQuan: r[28] ?? '',
-      nhaCungCap: r[29] ?? '',
-      maDonChuyenTiepLC: r[30] ?? '',
-      maDonChuyenTiepNB: r[31] ?? '',
-      ghiChu: r[32] ?? '',
-      ghiChuVatTu: r[33] ?? '',
-      trangThai: r[34] ?? '',
-      nhanHieu: r[35] ?? '',
+      ngayXuatNhap: r[offset + 0] ?? '',
+      maVatTu: r[offset + 1] ?? '',
+      maSAP: r[offset + 2] ?? '',
+      thongSoKyThuat: r[offset + 3] ?? '',
+      tenVatTu: r[offset + 4] ?? '',
+      dvt: r[offset + 5] ?? '',
+      loaiDon: r[offset + 6] ?? '',
+      maDonNhapKho: r[offset + 7] ?? '',
+      maDonXuatKho: r[offset + 8] ?? '',
+      khoiLuongNhap: r[offset + 9] ?? '',
+      maDonViGiao: r[offset + 10] ?? '',
+      donViGiao: r[offset + 11] ?? '',
+      nguoiGiao: r[offset + 12] ?? '',
+      khoiLuongXuat: r[offset + 13] ?? '',
+      maDonViNhan: r[offset + 14] ?? '',
+      donViNhan: r[offset + 15] ?? '',
+      nguoiPheDuyet: r[offset + 16] ?? '',
+      tenNguon: r[offset + 17] ?? '',
+      maNguon: r[offset + 18] ?? '',
+      lo: r[offset + 19] ?? '',
+      hangMuc: r[offset + 20] ?? '',
+      soHopDong: r[offset + 21] ?? '',
+      thuKho: r[offset + 22] ?? '',
+      bienSoXe: r[offset + 23] ?? '',
+      phanKhu: r[offset + 24] ?? '',
+      duAn: r[offset + 25] ?? '',
+      tinhTrang: r[offset + 26] ?? '',
+      nguoiNhan: r[offset + 27] ?? '',
+      maDonLienQuan: r[offset + 28] ?? '',
+      nhaCungCap: r[offset + 29] ?? '',
+      maDonChuyenTiepLC: r[offset + 30] ?? '',
+      maDonChuyenTiepNB: r[offset + 31] ?? '',
+      ghiChu: r[offset + 32] ?? '',
+      ghiChuVatTu: r[offset + 33] ?? '',
+      trangThai: r[offset + 34] ?? '',
+      nhanHieu: r[offset + 35] ?? '',
     })
   }
   return rows
