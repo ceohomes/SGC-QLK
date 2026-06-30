@@ -4733,7 +4733,9 @@ function BaoCaoXuatNhapTonTab({ chungRows = [], giaoRows = [], nhanRows = [], se
           dvt: String(r.dvt || '').trim(),
           thongSoKyThuat: String(r.thongSoKyThuat || '').trim(),
           received: 0,
-          issued: 0
+          issued: 0,
+          latestReceivedDate: null,
+          latestIssuedDate: null
         }
       } else {
         // Fallbacks for empty info
@@ -4743,20 +4745,34 @@ function BaoCaoXuatNhapTonTab({ chungRows = [], giaoRows = [], nhanRows = [], se
         if (!groups[sap].thongSoKyThuat && r.thongSoKyThuat) groups[sap].thongSoKyThuat = String(r.thongSoKyThuat).trim()
       }
 
+      const rowDate = parseRowDate(r.ngayXuatNhap)
+
       // Add to received/issued
       if (localProject) {
         if (isNhan) {
           // Receiving unit: add to received
           groups[sap].received += parseVal(r.khoiLuongNhap) || parseVal(r.khoiLuongXuat)
+          if (rowDate && (!groups[sap].latestReceivedDate || rowDate > groups[sap].latestReceivedDate)) {
+            groups[sap].latestReceivedDate = rowDate
+          }
         }
         if (isGiao) {
           // Issuing/delivery unit: add to issued
           groups[sap].issued += parseVal(r.khoiLuongXuat) || parseVal(r.khoiLuongNhap)
+          if (rowDate && (!groups[sap].latestIssuedDate || rowDate > groups[sap].latestIssuedDate)) {
+            groups[sap].latestIssuedDate = rowDate
+          }
         }
       } else {
         // Global aggregation
         groups[sap].received += parseVal(r.khoiLuongNhap)
         groups[sap].issued += parseVal(r.khoiLuongXuat)
+        if (parseVal(r.khoiLuongNhap) && rowDate && (!groups[sap].latestReceivedDate || rowDate > groups[sap].latestReceivedDate)) {
+          groups[sap].latestReceivedDate = rowDate
+        }
+        if (parseVal(r.khoiLuongXuat) && rowDate && (!groups[sap].latestIssuedDate || rowDate > groups[sap].latestIssuedDate)) {
+          groups[sap].latestIssuedDate = rowDate
+        }
       }
     })
 
@@ -4935,8 +4951,16 @@ function BaoCaoXuatNhapTonTab({ chungRows = [], giaoRows = [], nhanRows = [], se
       { key: 'thongSoKyThuat', label: 'Thông số kỹ thuật', width: 200 },
       { key: 'received', label: 'Khối lượng nhận', width: 150 },
       { key: 'issued', label: 'Khối lượng xuất', width: 150 },
-      { key: 'stock', label: 'Khối lượng tồn kho', width: 150 }
+      { key: 'stock', label: 'Khối lượng tồn kho', width: 150 },
+      { key: 'latestReceivedDate', label: 'Ngày nhận muộn nhất', width: 130 },
+      { key: 'latestIssuedDate', label: 'Ngày xuất muộn nhất', width: 130 }
     ]
+    // Quy đổi Date -> Excel serial number để dùng được trong công thức MAXIFS/định dạng ngày
+    const toExcelSerial = (dateVal) => {
+      const d = (dateVal instanceof Date) ? dateVal : parseRowDate(dateVal)
+      if (!d || isNaN(d.getTime())) return null
+      return Math.round(d.getTime() / 86400000) + 25569
+    }
     ws['!cols'] = cols.map(c => ({ wpx: c.width }))
 
     // Title Row
@@ -5009,16 +5033,24 @@ function BaoCaoXuatNhapTonTab({ chungRows = [], giaoRows = [], nhanRows = [], se
         donXuatLastRow >= 5
           ? { f: `SUMIFS(Don_Xuat!$J$5:$J$${donXuatLastRow},Don_Xuat!$C$5:$C$${donXuatLastRow},${sapCell})`, v: item.issued }
           : 0,
-        { f: `G${rowIdx}-H${rowIdx}`, v: item.stock }
+        { f: `G${rowIdx}-H${rowIdx}`, v: item.stock },
+        donNhanLastRow >= 5
+          ? { f: `MAXIFS(Don_Nhan!$B$5:$B$${donNhanLastRow},Don_Nhan!$C$5:$C$${donNhanLastRow},${sapCell})`, v: toExcelSerial(item.latestReceivedDate), isDate: true }
+          : { v: '', isDate: true },
+        donXuatLastRow >= 5
+          ? { f: `MAXIFS(Don_Xuat!$B$5:$B$${donXuatLastRow},Don_Xuat!$C$5:$C$${donXuatLastRow},${sapCell})`, v: toExcelSerial(item.latestIssuedDate), isDate: true }
+          : { v: '', isDate: true }
       ]
 
       cells.forEach((val, colIdx) => {
         const cellRef = `${String.fromCharCode(65 + colIdx)}${rowIdx}`
         const isFormula = val && typeof val === 'object' && 'f' in val
-        const isNum = isFormula ? true : typeof val === 'number'
+        const isDateCol = val && typeof val === 'object' && val.isDate
+        const cellVal = isFormula || isDateCol ? val.v : val
+        const isNum = isDateCol ? (cellVal !== null && cellVal !== '') : (isFormula ? true : typeof val === 'number')
 
         ws[cellRef] = {
-          v: isFormula ? val.v : val,
+          v: isNum ? cellVal : (cellVal ?? ''),
           t: isNum ? 'n' : 's',
           s: {
             font: { name: 'Segoe UI', sz: 9.5 },
@@ -5037,7 +5069,9 @@ function BaoCaoXuatNhapTonTab({ chungRows = [], giaoRows = [], nhanRows = [], se
         if (isFormula) ws[cellRef].f = val.f
 
         // Apply number format
-        if (isNum && colIdx >= 6) {
+        if (isDateCol) {
+          if (isNum) ws[cellRef].z = 'dd/mm/yyyy'
+        } else if (isNum && colIdx >= 6) {
           ws[cellRef].z = '#,##0.000'
         }
       })
@@ -5142,7 +5176,7 @@ function BaoCaoXuatNhapTonTab({ chungRows = [], giaoRows = [], nhanRows = [], se
     }
 
     // Set sheet range bounds
-    ws['!ref'] = `A1:I${rowIdx}`
+    ws['!ref'] = `A1:K${rowIdx}`
 
     XLSXStyle.utils.book_append_sheet(wb, ws, "Xuat_Nhap_Ton")
 
@@ -5207,6 +5241,27 @@ function BaoCaoXuatNhapTonTab({ chungRows = [], giaoRows = [], nhanRows = [], se
         dcols.forEach((col, colIdx) => {
           const val = item[col.key]
           const cellRef = `${String.fromCharCode(65 + colIdx)}${dRowIdx}`
+
+          if (col.key === 'ngayXuatNhap') {
+            const serial = toExcelSerial(val)
+            dws[cellRef] = {
+              v: serial !== null ? serial : (val || ''),
+              t: serial !== null ? 'n' : 's',
+              s: {
+                font: { name: 'Segoe UI', sz: 9.5 },
+                alignment: { horizontal: 'center', vertical: 'center' },
+                border: {
+                  top: { style: 'thin', color: { rgb: 'E2E8F0' } },
+                  bottom: { style: 'thin', color: { rgb: 'E2E8F0' } },
+                  left: { style: 'thin', color: { rgb: 'E2E8F0' } },
+                  right: { style: 'thin', color: { rgb: 'E2E8F0' } }
+                }
+              }
+            }
+            if (serial !== null) dws[cellRef].z = 'dd/mm/yyyy'
+            return
+          }
+
           const isNum = typeof val === 'number'
           dws[cellRef] = {
             v: val ?? '',
