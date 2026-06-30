@@ -4561,7 +4561,7 @@ function DeleteConfigConfirmModal({ isOpen, onClose, onConfirm, configName, proj
 }
 
 // ─── Inventory Report (Báo cáo xuất nhập tồn) ──────────────────────────────────
-function BaoCaoXuatNhapTonTab({ chungRows = [], selectedProject, setSelectedProject, allProjects = [] }) {
+function BaoCaoXuatNhapTonTab({ chungRows = [], giaoRows = [], nhanRows = [], selectedProject, setSelectedProject, allProjects = [] }) {
   const [localProject, setLocalProject] = React.useState(selectedProject || '')
   const [searchTerm, setSearchTerm] = React.useState('')
   const [statusFilter, setStatusFilter] = React.useState('approved_only') // 'approved_only' | 'all'
@@ -4587,8 +4587,20 @@ function BaoCaoXuatNhapTonTab({ chungRows = [], selectedProject, setSelectedProj
       if (g) list.add(g)
       if (n) list.add(n)
     })
+    giaoRows.forEach(r => {
+      const g = (r.donViGiao || '').trim()
+      const n = (r.donViNhan || '').trim()
+      if (g) list.add(g)
+      if (n) list.add(n)
+    })
+    nhanRows.forEach(r => {
+      const g = (r.donViGiao || '').trim()
+      const n = (r.donViNhan || '').trim()
+      if (g) list.add(g)
+      if (n) list.add(n)
+    })
     return [...list].sort()
-  }, [allProjects, chungRows])
+  }, [allProjects, chungRows, giaoRows, nhanRows])
 
   // Process rows and group by maSAP
   const reportData = React.useMemo(() => {
@@ -4604,7 +4616,9 @@ function BaoCaoXuatNhapTonTab({ chungRows = [], selectedProject, setSelectedProj
       return isNaN(num) ? 0 : num
     }
 
-    const sourceRows = chungRows || []
+    const sourceRows = (chungRows && chungRows.length > 0) 
+      ? chungRows 
+      : [...giaoRows, ...nhanRows]
 
     sourceRows.forEach(r => {
       // Apply status filter
@@ -7010,12 +7024,14 @@ function DeleteFileModal({ isOpen, onClose, onConfirm, type, selectedProject, ro
 }
 
 // ─── Delete Project Modal ──────────────────────────────────────────────────
-function DeleteProjectModal({ isOpen, onClose, onConfirm, projectName, chungRows = [] }) {
+function DeleteProjectModal({ isOpen, onClose, onConfirm, projectName, giaoRows, nhanRows, khoRows }) {
   if (!isOpen) return null
 
   // Đếm số dòng dữ liệu thuộc dự án này
-  const chungCount = (chungRows || []).filter(r => (r.ten_du_an || r.tenDuAn || r.duAn) === projectName).length
-  const hasData = chungCount > 0
+  const giaoCount = (giaoRows || []).filter(r => (r.ten_du_an || r.tenDuAn || r.duAn) === projectName).length
+  const nhanCount = (nhanRows || []).filter(r => (r.ten_du_an || r.tenDuAn || r.duAn) === projectName).length
+  const khoCount = (khoRows || []).filter(r => (r.ten_du_an || r.tenDuAn || r.duAn) === projectName).length
+  const hasData = giaoCount > 0 || nhanCount > 0 || khoCount > 0
 
   return (
     <div style={{
@@ -7074,7 +7090,15 @@ function DeleteProjectModal({ isOpen, onClose, onConfirm, projectName, chungRows
               <div style={{ fontSize: 13, color: '#9f1239', lineHeight: '1.6' }}>
                 <strong>Dự án này đang có dữ liệu!</strong>
                 <div style={{ marginTop: 6, display: 'flex', flexDirection: 'column', gap: 3 }}>
-                  <span>• <strong>{chungCount.toLocaleString()} dòng</strong> Đơn Chung sẽ bị xóa vĩnh viễn</span>
+                  {giaoCount > 0 && (
+                    <span>• <strong>{giaoCount.toLocaleString()} dòng</strong> Đơn Giao sẽ bị xóa vĩnh viễn</span>
+                  )}
+                  {nhanCount > 0 && (
+                    <span>• <strong>{nhanCount.toLocaleString()} dòng</strong> Đơn Nhận sẽ bị xóa vĩnh viễn</span>
+                  )}
+                  {khoCount > 0 && (
+                    <span>• <strong>{khoCount.toLocaleString()} dòng</strong> Kho dự án sẽ bị xóa vĩnh viễn</span>
+                  )}
                 </div>
                 <div style={{ marginTop: 8, fontWeight: 600 }}>
                   Thao tác này không thể hoàn tác. Bạn có chắc chắn muốn tiếp tục?
@@ -8068,16 +8092,91 @@ export default function App() {
   const [isSgcSummaryConfigsMissing, setIsSgcSummaryConfigsMissing] = useState(false)
 
   const fetchConfigsFromSupabaseInApp = React.useCallback(async () => {
-    // No-op: sgc_summary_configs is deleted from Supabase.
-    return
+    if (!isSupabaseConfigured) return
+    try {
+      const { data, error } = await supabase
+        .from('sgc_summary_configs')
+        .select('*')
+        .order('id', { ascending: true })
+
+      if (error) {
+        if (error.message.includes('Could not find the table') || error.message.includes('sgc_summary_configs')) {
+          console.warn('Lỗi tải cấu hình tổng hợp từ Supabase (App): Bảng sgc_summary_configs chưa được tạo trong database Supabase.')
+          setIsSgcSummaryConfigsMissing(true)
+        } else {
+          console.error('Lỗi tải cấu hình tổng hợp từ Supabase (App):', error.message)
+        }
+        return
+      }
+
+      setIsSgcSummaryConfigsMissing(false)
+      if (data) {
+        const mapped = data.map(dbRow => ({
+          id: dbRow.id,
+          name: dbRow.name,
+          project: dbRow.project,
+          giaoTable: dbRow.giao_table || [],
+          nhanTable: dbRow.nhan_table || [],
+          bgColor: dbRow.bg_color || '#eff6ff',
+        }))
+        setConfigs(mapped)
+        saveSummaryConfigs(mapped)
+      }
+    } catch (err) {
+      console.error('Lỗi kết nối Supabase khi tải configs (App):', err)
+    }
   }, [])
 
   // Danh sách columns cần fetch (bỏ qua metadata Supabase như created_at, updated_at)
   const SELECT_COLS = 'id,ngay_xuat_nhap,ma_vat_tu,ma_s_a_p,thong_so_ky_thuat,ten_vat_tu,dvt,loai_don,ma_don_nhap_kho,ma_don_xuat_kho,khoi_luong_nhap,ma_don_vi_giao,don_vi_giao,nguoi_giao,khoi_luong_xuat,ma_don_vi_nhan,don_vi_nhan,nguoi_phe_duyet,ten_nguon,ma_nguon,lo,hang_muc,so_hop_dong,thu_kho,bien_so_xe,phan_khu,du_an,tinh_trang,nguoi_nhan,ma_don_lien_quan,nha_cung_cap,ma_don_chuyen_tiep_l_c,ma_don_chuyen_tiep_n_b,ghi_chu,ghi_chu_vat_tu,trang_thai,nhan_hieu,ten_du_an,tenDuAn'
 
   const loadProjectsFromSupabase = React.useCallback(async () => {
-    // No-op: du_an is deleted from Supabase.
-    return
+    if (!isSupabaseConfigured) return
+    try {
+      // Select * để tự detect cột tên dự án bất kể snake_case hay camelCase
+      const { data: projData, error: projError } = await supabase
+        .from('du_an')
+        .select('*')
+
+      if (projError) {
+        if (projError.message && (projError.message.includes('Could not find the table') || projError.message.includes('du_an'))) {
+          // Bỏ qua lỗi thiếu bảng du_an
+        } else {
+          console.error('Lỗi tải danh mục dự án:', projError.message || projError)
+        }
+        if (projError.status === 401) setSupabaseAuthError(true)
+        return
+      }
+      setSupabaseAuthError(false)
+      if (projData && projData.length > 0) {
+        console.log('[loadProjects] Raw Supabase du_an columns:', Object.keys(projData[0]))
+        // Tự detect cột tên dự án theo thứ tự ưu tiên
+        const NAME_COLS = ['ten_du_an', 'tenduan', 'tenDuAn', 'ten_duan', 'name', 'tendu_an']
+        const detectedCol = NAME_COLS.find(col => col in projData[0])
+        if (detectedCol) {
+          console.log('[loadProjects] Dùng cột:', detectedCol)
+          const list = projData.map(d => d[detectedCol]).filter(Boolean).sort()
+          setCustomProjects(list)
+          localStorage.setItem('sgc_custom_projects', JSON.stringify(list))
+        } else {
+          // Fallback: thử tất cả giá trị string đầu tiên tìm được
+          console.warn('[loadProjects] Không tìm thấy cột tên quen thuộc, thử fallback...')
+          const firstRow = projData[0]
+          const firstStrKey = Object.keys(firstRow).find(k => k !== 'id' && typeof firstRow[k] === 'string')
+          if (firstStrKey) {
+            const list = projData.map(d => d[firstStrKey]).filter(Boolean).sort()
+            console.log('[loadProjects] Fallback dùng cột:', firstStrKey, '→', list)
+            setCustomProjects(list)
+            localStorage.setItem('sgc_custom_projects', JSON.stringify(list))
+          }
+        }
+      } else if (projData && projData.length === 0) {
+        // Bảng du_an rỗng — giữ nguyên localStorage
+        console.log('[loadProjects] Bảng du_an rỗng trên Supabase')
+      }
+    } catch (e) {
+      console.error('Lỗi tải dự án:', e)
+    }
   }, [])
 
   const loadTableFromSupabase = React.useCallback(async (tableType, forceBypassCache = false) => {
@@ -8190,13 +8289,44 @@ export default function App() {
 
   const loadDataFromSupabase = React.useCallback(async (forceBypassCache = false) => {
     if (!isSupabaseConfigured) return
-    await loadTableFromSupabase('chung', forceBypassCache)
-  }, [loadTableFromSupabase])
+    await Promise.all([
+      loadProjectsFromSupabase(),
+      loadTableFromSupabase('chung', forceBypassCache),
+      fetchConfigsFromSupabaseInApp(),
+    ])
+  }, [loadProjectsFromSupabase, loadTableFromSupabase, fetchConfigsFromSupabaseInApp])
 
   // Fetch initial data from Supabase if connected
   React.useEffect(() => {
     loadDataFromSupabase()
-  }, [loadDataFromSupabase])
+
+    if (!isSupabaseConfigured) return
+
+    // Realtime: CHỈ lắng nghe bảng du_an (rất nhẹ, vài row)
+    // KHÔNG lắng nghe don_giao/don_nhan — tránh fetch lại hàng nghìn row mỗi lần có thay đổi
+    // Dữ liệu don_giao/don_nhan được cập nhật qua local state ngay sau khi sync/xóa
+    const debouncedLoadProjects = () => {
+      if (syncInProgressRef.current) return
+      if (realtimeDebounceRef.current) clearTimeout(realtimeDebounceRef.current)
+      realtimeDebounceRef.current = setTimeout(() => {
+        loadProjectsFromSupabase()
+      }, 3000)
+    }
+
+    const channel = supabase
+      .channel('du_an-changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'du_an' }, () => {
+        if (syncInProgressRef.current) return
+        console.log('[Realtime] Cập nhật danh sách Dự Án...')
+        debouncedLoadProjects()
+      })
+      .subscribe()
+
+    return () => {
+      if (realtimeDebounceRef.current) clearTimeout(realtimeDebounceRef.current)
+      supabase.removeChannel(channel)
+    }
+  }, [loadDataFromSupabase, loadProjectsFromSupabase])
 
   const syncRowsToSupabase = async (type, rowsToSync, isAuto = false, isAppend = false) => {
     if (!isSupabaseConfigured) return
@@ -8341,16 +8471,31 @@ export default function App() {
     const { type, rows: parsedRows, fileName: name, isAppend } = previewModal
     setPreviewModal(null)
 
-    // Lấy danh sách các dòng đã tồn tại của bảng tương ứng (bắt buộc là 'chung')
-    const existingRows = chungRows || []
+    // Lấy danh sách các dòng đã tồn tại của bảng tương ứng
+    const existingRows =
+      type === 'giao' ? giaoRows :
+      type === 'nhan' ? nhanRows :
+      type === 'chung' ? chungRows :
+      type === 'kho' ? khoRows : []
+
+    const existingRowKeys = new Set(
+      (existingRows || []).map(r => getRowUniqueKey(r))
+    )
 
     // Bước 1: Lọc các dòng có Đơn vị giao/nhận trùng khớp với Kho dự án đang chọn (trùng khớp hoàn toàn, không phân biệt chữ hoa thường)
     const matchedByUnit = selectedProject
       ? parsedRows.filter(r => {
-          const unitGiao = String(r.donViGiao || '').trim().toLowerCase()
-          const unitNhan = String(r.donViNhan || '').trim().toLowerCase()
-          const proj = selectedProject.trim().toLowerCase()
-          return unitGiao === proj || unitNhan === proj
+          if (type === 'chung') {
+            const unitGiao = String(r.donViGiao || '').trim().toLowerCase()
+            const unitNhan = String(r.donViNhan || '').trim().toLowerCase()
+            const proj = selectedProject.trim().toLowerCase()
+            return unitGiao === proj || unitNhan === proj
+          } else {
+            const unitKey = type === 'giao' ? 'donViGiao' : 'donViNhan'
+            const unit = String(r[unitKey] || '').trim().toLowerCase()
+            const proj = selectedProject.trim().toLowerCase()
+            return unit === proj
+          }
         })
       : parsedRows
 
@@ -8370,28 +8515,164 @@ export default function App() {
       }
     })
 
-    // 1. Lưu Đơn chung
-    setChungRows(prev => {
-      if (isAppend) {
-        return [...prev, ...rowsToStore]
-      } else {
-        const projectsInNewRows = new Set(rowsToStore.map(r => String(r.ten_du_an || r.tenDuAn || r.duAn || '').trim().toLowerCase()).filter(Boolean))
-        const otherProjects = prev.filter(r => {
-          const rowProject = String(r.ten_du_an || r.tenDuAn || r.tenduan || r.duAn || r.du_an || '').trim().toLowerCase()
-          if (selectedProject) {
-            return rowProject !== selectedProject.trim().toLowerCase()
-          } else {
-            return !projectsInNewRows.has(rowProject)
-          }
-        })
-        return [...otherProjects, ...rowsToStore]
+    if (type === 'giao') {
+      setGiaoRows(prev => {
+        if (isAppend) {
+          return [...prev, ...rowsToStore]
+        } else {
+          const projectsInNewRows = new Set(rowsToStore.map(r => String(r.ten_du_an || r.tenDuAn || r.duAn || '').trim().toLowerCase()).filter(Boolean))
+          const otherProjects = prev.filter(r => {
+            const rowProject = String(r.ten_du_an || r.tenDuAn || r.tenduan || r.duAn || r.du_an || '').trim().toLowerCase()
+            if (selectedProject) {
+              return rowProject !== selectedProject.trim().toLowerCase()
+            } else {
+              return !projectsInNewRows.has(rowProject)
+            }
+          })
+          return [...otherProjects, ...rowsToStore]
+        }
+      })
+      setGiaoFileName(prev => isAppend ? (prev ? `${prev} + ${name}` : name) : name)
+      if (isSupabaseConfigured) {
+        await syncRowsToSupabase('giao', rowsToStore, true, isAppend)
       }
-    })
-    setChungFileName(prev => isAppend ? (prev ? `${prev} + ${name}` : name) : name)
+    } else if (type === 'nhan') {
+      setNhanRows(prev => {
+        if (isAppend) {
+          return [...prev, ...rowsToStore]
+        } else {
+          const projectsInNewRows = new Set(rowsToStore.map(r => String(r.ten_du_an || r.tenDuAn || r.duAn || '').trim().toLowerCase()).filter(Boolean))
+          const otherProjects = prev.filter(r => {
+            const rowProject = String(r.ten_du_an || r.tenDuAn || r.tenduan || r.duAn || r.du_an || '').trim().toLowerCase()
+            if (selectedProject) {
+              return rowProject !== selectedProject.trim().toLowerCase()
+            } else {
+              return !projectsInNewRows.has(rowProject)
+            }
+          })
+          return [...otherProjects, ...rowsToStore]
+        }
+      })
+      setNhanFileName(prev => isAppend ? (prev ? `${prev} + ${name}` : name) : name)
+      if (isSupabaseConfigured) {
+        await syncRowsToSupabase('nhan', rowsToStore, true, isAppend)
+      }
+    } else if (type === 'kho') {
+      setKhoRows(prev => {
+        if (isAppend) {
+          return [...prev, ...rowsToStore]
+        } else {
+          const projectsInNewRows = new Set(rowsToStore.map(r => String(r.ten_du_an || r.tenDuAn || r.duAn || '').trim().toLowerCase()).filter(Boolean))
+          const otherProjects = prev.filter(r => {
+            const rowProject = String(r.ten_du_an || r.tenDuAn || r.tenduan || r.duAn || r.du_an || '').trim().toLowerCase()
+            if (selectedProject) {
+              return rowProject !== selectedProject.trim().toLowerCase()
+            } else {
+              return !projectsInNewRows.has(rowProject)
+            }
+          })
+          return [...otherProjects, ...rowsToStore]
+        }
+      })
+      setKhoFileName(prev => isAppend ? (prev ? `${prev} + ${name}` : name) : name)
+      if (isSupabaseConfigured) {
+        await syncRowsToSupabase('kho', rowsToStore, true, isAppend)
+      }
+    } else {
+      // type === 'chung'
+      // 1. Lưu Đơn chung
+      setChungRows(prev => {
+        if (isAppend) {
+          return [...prev, ...rowsToStore]
+        } else {
+          const projectsInNewRows = new Set(rowsToStore.map(r => String(r.ten_du_an || r.tenDuAn || r.duAn || '').trim().toLowerCase()).filter(Boolean))
+          const otherProjects = prev.filter(r => {
+            const rowProject = String(r.ten_du_an || r.tenDuAn || r.tenduan || r.duAn || r.du_an || '').trim().toLowerCase()
+            if (selectedProject) {
+              return rowProject !== selectedProject.trim().toLowerCase()
+            } else {
+              return !projectsInNewRows.has(rowProject)
+            }
+          })
+          return [...otherProjects, ...rowsToStore]
+        }
+      })
+      setChungFileName(prev => isAppend ? (prev ? `${prev} + ${name}` : name) : name)
 
-    // 4. Đồng bộ lên Supabase nếu có kết nối
-    if (isSupabaseConfigured) {
-      await syncRowsToSupabase('chung', rowsToStore, true, isAppend)
+      // 2. Trích xuất Đơn Giao (đơn vị giao trùng khớp với Kho dự án đang chọn)
+      const extractedGiaoRows = rowsToStore.filter(r => {
+        const unitGiao = String(r.donViGiao || '').trim()
+        if (selectedProject) {
+          return unitGiao.toLowerCase() === selectedProject.trim().toLowerCase()
+        }
+        return unitGiao !== ''
+      }).map(r => {
+        if (!selectedProject) {
+          const unitGiao = String(r.donViGiao || '').trim()
+          return { ...r, ten_du_an: unitGiao, tenDuAn: unitGiao }
+        }
+        return r
+      })
+      setGiaoRows(prev => {
+        if (isAppend) {
+          return [...prev, ...extractedGiaoRows]
+        } else {
+          const projectsInNewRows = new Set(extractedGiaoRows.map(r => String(r.ten_du_an || r.tenDuAn || r.duAn || '').trim().toLowerCase()).filter(Boolean))
+          const otherProjects = prev.filter(r => {
+            const rowProject = String(r.ten_du_an || r.tenDuAn || r.tenduan || r.duAn || r.du_an || '').trim().toLowerCase()
+            if (selectedProject) {
+              return rowProject !== selectedProject.trim().toLowerCase()
+            } else {
+              return !projectsInNewRows.has(rowProject)
+            }
+          })
+          return [...otherProjects, ...extractedGiaoRows]
+        }
+      })
+      setGiaoFileName(prev => isAppend ? (prev ? `${prev} + ${name} (Trích xuất)` : `${name} (Trích xuất)`) : `${name} (Trích xuất)`)
+
+      // 3. Trích xuất Đơn Nhận (đơn vị nhận trùng khớp với Kho dự án đang chọn)
+      const extractedNhanRows = rowsToStore.filter(r => {
+        const unitNhan = String(r.donViNhan || '').trim()
+        if (selectedProject) {
+          return unitNhan.toLowerCase() === selectedProject.trim().toLowerCase()
+        }
+        return unitNhan !== ''
+      }).map(r => {
+        if (!selectedProject) {
+          const unitNhan = String(r.donViNhan || '').trim()
+          return { ...r, ten_du_an: unitNhan, tenDuAn: unitNhan }
+        }
+        return r
+      })
+      setNhanRows(prev => {
+        if (isAppend) {
+          return [...prev, ...extractedNhanRows]
+        } else {
+          const projectsInNewRows = new Set(extractedNhanRows.map(r => String(r.ten_du_an || r.tenDuAn || r.duAn || '').trim().toLowerCase()).filter(Boolean))
+          const otherProjects = prev.filter(r => {
+            const rowProject = String(r.ten_du_an || r.tenDuAn || r.tenduan || r.duAn || r.du_an || '').trim().toLowerCase()
+            if (selectedProject) {
+              return rowProject !== selectedProject.trim().toLowerCase()
+            } else {
+              return !projectsInNewRows.has(rowProject)
+            }
+          })
+          return [...otherProjects, ...extractedNhanRows]
+        }
+      })
+      setNhanFileName(prev => isAppend ? (prev ? `${prev} + ${name} (Trích xuất)` : `${name} (Trích xuất)`) : `${name} (Trích xuất)`)
+
+      // 4. Đồng bộ lên Supabase nếu có kết nối
+      if (isSupabaseConfigured) {
+        await syncRowsToSupabase('chung', rowsToStore, true, isAppend)
+        if (extractedGiaoRows.length > 0) {
+          await syncRowsToSupabase('giao', extractedGiaoRows, true, isAppend)
+        }
+        if (extractedNhanRows.length > 0) {
+          await syncRowsToSupabase('nhan', extractedNhanRows, true, isAppend)
+        }
+      }
     }
   }
 
@@ -8716,6 +8997,7 @@ export default function App() {
 
   const tabs = [
     { id: 'chung', label: 'Đơn chung', icon: <ClipboardList size={15} /> },
+    { id: 'kho', label: 'Kho dự án', icon: <Warehouse size={15} /> },
     { id: 'inventory', label: 'Báo cáo xuất nhập tồn', icon: <Database size={15} /> },
   ]
 
@@ -8841,9 +9123,9 @@ export default function App() {
                 <div style={{ flex: 1, height: '1px', background: 'rgba(255, 255, 255, 0.15)' }} />
               </div>
  
-              {tabs.filter(t => t.id === 'chung').map(t => {
+              {tabs.filter(t => t.id === 'giao' || t.id === 'nhan' || t.id === 'chung' || t.id === 'kho').map(t => {
                 const isSelected = tab === t.id
-                const count = chungRows.length
+                const count = t.id === 'giao' ? giaoRows.length : t.id === 'nhan' ? nhanRows.length : t.id === 'kho' ? khoRows.length : t.id === 'chung' ? chungRows.length : null
  
                 return (
                   <button
@@ -9235,6 +9517,48 @@ export default function App() {
           )}
 
           <div style={{ flex: 1, overflow: 'hidden', backgroundColor: '#ededed' }}>
+            {tab === 'giao' && (
+              <OrderTab
+                type="giao"
+                rows={giaoRows}
+                setRows={setGiaoRows}
+                fileName={giaoFileName}
+                setFileName={setGiaoFileName}
+                selectedProject={selectedProject}
+                setSelectedProject={setSelectedProject}
+                onSync={() => handleSyncToSupabase('giao')}
+                syncing={syncingType === 'giao'}
+                supabaseMessage={supabaseMessage}
+                onEditProject={(projectName) => {
+                  setProjectToEdit(projectName)
+                  setShowEditProjectModal(true)
+                }}
+                projectOptions={allProjects}
+                onImportFile={(rows, name, isAppend) => handleImportFile('giao', rows, name, isAppend)}
+                onDeleteFile={() => handleDeleteFile('giao')}
+              />
+            )}
+            {tab === 'nhan' && (
+              <OrderTab
+                type="nhan"
+                rows={nhanRows}
+                setRows={setNhanRows}
+                fileName={nhanFileName}
+                setFileName={setNhanFileName}
+                selectedProject={selectedProject}
+                setSelectedProject={setSelectedProject}
+                onSync={() => handleSyncToSupabase('nhan')}
+                syncing={syncingType === 'nhan'}
+                supabaseMessage={supabaseMessage}
+                onEditProject={(projectName) => {
+                  setProjectToEdit(projectName)
+                  setShowEditProjectModal(true)
+                }}
+                projectOptions={allProjects}
+                onImportFile={(rows, name, isAppend) => handleImportFile('nhan', rows, name, isAppend)}
+                onDeleteFile={() => handleDeleteFile('nhan')}
+              />
+            )}
             {tab === 'chung' && (
               <OrderTab
                 type="chung"
@@ -9256,9 +9580,19 @@ export default function App() {
                 onDeleteFile={() => handleDeleteFile('chung')}
               />
             )}
+            {tab === 'kho' && (
+              <KhoDuAnTab
+                chungRows={chungRows}
+                selectedProject={selectedProject}
+                setSelectedProject={setSelectedProject}
+                allProjects={allProjects}
+              />
+            )}
             {tab === 'inventory' && (
               <BaoCaoXuatNhapTonTab
                 chungRows={chungRows}
+                giaoRows={giaoRows}
+                nhanRows={nhanRows}
                 selectedProject={selectedProject}
                 setSelectedProject={setSelectedProject}
                 allProjects={allProjects}
@@ -9274,10 +9608,15 @@ export default function App() {
         onConfirm={handleConfirmImport}
         rows={previewModal?.rows || []}
         fileName={previewModal?.fileName || ''}
-        type={previewModal?.type || 'chung'}
+        type={previewModal?.type || 'giao'}
         selectedProject={selectedProject}
         isAppend={previewModal?.isAppend || false}
-        existingRows={chungRows}
+        existingRows={
+          previewModal?.type === 'giao' ? giaoRows :
+          previewModal?.type === 'nhan' ? nhanRows :
+          previewModal?.type === 'chung' ? chungRows :
+          previewModal?.type === 'kho' ? khoRows : []
+        }
       />
 
       <AddProjectModal
@@ -9307,7 +9646,14 @@ export default function App() {
         onConfirm={handleConfirmDeleteFile}
         type={deleteFileType}
         selectedProject={selectedProject}
-        rowCount={selectedProject ? chungRows.filter(r => (r.ten_du_an || r.tenDuAn || r.tenduan || r.duAn || r.du_an || '') === selectedProject).length : chungRows.length}
+        rowCount={deleteFileType === 'giao'
+          ? (selectedProject ? giaoRows.filter(r => (r.ten_du_an || r.tenDuAn || r.tenduan || r.duAn || r.du_an || '') === selectedProject).length : giaoRows.length)
+          : deleteFileType === 'nhan'
+          ? (selectedProject ? nhanRows.filter(r => (r.ten_du_an || r.tenDuAn || r.tenduan || r.duAn || r.du_an || '') === selectedProject).length : nhanRows.length)
+          : deleteFileType === 'kho'
+          ? (selectedProject ? khoRows.filter(r => (r.ten_du_an || r.tenDuAn || r.tenduan || r.duAn || r.du_an || '') === selectedProject).length : khoRows.length)
+          : (selectedProject ? chungRows.filter(r => (r.ten_du_an || r.tenDuAn || r.tenduan || r.duAn || r.du_an || '') === selectedProject).length : chungRows.length)
+        }
       />
 
       <DeleteProjectModal
@@ -9318,7 +9664,9 @@ export default function App() {
         }}
         onConfirm={handleConfirmDeleteProject}
         projectName={projectToDelete}
-        chungRows={chungRows}
+        giaoRows={giaoRows}
+        nhanRows={nhanRows}
+        khoRows={khoRows}
       />
 
       <style>{`
