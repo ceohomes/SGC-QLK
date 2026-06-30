@@ -4948,17 +4948,6 @@ function BaoCaoXuatNhapTonTab({ chungRows = [], giaoRows = [], nhanRows = [], se
         alignment: { horizontal: 'left', vertical: 'center' }
       }
     }
-    ws['A4'] = {
-      v: localProject
-        ? `Công thức: Khối lượng nhận = Tổng "Khối lượng nhập/xuất" của các đơn có Đơn vị nhận = "${localProject}" (xem chi tiết sheet Don_Nhan)  |  Khối lượng xuất = Tổng "Khối lượng nhập/xuất" của các đơn có Đơn vị giao = "${localProject}" (xem chi tiết sheet Don_Xuat)  |  Tồn kho = Khối lượng nhận - Khối lượng xuất`
-        : `Công thức: Khối lượng nhận = Tổng cột "Khối lượng nhập" của toàn bộ đơn (xem chi tiết sheet Don_Nhan)  |  Khối lượng xuất = Tổng cột "Khối lượng xuất" của toàn bộ đơn (xem chi tiết sheet Don_Xuat)  |  Tồn kho = Khối lượng nhận - Khối lượng xuất`,
-      t: 's',
-      s: {
-        font: { name: 'Segoe UI', sz: 9.5, italic: true, color: { rgb: '64748B' } },
-        alignment: { horizontal: 'left', vertical: 'center', wrapText: true }
-      }
-    }
-
     // Header starting from row 5
     let rowIdx = 5
     cols.forEach((col, colIdx) => {
@@ -4980,9 +4969,13 @@ function BaoCaoXuatNhapTonTab({ chungRows = [], giaoRows = [], nhanRows = [], se
       }
     })
 
-    // Write Data rows
+    // Write Data rows — Khối lượng nhận/xuất dùng công thức SUMIFS tham chiếu sang
+    // sheet Don_Nhan / Don_Xuat theo Mã SAP để người dùng xem được cách tính ngay trên Excel.
+    const donNhanLastRow = 4 + detailRows.nhanList.length
+    const donXuatLastRow = 4 + detailRows.xuatList.length
     reportData.forEach((item, idx) => {
       rowIdx++
+      const sapCell = `B${rowIdx}`
       const cells = [
         idx + 1,
         item.maSAP,
@@ -4990,17 +4983,22 @@ function BaoCaoXuatNhapTonTab({ chungRows = [], giaoRows = [], nhanRows = [], se
         item.tenVatTu,
         item.dvt,
         item.thongSoKyThuat,
-        item.received,
-        item.issued,
-        item.stock
+        donNhanLastRow >= 5
+          ? { f: `SUMIFS(Don_Nhan!$J$5:$J$${donNhanLastRow},Don_Nhan!$C$5:$C$${donNhanLastRow},${sapCell})`, v: item.received }
+          : 0,
+        donXuatLastRow >= 5
+          ? { f: `SUMIFS(Don_Xuat!$J$5:$J$${donXuatLastRow},Don_Xuat!$C$5:$C$${donXuatLastRow},${sapCell})`, v: item.issued }
+          : 0,
+        { f: `G${rowIdx}-H${rowIdx}`, v: item.stock }
       ]
 
       cells.forEach((val, colIdx) => {
         const cellRef = `${String.fromCharCode(65 + colIdx)}${rowIdx}`
-        const isNum = typeof val === 'number'
+        const isFormula = val && typeof val === 'object' && 'f' in val
+        const isNum = isFormula ? true : typeof val === 'number'
 
         ws[cellRef] = {
-          v: val,
+          v: isFormula ? val.v : val,
           t: isNum ? 'n' : 's',
           s: {
             font: { name: 'Segoe UI', sz: 9.5 },
@@ -5016,6 +5014,7 @@ function BaoCaoXuatNhapTonTab({ chungRows = [], giaoRows = [], nhanRows = [], se
             }
           }
         }
+        if (isFormula) ws[cellRef].f = val.f
 
         // Apply number format
         if (isNum && colIdx >= 6) {
