@@ -3,7 +3,7 @@ export const COLS_GIAO_NHAN = [
   { key: 'ngayXuatNhap', label: 'Ngày xuất nhập', width: 85 },
   { key: 'maVatTu', label: 'Mã vật tư', width: 80 },
   { key: 'maSAP', label: 'Mã SAP', width: 80 },
-  { key: 'thongSoKyThuat', label: 'Thông số kỹ thuật', width: 160 },
+  { key: 'thongSoKyThuat', label: 'Thông số kỹ thuật', width: 60 },
   { key: 'tenVatTu', label: 'Tên vật tư', width: 160 },
   { key: 'dvt', label: 'ĐVT', width: 60 },
   { key: 'loaiDon', label: 'Loại đơn (Xuất, nhập kho)', width: 80 },

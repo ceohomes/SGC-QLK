@@ -6,13 +6,14 @@ import {
   Upload, FileSpreadsheet, Search, X, RefreshCw, Info,
   ChevronDown, ChevronRight, Download, Truck, PackageCheck, Settings, BarChart3,
   AlertCircle, CheckCircle2, Filter, ArrowUpDown, Clock, CloudUpload, Database, Save,
-  Pencil, Trash2, Lock, ClipboardList, Warehouse
+  Pencil, Trash2, Lock, ClipboardList, Warehouse, Building2, Users, HelpCircle,
+  Calendar
 } from 'lucide-react'
 import { COLS_GIAO_NHAN, parseXlsxToRows, formatVal, getTrangThaiColor, isApprovedStatus, isPendingStatus, isRejectedStatus } from './constants.js'
 import { supabase, isSupabaseConfigured, supabaseUrl, supabaseAnonKey } from './supabaseClient.js'
 
 // ─── Searchable Select ────────────────────────────────────────────────────────
-function SearchableSelect({ value, onChange, options, placeholder = 'Tất cả dự án', variant = 'header', onEditProject, onDeleteProject }) {
+function SearchableSelect({ value, onChange, options, placeholder = 'Tất cả dự án', searchPlaceholder, variant = 'header', align = 'left', onEditProject, onDeleteProject }) {
   const [isOpen, setIsOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const containerRef = useRef(null)
@@ -90,7 +91,8 @@ function SearchableSelect({ value, onChange, options, placeholder = 'Tất cả 
   const dropdownPanelStyle = {
     position: 'absolute',
     top: 'calc(100% + 4px)',
-    left: 0,
+    left: align === 'left' ? 0 : 'auto',
+    right: align === 'right' ? 0 : 'auto',
     zIndex: 9999,
     background: '#ffffff',
     borderRadius: 8,
@@ -137,7 +139,7 @@ function SearchableSelect({ value, onChange, options, placeholder = 'Tất cả 
             <Search size={13} style={{ position: 'absolute', left: 8, color: '#64748b' }} />
             <input
               type="text"
-              placeholder="Tìm kiếm dự án..."
+              placeholder={searchPlaceholder || "Tìm kiếm..."}
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
               style={{
@@ -318,55 +320,7 @@ function Header({ selectedProject, setSelectedProject, duAnOptions, onOpenAddPro
         </div>
       </div>
 
-      {/* Kho Dự Án Widget */}
-      <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: 12,
-        background: 'rgba(255, 255, 255, 0.12)',
-        padding: '6px 14px',
-        borderRadius: 8,
-        border: '1px solid rgba(255, 255, 255, 0.20)'
-      }}>
-        <span style={{ color: '#ffffff', fontWeight: 700, fontSize: 14, textTransform: 'uppercase', letterSpacing: '0.04em', whiteSpace: 'nowrap' }}>
-          Kho dự án:
-        </span>
-        <div style={{ display: 'flex', alignItems: 'center' }}>
-          <SearchableSelect
-            value={selectedProject}
-            onChange={setSelectedProject}
-            options={duAnOptions}
-            placeholder="Tất cả dự án"
-            variant="header"
-            onEditProject={onEditProject}
-            onDeleteProject={onDeleteProject}
-          />
-        </div>
-        <button
-          onClick={onOpenAddProjectModal}
-          style={{
-            background: 'linear-gradient(180deg, #10b981 0%, #059669 100%)',
-            border: 'none',
-            color: '#ffffff',
-            fontSize: 14,
-            fontWeight: 700,
-            padding: '4px 12px',
-            borderRadius: 6,
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 4,
-            height: 32,
-            boxShadow: '0 2px 4px rgba(5,150,105,0.2)',
-            transition: 'opacity 0.15s',
-            whiteSpace: 'nowrap'
-          }}
-          onMouseOver={(e) => e.currentTarget.style.opacity = '0.9'}
-          onMouseOut={(e) => e.currentTarget.style.opacity = '1'}
-        >
-          <span>+ Tạo mới</span>
-        </button>
-      </div>
+      {/* Removed Kho Dự Án Widget as requested */}
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
         {isSupabaseConfigured && (
@@ -577,7 +531,7 @@ function UploadZone({ onFile, label, accept = '.xlsx,.xls', disabled = false }) 
 }
 
 // ─── Stats Bar ────────────────────────────────────────────────────────────────
-function StatsBar({ rows }) {
+function StatsBar({ rows, onAppendFile }) {
   const stats = useMemo(() => {
     const total = rows.length
     const daPheDuyet = rows.filter(r => isApprovedStatus(r.trangThai)).length;
@@ -624,12 +578,96 @@ function StatsBar({ rows }) {
           </div>
         </div>
       ))}
+
+      {onAppendFile && (
+        <div 
+          onClick={() => document.getElementById('append-file-input')?.click()}
+          style={{
+            background: '#ffffff',
+            border: '2px dashed #0284c7',
+            borderRadius: 8,
+            padding: '10px 16px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            flex: '1 1 200px',
+            minWidth: 180,
+            boxShadow: 'var(--shadow-sm)',
+            cursor: 'pointer',
+            transition: 'all 0.2s ease',
+            userSelect: 'none'
+          }}
+          onMouseOver={(e) => {
+            e.currentTarget.style.borderColor = '#0369a1';
+            e.currentTarget.style.background = '#f0f9ff';
+          }}
+          onMouseOut={(e) => {
+            e.currentTarget.style.borderColor = '#0284c7';
+            e.currentTarget.style.background = '#ffffff';
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            <span style={{ color: '#0369a1', fontSize: 14, fontWeight: 700 }}>Up file nối tiếp:</span>
+            <span style={{ color: '#64748b', fontSize: 12, fontWeight: 500 }}>Nối tiếp dữ liệu</span>
+          </div>
+          <div style={{
+            width: 32, height: 32, borderRadius: 8,
+            background: '#0284c7', color: '#ffffff',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            flexShrink: 0
+          }}>
+            <CloudUpload size={18} />
+          </div>
+          <input
+            id="append-file-input"
+            type="file"
+            accept=".xlsx,.xls"
+            style={{ display: 'none' }}
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) {
+                const reader = new FileReader();
+                reader.onload = (evt) => {
+                  if (evt.target?.result) {
+                    onAppendFile(evt.target.result, file.name);
+                  }
+                };
+                reader.readAsArrayBuffer(file);
+                // Reset value so user can upload same file again
+                e.target.value = '';
+              }
+            }}
+          />
+        </div>
+      )}
     </div>
   )
 }
 
 // ─── Filter Bar ───────────────────────────────────────────────────────────────
-function FilterBar({ search, setSearch, trangThai, setTrangThai, trangThaiOptions, duAn, setDuAn, duAnOptions, onClear, onEditProject }) {
+function FilterBar({
+  search,
+  setSearch,
+  trangThai,
+  setTrangThai,
+  trangThaiOptions,
+  duAn,
+  setDuAn,
+  duAnOptions,
+  donViGiao,
+  setDonViGiao,
+  donViGiaoOptions = [],
+  donViNhan,
+  setDonViNhan,
+  donViNhanOptions = [],
+  startDate,
+  setStartDate,
+  endDate,
+  setEndDate,
+  onClear,
+  onEditProject,
+  onExportExcel
+}) {
   return (
     <div style={{ display: 'flex', gap: 10, marginBottom: 12, flexWrap: 'wrap', alignItems: 'center', flexShrink: 0 }}>
       <div style={{ position: 'relative', flex: '1 1 240px', minWidth: 200 }}>
@@ -642,33 +680,120 @@ function FilterBar({ search, setSearch, trangThai, setTrangThai, trangThaiOption
           onChange={e => setSearch(e.target.value)}
         />
       </div>
+
+      {/* Date range picker matching Image 1 */}
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 8,
+        padding: '0 12px',
+        borderRadius: 'var(--radius, 8px)',
+        border: '1px solid #cbd5e1',
+        background: '#ffffff',
+        height: 44,
+        boxShadow: '0 1px 2px rgba(15, 23, 42, 0.05)',
+        fontSize: '13.5px',
+        color: '#334155',
+        flexShrink: 0
+      }}>
+        <input
+          type="date"
+          value={startDate || ''}
+          onChange={e => setStartDate && setStartDate(e.target.value)}
+          style={{
+            border: 'none',
+            outline: 'none',
+            background: 'transparent',
+            fontSize: '13.5px',
+            color: '#0f172a',
+            fontFamily: 'inherit',
+            cursor: 'pointer',
+            padding: 0
+          }}
+          title="Từ ngày"
+        />
+        <span style={{ color: '#94a3b8', fontSize: '13px', fontWeight: 600 }}>➔</span>
+        <input
+          type="date"
+          value={endDate || ''}
+          onChange={e => setEndDate && setEndDate(e.target.value)}
+          style={{
+            border: 'none',
+            outline: 'none',
+            background: 'transparent',
+            fontSize: '13.5px',
+            color: '#0f172a',
+            fontFamily: 'inherit',
+            cursor: 'pointer',
+            padding: 0
+          }}
+          title="Đến ngày"
+        />
+        <Calendar size={15} style={{ color: '#475569', marginLeft: 4, flexShrink: 0 }} />
+      </div>
+
       <select 
-        className="input" 
-        style={{ 
-          flex: '0 0 auto', 
-          width: 'auto', 
-          minWidth: 160, 
-          height: 44,
-          paddingRight: 28,
-          cursor: 'pointer'
-        }} 
-        value={trangThai} 
-        onChange={e => setTrangThai(e.target.value)}
-      >
+         className="input" 
+         style={{ 
+           flex: '0 0 auto', 
+           width: 'auto', 
+           minWidth: 160, 
+           height: 44,
+           paddingRight: 28,
+           cursor: 'pointer'
+         }} 
+         value={trangThai} 
+         onChange={e => setTrangThai(e.target.value)}
+       >
         <option value="">Tất cả trạng thái</option>
         {trangThaiOptions.map(o => <option key={o} value={o}>{o}</option>)}
       </select>
-      <div style={{ flex: '0 1 auto', minWidth: 220, maxWidth: 460 }}>
+      <div style={{ flex: '0 0 auto', minWidth: 200, maxWidth: 320 }}>
         <SearchableSelect
-          value={duAn}
-          onChange={setDuAn}
-          options={duAnOptions}
-          placeholder="Tất cả dự án"
+          value={donViGiao}
+          onChange={setDonViGiao}
+          options={donViGiaoOptions}
+          placeholder="Tất cả Đơn vị giao"
+          searchPlaceholder="Tìm kiếm Đơn vị giao..."
           variant="filter"
-          onEditProject={onEditProject}
+          align="right"
+         />
+      </div>
+      <div style={{ flex: '0 0 auto', minWidth: 200, maxWidth: 320 }}>
+        <SearchableSelect
+          value={donViNhan}
+          onChange={setDonViNhan}
+          options={donViNhanOptions}
+          placeholder="Tất cả Đơn vị nhận"
+          searchPlaceholder="Tìm kiếm Đơn vị nhận..."
+          variant="filter"
+          align="right"
         />
       </div>
-      {(search || trangThai || duAn) && (
+      {onExportExcel && (
+        <button
+          className="btn"
+          onClick={onExportExcel}
+          style={{
+            background: 'linear-gradient(135deg, #059669 0%, #10b981 100%)',
+            color: '#ffffff',
+            border: 'none',
+            boxShadow: '0 2px 4px rgba(16,185,129,0.2)',
+            height: 44,
+            padding: '0 16px',
+            borderRadius: 'var(--radius)',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 6,
+            fontWeight: 600,
+            fontSize: '13.5px',
+            cursor: 'pointer'
+          }}
+        >
+          <Download size={14} /> Xuất Excel
+        </button>
+      )}
+      {(search || trangThai || duAn || donViGiao || donViNhan || startDate || endDate) && (
         <button 
           className="btn btn-outline btn-sm" 
           style={{ 
@@ -689,14 +814,23 @@ function FilterBar({ search, setSearch, trangThai, setTrangThai, trangThaiOption
 // ─── Data Table ───────────────────────────────────────────────────────────────
 const PAGE_SIZE_OPTIONS = [50, 100, 200, 500]
 
-function DataTable({ rows }) {
+function DataTable({ rows, setRows, type }) {
   const [pageSize, setPageSize] = React.useState(100)
   const [currentPage, setCurrentPage] = React.useState(1)
+  const [selectedIds, setSelectedIds] = React.useState(new Set())
   const tableWrapRef = React.useRef(null)
   const mirrorRef = React.useRef(null)
 
   // Reset to page 1 when rows change (filter applied)
-  React.useEffect(() => { setCurrentPage(1) }, [rows])
+  React.useEffect(() => { 
+    setCurrentPage(1)
+    setSelectedIds(new Set())
+  }, [rows])
+
+  // Reset selection when page changes
+  React.useEffect(() => {
+    setSelectedIds(new Set())
+  }, [currentPage, pageSize])
 
   // Sync scroll giữa bảng và thanh cuộn mirror dưới
   React.useEffect(() => {
@@ -741,6 +875,71 @@ function DataTable({ rows }) {
   const endIdx = Math.min(startIdx + pageSize, rows.length)
   const pageRows = rows.slice(startIdx, endIdx)
 
+  const pageRowIds = React.useMemo(() => pageRows.map(r => r.id), [pageRows])
+
+  const isAllSelected = React.useMemo(() => {
+    if (pageRowIds.length === 0) return false
+    return pageRowIds.every(id => selectedIds.has(id))
+  }, [pageRowIds, selectedIds])
+
+  const handleSelectAll = (e) => {
+    const checked = e.target.checked
+    setSelectedIds(prev => {
+      const next = new Set(prev)
+      if (checked) {
+        pageRowIds.forEach(id => next.add(id))
+      } else {
+        pageRowIds.forEach(id => next.delete(id))
+      }
+      return next
+    })
+  }
+
+  const handleSelectRow = (id, checked) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev)
+      if (checked) {
+        next.add(id)
+      } else {
+        next.delete(id)
+      }
+      return next
+    })
+  }
+
+  const handleDeleteSelected = async () => {
+    if (selectedIds.size === 0) return
+
+    const confirmMessage = `Bạn có chắc chắn muốn xóa ${selectedIds.size} dòng dữ liệu đã chọn?\n\nHành động này không thể hoàn tác và sẽ xóa dữ liệu tương ứng trên cơ sở dữ liệu Supabase (nếu có kết nối).`
+    if (!window.confirm(confirmMessage)) return
+
+    const idsArr = Array.from(selectedIds)
+
+    // 1. Delete on Supabase if connected
+    if (isSupabaseConfigured) {
+      const tableName = type === 'chung' ? 'don_chung' : type === 'giao' ? 'don_giao' : type === 'nhan' ? 'don_nhan' : type === 'kho' ? 'don_kho' : 'don_chung'
+      try {
+        const { error } = await supabase
+          .from(tableName)
+          .delete()
+          .in('id', idsArr)
+        
+        if (error) throw error
+      } catch (err) {
+        alert(`Lỗi khi xóa dòng trên Supabase: ${err.message || err}`)
+        return
+      }
+    }
+
+    // 2. Delete locally
+    if (setRows) {
+      setRows(prev => prev.filter(r => !selectedIds.has(r.id)))
+    }
+    
+    // Clear selection
+    setSelectedIds(new Set())
+  }
+
   // Generate page buttons (show max 7 around current)
   const getPageNums = () => {
     const pages = []
@@ -769,40 +968,149 @@ function DataTable({ rows }) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
+      {/* Floating Selection Alert Bar */}
+      {setRows && selectedIds.size > 0 && (
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          background: '#fef2f2',
+          border: '1px solid #fca5a5',
+          borderRadius: 8,
+          padding: '10px 16px',
+          marginBottom: 12,
+          color: '#991b1b',
+          fontSize: '13.5px',
+          fontWeight: 500,
+          boxShadow: '0 1px 3px rgba(239, 68, 68, 0.08)',
+          flexShrink: 0
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <AlertCircle size={16} color="#ef4444" />
+            <span>Đang chọn <strong style={{ fontSize: 15, color: '#b91c1c' }}>{selectedIds.size}</strong> dòng dữ liệu</span>
+          </div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button
+              onClick={() => setSelectedIds(new Set())}
+              className="btn btn-outline"
+              style={{
+                height: 32,
+                padding: '0 14px',
+                fontSize: '13px',
+                borderColor: '#fca5a5',
+                color: '#b91c1c',
+                background: '#ffffff',
+                cursor: 'pointer',
+                fontWeight: 600,
+                borderRadius: 6,
+                transition: 'all 0.15s'
+              }}
+            >
+              Hủy chọn
+            </button>
+            <button
+              onClick={handleDeleteSelected}
+              className="btn"
+              style={{
+                height: 32,
+                padding: '0 14px',
+                fontSize: '13px',
+                background: '#dc2626',
+                color: '#ffffff',
+                border: 'none',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                fontWeight: 700,
+                cursor: 'pointer',
+                borderRadius: 6,
+                boxShadow: '0 2px 4px rgba(220, 38, 38, 0.2)',
+                transition: 'all 0.15s'
+              }}
+            >
+              <Trash2 size={14} /> Xóa {selectedIds.size} dòng đã chọn
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Table */}
       <div className="table-wrap" ref={tableWrapRef} style={{ overflowX: 'hidden', overflowY: 'auto' }}>
         <table>
           <thead>
             <tr>
+              {setRows && (
+                <th style={{ width: 40, minWidth: 40, maxWidth: 40, textAlign: 'center', verticalAlign: 'middle', padding: '8px 10px' }}>
+                  <input
+                    type="checkbox"
+                    checked={isAllSelected}
+                    onChange={handleSelectAll}
+                    style={{
+                      width: 16,
+                      height: 16,
+                      cursor: 'pointer',
+                      borderRadius: 4,
+                      borderColor: '#cbd5e1',
+                      accentColor: 'var(--primary)'
+                    }}
+                  />
+                </th>
+              )}
               <th style={{ width: 50, minWidth: 50, maxWidth: 50, textAlign: 'center', verticalAlign: 'middle', fontSize: '12px', padding: '8px 10px' }}>
                 STT
               </th>
-              {COLS_GIAO_NHAN.map(c => (
-                <th
-                  key={c.key}
-                  style={{
-                    width: c.width, minWidth: c.width, maxWidth: c.width,
-                    textAlign: 'center', verticalAlign: 'middle',
-                    fontSize: '12px', padding: '8px 10px',
-                    whiteSpace: 'normal', wordBreak: 'break-word', lineHeight: '1.2'
-                  }}
-                >
-                  {c.label}
-                </th>
-              ))}
+              {COLS_GIAO_NHAN.map(c => {
+                const isNhapKhoGroup = ['khoiLuongNhap', 'maDonViGiao', 'donViGiao', 'nguoiGiao'].includes(c.key)
+                const isXuatKhoGroup = ['khoiLuongXuat', 'maDonViNhan', 'donViNhan', 'nguoiPheDuyet'].includes(c.key)
+                const thBg = isNhapKhoGroup ? '#0f766e' : isXuatKhoGroup ? '#c2410c' : undefined
+                const thBorderBottom = isNhapKhoGroup ? '2px solid #115e59' : isXuatKhoGroup ? '2px solid #9a3412' : undefined
+
+                return (
+                  <th
+                    key={c.key}
+                    style={{
+                      width: c.width, minWidth: c.width, maxWidth: c.width,
+                      textAlign: 'center', verticalAlign: 'middle',
+                      fontSize: '12px', padding: '8px 10px',
+                      whiteSpace: 'normal', wordBreak: 'break-word', lineHeight: '1.2',
+                      background: thBg,
+                      borderBottom: thBorderBottom
+                    }}
+                  >
+                    {c.label}
+                  </th>
+                )
+              })}
             </tr>
           </thead>
           <tbody>
             {pageRows.map((row, i) => (
               <tr key={row.id}>
+                {setRows && (
+                  <td style={{ width: 40, minWidth: 40, maxWidth: 40, textAlign: 'center', padding: '6px 10px' }}>
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.has(row.id)}
+                      onChange={(e) => handleSelectRow(row.id, e.target.checked)}
+                      style={{
+                        width: 16,
+                        height: 16,
+                        cursor: 'pointer',
+                        borderRadius: 4,
+                        borderColor: '#cbd5e1',
+                        accentColor: 'var(--primary)'
+                      }}
+                    />
+                  </td>
+                )}
                 <td style={{ width: 50, minWidth: 50, maxWidth: 50, textAlign: 'center', fontSize: '12px', color: '#1b1919', padding: '6px 10px' }}>
                   {startIdx + i + 1}
                 </td>
                 {COLS_GIAO_NHAN.map(col => {
                   const isCenteredCol = [
                     'ngayXuatNhap', 'maVatTu', 'maSAP', 'dvt', 'loaiDon',
-                    'maDonViGiao', 'donViGiao', 'nguoiGiao',
-                    'maDonViNhan', 'donViNhan', 'nguoiPheDuyet', 'nguoiNhan',
+                    'maDonViGiao', 'nguoiGiao',
+                    'maDonViNhan', 'nguoiPheDuyet', 'nguoiNhan',
                     'soHopDong', 'thuKho', 'tinhTrang'
                   ].includes(col.key)
                   const isRightAligned = ['khoiLuongNhap', 'khoiLuongXuat'].includes(col.key) || col.key.toLowerCase().includes('khoiluong')
@@ -890,6 +1198,41 @@ function DataTable({ rows }) {
   )
 }
 
+// Helper to parse date string or excel serial to Date object
+function parseRowDate(dateVal) {
+  if (dateVal === null || dateVal === undefined) return null;
+  if (typeof dateVal === 'number') {
+    const d = new Date((dateVal - 25569) * 86400000);
+    return d;
+  }
+  const str = String(dateVal).trim();
+  if (!str) return null;
+
+  // DD/MM/YYYY or DD-MM-YYYY or DD.MM.YYYY
+  const dmyMatch = str.match(/^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{4})$/);
+  if (dmyMatch) {
+    const day = parseInt(dmyMatch[1], 10);
+    const month = parseInt(dmyMatch[2], 10) - 1;
+    const year = parseInt(dmyMatch[3], 10);
+    return new Date(year, month, day);
+  }
+
+  // YYYY/MM/DD or YYYY-MM-DD
+  const ymdMatch = str.match(/^(\d{4})[\/\-\.](\d{1,2})[\/\-\.](\d{1,2})$/);
+  if (ymdMatch) {
+    const year = parseInt(ymdMatch[1], 10);
+    const month = parseInt(ymdMatch[2], 10) - 1;
+    const day = parseInt(ymdMatch[3], 10);
+    return new Date(year, month, day);
+  }
+
+  const parsed = new Date(str);
+  if (!isNaN(parsed.getTime())) {
+    return parsed;
+  }
+  return null;
+}
+
 // ─── Order Tab (shared for Giao & Nhan) ──────────────────────────────────────
 function OrderTab({
   type,
@@ -910,6 +1253,10 @@ function OrderTab({
   const [loading, setLoading] = useState(false)
   const [search, setSearch] = useState('')
   const [trangThai, setTrangThai] = useState('')
+  const [donViGiaoFilter, setDonViGiaoFilter] = useState('')
+  const [donViNhanFilter, setDonViNhanFilter] = useState('')
+  const [startDate, setStartDate] = useState('')
+  const [endDate, setEndDate] = useState('')
 
   const label = type === 'giao' ? 'Đơn Giao' : type === 'nhan' ? 'Đơn Nhận' : type === 'kho' ? 'Kho dự án' : 'Đơn chung'
   const uploadLabel = type === 'giao'
@@ -925,10 +1272,24 @@ function OrderTab({
     setTimeout(() => {
       const parsed = parseXlsxToRows(data)
       if (onImportFile) {
-        onImportFile(parsed, name)
+        onImportFile(parsed, name, false)
       } else {
         setRows(parsed)
         setFileName(name)
+      }
+      setLoading(false)
+    }, 80)
+  }, [setRows, setFileName, onImportFile])
+
+  const handleAppendFile = useCallback((data, name) => {
+    setLoading(true)
+    setTimeout(() => {
+      const parsed = parseXlsxToRows(data)
+      if (onImportFile) {
+        onImportFile(parsed, name, true)
+      } else {
+        setRows(prev => [...prev, ...parsed])
+        setFileName(prev => prev ? `${prev} + ${name}` : name)
       }
       setLoading(false)
     }, 80)
@@ -942,6 +1303,19 @@ function OrderTab({
     }
     return [...new Set(rows.map(r => r.duAn).filter(Boolean))].sort()
   }, [rows, projectOptions])
+
+  const projectFilteredRowsForStats = useMemo(() => {
+    if (!selectedProject) return rows
+    return rows.filter(r => (r.ten_du_an || r.tenDuAn || r.duAn) === selectedProject)
+  }, [rows, selectedProject])
+
+  const donViGiaoOptions = useMemo(() => {
+    return [...new Set(projectFilteredRowsForStats.map(r => r.donViGiao).filter(Boolean))].sort()
+  }, [projectFilteredRowsForStats])
+
+  const donViNhanOptions = useMemo(() => {
+    return [...new Set(projectFilteredRowsForStats.map(r => r.donViNhan).filter(Boolean))].sort()
+  }, [projectFilteredRowsForStats])
 
   const filtered = useMemo(() => {
     let r = rows
@@ -958,13 +1332,27 @@ function OrderTab({
     }
     if (trangThai) r = r.filter(row => row.trangThai === trangThai)
     if (selectedProject) r = r.filter(row => (row.ten_du_an || row.tenDuAn || row.duAn) === selectedProject)
-    return r
-  }, [rows, search, trangThai, selectedProject])
+    if (donViGiaoFilter) r = r.filter(row => row.donViGiao === donViGiaoFilter)
+    if (donViNhanFilter) r = r.filter(row => row.donViNhan === donViNhanFilter)
 
-  const projectFilteredRowsForStats = useMemo(() => {
-    if (!selectedProject) return rows
-    return rows.filter(r => (r.ten_du_an || r.tenDuAn || r.duAn) === selectedProject)
-  }, [rows, selectedProject])
+    if (startDate || endDate) {
+      const start = startDate ? new Date(startDate) : null
+      if (start) start.setHours(0, 0, 0, 0)
+
+      const end = endDate ? new Date(endDate) : null
+      if (end) end.setHours(23, 59, 59, 999)
+
+      r = r.filter(row => {
+        const rowDate = parseRowDate(row.ngayXuatNhap)
+        if (!rowDate) return false
+        if (start && rowDate < start) return false
+        if (end && rowDate > end) return false
+        return true
+      })
+    }
+
+    return r
+  }, [rows, search, trangThai, selectedProject, donViGiaoFilter, donViNhanFilter, startDate, endDate])
 
   const handleExportExcel = useCallback(() => {
     const wb = XLSXStyle.utils.book_new()
@@ -985,13 +1373,19 @@ function OrderTab({
     columns.forEach((col, colIdx) => {
       const colChar = getColLabel(colIdx)
       const cellRef = `${colChar}${excelRowIdx}`
+      
+      const isNhapKhoGroup = ['khoiLuongNhap', 'maDonViGiao', 'donViGiao', 'nguoiGiao'].includes(col.key)
+      const isXuatKhoGroup = ['khoiLuongXuat', 'maDonViNhan', 'donViNhan', 'nguoiPheDuyet'].includes(col.key)
+      const excelBgColor = isNhapKhoGroup ? '0F766E' : isXuatKhoGroup ? 'C2410C' : '0F58A7'
+      const excelBorderColor = isNhapKhoGroup ? '115E59' : isXuatKhoGroup ? '9A3412' : '0A3D73'
+
       ws[cellRef] = {
         v: col.label,
         t: 's',
         s: {
           fill: {
             patternType: 'solid',
-            fgColor: { rgb: '0F58A7' }
+            fgColor: { rgb: excelBgColor }
           },
           font: {
             name: 'Segoe UI',
@@ -1005,10 +1399,10 @@ function OrderTab({
             wrapText: true
           },
           border: {
-            top: { style: 'thin', color: { rgb: '0A3D73' } },
-            bottom: { style: 'medium', color: { rgb: '0A3D73' } },
-            left: { style: 'thin', color: { rgb: '0A3D73' } },
-            right: { style: 'thin', color: { rgb: '0A3D73' } }
+            top: { style: 'thin', color: { rgb: excelBorderColor } },
+            bottom: { style: 'medium', color: { rgb: excelBorderColor } },
+            left: { style: 'thin', color: { rgb: excelBorderColor } },
+            right: { style: 'thin', color: { rgb: excelBorderColor } }
           }
         }
       }
@@ -1087,8 +1481,8 @@ function OrderTab({
         // Check alignment
         const isCenteredCol = [
           'STT', 'ngayXuatNhap', 'maVatTu', 'maSAP', 'dvt', 'loaiDon',
-          'maDonViGiao', 'donViGiao', 'nguoiGiao',
-          'maDonViNhan', 'donViNhan', 'nguoiPheDuyet', 'nguoiNhan',
+          'maDonViGiao', 'nguoiGiao',
+          'maDonViNhan', 'nguoiPheDuyet', 'nguoiNhan',
           'soHopDong', 'thuKho', 'tinhTrang', 'trangThai'
         ].includes(col.key)
         const isRightAligned = ['khoiLuongNhap', 'khoiLuongXuat'].includes(col.key) || col.key.toLowerCase().includes('khoiluong')
@@ -1230,27 +1624,13 @@ function OrderTab({
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', marginBottom: 16, gap: 12, flexShrink: 0 }}>
-            <div style={{ display: 'flex', gap: 8 }}>
-              {rows.length > 0 && (
-                <button
-                  className="btn btn-sm"
-                  onClick={handleExportExcel}
-                  style={{
-                    background: 'linear-gradient(135deg, #059669 0%, #10b981 100%)',
-                    color: '#ffffff',
-                    border: 'none',
-                    boxShadow: '0 2px 4px rgba(16,185,129,0.2)',
-                  }}
-                >
-                  <Download size={12} /> Xuất Excel
-                </button>
-              )}
-              <button className="btn btn-outline btn-sm" onClick={() => { if (onDeleteFile) { onDeleteFile() } else { setRows([]); setFileName(''); setSearch(''); setTrangThai('') } }} style={{ display: selectedProject ? 'flex' : 'none' }}>
+          {selectedProject && (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', marginBottom: 16, flexShrink: 0 }}>
+              <button className="btn btn-outline btn-sm" onClick={() => { if (onDeleteFile) { onDeleteFile() } else { setRows([]); setFileName(''); setSearch(''); setTrangThai('') } }}>
                 <X size={12} /> Xóa file
               </button>
             </div>
-          </div>
+          )}
 
           {supabaseMessage && (
             <div style={{
@@ -1277,7 +1657,7 @@ function OrderTab({
             </div>
           )}
 
-          <StatsBar rows={projectFilteredRowsForStats} />
+          <StatsBar rows={projectFilteredRowsForStats} onAppendFile={handleAppendFile} />
 
           <FilterBar
             search={search} setSearch={setSearch}
@@ -1285,11 +1665,26 @@ function OrderTab({
             trangThaiOptions={trangThaiOptions}
             duAn={selectedProject} setDuAn={setSelectedProject}
             duAnOptions={duAnOptions}
-            onClear={() => { setSearch(''); setTrangThai(''); setSelectedProject('') }}
+            donViGiao={donViGiaoFilter} setDonViGiao={setDonViGiaoFilter}
+            donViGiaoOptions={donViGiaoOptions}
+            donViNhan={donViNhanFilter} setDonViNhan={setDonViNhanFilter}
+            donViNhanOptions={donViNhanOptions}
+            startDate={startDate} setStartDate={setStartDate}
+            endDate={endDate} setEndDate={setEndDate}
+            onClear={() => {
+              setSearch('')
+              setTrangThai('')
+              setDonViGiaoFilter('')
+              setDonViNhanFilter('')
+              setSelectedProject('')
+              setStartDate('')
+              setEndDate('')
+            }}
             onEditProject={onEditProject}
+            onExportExcel={rows.length > 0 ? handleExportExcel : undefined}
           />
 
-          {filtered.length === 0 && selectedProject && !search && !trangThai ? (
+          {filtered.length === 0 && selectedProject && !search && !trangThai && !donViGiaoFilter && !donViNhanFilter ? (
             <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <div style={{ maxWidth: 480, width: '100%', textAlign: 'center' }}>
                 <div style={{
@@ -1309,9 +1704,757 @@ function OrderTab({
               </div>
             </div>
           ) : (
-            <DataTable rows={filtered} />
+            <DataTable rows={filtered} setRows={setRows} type={type} />
           )}
         </div>
+      )}
+    </div>
+  )
+}
+
+// Helper function to classify unit name into 4 categories
+function getUnitCategory(name) {
+  const upper = (name || '').toUpperCase();
+  
+  // 1. Nhà cung cấp: contains "CÔNG TY", "CONG TY", "CTY", "DNTN"
+  if (upper.includes('CÔNG TY') || upper.includes('CONG TY') || upper.includes('CTY') || upper.includes('DNTN')) {
+    return 'ncc';
+  }
+  
+  // 2. Tổ đội: has "TỔ ĐỘI" or "TO DOI"
+  if (upper.includes('TỔ ĐỘI') || upper.includes('TO DOI')) {
+    return 'todoi';
+  }
+  
+  // 3. Kho BCH: contains "KHO" (as a separate word), "SGC", or "BCH"
+  // Split by non-letter characters to extract exact words/tokens
+  const tokens = upper.split(/[^A-ZÁÀẢÃẠĂẮẰẲẴẶÂẤẦẨẪẬÉÈẺẼẸÊẾỀỂỄỆÍÌỈĨỊÓÒỎÕỌÔỐỒỔỖỘƠỚỜỞỠỢÚÙỦŨỤƯỨỪỬỮỰÝỲỶỸYĐ]/);
+  const hasKho = tokens.includes('KHO');
+  const hasSgc = tokens.includes('SGC');
+  const hasBch = tokens.includes('BCH');
+  
+  if (hasKho || hasSgc || hasBch) {
+    return 'kho';
+  }
+  
+  // 4. Check if it's a personal full name (which falls into "Tổ đội")
+  const trimmed = (name || '').trim();
+  // Exclude strings containing numbers, slashes, underscores, or dashes (usually not a real Vietnamese name)
+  if (/[-/_[\]()0-9]/.test(trimmed)) {
+    return 'chuaphanbo';
+  }
+  
+  const words = trimmed.split(/\s+/);
+  // Vietnamese names are typically 2 to 5 words
+  if (words.length >= 2 && words.length <= 5) {
+    // Check if all words are capitalized
+    const isCapitalized = words.every(w => {
+      if (!w) return true;
+      const firstChar = w[0];
+      return firstChar === firstChar.toUpperCase();
+    });
+    
+    // Exclude common corporate or team terms
+    const excludeKeywords = [
+      'SGC', 'BCH', 'VFVA', 'HLX', 'TPC', 'TCE', 'HP', 'VP', 'KT', 'GT', 'QD', 'CP', 'TNHH', 'MTV', 
+      'TRẠM', 'TRAM', 'BÊ TÔNG', 'BE TONG', 'NHÀ MÁY', 'NHA MAY', 'XÍ NGHIỆP', 'XI NGHIEP', 'DỰ ÁN', 'DU AN',
+      'BAN CHỈ HUY', 'BAN CHI HUY', 'HẠ TẦNG', 'HA TANG', 'ĐƯỜNG', 'DUONG', 'CẦU', 'CAU', 'SÂN', 'SAN'
+    ];
+    const hasExclude = words.some(w => excludeKeywords.includes(w.toUpperCase()));
+    
+    if (isCapitalized && !hasExclude) {
+      return 'todoi';
+    }
+  }
+  
+  return 'chuaphanbo';
+}
+
+// ─── Kho Du An Tab (Auto-compiled from Don Chung) ───────────────────────────
+function KhoDuAnTab({ chungRows, selectedProject, setSelectedProject, allProjects = [] }) {
+  const [search, setSearch] = useState('')
+  const [saveStatus, setSaveStatus] = useState('idle') // 'idle' | 'saving' | 'success' | 'error'
+  const [errorMessage, setErrorMessage] = useState('')
+
+  // Drag and drop / Custom classifications state
+  const [customCategoryMap, setCustomCategoryMap] = useState({})
+  const [dbCategoryMap, setDbCategoryMap] = useState({}) // Stores the initial/saved state from Supabase
+  const [draggedItemName, setDraggedItemName] = useState(null)
+  const [dragOverCol, setDragOverCol] = useState(null)
+
+  // Load custom classifications from Supabase table phan_loai_don_vi
+  React.useEffect(() => {
+    let isMounted = true
+    const loadCustomClassifications = async () => {
+      if (!isSupabaseConfigured) {
+        if (isMounted) {
+          setCustomCategoryMap({})
+          setDbCategoryMap({})
+        }
+        return
+      }
+      try {
+        const { data, error } = await supabase
+          .from('phan_loai_don_vi')
+          .select('ten_don_vi, nhom_don_vi')
+          
+        if (error) throw error
+        
+        if (data && isMounted) {
+          const map = {}
+          data.forEach(row => {
+            if (row.ten_don_vi) {
+              map[row.ten_don_vi] = row.nhom_don_vi
+            }
+          })
+          setCustomCategoryMap(map)
+          setDbCategoryMap(map)
+        }
+      } catch (err) {
+        console.error('Error loading custom classifications:', err)
+      }
+    }
+    loadCustomClassifications()
+    return () => {
+      isMounted = false
+    }
+  }, [])
+
+  // Drag & drop handlers
+  const handleDragStart = (e, name) => {
+    setDraggedItemName(name)
+    e.dataTransfer.setData('text/plain', name)
+    e.dataTransfer.effectAllowed = 'move'
+  }
+
+  const handleDragOver = (e) => {
+    e.preventDefault()
+  }
+
+  const handleDrop = (e, targetColKey) => {
+    e.preventDefault()
+    const name = e.dataTransfer.getData('text/plain') || draggedItemName
+    if (!name) return
+
+    setCustomCategoryMap(prev => ({
+      ...prev,
+      [name]: targetColKey
+    }))
+    setDraggedItemName(null)
+    setDragOverCol(null)
+  }
+
+  // 1. Extract unique units (both Giao and Nhan combined) from all chungRows
+  const uniqueDonVi = useMemo(() => {
+    const counts = {}
+    chungRows.forEach(r => {
+      const g = (r.donViGiao || '').trim()
+      const n = (r.donViNhan || '').trim()
+      if (g) {
+        if (!counts[g]) counts[g] = { name: g, giaoCount: 0, nhanCount: 0 }
+        counts[g].giaoCount++
+      }
+      if (n) {
+        if (!counts[n]) counts[n] = { name: n, giaoCount: 0, nhanCount: 0 }
+        counts[n].nhanCount++
+      }
+    })
+    return Object.values(counts)
+      .map(item => ({
+        ...item,
+        totalCount: item.giaoCount + item.nhanCount
+      }))
+      .sort((a, b) => b.totalCount - a.totalCount)
+  }, [chungRows])
+
+  // Check if current classifications match database state exactly
+  const isSynchronized = useMemo(() => {
+    if (uniqueDonVi.length === 0) return true
+    return uniqueDonVi.every(item => {
+      const dbCat = dbCategoryMap[item.name]
+      const currentCat = customCategoryMap[item.name] || getUnitCategory(item.name)
+      return dbCat !== undefined && dbCat === currentCat
+    })
+  }, [uniqueDonVi, customCategoryMap, dbCategoryMap])
+
+  // 2. Filter list by search query
+  const filteredDonVi = useMemo(() => {
+    if (!search) return uniqueDonVi
+    const q = search.toLowerCase()
+    return uniqueDonVi.filter(item => item.name.toLowerCase().includes(q))
+  }, [uniqueDonVi, search])
+
+  // 3. Categorize filtered units into 4 groups with default + manual classification mapping
+  // Sắp xếp hiển thị theo thứ tự A, b, c,... z
+  const categorizedUnits = useMemo(() => {
+    const groups = {
+      chuaphanbo: [],
+      kho: [],
+      ncc: [],
+      todoi: []
+    }
+    filteredDonVi.forEach(item => {
+      const cat = customCategoryMap[item.name] || getUnitCategory(item.name)
+      groups[cat].push(item)
+    })
+    
+    // Sort each group alphabetically (A,b,c,...z) using Vietnamese localeCompare
+    Object.keys(groups).forEach(key => {
+      groups[key].sort((a, b) => a.name.localeCompare(b.name, 'vi', { sensitivity: 'base' }))
+    })
+    
+    return groups
+  }, [filteredDonVi, customCategoryMap])
+
+  const handleSaveToSupabase = useCallback(async () => {
+    if (!isSupabaseConfigured) {
+      alert('Chưa cấu hình Supabase!')
+      return
+    }
+    
+    setSaveStatus('saving')
+    setErrorMessage('')
+    
+    try {
+      // 1. Fetch current database entries from phan_loai_don_vi
+      const { data: existingRows, error: fetchErr } = await supabase
+        .from('phan_loai_don_vi')
+        .select('*')
+        
+      if (fetchErr) throw fetchErr
+      
+      const existingMap = {}
+      existingRows?.forEach(row => {
+        if (row.ten_don_vi) {
+          existingMap[row.ten_don_vi.trim().toLowerCase()] = row
+        }
+      })
+      
+      const toInsert = []
+      const toUpdate = []
+      
+      uniqueDonVi.forEach(item => {
+        const cat = customCategoryMap[item.name] || getUnitCategory(item.name)
+        const matched = existingMap[item.name.trim().toLowerCase()]
+        if (matched) {
+          if (matched.nhom_don_vi !== cat) {
+            toUpdate.push({
+              id: matched.id,
+              ten_don_vi: item.name,
+              nhom_don_vi: cat
+            })
+          }
+        } else {
+          toInsert.push({
+            ten_don_vi: item.name,
+            nhom_don_vi: cat
+          })
+        }
+      })
+      
+      // Perform updates
+      for (const row of toUpdate) {
+        const { error: updErr } = await supabase
+          .from('phan_loai_don_vi')
+          .update({ nhom_don_vi: row.nhom_don_vi })
+          .eq('id', row.id)
+        if (updErr) throw updErr
+      }
+      
+      // Perform inserts
+      if (toInsert.length > 0) {
+        const { error: insErr } = await supabase
+          .from('phan_loai_don_vi')
+          .insert(toInsert)
+        if (insErr) throw insErr
+      }
+      
+      // Update our reference map representing the database
+      setDbCategoryMap(prev => {
+        const next = { ...prev }
+        uniqueDonVi.forEach(item => {
+          const cat = customCategoryMap[item.name] || getUnitCategory(item.name)
+          next[item.name] = cat
+        })
+        return next
+      })
+      
+      setSaveStatus('success')
+      setTimeout(() => setSaveStatus('idle'), 3000)
+    } catch (err) {
+      console.error('Error saving classifications to Supabase:', err)
+      setSaveStatus('error')
+      setErrorMessage(err.message || String(err))
+    }
+  }, [uniqueDonVi, customCategoryMap])
+
+  // 5. Excel export handler for categorized units list (Multi-sheet export)
+  const handleExportExcel = useCallback(() => {
+    const wb = XLSXStyle.utils.book_new()
+    
+    const createSheetForList = (list, sheetTitle, fgColorHex = '0F58A7') => {
+      const ws = {}
+      const cols = [
+        { key: 'STT', label: 'STT', width: 60 },
+        { key: 'ten', label: 'Tên Đơn vị', width: 350 },
+        { key: 'giaoCount', label: 'Số dòng Đơn vị giao (Nhập kho)', width: 200 },
+        { key: 'nhanCount', label: 'Số dòng Đơn vị nhận (Xuất kho)', width: 200 },
+        { key: 'totalCount', label: 'Tổng số dòng phát sinh', width: 180 }
+      ]
+      ws['!cols'] = cols.map(c => ({ wpx: c.width }))
+      
+      // Write header
+      let rowIdx = 1
+      cols.forEach((col, colIdx) => {
+        const cellRef = `${String.fromCharCode(65 + colIdx)}${rowIdx}`
+        ws[cellRef] = {
+          v: col.label,
+          t: 's',
+          s: {
+            fill: { patternType: 'solid', fgColor: { rgb: fgColorHex } },
+            font: { name: 'Segoe UI', sz: 10, bold: true, color: { rgb: 'FFFFFF' } },
+            alignment: { horizontal: 'center', vertical: 'center' },
+            border: {
+              top: { style: 'thin', color: { rgb: '0A3D73' } },
+              bottom: { style: 'medium', color: { rgb: '0A3D73' } },
+              left: { style: 'thin', color: { rgb: '0A3D73' } },
+              right: { style: 'thin', color: { rgb: '0A3D73' } }
+            }
+          }
+        }
+      })
+
+      // Write data
+      list.forEach((item, idx) => {
+        rowIdx++
+        const cells = [
+          idx + 1,
+          item.name,
+          item.giaoCount,
+          item.nhanCount,
+          item.totalCount
+        ]
+        cells.forEach((val, colIdx) => {
+          const cellRef = `${String.fromCharCode(65 + colIdx)}${rowIdx}`
+          ws[cellRef] = {
+            v: val,
+            t: typeof val === 'number' ? 'n' : 's',
+            s: {
+              font: { name: 'Segoe UI', sz: 9.5 },
+              alignment: { horizontal: colIdx === 1 ? 'left' : 'center', vertical: 'center' },
+              border: {
+                top: { style: 'thin', color: { rgb: 'E2E8F0' } },
+                bottom: { style: 'thin', color: { rgb: 'E2E8F0' } },
+                left: { style: 'thin', color: { rgb: 'E2E8F0' } },
+                right: { style: 'thin', color: { rgb: 'E2E8F0' } }
+              }
+            }
+          }
+        })
+      })
+      ws['!ref'] = `A1:E${rowIdx}`
+      XLSXStyle.utils.book_append_sheet(wb, ws, sheetTitle)
+    }
+
+    // Append sheets
+    createSheetForList(filteredDonVi, 'Tổng hợp đơn vị', '0F58A7')
+    createSheetForList(categorizedUnits.chuaphanbo, 'Chưa phân bổ', '64748B')
+    createSheetForList(categorizedUnits.kho, 'Kho BCH', '1E40AF')
+    createSheetForList(categorizedUnits.ncc, 'Nhà Cung cấp', 'D97706')
+    createSheetForList(categorizedUnits.todoi, 'Tổ đội', '059669')
+
+    // Save
+    const wbout = XLSXStyle.write(wb, { bookType: 'xlsx', type: 'binary' })
+    function s2ab(s) {
+      const buf = new ArrayBuffer(s.length)
+      const view = new Uint8Array(buf)
+      for (let i = 0; i < s.length; i++) view[i] = s.charCodeAt(i) & 0xFF
+      return buf
+    }
+    const blob = new Blob([s2ab(wbout)], { type: 'application/octet-stream' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `Kho_du_an_trich_xuat_${new Date().toISOString().slice(0, 10)}.xlsx`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+  }, [filteredDonVi, categorizedUnits])
+
+  return (
+    <div style={{ padding: '16px 24px 24px 24px', height: '100%', display: 'flex', flexDirection: 'column', boxSizing: 'border-box', overflow: 'hidden' }}>
+      {/* Tab Header & Action Panel */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, flexShrink: 0, gap: 16 }}>
+        <div>
+          <h2 style={{ fontSize: 19, fontWeight: 800, color: 'var(--text)', margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Warehouse size={22} color="var(--primary)" />
+            Kho dự án (Trích xuất từ Đơn chung)
+          </h2>
+          <p style={{ margin: '4px 0 0', color: 'var(--text-muted)', fontSize: 13.5 }}>
+            Tự động trích xuất toàn bộ tên <strong>Đơn vị giao</strong> và <strong>Đơn vị nhận</strong> từ dữ liệu Đơn chung hiện tại.
+          </p>
+        </div>
+        <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+          {isSupabaseConfigured && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              {/* Status text badge to clearly inform user */}
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                padding: '6px 12px',
+                borderRadius: 20,
+                fontSize: 12.5,
+                fontWeight: 600,
+                background: isSynchronized ? '#f0fdf4' : '#fff7ed',
+                border: isSynchronized ? '1px solid #bbf7d0' : '1px solid #ffedd5',
+                color: isSynchronized ? '#15803d' : '#c2410c',
+                boxShadow: '0 1px 2px rgba(15, 23, 42, 0.05)',
+                transition: 'all 0.2s ease'
+              }}>
+                <span 
+                  className={isSynchronized ? "" : "animate-pulse"}
+                  style={{
+                    display: 'inline-block',
+                    width: 8,
+                    height: 8,
+                    borderRadius: '50%',
+                    background: isSynchronized ? '#22c55e' : '#f97316',
+                    boxShadow: isSynchronized ? 'none' : '0 0 8px #f97316'
+                  }} 
+                />
+                <span>
+                  {isSynchronized ? 'Dữ liệu đã được đồng bộ' : 'Dữ liệu chưa được đồng bộ'}
+                </span>
+              </div>
+
+              <button
+                className="btn"
+                onClick={handleSaveToSupabase}
+                disabled={saveStatus === 'saving' || isSynchronized}
+                style={{
+                  background: isSynchronized 
+                    ? '#cbd5e1' 
+                    : saveStatus === 'saving' 
+                      ? '#94a3b8' 
+                      : saveStatus === 'success' 
+                        ? 'linear-gradient(135deg, #16a34a 0%, #22c55e 100%)' 
+                        : saveStatus === 'error'
+                          ? 'linear-gradient(135deg, #dc2626 0%, #ef4444 100%)'
+                          : 'linear-gradient(135deg, #2563eb 0%, #3b82f6 100%)',
+                  color: isSynchronized ? '#64748b' : '#ffffff',
+                  border: 'none',
+                  boxShadow: (saveStatus === 'saving' || isSynchronized) ? 'none' : '0 2px 4px rgba(37,99,235,0.2)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  padding: '8px 16px',
+                  fontSize: 13.5,
+                  fontWeight: 600,
+                  borderRadius: 8,
+                  cursor: (saveStatus === 'saving' || isSynchronized) ? 'not-allowed' : 'pointer',
+                  transition: 'all 0.2s ease'
+                }}
+                title={isSynchronized ? 'Dữ liệu hiện tại đã khớp với Supabase' : saveStatus === 'error' ? errorMessage : 'Lưu sự phân bổ danh sách đơn vị hiện tại lên cơ sở dữ liệu Supabase'}
+              >
+                <Save size={14} />
+                {saveStatus === 'saving' ? 'Đang lưu...' : saveStatus === 'success' ? 'Đã lưu thành công!' : saveStatus === 'error' ? 'Lỗi khi lưu!' : 'Lưu lên Supabase'}
+              </button>
+            </div>
+          )}
+
+          {filteredDonVi.length > 0 && (
+            <button
+              className="btn"
+              onClick={handleExportExcel}
+              style={{
+                background: 'linear-gradient(135deg, #059669 0%, #10b981 100%)',
+                color: '#ffffff',
+                border: 'none',
+                boxShadow: '0 2px 4px rgba(16,185,129,0.2)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                padding: '8px 16px',
+                fontSize: 13.5,
+                fontWeight: 600,
+                borderRadius: 8,
+                cursor: 'pointer'
+              }}
+            >
+              <Download size={14} /> Xuất Excel Kho dự án
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Info Warning Alert */}
+      <div style={{
+        background: '#eff6ff',
+        border: '1px solid #bfdbfe',
+        borderRadius: 10,
+        padding: '10px 14px',
+        marginBottom: 16,
+        display: 'flex',
+        gap: 8,
+        alignItems: 'center',
+        flexShrink: 0
+      }}>
+        <Info size={16} color="var(--primary)" style={{ flexShrink: 0 }} />
+        <div style={{ fontSize: 13.5, color: '#1e40af', lineHeight: 1.4 }}>
+          <strong>Cơ chế tự động:</strong> Bạn không cần phải import file Excel riêng cho tab này. Hệ thống sẽ tự động quét cột <strong>Đơn vị giao</strong> và <strong>Đơn vị nhận</strong> của Sheet <strong>Đơn chung</strong> để đồng bộ trực quan thời gian thực!
+        </div>
+      </div>
+
+      {/* Search Input Filter */}
+      <div style={{
+        background: '#ffffff',
+        border: '1px solid #e2e8f0',
+        borderRadius: 10,
+        padding: '10px 14px',
+        marginBottom: 16,
+        display: 'flex',
+        alignItems: 'center',
+        gap: 8,
+        flexShrink: 0,
+        boxShadow: '0 1px 2px rgba(0,0,0,0.02)'
+      }}>
+        <Search size={16} color="#64748b" />
+        <input
+          type="text"
+          placeholder="Tìm kiếm nhanh tên Đơn vị giao hoặc Đơn vị nhận..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          style={{
+            flex: 1,
+            border: 'none',
+            outline: 'none',
+            fontSize: 14,
+            color: 'var(--text)',
+            background: 'transparent'
+          }}
+        />
+        {search && (
+          <button
+            onClick={() => setSearch('')}
+            style={{
+              background: 'transparent',
+              border: 'none',
+              cursor: 'pointer',
+              color: '#64748b',
+              padding: 2,
+              display: 'flex',
+              alignItems: 'center'
+            }}
+          >
+            <X size={14} />
+          </button>
+        )}
+      </div>
+
+      {/* Main Grid View */}
+      {chungRows.length === 0 ? (
+        <div style={{
+          flex: 1,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          background: '#ffffff',
+          borderRadius: 12,
+          border: '1px solid #e2e8f0',
+          padding: 40,
+          textAlign: 'center'
+        }}>
+          <div style={{
+            width: 56,
+            height: 56,
+            background: 'var(--primary-light)',
+            borderRadius: 16,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            marginBottom: 16
+          }}>
+            <ClipboardList size={26} color="var(--primary)" />
+          </div>
+          <h3 style={{ fontSize: 16, fontWeight: 700, color: 'var(--text)', marginBottom: 6 }}>
+            Chưa có dữ liệu Đơn chung
+          </h3>
+          <p style={{ color: 'var(--text-muted)', fontSize: 14, maxWidth: 440, margin: '0 auto 16px' }}>
+            Vui lòng chọn tab <strong>Đơn chung</strong> ở thanh menu bên trái, tải lên tệp Excel dữ liệu để hệ thống tự động trích xuất các Kho dự án trực tiếp tại đây!
+          </p>
+        </div>
+      ) : (
+        (() => {
+          const columnsConfig = [
+            {
+              key: 'chuaphanbo',
+              title: 'Chưa phân bổ',
+              icon: <HelpCircle size={15} color="#64748b" />,
+              list: categorizedUnits.chuaphanbo,
+              headerBg: '#f8fafc',
+              textColor: '#334155',
+              borderColor: '#cbd5e1',
+              badgeBg: '#f1f5f9',
+              badgeBorder: '#cbd5e1',
+              badgeTextColor: '#475569',
+              emptyText: 'Trống'
+            },
+            {
+              key: 'kho',
+              title: 'Kho BCH',
+              icon: <Warehouse size={15} color="#1e40af" />,
+              list: categorizedUnits.kho,
+              headerBg: '#eff6ff',
+              textColor: '#1e3a8a',
+              borderColor: '#bfdbfe',
+              badgeBg: '#eff6ff',
+              badgeBorder: '#93c5fd',
+              badgeTextColor: '#1e40af',
+              emptyText: 'Trống'
+            },
+            {
+              key: 'ncc',
+              title: 'Nhà Cung cấp',
+              icon: <Building2 size={15} color="#d97706" />,
+              list: categorizedUnits.ncc,
+              headerBg: '#fffbeb',
+              textColor: '#78350f',
+              borderColor: '#fde68a',
+              badgeBg: '#fffbeb',
+              badgeBorder: '#fcd34d',
+              badgeTextColor: '#b45309',
+              emptyText: 'Trống'
+            },
+            {
+              key: 'todoi',
+              title: 'Tổ đội',
+              icon: <Users size={15} color="#059669" />,
+              list: categorizedUnits.todoi,
+              headerBg: '#f0fdf4',
+              textColor: '#065f46',
+              borderColor: '#bbf7d0',
+              badgeBg: '#f0fdf4',
+              badgeBorder: '#86efac',
+              badgeTextColor: '#047857',
+              emptyText: 'Trống'
+            }
+          ];
+
+          return (
+            <div style={{
+              flex: 1,
+              display: 'grid',
+              gridTemplateColumns: 'repeat(4, minmax(0, 1fr))',
+              gap: '14px',
+              minHeight: 0,
+              overflow: 'hidden'
+            }}>
+              {columnsConfig.map((col) => (
+                <div 
+                  key={col.key} 
+                  onDragOver={handleDragOver}
+                  onDrop={(e) => handleDrop(e, col.key)}
+                  onDragEnter={() => setDragOverCol(col.key)}
+                  onDragLeave={(e) => {
+                    if (!e.currentTarget.contains(e.relatedTarget)) {
+                      setDragOverCol(null)
+                    }
+                  }}
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    background: '#ffffff',
+                    borderRadius: 12,
+                    border: dragOverCol === col.key 
+                      ? '2px dashed var(--primary)' 
+                      : `1px solid ${col.borderColor}`,
+                    transform: dragOverCol === col.key ? 'scale(1.01)' : 'none',
+                    transition: 'all 0.15s ease',
+                    overflow: 'hidden',
+                    boxShadow: dragOverCol === col.key 
+                      ? '0 4px 12px rgba(37,99,235,0.1)' 
+                      : '0 1px 3px rgba(0,0,0,0.02)'
+                  }}
+                >
+                  {/* Column Header */}
+                  <div style={{
+                    background: col.headerBg,
+                    borderBottom: `1px solid ${col.borderColor}`,
+                    padding: '12px 14px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    flexShrink: 0
+                  }}>
+                    <span style={{ fontWeight: 700, fontSize: 13.5, color: col.textColor, display: 'flex', alignItems: 'center', gap: 6 }}>
+                      {col.icon}
+                      {col.title} ({col.list.length})
+                    </span>
+                  </div>
+                  
+                  {/* Column Scrollable Content */}
+                  <div style={{ flex: 1, overflowY: 'auto' }}>
+                    {col.list.length === 0 ? (
+                      <div style={{ color: '#94a3b8', fontSize: 12.5, padding: 24, textAlign: 'center', fontStyle: 'italic' }}>
+                        {col.emptyText}
+                      </div>
+                    ) : (
+                      col.list.map((item, idx) => (
+                        <div 
+                          key={idx} 
+                          draggable
+                          onDragStart={(e) => handleDragStart(e, item.name)}
+                          onDragEnd={() => {
+                            setDraggedItemName(null)
+                            setDragOverCol(null)
+                          }}
+                          style={{
+                            padding: '10px 12px',
+                            borderBottom: '1px solid #f1f5f9',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 8,
+                            background: idx % 2 === 1 ? '#f8fafc' : '#ffffff',
+                            opacity: draggedItemName === item.name ? 0.4 : 1,
+                            cursor: 'grab',
+                            userSelect: 'none',
+                            transition: 'background 0.1s, opacity 0.1s'
+                          }} 
+                          className="hover:bg-blue-50/40"
+                        >
+                          {/* STT */}
+                          <div style={{ fontSize: 11, color: '#94a3b8', width: 20, textAlign: 'center', fontWeight: 600 }}>
+                            {idx + 1}
+                          </div>
+                          
+                          {/* Name only */}
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div 
+                              title={item.name} 
+                              style={{ 
+                                fontSize: 12.5, 
+                                fontWeight: 600, 
+                                color: '#1e293b', 
+                                whiteSpace: 'nowrap', 
+                                overflow: 'hidden', 
+                                textOverflow: 'ellipsis' 
+                              }}
+                            >
+                              {item.name}
+                            </div>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          );
+        })()
       )}
     </div>
   )
@@ -4060,7 +5203,7 @@ function PlaceholderTab({ icon, title, desc }) {
 }
 
 // ─── Preview Import Modal ─────────────────────────────────────────────────────
-function PreviewImportModal({ isOpen, onClose, onConfirm, rows, fileName, type, selectedProject }) {
+function PreviewImportModal({ isOpen, onClose, onConfirm, rows, fileName, type, selectedProject, isAppend }) {
   // Nhấn Esc để đóng modal
   React.useEffect(() => {
     if (!isOpen) return
@@ -4140,6 +5283,28 @@ function PreviewImportModal({ isOpen, onClose, onConfirm, rows, fileName, type, 
             <X size={20} />
           </button>
         </div>
+
+        {/* Append Mode Information Banner */}
+        {isAppend && (
+          <div style={{
+            background: '#f0f9ff',
+            borderBottom: '1px solid #bae6fd',
+            padding: '12px 24px',
+            color: '#0369a1',
+            fontSize: '13.5px',
+            fontWeight: 500,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 10,
+            flexShrink: 0,
+            textAlign: 'left'
+          }}>
+            <CloudUpload size={18} color="#0284c7" style={{ flexShrink: 0 }} />
+            <span>
+              <strong>Chế độ: UP FILE NỐI TIẾP</strong> — Dữ liệu mới trong tệp này sẽ được <strong>CHÈN THÊM (nối tiếp)</strong> vào danh sách hiện tại của kho dự án <strong>"{selectedProject || 'tất cả'}"</strong>. Toàn bộ dữ liệu cũ của bạn sẽ được giữ nguyên, không bị thay thế hay xóa bỏ!
+            </span>
+          </div>
+        )}
 
         {/* Warning notification banner for matching rules */}
         {mismatchCount > 0 && (
@@ -5968,7 +7133,7 @@ export default function App() {
     }
   }, [loadDataFromSupabase, loadProjectsFromSupabase])
 
-  const syncRowsToSupabase = async (type, rowsToSync, isAuto = false) => {
+  const syncRowsToSupabase = async (type, rowsToSync, isAuto = false, isAppend = false) => {
     if (!isSupabaseConfigured) return
 
     if (!rowsToSync || rowsToSync.length === 0) {
@@ -5984,7 +7149,7 @@ export default function App() {
     setSyncingType(type)
     setSupabaseMessage({
       text: isAuto 
-        ? `Đang tự động đồng bộ ${rowsToSync.length} dòng lên Supabase...`
+        ? (isAppend ? `Đang tự động tải nối tiếp ${rowsToSync.length} dòng lên Supabase...` : `Đang tự động đồng bộ ${rowsToSync.length} dòng lên Supabase...`)
         : `Đang lưu dữ liệu Đơn ${type === 'giao' ? 'Giao' : type === 'nhan' ? 'Nhận' : type === 'kho' ? 'Kho dự án' : 'Chung'} lên Supabase...`,
       type: 'info'
     })
@@ -5992,28 +7157,31 @@ export default function App() {
     try {
       const tableName = type === 'chung' ? 'don_chung' : type === 'giao' ? 'don_giao' : type === 'nhan' ? 'don_nhan' : type === 'kho' ? 'don_kho' : 'don_chung'
 
-      // 1. Delete existing records belonging to the synced projects to avoid wiping other unrelated projects.
-      // If no projects are found in the sync list, delete all table rows as fallback.
-      // Lấy danh sách ten_du_an (Kho dự án) để xóa đúng các dòng cũ
-      const uniqueProjectsInSync = [...new Set(rowsToSync.map(r => r.ten_du_an || r.tenDuAn || r.duAn).filter(Boolean))]
-      
-      if (uniqueProjectsInSync.length > 0) {
-        console.log(`[Sync] Đang dọn dẹp các dòng cũ thuộc ${uniqueProjectsInSync.length} dự án đang lưu...`)
-        for (const proj of uniqueProjectsInSync) {
-          // Ưu tiên xóa theo ten_du_an (Kho dự án), không phải du_an gốc
-          const delRes = await deleteFromTableAdaptive(tableName, ['ten_du_an', 'tenDuAn', 'tenduan'], proj)
-          if (!delRes.success && delRes.reason !== 'table_empty') {
-            console.warn(`[Sync] Không thể tự động dọn dẹp dự án "${proj}" trên bảng "${tableName}":`, delRes.error)
+      // 1. Delete existing records belonging to the synced projects to avoid wiping other unrelated projects, UNLESS isAppend is true.
+      if (!isAppend) {
+        // Lấy danh sách ten_du_an (Kho dự án) để xóa đúng các dòng cũ
+        const uniqueProjectsInSync = [...new Set(rowsToSync.map(r => r.ten_du_an || r.tenDuAn || r.duAn).filter(Boolean))]
+        
+        if (uniqueProjectsInSync.length > 0) {
+          console.log(`[Sync] Đang dọn dẹp các dòng cũ thuộc ${uniqueProjectsInSync.length} dự án đang lưu...`)
+          for (const proj of uniqueProjectsInSync) {
+            // Ưu tiên xóa theo ten_du_an (Kho dự án), không phải du_an gốc
+            const delRes = await deleteFromTableAdaptive(tableName, ['ten_du_an', 'tenDuAn', 'tenduan'], proj)
+            if (!delRes.success && delRes.reason !== 'table_empty') {
+              console.warn(`[Sync] Không thể tự động dọn dẹp dự án "${proj}" trên bảng "${tableName}":`, delRes.error)
+            }
           }
+        } else {
+          console.log(`[Sync] Không tìm thấy thông tin dự án cụ thể. Tiến hành dọn dẹp toàn bảng...`)
+          const { error: delError } = await supabase
+            .from(tableName)
+            .delete()
+            .neq('id', -999)
+
+          if (delError) throw delError
         }
       } else {
-        console.log(`[Sync] Không tìm thấy thông tin dự án cụ thể. Tiến hành dọn dẹp toàn bảng...`)
-        const { error: delError } = await supabase
-          .from(tableName)
-          .delete()
-          .neq('id', -999)
-
-        if (delError) throw delError
+        console.log(`[Sync] Chế độ UP FILE NỐI TIẾP: Giữ nguyên dữ liệu cũ, tiến hành chèn thêm ${rowsToSync.length} dòng mới...`)
       }
 
       // 2. Map structure to columns in Postgres matching COLS_GIAO_NHAN.
@@ -6097,14 +7265,14 @@ export default function App() {
     await syncRowsToSupabase(type, rowsToSync, false)
   }
 
-  const handleImportFile = async (type, parsedRows, name) => {
+  const handleImportFile = async (type, parsedRows, name, isAppend = false) => {
     // Hiển thị modal preview trước, chờ người dùng xác nhận lưu
-    setPreviewModal({ type, rows: parsedRows, fileName: name })
+    setPreviewModal({ type, rows: parsedRows, fileName: name, isAppend })
   }
 
   const handleConfirmImport = async () => {
     if (!previewModal) return
-    const { type, rows: parsedRows, fileName: name } = previewModal
+    const { type, rows: parsedRows, fileName: name, isAppend } = previewModal
     setPreviewModal(null)
 
     // Bước 1: Lọc các dòng có Đơn vị giao/nhận trùng khớp với Kho dự án đang chọn (trùng khớp hoàn toàn, không phân biệt chữ hoa thường)
@@ -6142,71 +7310,87 @@ export default function App() {
 
     if (type === 'giao') {
       setGiaoRows(prev => {
-        const projectsInNewRows = new Set(rowsToStore.map(r => String(r.ten_du_an || r.tenDuAn || r.duAn || '').trim().toLowerCase()).filter(Boolean))
-        const otherProjects = prev.filter(r => {
-          const rowProject = String(r.ten_du_an || r.tenDuAn || r.tenduan || r.duAn || r.du_an || '').trim().toLowerCase()
-          if (selectedProject) {
-            return rowProject !== selectedProject.trim().toLowerCase()
-          } else {
-            return !projectsInNewRows.has(rowProject)
-          }
-        })
-        return [...otherProjects, ...rowsToStore]
+        if (isAppend) {
+          return [...prev, ...rowsToStore]
+        } else {
+          const projectsInNewRows = new Set(rowsToStore.map(r => String(r.ten_du_an || r.tenDuAn || r.duAn || '').trim().toLowerCase()).filter(Boolean))
+          const otherProjects = prev.filter(r => {
+            const rowProject = String(r.ten_du_an || r.tenDuAn || r.tenduan || r.duAn || r.du_an || '').trim().toLowerCase()
+            if (selectedProject) {
+              return rowProject !== selectedProject.trim().toLowerCase()
+            } else {
+              return !projectsInNewRows.has(rowProject)
+            }
+          })
+          return [...otherProjects, ...rowsToStore]
+        }
       })
-      setGiaoFileName(name)
+      setGiaoFileName(prev => isAppend ? (prev ? `${prev} + ${name}` : name) : name)
       if (isSupabaseConfigured) {
-        await syncRowsToSupabase('giao', rowsToStore, true)
+        await syncRowsToSupabase('giao', rowsToStore, true, isAppend)
       }
     } else if (type === 'nhan') {
       setNhanRows(prev => {
-        const projectsInNewRows = new Set(rowsToStore.map(r => String(r.ten_du_an || r.tenDuAn || r.duAn || '').trim().toLowerCase()).filter(Boolean))
-        const otherProjects = prev.filter(r => {
-          const rowProject = String(r.ten_du_an || r.tenDuAn || r.tenduan || r.duAn || r.du_an || '').trim().toLowerCase()
-          if (selectedProject) {
-            return rowProject !== selectedProject.trim().toLowerCase()
-          } else {
-            return !projectsInNewRows.has(rowProject)
-          }
-        })
-        return [...otherProjects, ...rowsToStore]
+        if (isAppend) {
+          return [...prev, ...rowsToStore]
+        } else {
+          const projectsInNewRows = new Set(rowsToStore.map(r => String(r.ten_du_an || r.tenDuAn || r.duAn || '').trim().toLowerCase()).filter(Boolean))
+          const otherProjects = prev.filter(r => {
+            const rowProject = String(r.ten_du_an || r.tenDuAn || r.tenduan || r.duAn || r.du_an || '').trim().toLowerCase()
+            if (selectedProject) {
+              return rowProject !== selectedProject.trim().toLowerCase()
+            } else {
+              return !projectsInNewRows.has(rowProject)
+            }
+          })
+          return [...otherProjects, ...rowsToStore]
+        }
       })
-      setNhanFileName(name)
+      setNhanFileName(prev => isAppend ? (prev ? `${prev} + ${name}` : name) : name)
       if (isSupabaseConfigured) {
-        await syncRowsToSupabase('nhan', rowsToStore, true)
+        await syncRowsToSupabase('nhan', rowsToStore, true, isAppend)
       }
     } else if (type === 'kho') {
       setKhoRows(prev => {
-        const projectsInNewRows = new Set(rowsToStore.map(r => String(r.ten_du_an || r.tenDuAn || r.duAn || '').trim().toLowerCase()).filter(Boolean))
-        const otherProjects = prev.filter(r => {
-          const rowProject = String(r.ten_du_an || r.tenDuAn || r.tenduan || r.duAn || r.du_an || '').trim().toLowerCase()
-          if (selectedProject) {
-            return rowProject !== selectedProject.trim().toLowerCase()
-          } else {
-            return !projectsInNewRows.has(rowProject)
-          }
-        })
-        return [...otherProjects, ...rowsToStore]
+        if (isAppend) {
+          return [...prev, ...rowsToStore]
+        } else {
+          const projectsInNewRows = new Set(rowsToStore.map(r => String(r.ten_du_an || r.tenDuAn || r.duAn || '').trim().toLowerCase()).filter(Boolean))
+          const otherProjects = prev.filter(r => {
+            const rowProject = String(r.ten_du_an || r.tenDuAn || r.tenduan || r.duAn || r.du_an || '').trim().toLowerCase()
+            if (selectedProject) {
+              return rowProject !== selectedProject.trim().toLowerCase()
+            } else {
+              return !projectsInNewRows.has(rowProject)
+            }
+          })
+          return [...otherProjects, ...rowsToStore]
+        }
       })
-      setKhoFileName(name)
+      setKhoFileName(prev => isAppend ? (prev ? `${prev} + ${name}` : name) : name)
       if (isSupabaseConfigured) {
-        await syncRowsToSupabase('kho', rowsToStore, true)
+        await syncRowsToSupabase('kho', rowsToStore, true, isAppend)
       }
     } else {
       // type === 'chung'
       // 1. Lưu Đơn chung
       setChungRows(prev => {
-        const projectsInNewRows = new Set(rowsToStore.map(r => String(r.ten_du_an || r.tenDuAn || r.duAn || '').trim().toLowerCase()).filter(Boolean))
-        const otherProjects = prev.filter(r => {
-          const rowProject = String(r.ten_du_an || r.tenDuAn || r.tenduan || r.duAn || r.du_an || '').trim().toLowerCase()
-          if (selectedProject) {
-            return rowProject !== selectedProject.trim().toLowerCase()
-          } else {
-            return !projectsInNewRows.has(rowProject)
-          }
-        })
-        return [...otherProjects, ...rowsToStore]
+        if (isAppend) {
+          return [...prev, ...rowsToStore]
+        } else {
+          const projectsInNewRows = new Set(rowsToStore.map(r => String(r.ten_du_an || r.tenDuAn || r.duAn || '').trim().toLowerCase()).filter(Boolean))
+          const otherProjects = prev.filter(r => {
+            const rowProject = String(r.ten_du_an || r.tenDuAn || r.tenduan || r.duAn || r.du_an || '').trim().toLowerCase()
+            if (selectedProject) {
+              return rowProject !== selectedProject.trim().toLowerCase()
+            } else {
+              return !projectsInNewRows.has(rowProject)
+            }
+          })
+          return [...otherProjects, ...rowsToStore]
+        }
       })
-      setChungFileName(name)
+      setChungFileName(prev => isAppend ? (prev ? `${prev} + ${name}` : name) : name)
 
       // 2. Trích xuất Đơn Giao (đơn vị giao trùng khớp với Kho dự án đang chọn)
       const extractedGiaoRows = rowsToStore.filter(r => {
@@ -6223,18 +7407,22 @@ export default function App() {
         return r
       })
       setGiaoRows(prev => {
-        const projectsInNewRows = new Set(extractedGiaoRows.map(r => String(r.ten_du_an || r.tenDuAn || r.duAn || '').trim().toLowerCase()).filter(Boolean))
-        const otherProjects = prev.filter(r => {
-          const rowProject = String(r.ten_du_an || r.tenDuAn || r.tenduan || r.duAn || r.du_an || '').trim().toLowerCase()
-          if (selectedProject) {
-            return rowProject !== selectedProject.trim().toLowerCase()
-          } else {
-            return !projectsInNewRows.has(rowProject)
-          }
-        })
-        return [...otherProjects, ...extractedGiaoRows]
+        if (isAppend) {
+          return [...prev, ...extractedGiaoRows]
+        } else {
+          const projectsInNewRows = new Set(extractedGiaoRows.map(r => String(r.ten_du_an || r.tenDuAn || r.duAn || '').trim().toLowerCase()).filter(Boolean))
+          const otherProjects = prev.filter(r => {
+            const rowProject = String(r.ten_du_an || r.tenDuAn || r.tenduan || r.duAn || r.du_an || '').trim().toLowerCase()
+            if (selectedProject) {
+              return rowProject !== selectedProject.trim().toLowerCase()
+            } else {
+              return !projectsInNewRows.has(rowProject)
+            }
+          })
+          return [...otherProjects, ...extractedGiaoRows]
+        }
       })
-      setGiaoFileName(name ? `${name} (Trích xuất)` : '')
+      setGiaoFileName(prev => isAppend ? (prev ? `${prev} + ${name} (Trích xuất)` : `${name} (Trích xuất)`) : `${name} (Trích xuất)`)
 
       // 3. Trích xuất Đơn Nhận (đơn vị nhận trùng khớp với Kho dự án đang chọn)
       const extractedNhanRows = rowsToStore.filter(r => {
@@ -6251,27 +7439,31 @@ export default function App() {
         return r
       })
       setNhanRows(prev => {
-        const projectsInNewRows = new Set(extractedNhanRows.map(r => String(r.ten_du_an || r.tenDuAn || r.duAn || '').trim().toLowerCase()).filter(Boolean))
-        const otherProjects = prev.filter(r => {
-          const rowProject = String(r.ten_du_an || r.tenDuAn || r.tenduan || r.duAn || r.du_an || '').trim().toLowerCase()
-          if (selectedProject) {
-            return rowProject !== selectedProject.trim().toLowerCase()
-          } else {
-            return !projectsInNewRows.has(rowProject)
-          }
-        })
-        return [...otherProjects, ...extractedNhanRows]
+        if (isAppend) {
+          return [...prev, ...extractedNhanRows]
+        } else {
+          const projectsInNewRows = new Set(extractedNhanRows.map(r => String(r.ten_du_an || r.tenDuAn || r.duAn || '').trim().toLowerCase()).filter(Boolean))
+          const otherProjects = prev.filter(r => {
+            const rowProject = String(r.ten_du_an || r.tenDuAn || r.tenduan || r.duAn || r.du_an || '').trim().toLowerCase()
+            if (selectedProject) {
+              return rowProject !== selectedProject.trim().toLowerCase()
+            } else {
+              return !projectsInNewRows.has(rowProject)
+            }
+          })
+          return [...otherProjects, ...extractedNhanRows]
+        }
       })
-      setNhanFileName(name ? `${name} (Trích xuất)` : '')
+      setNhanFileName(prev => isAppend ? (prev ? `${prev} + ${name} (Trích xuất)` : `${name} (Trích xuất)`) : `${name} (Trích xuất)`)
 
       // 4. Đồng bộ lên Supabase nếu có kết nối
       if (isSupabaseConfigured) {
-        await syncRowsToSupabase('chung', rowsToStore, true)
+        await syncRowsToSupabase('chung', rowsToStore, true, isAppend)
         if (extractedGiaoRows.length > 0) {
-          await syncRowsToSupabase('giao', extractedGiaoRows, true)
+          await syncRowsToSupabase('giao', extractedGiaoRows, true, isAppend)
         }
         if (extractedNhanRows.length > 0) {
-          await syncRowsToSupabase('nhan', extractedNhanRows, true)
+          await syncRowsToSupabase('nhan', extractedNhanRows, true, isAppend)
         }
       }
     }
@@ -6610,8 +7802,6 @@ export default function App() {
 
   const tabs = [
     { id: 'chung', label: 'Đơn chung', icon: <ClipboardList size={15} /> },
-    { id: 'giao', label: 'Đơn Giao', icon: <Truck size={15} /> },
-    { id: 'nhan', label: 'Đơn Nhận', icon: <PackageCheck size={15} /> },
     { id: 'kho', label: 'Kho dự án', icon: <Warehouse size={15} /> },
     { id: 'config', label: 'Cấu hình tổng hợp', icon: <Settings size={15} /> },
     { id: 'summary', label: 'Tổng hợp', icon: <BarChart3 size={15} /> },
@@ -7089,7 +8279,7 @@ export default function App() {
           overflow: 'hidden',
           paddingLeft: isSidebarPinned ? '270px' : '0px',
           transition: 'padding-left 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-          backgroundColor: '#1d0ca2'
+          backgroundColor: '#031fae'
         }}>
           {supabaseAuthError && (
             <div style={{
@@ -7150,7 +8340,7 @@ export default function App() {
                   setShowEditProjectModal(true)
                 }}
                 projectOptions={allProjects}
-                onImportFile={(rows, name) => handleImportFile('giao', rows, name)}
+                onImportFile={(rows, name, isAppend) => handleImportFile('giao', rows, name, isAppend)}
                 onDeleteFile={() => handleDeleteFile('giao')}
               />
             )}
@@ -7171,7 +8361,7 @@ export default function App() {
                   setShowEditProjectModal(true)
                 }}
                 projectOptions={allProjects}
-                onImportFile={(rows, name) => handleImportFile('nhan', rows, name)}
+                onImportFile={(rows, name, isAppend) => handleImportFile('nhan', rows, name, isAppend)}
                 onDeleteFile={() => handleDeleteFile('nhan')}
               />
             )}
@@ -7192,29 +8382,16 @@ export default function App() {
                   setShowEditProjectModal(true)
                 }}
                 projectOptions={allProjects}
-                onImportFile={(rows, name) => handleImportFile('chung', rows, name)}
+                onImportFile={(rows, name, isAppend) => handleImportFile('chung', rows, name, isAppend)}
                 onDeleteFile={() => handleDeleteFile('chung')}
               />
             )}
             {tab === 'kho' && (
-              <OrderTab
-                type="kho"
-                rows={khoRows}
-                setRows={setKhoRows}
-                fileName={khoFileName}
-                setFileName={setKhoFileName}
+              <KhoDuAnTab
+                chungRows={chungRows}
                 selectedProject={selectedProject}
                 setSelectedProject={setSelectedProject}
-                onSync={() => handleSyncToSupabase('kho')}
-                syncing={syncingType === 'kho'}
-                supabaseMessage={supabaseMessage}
-                onEditProject={(projectName) => {
-                  setProjectToEdit(projectName)
-                  setShowEditProjectModal(true)
-                }}
-                projectOptions={allProjects}
-                onImportFile={(rows, name) => handleImportFile('kho', rows, name)}
-                onDeleteFile={() => handleDeleteFile('kho')}
+                allProjects={allProjects}
               />
             )}
             {tab === 'config' && (
@@ -7248,6 +8425,7 @@ export default function App() {
         fileName={previewModal?.fileName || ''}
         type={previewModal?.type || 'giao'}
         selectedProject={selectedProject}
+        isAppend={previewModal?.isAppend || false}
       />
 
       <AddProjectModal
