@@ -2103,56 +2103,23 @@ function KhoDuAnTab({ chungRows, selectedProject, setSelectedProject, allProject
     setErrorMessage('')
     
     try {
-      // 1. Fetch current database entries from phan_loai_don_vi
-      const { data: existingRows, error: fetchErr } = await supabase
-        .from('phan_loai_don_vi')
-        .select('*')
-        
-      if (fetchErr) throw fetchErr
-      
-      const existingMap = {}
-      existingRows?.forEach(row => {
-        if (row.ten_don_vi) {
-          existingMap[row.ten_don_vi.trim().toLowerCase()] = row
-        }
-      })
-      
-      const toInsert = []
-      const toUpdate = []
-      
-      uniqueDonVi.forEach(item => {
-        const cat = customCategoryMap[item.name] || getUnitCategory(item.name)
-        const matched = existingMap[item.name.trim().toLowerCase()]
-        if (matched) {
-          if (matched.nhom_don_vi !== cat) {
-            toUpdate.push({
-              id: matched.id,
-              ten_don_vi: item.name,
-              nhom_don_vi: cat
-            })
-          }
-        } else {
-          toInsert.push({
-            ten_don_vi: item.name,
-            nhom_don_vi: cat
-          })
-        }
-      })
-      
-      // Perform bulk insert
-      if (toInsert.length > 0) {
-        const { error: insErr } = await supabase
-          .from('phan_loai_don_vi')
-          .insert(toInsert)
-        if (insErr) throw insErr
-      }
+      // Upsert toàn bộ danh sách theo ten_don_vi (yêu cầu cột ten_don_vi có ràng buộc UNIQUE
+      // trong Supabase). Cách này để Postgres tự xử lý insert-hoặc-update theo đúng ràng buộc,
+      // tránh lỗi 409 do tự fetch rồi so sánh/update thủ công như trước đây.
+      const payload = uniqueDonVi.map(item => ({
+        ten_don_vi: item.name,
+        nhom_don_vi: customCategoryMap[item.name] || getUnitCategory(item.name)
+      }))
 
-      // Perform bulk update/upsert
-      if (toUpdate.length > 0) {
-        const { error: updErr } = await supabase
-          .from('phan_loai_don_vi')
-          .upsert(toUpdate)
-        if (updErr) throw updErr
+      if (payload.length > 0) {
+        const chunkSize = 500
+        for (let i = 0; i < payload.length; i += chunkSize) {
+          const chunk = payload.slice(i, i + chunkSize)
+          const { error: upsertErr } = await supabase
+            .from('phan_loai_don_vi')
+            .upsert(chunk, { onConflict: 'ten_don_vi' })
+          if (upsertErr) throw upsertErr
+        }
       }
       
       // Update our reference map representing the database
@@ -8203,7 +8170,6 @@ export default function App() {
         }
       } else if (projData && projData.length === 0) {
         // Bảng du_an rỗng — giữ nguyên localStorage
-        console.log('[loadProjects] Bảng du_an rỗng trên Supabase')
       }
     } catch (e) {
       console.error('Lỗi tải dự án:', e)
