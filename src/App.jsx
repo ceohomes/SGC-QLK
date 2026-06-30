@@ -2651,6 +2651,60 @@ function KhoDuAnTab({ chungRows, selectedProject, setSelectedProject, allProject
   )
 }
 
+// ─── IndexedDB cache helpers (thay thế localStorage cho dữ liệu lớn) ─────────
+// localStorage giới hạn ~5-10MB nên với dữ liệu hàng chục nghìn dòng sẽ bị lỗi
+// QuotaExceededError. IndexedDB cho phép lưu trữ dung lượng lớn hơn nhiều (thường
+// hàng trăm MB trở lên tùy trình duyệt), giúp cache hoạt động thật sự ổn định.
+const IDB_NAME = 'sgc_qlk_cache'
+const IDB_STORE = 'kv'
+
+function openIdb() {
+  return new Promise((resolve, reject) => {
+    try {
+      const req = indexedDB.open(IDB_NAME, 1)
+      req.onupgradeneeded = () => {
+        if (!req.result.objectStoreNames.contains(IDB_STORE)) {
+          req.result.createObjectStore(IDB_STORE)
+        }
+      }
+      req.onsuccess = () => resolve(req.result)
+      req.onerror = () => reject(req.error)
+    } catch (e) {
+      reject(e)
+    }
+  })
+}
+
+async function idbGet(key) {
+  try {
+    const db = await openIdb()
+    return await new Promise((resolve, reject) => {
+      const tx = db.transaction(IDB_STORE, 'readonly')
+      const req = tx.objectStore(IDB_STORE).get(key)
+      req.onsuccess = () => resolve(req.result)
+      req.onerror = () => reject(req.error)
+    })
+  } catch (e) {
+    console.warn('IndexedDB error reading', key, e)
+    return undefined
+  }
+}
+
+async function idbSet(key, value) {
+  try {
+    const db = await openIdb()
+    return await new Promise((resolve, reject) => {
+      const tx = db.transaction(IDB_STORE, 'readwrite')
+      tx.objectStore(IDB_STORE).put(value, key)
+      tx.oncomplete = () => resolve(true)
+      tx.onerror = () => reject(tx.error)
+    })
+  } catch (e) {
+    console.warn('IndexedDB error persisting', key, e)
+    return false
+  }
+}
+
 // ─── Summary Config Tab ───────────────────────────────────────────────────────
 const SUMMARY_CONFIG_KEY = 'sgc_summary_configs'
 
@@ -8042,37 +8096,23 @@ export default function App() {
   const [khoRows, setKhoRows] = useState([])
   const [khoFileName, setKhoFileName] = useState('')
 
-  // Automatically persist rows to localStorage to keep cache synced and allow instant loading
+  // Automatically persist rows to IndexedDB to keep cache synced and allow instant loading
+  // (Chuyển từ localStorage sang IndexedDB vì dữ liệu lớn (hàng chục nghìn dòng) sẽ
+  // vượt quá giới hạn dung lượng localStorage và gây lỗi QuotaExceededError)
   React.useEffect(() => {
-    try {
-      localStorage.setItem('sgc_giao_rows', JSON.stringify(giaoRows || []))
-    } catch (e) {
-      console.warn('LocalStorage error persisting sgc_giao_rows:', e)
-    }
+    idbSet('sgc_giao_rows', giaoRows || [])
   }, [giaoRows])
 
   React.useEffect(() => {
-    try {
-      localStorage.setItem('sgc_nhan_rows', JSON.stringify(nhanRows || []))
-    } catch (e) {
-      console.warn('LocalStorage error persisting sgc_nhan_rows:', e)
-    }
+    idbSet('sgc_nhan_rows', nhanRows || [])
   }, [nhanRows])
 
   React.useEffect(() => {
-    try {
-      localStorage.setItem('sgc_chung_rows', JSON.stringify(chungRows || []))
-    } catch (e) {
-      console.warn('LocalStorage error persisting sgc_chung_rows:', e)
-    }
+    idbSet('sgc_chung_rows', chungRows || [])
   }, [chungRows])
 
   React.useEffect(() => {
-    try {
-      localStorage.setItem('sgc_kho_rows', JSON.stringify(khoRows || []))
-    } catch (e) {
-      console.warn('LocalStorage error persisting sgc_kho_rows:', e)
-    }
+    idbSet('sgc_kho_rows', khoRows || [])
   }, [khoRows])
 
   const [syncingType, setSyncingType] = useState(null) // 'giao' | 'nhan' | null
@@ -8080,6 +8120,7 @@ export default function App() {
 
   const [configs, setConfigs] = useState(() => loadSummaryConfigs())
   const [isSgcSummaryConfigsMissing, setIsSgcSummaryConfigsMissing] = useState(false)
+  const [isInitialLoading, setIsInitialLoading] = useState(true)
 
   const fetchConfigsFromSupabaseInApp = React.useCallback(async () => {
     if (!isSupabaseConfigured) return
@@ -8193,9 +8234,8 @@ export default function App() {
 
           // Get our current cached rows
           const cachedKey = tableType === 'chung' ? 'sgc_chung_rows' : tableType === 'giao' ? 'sgc_giao_rows' : tableType === 'nhan' ? 'sgc_nhan_rows' : 'sgc_kho_rows'
-          const rawCached = localStorage.getItem(cachedKey)
-          if (rawCached) {
-            const cachedJson = JSON.parse(rawCached)
+          const cachedJson = await idbGet(cachedKey)
+          if (Array.isArray(cachedJson)) {
             const maxLocalId = cachedJson.length > 0 ? Math.max(...cachedJson.map(r => Number(r.id) || 0)) : 0
 
             // If count and high ID match, we can skip fetching from Supabase!
@@ -8288,7 +8328,11 @@ export default function App() {
 
   // Fetch initial data from Supabase if connected
   React.useEffect(() => {
-    loadDataFromSupabase()
+    if (!isSupabaseConfigured) {
+      setIsInitialLoading(false)
+    } else {
+      loadDataFromSupabase().finally(() => setIsInitialLoading(false))
+    }
 
     if (!isSupabaseConfigured) return
 
@@ -8993,6 +9037,34 @@ export default function App() {
 
   return (
     <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative' }}>
+      {isInitialLoading && (
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          zIndex: 9999,
+          background: '#f8fafc',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: 16,
+        }}>
+          <div style={{
+            width: 64, height: 64, background: 'var(--primary-light)',
+            borderRadius: 18, display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>
+            <RefreshCw size={30} color="var(--primary)" style={{ animation: 'spin 1s linear infinite' }} />
+          </div>
+          <div style={{ textAlign: 'center' }}>
+            <h2 style={{ fontSize: 18, fontWeight: 800, color: 'var(--text)', margin: '0 0 6px' }}>
+              SGC | BÁO CÁO GIAO NHẬN
+            </h2>
+            <p style={{ color: 'var(--text-muted)', fontSize: 14, margin: 0 }}>
+              Đang tải dữ liệu từ Supabase, vui lòng chờ trong giây lát...
+            </p>
+          </div>
+        </div>
+      )}
       <Header
         selectedProject={selectedProject}
         setSelectedProject={setSelectedProject}
