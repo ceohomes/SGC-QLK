@@ -13,7 +13,7 @@ export default defineConfig({
         manualChunks: {
           'vendor-react': ['react', 'react-dom'],
           'vendor-xlsx': ['xlsx', 'xlsx-js-style'],
-          'vendor-supabase': ['@supabase/supabase-js'],
+          'vendor-neon': ['@neondatabase/postgrest-js'],
         }
       }
     },

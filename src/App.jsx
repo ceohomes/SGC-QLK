@@ -12,6 +12,13 @@ import {
 import { COLS_GIAO_NHAN, parseXlsxToRows, formatVal, getTrangThaiColor, isApprovedStatus, isPendingStatus, isRejectedStatus } from './constants.js'
 import { supabase, isSupabaseConfigured, supabaseUrl, supabaseAnonKey } from './supabaseClient.js'
 
+const KEYS_TO_REMOVE_FOR_REAL_REPORT = [
+  'tenNguon', 'maNguon', 'lo', 'hangMuc', 'soHopDong', 'thuKho', 
+  'bienSoXe', 'phanKhu', 'duAn', 'tinhTrang', 'nguoiNhan', 
+  'maDonLienQuan', 'nhaCungCap', 'maDonChuyenTiepLC', 'maDonChuyenTiepNB'
+]
+export const COLS_REAL_REPORT = COLS_GIAO_NHAN.filter(c => !KEYS_TO_REMOVE_FOR_REAL_REPORT.includes(c.key))
+
 // ─── Searchable Select ────────────────────────────────────────────────────────
 function SearchableSelect({ value, onChange, options, placeholder = 'Tất cả dự án', searchPlaceholder, variant = 'header', align = 'left', onEditProject, onDeleteProject }) {
   const [isOpen, setIsOpen] = useState(false)
@@ -287,7 +294,22 @@ function SearchableSelect({ value, onChange, options, placeholder = 'Tất cả 
 }
 
 // ─── Header ──────────────────────────────────────────────────────────────────
-function Header({ selectedProject, setSelectedProject, duAnOptions, onOpenAddProjectModal, onEditProject, onDeleteProject, onOpenConfigModal, onForceRefresh, onMouseEnterLogo }) {
+function Header({ selectedProject, setSelectedProject, duAnOptions, onOpenAddProjectModal, onEditProject, onDeleteProject, onOpenConfigModal, onForceRefresh, onMouseEnterLogo, activeTab }) {
+  const getHeaderTitle = (tab) => {
+    switch (tab) {
+      case 'chung':
+        return 'SGC | ĐƠN CHUNG'
+      case 'kho':
+        return 'SGC | KHO DỰ ÁN'
+      case 'inventory':
+        return 'SGC | BÁO CÁO XUẤT NHẬP TỒN'
+      case 'inventory_real':
+        return 'SGC | BÁO CÁO XUẤT NHẬP THỰC'
+      default:
+        return 'SGC | BÁO CÁO GIAO NHẬN'
+    }
+  }
+
   return (
     <header style={{
       background: 'linear-gradient(135deg, #0a3d73 0%, #0f58a7 60%, #1a6abf 100%)', // Original professional blue system
@@ -315,7 +337,7 @@ function Header({ selectedProject, setSelectedProject, duAnOptions, onOpenAddPro
         </div>
         <div>
           <div style={{ color: '#ffffff', fontWeight: 800, fontSize: 18, letterSpacing: '0.03em', display: 'flex', alignItems: 'center', gap: 8 }}>
-            SGC | BÁO CÁO GIAO NHẬN
+            {getHeaderTitle(activeTab)}
           </div>
         </div>
       </div>
@@ -889,7 +911,7 @@ function FilterBar({
 // ─── Data Table ───────────────────────────────────────────────────────────────
 const PAGE_SIZE_OPTIONS = [50, 100, 200, 500]
 
-function DataTable({ rows, setRows, type }) {
+function DataTable({ rows, setRows, type, columns = COLS_GIAO_NHAN }) {
   const [pageSize, setPageSize] = React.useState(100)
   const [currentPage, setCurrentPage] = React.useState(1)
   const [selectedIds, setSelectedIds] = React.useState(new Set())
@@ -933,7 +955,7 @@ function DataTable({ rows, setRows, type }) {
       mirror.removeEventListener('scroll', onMirrorScroll)
       ro.disconnect()
     }
-  }, [rows, pageSize])
+  }, [rows, pageSize, columns])
 
   // Các hook bên dưới PHẢI nằm trước mọi early-return để tuân thủ Rules of Hooks
   // (tránh lỗi "Rendered fewer hooks than expected" / React error #300 gây màn hình trắng
@@ -1292,7 +1314,7 @@ function DataTable({ rows, setRows, type }) {
               <th style={{ width: 50, minWidth: 50, maxWidth: 50, textAlign: 'center', verticalAlign: 'middle', fontSize: '12px', padding: '8px 10px' }}>
                 STT
               </th>
-              {COLS_GIAO_NHAN.map(c => {
+              {columns.map(c => {
                 const isNhapKhoGroup = ['khoiLuongNhap', 'maDonViGiao', 'donViGiao', 'nguoiGiao'].includes(c.key)
                 const isXuatKhoGroup = ['khoiLuongXuat', 'maDonViNhan', 'donViNhan', 'nguoiPheDuyet'].includes(c.key)
                 const thBg = isNhapKhoGroup ? '#0f766e' : isXuatKhoGroup ? '#c2410c' : undefined
@@ -1339,7 +1361,7 @@ function DataTable({ rows, setRows, type }) {
                 <td style={{ width: 50, minWidth: 50, maxWidth: 50, textAlign: 'center', fontSize: '12px', color: '#1b1919', padding: '6px 10px' }}>
                   {startIdx + i + 1}
                 </td>
-                {COLS_GIAO_NHAN.map(col => {
+                {columns.map(col => {
                   const isCenteredCol = [
                     'ngayXuatNhap', 'maVatTu', 'maSAP', 'dvt', 'loaiDon',
                     'maDonViGiao', 'nguoiGiao',
@@ -4338,12 +4360,13 @@ function DeleteConfigConfirmModal({ isOpen, onClose, onConfirm, configName, proj
 }
 
 // ─── Inventory Report (Báo cáo xuất nhập tồn) ──────────────────────────────────
-function BaoCaoXuatNhapTonTab({ chungRows = [], giaoRows = [], nhanRows = [], selectedProject, setSelectedProject, allProjects = [] }) {
+function BaoCaoXuatNhapTonTab({ chungRows = [], giaoRows = [], nhanRows = [], selectedProject, setSelectedProject, allProjects = [], isRealReport = false }) {
   // Bộ lọc Kho/Dự án của tab này hoàn toàn độc lập (local), không lấy theo
   // và không đồng bộ ngược lại selectedProject toàn cục — tránh ảnh hưởng
   // tới các tab/sheet khác như Đơn chung, Kho dự án.
   const [localProject, setLocalProject] = React.useState('')
-  const [subTab, setSubTab] = React.useState('dashboard') // 'dashboard' | 'dongia' | 'summary'
+  const [subTab, setSubTab] = React.useState(isRealReport ? 'summary' : 'dashboard') // 'dashboard' | 'dongia' | 'summary'
+  const [realReportSubTab, setRealReportSubTab] = React.useState('nhap') // 'nhap' | 'xuat'
   const [loadingDbPrices, setLoadingDbPrices] = React.useState(false)
   const [priceSearchQuery, setPriceSearchQuery] = React.useState('')
 
@@ -4711,6 +4734,10 @@ CREATE POLICY "Allow public delete" ON public.don_gia_vat_tu FOR DELETE USING (t
 
   const [searchTerm, setSearchTerm] = React.useState('')
   const [statusFilter, setStatusFilter] = React.useState('approved_only') // 'approved_only' | 'approved_pending' | 'all'
+  const [localGiao, setLocalGiao] = React.useState('')
+  const [localNhan, setLocalNhan] = React.useState('')
+  const [startDate, setStartDate] = React.useState('')
+  const [endDate, setEndDate] = React.useState('')
 
   // Hàm kiểm tra 1 dòng có được tính vào báo cáo hay không, theo statusFilter hiện tại:
   // - approved_only: chỉ tính đơn Đã phê duyệt
@@ -4757,8 +4784,37 @@ CREATE POLICY "Allow public delete" ON public.don_gia_vat_tu FOR DELETE USING (t
     return [...list].sort()
   }, [allProjects, chungRows, giaoRows, nhanRows])
 
+  // Extract unique delivery units (Đơn vị giao)
+  const uniqueGiaoUnits = React.useMemo(() => {
+    const list = new Set()
+    const source = isRealReport 
+      ? [...chungRows, ...giaoRows, ...nhanRows]
+      : ((chungRows && chungRows.length > 0) ? chungRows : [...giaoRows, ...nhanRows])
+    
+    source.forEach(r => {
+      const g = (r.donViGiao || '').trim()
+      if (g) list.add(g)
+    })
+    return [...list].sort()
+  }, [chungRows, giaoRows, nhanRows, isRealReport])
+
+  // Extract unique receiving units (Đơn vị nhận)
+  const uniqueNhanUnits = React.useMemo(() => {
+    const list = new Set()
+    const source = isRealReport 
+      ? [...chungRows, ...giaoRows, ...nhanRows]
+      : ((chungRows && chungRows.length > 0) ? chungRows : [...giaoRows, ...nhanRows])
+    
+    source.forEach(r => {
+      const n = (r.donViNhan || '').trim()
+      if (n) list.add(n)
+    })
+    return [...list].sort()
+  }, [chungRows, giaoRows, nhanRows, isRealReport])
+
   // Process raw rows and group by maSAP for a given project/warehouse
   const computeProjectReportData = React.useCallback((proj) => {
+    if (!proj) return [] // If no project is selected, return an empty array to prevent lag!
     const groups = {}
     const projLower = proj ? proj.trim().toLowerCase() : ''
 
@@ -4771,14 +4827,24 @@ CREATE POLICY "Allow public delete" ON public.don_gia_vat_tu FOR DELETE USING (t
       return isNaN(num) ? 0 : num
     }
 
-    const sourceRows = (chungRows && chungRows.length > 0) 
-      ? chungRows 
-      : [...giaoRows, ...nhanRows]
+    const sourceRows = isRealReport
+      ? [...chungRows, ...giaoRows, ...nhanRows]
+      : ((chungRows && chungRows.length > 0) ? chungRows : [...giaoRows, ...nhanRows])
 
     sourceRows.forEach(r => {
       // Apply status filter
       if (!matchStatusFilter(r.trangThai)) {
         return
+      }
+
+      // Apply delivery and receiving unit filters for real report
+      if (isRealReport) {
+        if (localGiao && String(r.donViGiao || '').trim().toLowerCase() !== localGiao.trim().toLowerCase()) {
+          return
+        }
+        if (localNhan && String(r.donViNhan || '').trim().toLowerCase() !== localNhan.trim().toLowerCase()) {
+          return
+        }
       }
 
       const nhanUnit = String(r.donViNhan || '').trim().toLowerCase()
@@ -4896,7 +4962,7 @@ CREATE POLICY "Allow public delete" ON public.don_gia_vat_tu FOR DELETE USING (t
     })
 
     return result
-  }, [chungRows, giaoRows, nhanRows, materialClassifications, materialPriceRows, materialPrices, matchStatusFilter, getUnusedStatus])
+  }, [chungRows, giaoRows, nhanRows, materialClassifications, materialPriceRows, materialPrices, matchStatusFilter, getUnusedStatus, isRealReport, localGiao, localNhan])
 
   // Process rows and group by maSAP
   const reportData = React.useMemo(() => {
@@ -4992,6 +5058,203 @@ CREATE POLICY "Allow public delete" ON public.don_gia_vat_tu FOR DELETE USING (t
     return filtered
   }, [computeProjectReportData, localProject, searchTerm, sortField, sortDirection])
 
+  const realReportRows = React.useMemo(() => {
+    if (!isRealReport) return []
+    if (!localProject) return [] // If no project is selected, return an empty array to prevent lag!
+    let list = chungRows
+
+    // 1. Kho / Dự án filter
+    if (localProject) {
+      const p = localProject.trim().toLowerCase()
+      list = list.filter(row => {
+        const g = (row.donViGiao || '').trim().toLowerCase()
+        const n = (row.donViNhan || '').trim().toLowerCase()
+        return g === p || n === p
+      })
+    }
+
+    // 2. Đơn vị giao filter
+    if (localGiao) {
+      list = list.filter(row => String(row.donViGiao || '').trim() === localGiao.trim())
+    }
+
+    // 3. Đơn vị nhận filter
+    if (localNhan) {
+      list = list.filter(row => String(row.donViNhan || '').trim() === localNhan.trim())
+    }
+
+    // 4. Status filter matching matchStatusFilter(row.trangThai)
+    list = list.filter(row => matchStatusFilter(row.trangThai))
+
+    // 5. SearchTerm filter (case insensitive search across many fields)
+    if (searchTerm) {
+      const q = searchTerm.toLowerCase()
+      list = list.filter(row =>
+        String(row.tenVatTu || '').toLowerCase().includes(q) ||
+        String(row.maDonNhapKho || '').toLowerCase().includes(q) ||
+        String(row.maDonXuatKho || '').toLowerCase().includes(q) ||
+        String(row.donViGiao || '').toLowerCase().includes(q) ||
+        String(row.donViNhan || '').toLowerCase().includes(q) ||
+        String(row.maSAP || '').toLowerCase().includes(q) ||
+        String(row.maVatTu || '').toLowerCase().includes(q)
+      )
+    }
+
+    // 6. Date Range filter
+    if (startDate || endDate) {
+      const start = startDate ? new Date(startDate) : null
+      if (start) start.setHours(0, 0, 0, 0)
+
+      const end = endDate ? new Date(endDate) : null
+      if (end) end.setHours(23, 59, 59, 999)
+
+      list = list.filter(row => {
+        const rowDate = parseRowDate(row.ngayXuatNhap)
+        if (!rowDate) return false
+        if (start && rowDate < start) return false
+        if (end && rowDate > end) return false
+        return true
+      })
+    }
+
+    const parseNum = (v) => {
+      if (v === null || v === undefined) return 0
+      if (typeof v === 'number') return v
+      const cleaned = String(v).replace(/[^\d.-]/g, '').replace(',', '.')
+      const num = parseFloat(cleaned)
+      return isNaN(num) ? 0 : num
+    }
+
+    // 7. Filter by Nhập thực vs Xuất thực
+    if (realReportSubTab === 'nhap') {
+      list = list.filter(row => parseNum(row.khoiLuongNhap) > 0)
+    } else if (realReportSubTab === 'xuat') {
+      list = list.filter(row => parseNum(row.khoiLuongXuat) > 0)
+    }
+
+    // Sort descending by date (newest/most recent first)
+    return [...list].sort((a, b) => {
+      const dateA = parseRowDate(a.ngayXuatNhap)
+      const dateB = parseRowDate(b.ngayXuatNhap)
+      if (!dateA && !dateB) return 0
+      if (!dateA) return 1
+      if (!dateB) return -1
+      return dateB.getTime() - dateA.getTime()
+    })
+  }, [chungRows, isRealReport, localProject, localGiao, localNhan, searchTerm, statusFilter, startDate, endDate, matchStatusFilter, realReportSubTab])
+
+  const realReportMetrics = React.useMemo(() => {
+    if (!isRealReport) return []
+    let total = realReportRows.length
+    let totalReceived = 0
+    let totalIssued = 0
+
+    const parseNum = (v) => {
+      if (v === null || v === undefined) return 0
+      if (typeof v === 'number') return v
+      const cleaned = String(v).replace(/[^\d.-]/g, '').replace(',', '.')
+      const num = parseFloat(cleaned)
+      return isNaN(num) ? 0 : num
+    }
+
+    const counts = {}
+    realReportRows.forEach(row => {
+      totalReceived += parseNum(row.khoiLuongNhap)
+      totalIssued += parseNum(row.khoiLuongXuat)
+
+      const status = (row.trangThai || 'Chưa duyệt').trim()
+      counts[status] = (counts[status] || 0) + 1
+    })
+
+    const activeStatuses = Object.keys(counts).filter(status => counts[status] > 0)
+    const priority = ['Đã phê duyệt', 'Chưa xác nhận', 'Chờ phê duyệt', 'Chưa phê duyệt', 'Chưa duyệt', 'Từ chối']
+    activeStatuses.sort((a, b) => {
+      const idxA = priority.indexOf(a)
+      const idxB = priority.indexOf(b)
+      if (idxA !== -1 && idxB !== -1) return idxA - idxB
+      if (idxA !== -1) return -1
+      if (idxB !== -1) return 1
+      return a.localeCompare(b, 'vi')
+    })
+
+    const statusCards = activeStatuses.map(status => {
+      const count = counts[status]
+      let color = 'var(--primary)'
+      let bg = 'var(--primary-light)'
+      let border = 'var(--border)'
+      let icon = <ClipboardList size={18} />
+
+      const sLower = status.toLowerCase()
+      if (sLower === 'đã phê duyệt' || (isApprovedStatus(status) && !sLower.includes('chưa') && !sLower.includes('chờ'))) {
+        color = '#10b981'
+        bg = '#ecfdf5'
+        border = '#a7f3d0'
+        icon = <CheckCircle2 size={18} />
+      } else if (sLower === 'từ chối' || isRejectedStatus(status)) {
+        color = '#ef4444'
+        bg = '#fef2f2'
+        border = '#fca5a5'
+        icon = <AlertCircle size={18} />
+      } else {
+        color = '#b45309'
+        bg = '#fffbeb'
+        border = '#fde68a'
+        icon = <Clock size={18} />
+      }
+
+      return {
+        label: status,
+        value: count.toLocaleString('vi-VN') + ' đơn',
+        color,
+        bg,
+        border,
+        icon
+      }
+    })
+
+    if (realReportSubTab === 'nhap') {
+      return [
+        {
+          label: 'Tổng số lượng đơn nhập',
+          value: total.toLocaleString('vi-VN') + ' đơn',
+          color: 'var(--primary)',
+          bg: 'var(--primary-light)',
+          border: 'var(--border)',
+          icon: <FileSpreadsheet size={18} />
+        },
+        {
+          label: 'Tổng khối lượng nhận thực',
+          value: totalReceived.toLocaleString('vi-VN', { maximumFractionDigits: 3 }),
+          color: '#10b981',
+          bg: '#ecfdf5',
+          border: '#a7f3d0',
+          icon: <Truck size={18} />
+        },
+        ...statusCards
+      ]
+    } else {
+      return [
+        {
+          label: 'Tổng số lượng đơn xuất',
+          value: total.toLocaleString('vi-VN') + ' đơn',
+          color: 'var(--primary)',
+          bg: 'var(--primary-light)',
+          border: 'var(--border)',
+          icon: <FileSpreadsheet size={18} />
+        },
+        {
+          label: 'Tổng khối lượng xuất thực',
+          value: totalIssued.toLocaleString('vi-VN', { maximumFractionDigits: 3 }),
+          color: '#f97316',
+          bg: '#fff7ed',
+          border: '#fed7aa',
+          icon: <Download size={18} style={{ transform: 'rotate(180deg)' }} />
+        },
+        ...statusCards
+      ]
+    }
+  }, [realReportRows, isRealReport, realReportSubTab])
+
   // Extract and group dashboard statistics specifically for BCH warehouses
   const bchWarehouses = React.useMemo(() => {
     const bchList = uniqueWarehouses.filter(w => {
@@ -5026,9 +5289,9 @@ CREATE POLICY "Allow public delete" ON public.don_gia_vat_tu FOR DELETE USING (t
     const groupsByProject = new Map()
     bchNormToOriginal.forEach((_, norm) => groupsByProject.set(norm, {}))
 
-    const sourceRows = (chungRows && chungRows.length > 0)
-      ? chungRows
-      : [...giaoRows, ...nhanRows]
+    const sourceRows = isRealReport
+      ? [...chungRows, ...giaoRows, ...nhanRows]
+      : ((chungRows && chungRows.length > 0) ? chungRows : [...giaoRows, ...nhanRows])
 
     sourceRows.forEach(r => {
       if (!matchStatusFilter(r.trangThai)) return
@@ -5249,9 +5512,9 @@ CREATE POLICY "Allow public delete" ON public.don_gia_vat_tu FOR DELETE USING (t
       return isNaN(num) ? 0 : num
     }
 
-    const sourceRows = (chungRows && chungRows.length > 0)
-      ? chungRows
-      : [...giaoRows, ...nhanRows]
+    const sourceRows = isRealReport
+      ? [...giaoRows, ...nhanRows]
+      : ((chungRows && chungRows.length > 0) ? chungRows : [...giaoRows, ...nhanRows])
 
     const nhanList = []
     const xuatList = []
@@ -5355,6 +5618,323 @@ CREATE POLICY "Allow public delete" ON public.don_gia_vat_tu FOR DELETE USING (t
 
   // Excel export using xlsx-js-style
   const handleExportExcel = () => {
+    if (isRealReport) {
+      if (realReportRows.length === 0) return
+
+      const wb = XLSXStyle.utils.book_new()
+      const ws = {}
+
+      // Columns: STT + COLS_REAL_REPORT
+      const columns = [
+        { key: 'STT', label: 'STT', width: 50 },
+        ...COLS_REAL_REPORT
+      ]
+
+      // Set widths
+      ws['!cols'] = columns.map(c => ({ wpx: c.width }))
+
+      let excelRowIdx = 1
+
+      // Write title
+      ws['A1'] = {
+        v: realReportSubTab === 'nhap' ? `BÁO CÁO NHẬP THỰC TẾ VẬT TƯ THIẾT BỊ` : `BÁO CÁO XUẤT THỰC TẾ VẬT TƯ THIẾT BỊ`,
+        t: 's',
+        s: {
+          font: { name: 'Segoe UI', sz: 14, bold: true, color: { rgb: '0A3D73' } },
+          alignment: { horizontal: 'left', vertical: 'center' }
+        }
+      }
+      ws['A2'] = {
+        v: `Kho / Dự án: ${localProject || 'Tất cả'} | Đơn vị giao: ${localGiao || 'Tất cả'} | Đơn vị nhận: ${localNhan || 'Tất cả'}`,
+        t: 's',
+        s: {
+          font: { name: 'Segoe UI', sz: 10, italic: true },
+          alignment: { horizontal: 'left', vertical: 'center' }
+        }
+      }
+      excelRowIdx = 4
+
+      // Write header row
+      columns.forEach((col, colIdx) => {
+        const colChar = getColLabel(colIdx)
+        const cellRef = `${colChar}${excelRowIdx}`
+        
+        const isNhapKhoGroup = ['khoiLuongNhap', 'maDonViGiao', 'donViGiao', 'nguoiGiao'].includes(col.key)
+        const isXuatKhoGroup = ['khoiLuongXuat', 'maDonViNhan', 'donViNhan', 'nguoiPheDuyet'].includes(col.key)
+        const excelBgColor = isNhapKhoGroup ? '0F766E' : isXuatKhoGroup ? 'C2410C' : '0F58A7'
+        const excelBorderColor = isNhapKhoGroup ? '115E59' : isXuatKhoGroup ? '9A3412' : '0A3D73'
+
+        ws[cellRef] = {
+          v: col.label,
+          t: 's',
+          s: {
+            fill: {
+              patternType: 'solid',
+              fgColor: { rgb: excelBgColor }
+            },
+            font: {
+              name: 'Segoe UI',
+              sz: 9.5,
+              bold: true,
+              color: { rgb: 'FFFFFF' }
+            },
+            alignment: {
+              horizontal: 'center',
+              vertical: 'center',
+              wrapText: true
+            },
+            border: {
+              top: { style: 'thin', color: { rgb: excelBorderColor } },
+              bottom: { style: 'medium', color: { rgb: excelBorderColor } },
+              left: { style: 'thin', color: { rgb: excelBorderColor } },
+              right: { style: 'thin', color: { rgb: excelBorderColor } }
+            }
+          }
+        }
+      })
+
+      // Helper to get letter coordinate
+      function getColLabel(index) {
+        let label = ''
+        let temp = index
+        while (temp >= 0) {
+          label = String.fromCharCode((temp % 26) + 65) + label
+          temp = Math.floor(temp / 26) - 1
+        }
+        return label
+      }
+
+      // Helper for status styling
+      function getExcelStatusStyle(val, colKey) {
+        if (!val) return null
+        const v = String(val).toLowerCase()
+        if (colKey === 'trangThai') {
+          if (v.includes('chờ') || v.includes('chưa')) {
+            return { fg: 'FFFBEB', text: '92400E' } // Orange/Yellow
+          }
+          if (v.includes('phê duyệt') || v.includes('hoàn thành') || v.includes('đã')) {
+            return { fg: 'ECFDF5', text: '065F46' } // Green
+          }
+          if (v.includes('từ chối') || v.includes('hủy')) {
+            return { fg: 'FFF1F2', text: '9F1239' } // Red
+          }
+          return { fg: 'EFF6FF', text: '1E40AF' } // Blue
+        }
+        if (colKey === 'tinhTrang') {
+          if (val === 'NEW') {
+            return { fg: 'ECFDF5', text: '065F46' }
+          }
+          if (val === 'USED') {
+            return { fg: 'FFFBEB', text: '92400E' }
+          }
+          return { fg: 'F8FAFC', text: '475569' }
+        }
+        return null
+      }
+
+      // Helper to convert Date to Excel serial
+      const toExcelSerial = (dateVal) => {
+        const d = (dateVal instanceof Date) ? dateVal : parseRowDate(dateVal)
+        if (!d || isNaN(d.getTime())) return null
+        return Math.round(d.getTime() / 86400000) + 25569
+      }
+
+      // Write data rows
+      realReportRows.forEach((row, rowIndex) => {
+        excelRowIdx++
+        const isEvenNum = (rowIndex % 2 === 1)
+        const rowBgColor = isEvenNum ? 'F8FAFC' : 'FFFFFF'
+
+        columns.forEach((col, colIdx) => {
+          const colChar = getColLabel(colIdx)
+          const cellRef = `${colChar}${excelRowIdx}`
+
+          let val = ''
+          let cellType = 's'
+          let numFormat = undefined
+
+          if (col.key === 'STT') {
+            val = rowIndex + 1
+            cellType = 'n'
+          } else if (col.key === 'ngayXuatNhap') {
+            const serial = toExcelSerial(row[col.key])
+            if (serial !== null) {
+              val = serial
+              cellType = 'n'
+              numFormat = 'dd/mm/yyyy'
+            } else {
+              val = String(row[col.key] || '')
+            }
+          } else {
+            const raw = row[col.key]
+            if (raw !== null && raw !== undefined) {
+              const isRightAligned = ['khoiLuongNhap', 'khoiLuongXuat'].includes(col.key) || col.key.toLowerCase().includes('khoiluong')
+              if (isRightAligned && !isNaN(Number(raw)) && raw !== '') {
+                val = Number(raw)
+                cellType = 'n'
+                numFormat = '#,##0.000'
+              } else {
+                val = String(raw)
+              }
+            }
+          }
+
+          // Check alignment
+          const isCenteredCol = [
+            'STT', 'ngayXuatNhap', 'maVatTu', 'maSAP', 'dvt', 'loaiDon',
+            'maDonViGiao', 'nguoiGiao',
+            'maDonViNhan', 'nguoiPheDuyet', 'nguoiNhan',
+            'soHopDong', 'thuKho', 'tinhTrang', 'trangThai'
+          ].includes(col.key)
+          const isRightAligned = ['khoiLuongNhap', 'khoiLuongXuat'].includes(col.key) || col.key.toLowerCase().includes('khoiluong')
+
+          // Styles
+          const cellStyle = {
+            font: {
+              name: 'Segoe UI',
+              sz: 9,
+              color: { rgb: '1A1A1A' }
+            },
+            alignment: {
+              horizontal: isCenteredCol ? 'center' : (isRightAligned ? 'right' : 'left'),
+              vertical: 'center',
+              wrapText: true
+            },
+            fill: {
+              patternType: 'solid',
+              fgColor: { rgb: rowBgColor }
+            },
+            border: {
+              top: { style: 'thin', color: { rgb: 'E2E8F0' } },
+              bottom: { style: 'thin', color: { rgb: 'E2E8F0' } },
+              left: { style: 'thin', color: { rgb: 'E2E8F0' } },
+              right: { style: 'thin', color: { rgb: 'E2E8F0' } }
+            }
+          }
+
+          // Badge/Status custom coloring
+          const statusStyle = getExcelStatusStyle(val, col.key)
+          if (statusStyle) {
+            cellStyle.fill = { patternType: 'solid', fgColor: { rgb: statusStyle.fg } }
+            cellStyle.font.bold = true
+            cellStyle.font.color = { rgb: statusStyle.text }
+          }
+
+          ws[cellRef] = {
+            v: val,
+            t: cellType,
+            s: cellStyle
+          }
+          if (numFormat) {
+            ws[cellRef].z = numFormat
+          }
+        })
+      })
+
+      // Sum Row for Real Report
+      excelRowIdx++
+      const lastDataRow = excelRowIdx - 1
+      ws[`A${excelRowIdx}`] = {
+        v: 'TỔNG CỘNG',
+        t: 's',
+        s: {
+          font: { name: 'Segoe UI', sz: 10, bold: true },
+          alignment: { horizontal: 'center', vertical: 'center' },
+          fill: { patternType: 'solid', fgColor: { rgb: 'F1F5F9' } },
+          border: {
+            top: { style: 'medium', color: { rgb: '0F58A7' } },
+            bottom: { style: 'medium', color: { rgb: '0F58A7' } },
+            left: { style: 'thin', color: { rgb: 'E2E8F0' } },
+            right: { style: 'thin', color: { rgb: 'E2E8F0' } }
+          }
+        }
+      }
+
+      // Merge STT up to tenVatTu columns for label (assuming index 0 to 4)
+      ws['!merges'] = [
+        { s: { r: excelRowIdx - 1, c: 0 }, e: { r: excelRowIdx - 1, c: 4 } }
+      ]
+
+      // Empty styling for merged cells
+      for (let c = 1; c <= 4; c++) {
+        ws[`${getColLabel(c)}${excelRowIdx}`] = {
+          v: '',
+          t: 's',
+          s: {
+            fill: { patternType: 'solid', fgColor: { rgb: 'F1F5F9' } },
+            border: {
+              top: { style: 'medium', color: { rgb: '0F58A7' } },
+              bottom: { style: 'medium', color: { rgb: '0F58A7' } },
+              left: { style: 'thin', color: { rgb: 'E2E8F0' } },
+              right: { style: 'thin', color: { rgb: 'E2E8F0' } }
+            }
+          }
+        }
+      }
+
+      // Write SUM formulas for Numeric Columns (khoiLuongNhap, khoiLuongXuat etc)
+      columns.forEach((col, colIdx) => {
+        if (colIdx <= 4) return // Skip merged
+        const colChar = getColLabel(colIdx)
+        const cellRef = `${colChar}${excelRowIdx}`
+
+        const isNumeric = ['khoiLuongNhap', 'khoiLuongXuat'].includes(col.key)
+        const totalStyle = {
+          font: { name: 'Segoe UI', sz: 10, bold: true },
+          alignment: { horizontal: isNumeric ? 'right' : 'center', vertical: 'center' },
+          fill: { patternType: 'solid', fgColor: { rgb: 'F1F5F9' } },
+          border: {
+            top: { style: 'medium', color: { rgb: '0F58A7' } },
+            bottom: { style: 'medium', color: { rgb: '0F58A7' } },
+            left: { style: 'thin', color: { rgb: 'E2E8F0' } },
+            right: { style: 'thin', color: { rgb: 'E2E8F0' } }
+          }
+        }
+
+        if (isNumeric) {
+          const sumFormula = `SUM(${colChar}5:${colChar}${lastDataRow})`
+          const sumVal = realReportRows.reduce((sum, r) => sum + (Number(r[col.key]) || 0), 0)
+          ws[cellRef] = {
+            f: sumFormula,
+            v: sumVal,
+            t: 'n',
+            s: totalStyle,
+            z: '#,##0.000;[Red]-#,##0.000;"-"'
+          }
+        } else {
+          ws[cellRef] = {
+            v: '',
+            t: 's',
+            s: totalStyle
+          }
+        }
+      })
+
+      ws['!ref'] = `A1:${getColLabel(columns.length - 1)}${excelRowIdx}`
+      const sheetName = realReportSubTab === 'nhap' ? "Bao_Cao_Nhap_Thuc" : "Bao_Cao_Xuat_Thuc"
+      XLSXStyle.utils.book_append_sheet(wb, ws, sheetName)
+
+      const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'binary', compression: true })
+      const s2ab = (s) => {
+        const buf = new ArrayBuffer(s.length)
+        const view = new Uint8Array(buf)
+        for (let i = 0; i < s.length; i++) view[i] = s.charCodeAt(i) & 0xFF
+        return buf
+      }
+
+      const blob = new Blob([s2ab(wbout)], { type: 'application/octet-stream' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      const suffix = realReportSubTab === 'nhap' ? 'Nhap_Thuc' : 'Xuat_Thuc'
+      a.download = `Bao_Cao_${suffix}_${localProject || 'Tat_Ca'}_${new Date().toISOString().slice(0, 10)}.xlsx`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+      return
+    }
+
     if (reportData.length === 0) return
 
     const wb = XLSXStyle.utils.book_new()
@@ -5370,14 +5950,14 @@ CREATE POLICY "Allow public delete" ON public.don_gia_vat_tu FOR DELETE USING (t
       { key: 'thongSoKyThuat', label: 'Thông số kỹ thuật', wch: 12 },
       { key: 'received', label: 'Khối lượng nhận', wch: 12 },
       { key: 'issued', label: 'Khối lượng xuất', wch: 12 },
-      { key: 'stock', label: 'Khối lượng tồn kho', wch: 12 },
+      { key: 'stock', label: isRealReport ? 'Khối lượng tồn thực tế' : 'Khối lượng tồn kho', wch: 12 },
       { key: 'latestReceivedDate', label: 'Ngày nhập muộn nhất', wch: 12 },
       { key: 'daysSinceReceived', label: 'Số ngày nhập muộn nhất đến hôm nay', wch: 12 },
       { key: 'latestIssuedDate', label: 'Ngày xuất muộn nhất', wch: 12 },
       { key: 'daysSinceIssued', label: 'Số ngày xuất muộn nhất đến hôm nay', wch: 12 },
       { key: 'unusedStatus', label: 'Trạng thái vật tư không sử dụng', wch: 22 },
       { key: 'estimatedUnitPrice', label: 'Đơn giá trung bình tạm tính', wch: 16 },
-      { key: 'valueOver30Days', label: 'Thành tiền vật tư tồn >30 ngày', wch: 20 },
+      { key: 'valueOver30Days', label: isRealReport ? 'Thành tiền vật tư tồn thực tế >30 ngày' : 'Thành tiền vật tư tồn >30 ngày', wch: 20 },
       { key: 'materialClassification', label: 'Phân loại vật tư', wch: 18 }
     ]
     // Quy đổi Date -> Excel serial number để dùng được trong công thức/định dạng ngày
@@ -5390,7 +5970,7 @@ CREATE POLICY "Allow public delete" ON public.don_gia_vat_tu FOR DELETE USING (t
 
     // Title Row
     ws['A1'] = {
-      v: `BÁO CÁO XUẤT NHẬP TỒN VẬT TƯ THIẾT BỊ`,
+      v: isRealReport ? `BÁO CÁO XUẤT NHẬP THỰC VẬT TƯ THIẾT BỊ` : `BÁO CÁO XUẤT NHẬP TỒN VẬT TƯ THIẾT BỊ`,
       t: 's',
       s: {
         font: { name: 'Segoe UI', sz: 14, bold: true, color: { rgb: '0A3D73' } },
@@ -5499,13 +6079,46 @@ CREATE POLICY "Allow public delete" ON public.don_gia_vat_tu FOR DELETE USING (t
           }
         }
 
-        // Color negative values in red with light pink background
-        if (isNum && typeof cellVal === 'number' && cellVal < 0) {
-          cellStyle.fill = { patternType: 'solid', fgColor: { rgb: 'FEE2E2' } }
-          cellStyle.font = { name: 'Segoe UI', sz: 9.5, bold: true, color: { rgb: 'EF4444' } }
-        }
-
-        if (colIdx === 13) {
+        // Apply visual styling exactly matching the webapp's text colors and background fills
+        if (colIdx === 0) { // STT
+          cellStyle.font.color = { rgb: '475569' }
+        } else if (colIdx === 1) { // Mã SAP
+          cellStyle.font.color = { rgb: '0F172A' }
+          cellStyle.font.bold = true
+        } else if (colIdx === 2) { // Mã vật tư
+          cellStyle.font.color = { rgb: '475569' }
+        } else if (colIdx === 3) { // Tên vật tư
+          cellStyle.font.color = { rgb: '0F172A' }
+          cellStyle.font.bold = true
+        } else if (colIdx === 4) { // ĐVT badge-gray
+          cellStyle.fill = { patternType: 'solid', fgColor: { rgb: 'F1F5F9' } }
+          cellStyle.font.color = { rgb: '475569' }
+        } else if (colIdx === 5) { // Thông số kỹ thuật
+          cellStyle.font.color = { rgb: '475569' }
+        } else if (colIdx === 6) { // Khối lượng nhận (Green)
+          cellStyle.font.color = { rgb: '10B981' }
+          cellStyle.font.bold = true
+        } else if (colIdx === 7) { // Khối lượng xuất (Orange/Amber)
+          cellStyle.font.color = { rgb: 'F97316' }
+          cellStyle.font.bold = true
+        } else if (colIdx === 8) { // Khối lượng tồn kho
+          const isNegative = item.stock < 0
+          const isZero = item.stock === 0
+          if (isNegative) {
+            cellStyle.fill = { patternType: 'solid', fgColor: { rgb: 'FEF2F2' } }
+            cellStyle.font = { name: 'Segoe UI', sz: 9.5, bold: true, color: { rgb: 'EF4444' } }
+          } else if (isZero) {
+            cellStyle.font.color = { rgb: '475569' }
+          } else {
+            cellStyle.fill = { patternType: 'solid', fgColor: { rgb: 'E8F1FB' } }
+            cellStyle.font = { name: 'Segoe UI', sz: 9.5, bold: true, color: { rgb: '0F58A7' } }
+          }
+        } else if (colIdx === 9 || colIdx === 11) { // Ngày nhập muộn nhất / Ngày xuất muộn nhất
+          cellStyle.font.color = { rgb: '475569' }
+        } else if (colIdx === 10 || colIdx === 12) { // Số ngày đến hôm nay
+          cellStyle.font.color = { rgb: '475569' }
+          cellStyle.font.bold = true
+        } else if (colIdx === 13) { // Trạng thái vật tư không sử dụng
           const status = item.unusedStatus
           let bg = 'F1F5F9'
           let fg = '64748B'
@@ -5515,9 +6128,36 @@ CREATE POLICY "Allow public delete" ON public.don_gia_vat_tu FOR DELETE USING (t
           } else if (status === 'Chưa sử dụng (> 30 ngày)') {
             bg = 'FFFBEB'
             fg = 'D97706'
-          } else if (status === 'Đã dùng hết') {
-            bg = 'F1F5F9'
-            fg = '64748B'
+          }
+          cellStyle.fill = { patternType: 'solid', fgColor: { rgb: bg } }
+          cellStyle.font = { name: 'Segoe UI', sz: 9.5, bold: true, color: { rgb: fg } }
+        } else if (colIdx === 14) { // Đơn giá trung bình tạm tính
+          cellStyle.font.color = { rgb: '0F58A7' }
+          cellStyle.font.bold = true
+        } else if (colIdx === 15) { // Thành tiền vật tư tồn >30 ngày
+          if (item.valueOver30Days > 0) {
+            cellStyle.fill = { patternType: 'solid', fgColor: { rgb: 'FFF5F5' } }
+            cellStyle.font = { name: 'Segoe UI', sz: 9.5, bold: true, color: { rgb: 'B91C1C' } }
+          } else {
+            cellStyle.font.color = { rgb: '475569' }
+            cellStyle.font.bold = true
+          }
+        } else if (colIdx === 16) { // Phân loại vật tư
+          const val = materialClassifications[item.maSAP] || ''
+          const text = val.trim().toLowerCase()
+          let bg = 'F8FAFC'
+          let fg = '64748B'
+          if (text) {
+            if (text.includes('tiêu hao')) {
+              bg = 'ECFDF5'
+              fg = '047857'
+            } else if (text.includes('khấu hao') || text.includes('tài sản')) {
+              bg = 'FFF7ED'
+              fg = 'EA580C'
+            } else {
+              bg = 'EFF6FF'
+              fg = '1D4ED8'
+            }
           }
           cellStyle.fill = { patternType: 'solid', fgColor: { rgb: bg } }
           cellStyle.font = { name: 'Segoe UI', sz: 9.5, bold: true, color: { rgb: fg } }
@@ -5683,7 +6323,7 @@ CREATE POLICY "Allow public delete" ON public.don_gia_vat_tu FOR DELETE USING (t
     // Set sheet range bounds
     ws['!ref'] = `A1:Q${rowIdx}`
 
-    XLSXStyle.utils.book_append_sheet(wb, ws, "Xuat_Nhap_Ton")
+    XLSXStyle.utils.book_append_sheet(wb, ws, isRealReport ? "Xuat_Nhap_Thuc" : "Xuat_Nhap_Ton")
 
     // ── Sheet "Đơn nhận" và "Đơn xuất": liệt kê chi tiết từng đơn cấu thành nên
     // cột Khối lượng nhận / Khối lượng xuất ở sheet tổng hợp phía trên ──────────
@@ -5838,7 +6478,9 @@ CREATE POLICY "Allow public delete" ON public.don_gia_vat_tu FOR DELETE USING (t
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `Bao_Cao_Xuat_Nhap_Ton_${(localProject || 'all').replace(/\s+/g, '_')}.xlsx`
+    a.download = isRealReport 
+      ? `Bao_Cao_Xuat_Nhap_Thuc_${(localProject || 'all').replace(/\s+/g, '_')}.xlsx`
+      : `Bao_Cao_Xuat_Nhap_Ton_${(localProject || 'all').replace(/\s+/g, '_')}.xlsx`
     document.body.appendChild(a)
     a.click()
     document.body.removeChild(a)
@@ -5888,7 +6530,7 @@ CREATE POLICY "Allow public delete" ON public.don_gia_vat_tu FOR DELETE USING (t
       icon: <Download size={18} style={{ transform: 'rotate(180deg)' }} />
     },
     {
-      label: 'Khối lượng tồn kho',
+      label: isRealReport ? 'Khối lượng tồn thực tế' : 'Khối lượng tồn kho',
       value: metrics.totalStock.toLocaleString('vi-VN', { maximumFractionDigits: 3 }),
       color: metrics.totalStock >= 0 ? 'var(--primary)' : '#ef4444',
       bg: metrics.totalStock >= 0 ? 'var(--primary-light)' : '#fef2f2',
@@ -5896,7 +6538,7 @@ CREATE POLICY "Allow public delete" ON public.don_gia_vat_tu FOR DELETE USING (t
       icon: <Database size={18} />
     },
     {
-      label: 'Thành tiền tồn >30 ngày',
+      label: isRealReport ? 'Thành tiền tồn thực tế >30 ngày' : 'Thành tiền tồn >30 ngày',
       value: metrics.totalValueOver30Days.toLocaleString('vi-VN') + ' đ',
       color: '#ef4444',
       bg: '#fef2f2',
@@ -5916,62 +6558,106 @@ CREATE POLICY "Allow public delete" ON public.don_gia_vat_tu FOR DELETE USING (t
   return (
     <div id="baocao-xuat-nhap-ton-root" style={{ padding: '16px 24px 24px 24px', height: '100%', display: 'flex', flexDirection: 'column', boxSizing: 'border-box', overflow: 'hidden', fontFamily: "'Roboto', sans-serif" }}>
       {/* Sub-tabs for Inventory Report view */}
-      <div style={{ display: 'flex', gap: 6, marginBottom: 12, borderBottom: '1px solid var(--border)', paddingBottom: 6, flexShrink: 0 }}>
-        <button
-          onClick={() => setSubTab('dongia')}
-          style={{
-            padding: '8px 16px',
-            borderRadius: '6px 6px 0 0',
-            fontSize: '13.5px',
-            fontWeight: subTab === 'dongia' ? 700 : 500,
-            background: subTab === 'dongia' ? 'var(--primary)' : 'transparent',
-            color: subTab === 'dongia' ? '#ffffff' : 'var(--text-muted)',
-            border: 'none',
-            cursor: 'pointer',
-            transition: 'all 0.15s',
-            boxShadow: subTab === 'dongia' ? 'var(--shadow-sm)' : 'none',
-            borderBottom: subTab === 'dongia' ? '2px solid var(--primary)' : 'none'
-          }}
-        >
-          Đơn giá vật tư
-        </button>
-        <button
-          onClick={() => setSubTab('summary')}
-          style={{
-            padding: '8px 16px',
-            borderRadius: '6px 6px 0 0',
-            fontSize: '13.5px',
-            fontWeight: subTab === 'summary' ? 700 : 500,
-            background: subTab === 'summary' ? 'var(--primary)' : 'transparent',
-            color: subTab === 'summary' ? '#ffffff' : 'var(--text-muted)',
-            border: 'none',
-            cursor: 'pointer',
-            transition: 'all 0.15s',
-            boxShadow: subTab === 'summary' ? 'var(--shadow-sm)' : 'none',
-            borderBottom: subTab === 'summary' ? '2px solid var(--primary)' : 'none'
-          }}
-        >
-          Bảng chi tiết
-        </button>
-        <button
-          onClick={() => setSubTab('dashboard')}
-          style={{
-            padding: '8px 16px',
-            borderRadius: '6px 6px 0 0',
-            fontSize: '13.5px',
-            fontWeight: subTab === 'dashboard' ? 700 : 500,
-            background: subTab === 'dashboard' ? 'var(--primary)' : 'transparent',
-            color: subTab === 'dashboard' ? '#ffffff' : 'var(--text-muted)',
-            border: 'none',
-            cursor: 'pointer',
-            transition: 'all 0.15s',
-            boxShadow: subTab === 'dashboard' ? 'var(--shadow-sm)' : 'none',
-            borderBottom: subTab === 'dashboard' ? '2px solid var(--primary)' : 'none'
-          }}
-        >
-          Dashboard báo cáo
-        </button>
-      </div>
+      {isRealReport && (
+        <div style={{ display: 'flex', gap: 6, marginBottom: 12, borderBottom: '1px solid var(--border)', paddingBottom: 6, flexShrink: 0 }}>
+          <button
+            id="btn-real-report-nhap"
+            onClick={() => { setRealReportSubTab('nhap'); setCurrentPage(1); }}
+            style={{
+              padding: '8px 16px',
+              borderRadius: '6px 6px 0 0',
+              fontSize: '13.5px',
+              fontWeight: realReportSubTab === 'nhap' ? 700 : 500,
+              background: realReportSubTab === 'nhap' ? 'var(--primary)' : 'transparent',
+              color: realReportSubTab === 'nhap' ? '#ffffff' : 'var(--text-muted)',
+              border: 'none',
+              cursor: 'pointer',
+              transition: 'all 0.15s',
+              boxShadow: realReportSubTab === 'nhap' ? 'var(--shadow-sm)' : 'none',
+              borderBottom: realReportSubTab === 'nhap' ? '3px solid #10b981' : 'none'
+            }}
+          >
+            Nhập thực
+          </button>
+          <button
+            id="btn-real-report-xuat"
+            onClick={() => { setRealReportSubTab('xuat'); setCurrentPage(1); }}
+            style={{
+              padding: '8px 16px',
+              borderRadius: '6px 6px 0 0',
+              fontSize: '13.5px',
+              fontWeight: realReportSubTab === 'xuat' ? 700 : 500,
+              background: realReportSubTab === 'xuat' ? 'var(--primary)' : 'transparent',
+              color: realReportSubTab === 'xuat' ? '#ffffff' : 'var(--text-muted)',
+              border: 'none',
+              cursor: 'pointer',
+              transition: 'all 0.15s',
+              boxShadow: realReportSubTab === 'xuat' ? 'var(--shadow-sm)' : 'none',
+              borderBottom: realReportSubTab === 'xuat' ? '3px solid #f97316' : 'none'
+            }}
+          >
+            Xuất thực
+          </button>
+        </div>
+      )}
+      {!isRealReport && (
+        <div style={{ display: 'flex', gap: 6, marginBottom: 12, borderBottom: '1px solid var(--border)', paddingBottom: 6, flexShrink: 0 }}>
+          <button
+            onClick={() => setSubTab('dongia')}
+            style={{
+              padding: '8px 16px',
+              borderRadius: '6px 6px 0 0',
+              fontSize: '13.5px',
+              fontWeight: subTab === 'dongia' ? 700 : 500,
+              background: subTab === 'dongia' ? 'var(--primary)' : 'transparent',
+              color: subTab === 'dongia' ? '#ffffff' : 'var(--text-muted)',
+              border: 'none',
+              cursor: 'pointer',
+              transition: 'all 0.15s',
+              boxShadow: subTab === 'dongia' ? 'var(--shadow-sm)' : 'none',
+              borderBottom: subTab === 'dongia' ? '2px solid var(--primary)' : 'none'
+            }}
+          >
+            Đơn giá vật tư
+          </button>
+          <button
+            onClick={() => setSubTab('summary')}
+            style={{
+              padding: '8px 16px',
+              borderRadius: '6px 6px 0 0',
+              fontSize: '13.5px',
+              fontWeight: subTab === 'summary' ? 700 : 500,
+              background: subTab === 'summary' ? 'var(--primary)' : 'transparent',
+              color: subTab === 'summary' ? '#ffffff' : 'var(--text-muted)',
+              border: 'none',
+              cursor: 'pointer',
+              transition: 'all 0.15s',
+              boxShadow: subTab === 'summary' ? 'var(--shadow-sm)' : 'none',
+              borderBottom: subTab === 'summary' ? '2px solid var(--primary)' : 'none'
+            }}
+          >
+            Bảng chi tiết
+          </button>
+          <button
+            onClick={() => setSubTab('dashboard')}
+            style={{
+              padding: '8px 16px',
+              borderRadius: '6px 6px 0 0',
+              fontSize: '13.5px',
+              fontWeight: subTab === 'dashboard' ? 700 : 500,
+              background: subTab === 'dashboard' ? 'var(--primary)' : 'transparent',
+              color: subTab === 'dashboard' ? '#ffffff' : 'var(--text-muted)',
+              border: 'none',
+              cursor: 'pointer',
+              transition: 'all 0.15s',
+              boxShadow: subTab === 'dashboard' ? 'var(--shadow-sm)' : 'none',
+              borderBottom: subTab === 'dashboard' ? '2px solid var(--primary)' : 'none'
+            }}
+          >
+            Dashboard báo cáo
+          </button>
+        </div>
+      )}
 
       {subTab === 'dashboard' && (
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'auto', gap: 16, paddingBottom: 16 }}>
@@ -6208,8 +6894,8 @@ CREATE POLICY "Allow public delete" ON public.don_gia_vat_tu FOR DELETE USING (t
             <h3 style={{ fontSize: 14.5, fontWeight: 700, color: 'var(--text)', margin: '0 0 12px 0', display: 'flex', alignItems: 'center', gap: 6 }}>
               <BarChart3 size={16} style={{ color: 'var(--primary)' }} />
               {dashboardWarehouseFilter === 'all'
-                ? 'BIỂU ĐỒ SO SÁNH GIÁ TRỊ TỒN CHƯA SỬ DỤNG (> 30 NGÀY) GIỮA CÁC KHO DỰ ÁN BCH'
-                : `GIÁ TRỊ TỒN CHƯA SỬ DỤNG (> 30 NGÀY) — KHO: ${dashboardWarehouseFilter}`}
+                ? (isRealReport ? 'BIỂU ĐỒ SO SÁNH GIÁ TRỊ TỒN THỰC TẾ CHƯA SỬ DỤNG (> 30 NGÀY) GIỮA CÁC KHO DỰ ÁN BCH' : 'BIỂU ĐỒ SO SÁNH GIÁ TRỊ TỒN CHƯA SỬ DỤNG (> 30 NGÀY) GIỮA CÁC KHO DỰ ÁN BCH')
+                : (isRealReport ? `GIÁ TRỊ TỒN THỰC TẾ CHƯA SỬ DỤNG (> 30 NGÀY) — KHO: ${dashboardWarehouseFilter}` : `GIÁ TRỊ TỒN CHƯA SỬ DỤNG (> 30 NGÀY) — KHO: ${dashboardWarehouseFilter}`)}
             </h3>
             
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -6552,54 +7238,6 @@ CREATE POLICY "Allow public delete" ON public.don_gia_vat_tu FOR DELETE USING (t
 
       {subTab === 'summary' && (
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: 0 }}>
-          {/* Title Header Card */}
-          <div style={{
-        background: '#ffffff',
-        borderRadius: 8,
-        border: '1px solid var(--border)',
-        padding: '14px 20px',
-        marginBottom: 12,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        boxShadow: 'var(--shadow-sm)',
-        flexShrink: 0
-      }}>
-        <div>
-          <h2 style={{ fontSize: 18, fontWeight: 800, color: 'var(--text)', margin: 0 }}>
-            Báo cáo xuất nhập tồn vật tư thiết bị
-          </h2>
-          <p style={{ color: 'var(--text-muted)', fontSize: 13, margin: '4px 0 0 0' }}>
-            Báo cáo chi tiết theo Mã SAP về khối lượng nhập, khối lượng xuất và tồn kho tương ứng của mỗi dự án.
-          </p>
-        </div>
-        {reportData.length > 0 && (
-          <button
-            id="btn-export-inventory"
-            onClick={handleExportExcel}
-            className="btn btn-success"
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 6,
-              height: 36,
-              padding: '0 16px',
-              borderRadius: 6,
-              fontWeight: 600,
-              fontSize: '13px',
-              background: '#10b981',
-              color: '#ffffff',
-              border: 'none',
-              cursor: 'pointer',
-              boxShadow: '0 2px 4px rgba(16, 185, 129, 0.2)'
-            }}
-          >
-            <Download size={14} />
-            <span>Xuất Excel</span>
-          </button>
-        )}
-      </div>
-
       {/* Filter and selector row */}
       <div style={{
         background: '#ffffff',
@@ -6624,127 +7262,264 @@ CREATE POLICY "Allow public delete" ON public.don_gia_vat_tu FOR DELETE USING (t
               value={localProject}
               onChange={(val) => setLocalProject(val)}
               options={uniqueWarehouses}
-              placeholder="-- Tất cả Kho / Dự án --"
+              placeholder="-- Chọn Kho / Dự án --"
               searchPlaceholder="Tìm tên Kho / Dự án..."
               variant="form"
             />
           </div>
         </div>
 
-        {/* Search */}
-        <div style={{ position: 'relative', flex: 1, minWidth: 200 }}>
-          <Search size={14} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-light)' }} />
-          <input
-            id="input-inventory-search"
-            type="text"
-            className="input"
-            style={{ paddingLeft: 30, width: '100%', height: 38, fontSize: 13, border: '1px solid #cbd5e1' }}
-            placeholder="Tìm theo Mã SAP, Mã vật tư, Tên vật tư..."
-            value={searchTerm}
-            onChange={e => setSearchTerm(e.target.value)}
-          />
-        </div>
+        {isRealReport && localProject && (
+          <>
+            {/* Đơn vị giao Selector */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 260 }}>
+              <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+                Đơn vị giao:
+              </span>
+              <div style={{ flex: 1, minWidth: 160 }}>
+                <SearchableSelect
+                  value={localGiao}
+                  onChange={(val) => setLocalGiao(val)}
+                  options={uniqueGiaoUnits}
+                  placeholder="-- Tất cả Đơn vị giao --"
+                  searchPlaceholder="Tìm Đơn vị giao..."
+                  variant="form"
+                />
+              </div>
+            </div>
 
-        {/* Status Filter Toggle */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-          <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-muted)' }}>Trạng thái:</span>
-          <div style={{ display: 'flex', background: 'var(--surface2)', borderRadius: 8, padding: 2, border: '1px solid var(--border)', height: 38, alignItems: 'center' }}>
-            <button
-              id="btn-inventory-status-approved"
-              onClick={() => setStatusFilter('approved_only')}
-              style={{
-                padding: '0 12px',
-                height: '100%',
-                borderRadius: 6,
-                fontSize: '12.5px',
-                fontWeight: 600,
-                transition: 'all 0.1s',
-                background: statusFilter === 'approved_only' ? '#ffffff' : 'transparent',
-                color: statusFilter === 'approved_only' ? 'var(--primary)' : 'var(--text-muted)',
-                border: 'none',
-                boxShadow: statusFilter === 'approved_only' ? 'var(--shadow-sm)' : 'none',
-                cursor: 'pointer'
-              }}
-            >
-              Chỉ Đã phê duyệt
-            </button>
-            <button
-              id="btn-inventory-status-approved-pending"
-              onClick={() => setStatusFilter('approved_pending')}
-              style={{
-                padding: '0 12px',
-                height: '100%',
-                borderRadius: 6,
-                fontSize: '12.5px',
-                fontWeight: 600,
-                transition: 'all 0.1s',
-                background: statusFilter === 'approved_pending' ? '#ffffff' : 'transparent',
-                color: statusFilter === 'approved_pending' ? 'var(--primary)' : 'var(--text-muted)',
-                border: 'none',
-                boxShadow: statusFilter === 'approved_pending' ? 'var(--shadow-sm)' : 'none',
-                cursor: 'pointer',
-                whiteSpace: 'nowrap'
-              }}
-            >
-              Đã PD + Chưa PD
-            </button>
-            <button
-              id="btn-inventory-status-all"
-              onClick={() => setStatusFilter('all')}
-              style={{
-                padding: '0 12px',
-                height: '100%',
-                borderRadius: 6,
-                fontSize: '12.5px',
-                fontWeight: 600,
-                transition: 'all 0.1s',
-                background: statusFilter === 'all' ? '#ffffff' : 'transparent',
-                color: statusFilter === 'all' ? 'var(--primary)' : 'var(--text-muted)',
-                border: 'none',
-                boxShadow: statusFilter === 'all' ? 'var(--shadow-sm)' : 'none',
-                cursor: 'pointer'
-              }}
-            >
-              Tất cả
-            </button>
-          </div>
-        </div>
+            {/* Đơn vị nhận Selector */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 260 }}>
+              <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+                Đơn vị nhận:
+              </span>
+              <div style={{ flex: 1, minWidth: 160 }}>
+                <SearchableSelect
+                  value={localNhan}
+                  onChange={(val) => setLocalNhan(val)}
+                  options={uniqueNhanUnits}
+                  placeholder="-- Tất cả Đơn vị nhận --"
+                  searchPlaceholder="Tìm Đơn vị nhận..."
+                  variant="form"
+                />
+              </div>
+            </div>
+
+            {/* Khoảng thời gian */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0, borderLeft: '1px solid var(--border)', paddingLeft: 12 }}>
+              <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-muted)' }}>Từ ngày:</span>
+              <input
+                type="date"
+                className="input"
+                style={{ height: 38, padding: '0 8px', fontSize: 13, border: '1px solid #cbd5e1', borderRadius: 6 }}
+                value={startDate}
+                onChange={e => setStartDate(e.target.value)}
+              />
+              <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-muted)' }}>Đến ngày:</span>
+              <input
+                type="date"
+                className="input"
+                style={{ height: 38, padding: '0 8px', fontSize: 13, border: '1px solid #cbd5e1', borderRadius: 6 }}
+                value={endDate}
+                onChange={e => setEndDate(e.target.value)}
+              />
+              {(startDate || endDate) && (
+                <button
+                  onClick={() => { setStartDate(''); setEndDate(''); }}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: '#ef4444',
+                    fontSize: 12,
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    padding: '0 4px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 2
+                  }}
+                  title="Xóa bộ lọc ngày"
+                >
+                  Xóa lọc
+                </button>
+              )}
+            </div>
+          </>
+        )}
+
+        {localProject && (
+          <>
+            {/* Search */}
+            <div style={{ position: 'relative', flex: 1, minWidth: 200 }}>
+              <Search size={14} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-light)' }} />
+              <input
+                id="input-inventory-search"
+                type="text"
+                className="input"
+                style={{ paddingLeft: 30, width: '100%', height: 38, fontSize: 13, border: '1px solid #cbd5e1' }}
+                placeholder="Tìm theo Mã SAP, Mã vật tư, Tên vật tư..."
+                value={searchTerm}
+                onChange={e => setSearchTerm(e.target.value)}
+              />
+            </div>
+
+            {/* Status Filter Toggle */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+              <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-muted)' }}>Trạng thái:</span>
+              <div style={{ display: 'flex', background: 'var(--surface2)', borderRadius: 8, padding: 2, border: '1px solid var(--border)', height: 38, alignItems: 'center' }}>
+                <button
+                  id="btn-inventory-status-approved"
+                  onClick={() => setStatusFilter('approved_only')}
+                  style={{
+                    padding: '0 12px',
+                    height: '100%',
+                    borderRadius: 6,
+                    fontSize: '12.5px',
+                    fontWeight: 600,
+                    transition: 'all 0.1s',
+                    background: statusFilter === 'approved_only' ? '#ffffff' : 'transparent',
+                    color: statusFilter === 'approved_only' ? 'var(--primary)' : 'var(--text-muted)',
+                    border: 'none',
+                    boxShadow: statusFilter === 'approved_only' ? 'var(--shadow-sm)' : 'none',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Chỉ Đã phê duyệt
+                </button>
+                <button
+                  id="btn-inventory-status-approved-pending"
+                  onClick={() => setStatusFilter('approved_pending')}
+                  style={{
+                    padding: '0 12px',
+                    height: '100%',
+                    borderRadius: 6,
+                    fontSize: '12.5px',
+                    fontWeight: 600,
+                    transition: 'all 0.1s',
+                    background: statusFilter === 'approved_pending' ? '#ffffff' : 'transparent',
+                    color: statusFilter === 'approved_pending' ? 'var(--primary)' : 'var(--text-muted)',
+                    border: 'none',
+                    boxShadow: statusFilter === 'approved_pending' ? 'var(--shadow-sm)' : 'none',
+                    cursor: 'pointer',
+                    whiteSpace: 'nowrap'
+                  }}
+                >
+                  Đã PD + Chưa PD
+                </button>
+                <button
+                  id="btn-inventory-status-all"
+                  onClick={() => setStatusFilter('all')}
+                  style={{
+                    padding: '0 12px',
+                    height: '100%',
+                    borderRadius: 6,
+                    fontSize: '12.5px',
+                    fontWeight: 600,
+                    transition: 'all 0.1s',
+                    background: statusFilter === 'all' ? '#ffffff' : 'transparent',
+                    color: statusFilter === 'all' ? 'var(--primary)' : 'var(--text-muted)',
+                    border: 'none',
+                    boxShadow: statusFilter === 'all' ? 'var(--shadow-sm)' : 'none',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Tất cả
+                </button>
+              </div>
+            </div>
+          </>
+        )}
+
+        {((isRealReport ? realReportRows.length : reportData.length) > 0) && (
+          <button
+            id="btn-export-inventory"
+            onClick={handleExportExcel}
+            className="btn btn-success"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              height: 38,
+              padding: '0 16px',
+              borderRadius: 6,
+              fontWeight: 600,
+              fontSize: '13px',
+              background: '#10b981',
+              color: '#ffffff',
+              border: 'none',
+              cursor: 'pointer',
+              boxShadow: '0 2px 4px rgba(16, 185, 129, 0.2)',
+              marginLeft: 'auto'
+            }}
+          >
+            <Download size={14} />
+            <span>Xuất Excel</span>
+          </button>
+        )}
       </div>
 
       {/* Summary Metrics Cards */}
-      <div style={{ display: 'flex', gap: 12, marginBottom: 12, flexWrap: 'wrap', flexShrink: 0 }}>
-        {metricsCards.map(c => (
-          <div key={c.label} style={{
-            background: c.bg,
-            border: `1px solid ${c.border}`,
-            borderRadius: 8,
-            padding: '10px 16px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            flex: '1 1 200px',
-            minWidth: 180,
-            boxShadow: 'var(--shadow-sm)'
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-              <span style={{ color: 'var(--text-muted)', fontSize: 13, fontWeight: 500 }}>{c.label}:</span>
-              <span style={{ color: c.color, fontSize: 16, fontWeight: 700, letterSpacing: '-0.01em' }}>{c.value}</span>
-            </div>
-            <div style={{
-              width: 32, height: 32, borderRadius: 8,
-              background: '#ffffff', color: c.color,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
+      {localProject && (
+        <div style={{ display: 'flex', gap: 12, marginBottom: 12, flexWrap: 'wrap', flexShrink: 0 }}>
+          {(isRealReport ? realReportMetrics : metricsCards).map(c => (
+            <div key={c.label} style={{
+              background: c.bg,
               border: `1px solid ${c.border}`,
-              flexShrink: 0
+              borderRadius: 8,
+              padding: '10px 16px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              flex: '1 1 200px',
+              minWidth: 180,
+              boxShadow: 'var(--shadow-sm)'
             }}>
-              {c.icon}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                <span style={{ color: 'var(--text-muted)', fontSize: 13, fontWeight: 500 }}>{c.label}:</span>
+                <span style={{ color: c.color, fontSize: 16, fontWeight: 700, letterSpacing: '-0.01em' }}>{c.value}</span>
+              </div>
+              <div style={{
+                width: 32, height: 32, borderRadius: 8,
+                background: '#ffffff', color: c.color,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                border: `1px solid ${c.border}`,
+                flexShrink: 0
+              }}>
+                {c.icon}
+              </div>
             </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
 
       {/* Table container / main body */}
-      {reportData.length === 0 ? (
+      {!localProject ? (
+        <div style={{ flex: 1, background: '#ffffff', border: '1px solid var(--border)', borderRadius: 8, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 48, boxShadow: 'var(--shadow-sm)' }}>
+          <div style={{ width: 56, height: 56, borderRadius: 28, background: '#eff6ff', color: '#0f58a7', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
+            <Warehouse size={28} />
+          </div>
+          <h3 style={{ fontSize: 16, fontWeight: 700, color: 'var(--text)', margin: '0 0 8px 0' }}>Chưa chọn Kho / Dự án</h3>
+          <p style={{ color: 'var(--text-muted)', fontSize: 13.5, margin: 0, maxWidth: 420, textAlign: 'center', lineHeight: '1.5' }}>
+            Vui lòng chọn một Kho / Dự án cụ thể từ danh sách bộ lọc ở trên để tải dữ liệu báo cáo chi tiết nhanh nhất và tránh bị lag.
+          </p>
+        </div>
+      ) : isRealReport ? (
+        realReportRows.length === 0 ? (
+          <div style={{ flex: 1, background: '#ffffff', border: '1px solid var(--border)', borderRadius: 8, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 48, boxShadow: 'var(--shadow-sm)' }}>
+            <div style={{ width: 56, height: 56, borderRadius: 28, background: '#fef2f2', color: '#ef4444', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
+              <AlertCircle size={28} />
+            </div>
+            <h3 style={{ fontSize: 16, fontWeight: 700, color: 'var(--text)', margin: '0 0 8px 0' }}>Không có dữ liệu phát sinh</h3>
+            <p style={{ color: 'var(--text-muted)', fontSize: 13.5, margin: 0, maxWidth: 420, textAlign: 'center', lineHeight: '1.5' }}>
+              Không tìm thấy bản ghi {realReportSubTab === 'nhap' ? 'nhập' : 'xuất'} thực tế nào{localProject ? ` liên quan đến kho "${localProject}"` : ''} trong dữ liệu Đơn chung hiện tại.
+            </p>
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
+            <DataTable rows={realReportRows} columns={COLS_REAL_REPORT} />
+          </div>
+        )
+      ) : reportData.length === 0 ? (
         <div style={{ flex: 1, background: '#ffffff', border: '1px solid var(--border)', borderRadius: 8, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 48, boxShadow: 'var(--shadow-sm)' }}>
           <div style={{ width: 56, height: 56, borderRadius: 28, background: '#fef2f2', color: '#ef4444', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
             <AlertCircle size={28} />
@@ -6807,7 +7582,7 @@ CREATE POLICY "Allow public delete" ON public.don_gia_vat_tu FOR DELETE USING (t
                     style={{ width: 85, minWidth: 85, cursor: 'pointer', fontSize: '12px', padding: '8px 10px', textAlign: 'center', verticalAlign: 'middle' }}
                   >
                     <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4, justifyContent: 'center', width: '100%' }}>
-                      <span>Tồn kho</span>
+                      <span>{isRealReport ? 'Tồn thực tế' : 'Tồn kho'}</span>
                       <ArrowUpDown size={12} style={{ opacity: 0.7 }} />
                     </div>
                   </th>
@@ -6840,7 +7615,7 @@ CREATE POLICY "Allow public delete" ON public.don_gia_vat_tu FOR DELETE USING (t
                     style={{ width: 130, minWidth: 130, cursor: 'pointer', fontSize: '11px', padding: '8px 6px', textAlign: 'center', verticalAlign: 'middle', whiteSpace: 'normal', lineHeight: '1.2' }}
                   >
                     <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4, justifyContent: 'center', width: '100%' }}>
-                      <span>Thành tiền vật tư tồn &gt;30 ngày</span>
+                      <span>{isRealReport ? 'Thành tiền vật tư tồn thực tế >30 ngày' : 'Thành tiền vật tư tồn >30 ngày'}</span>
                       <ArrowUpDown size={12} style={{ opacity: 0.7 }} />
                     </div>
                   </th>
@@ -9815,11 +10590,10 @@ async function deleteFromTableAdaptive(tableName, possibleColumns, targetValue) 
       columns = tableSchemaCache[tableName]
     } else {
       try {
-        const response = await fetch(`${supabaseUrl}/rest/v1/`, {
-          headers: {
-            'apikey': supabaseAnonKey,
-            'Authorization': `Bearer ${supabaseAnonKey}`
-          }
+        // supabaseUrl giờ đã là Neon Data API URL (đã có sẵn /rest/v1), không nối thêm nữa.
+        // Chỉ gắn Authorization khi có key, để trống thì Data API dùng role "anonymous".
+        const response = await fetch(`${supabaseUrl}/`, {
+          headers: supabaseAnonKey ? { 'Authorization': `Bearer ${supabaseAnonKey}` } : {}
         })
         if (response.ok) {
           const schema = await response.json()
@@ -11128,6 +11902,7 @@ export default function App() {
     { id: 'chung', label: 'Đơn chung', icon: <ClipboardList size={15} /> },
     { id: 'kho', label: 'Kho dự án', icon: <Warehouse size={15} /> },
     { id: 'inventory', label: 'Báo cáo xuất nhập tồn', icon: <Database size={15} /> },
+    { id: 'inventory_real', label: 'Báo cáo xuất nhập thực', icon: <Database size={15} /> },
   ]
 
   return (
@@ -11170,6 +11945,7 @@ export default function App() {
         onOpenConfigModal={() => setShowConfigModal(true)}
         onForceRefresh={() => loadDataFromSupabase(true)}
         onMouseEnterLogo={() => setIsSidebarOpen(true)}
+        activeTab={tab}
       />
 
       <div style={{ flex: 1, display: 'flex', position: 'relative', overflow: 'hidden' }}>
@@ -11374,7 +12150,7 @@ export default function App() {
                 <div style={{ flex: 1, height: '1px', background: 'rgba(255, 255, 255, 0.15)' }} />
               </div>
  
-              {tabs.filter(t => t.id === 'inventory').map(t => {
+              {tabs.filter(t => t.id === 'inventory' || t.id === 'inventory_real').map(t => {
                 const isSelected = tab === t.id
  
                 return (
@@ -11544,7 +12320,7 @@ export default function App() {
                 Xử lý & Tổng hợp
               </div>
 
-              {tabs.filter(t => t.id === 'inventory').map(t => {
+              {tabs.filter(t => t.id === 'inventory' || t.id === 'inventory_real').map(t => {
                 const isSelected = tab === t.id
 
                 return (
@@ -11750,6 +12526,18 @@ export default function App() {
                 selectedProject={selectedProject}
                 setSelectedProject={setSelectedProject}
                 allProjects={allProjects}
+                isRealReport={false}
+              />
+            )}
+            {tab === 'inventory_real' && (
+              <BaoCaoXuatNhapTonTab
+                chungRows={chungRows}
+                giaoRows={giaoRows}
+                nhanRows={nhanRows}
+                selectedProject={selectedProject}
+                setSelectedProject={setSelectedProject}
+                allProjects={allProjects}
+                isRealReport={true}
               />
             )}
           </div>
