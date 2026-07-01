@@ -393,7 +393,8 @@ function Header({ selectedProject, setSelectedProject, duAnOptions, onOpenAddPro
         )}
 
         <div
-          title={isSupabaseConfigured ? "Đã kết nối cơ sở dữ liệu Supabase" : "Chưa kết nối cơ sở dữ liệu Supabase"}
+          onClick={onOpenConfigModal}
+          title={isSupabaseConfigured ? "Đã kết nối cơ sở dữ liệu — bấm để xem/sửa cấu hình" : "Chưa kết nối cơ sở dữ liệu — bấm để cấu hình"}
           style={{
             display: 'flex',
             alignItems: 'center',
@@ -405,7 +406,7 @@ function Header({ selectedProject, setSelectedProject, duAnOptions, onOpenAddPro
             fontSize: 12,
             fontWeight: 600,
             whiteSpace: 'nowrap',
-            cursor: 'default',
+            cursor: 'pointer',
             height: 28,
             boxSizing: 'border-box'
           }}
