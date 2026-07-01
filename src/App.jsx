@@ -411,7 +411,7 @@ function Header({ selectedProject, setSelectedProject, duAnOptions, onOpenAddPro
           }}
         >
           <Database size={13} style={{ marginRight: 5, color: isSupabaseConfigured ? '#34d399' : '#fbbf24' }} />
-          <span>{isSupabaseConfigured ? 'Supabase Connected' : 'Supabase Offline'}</span>
+          <span>{isSupabaseConfigured ? 'Neon Connected' : 'DB Offline'}</span>
           <span style={{
             width: 6,
             height: 6,
@@ -9837,10 +9837,10 @@ function DeleteProjectModal({ isOpen, onClose, onConfirm, projectName, giaoRows,
 // ─── Supabase Config Modal ───────────────────────────────────────────────────
 function SupabaseConfigModal({ isOpen, onClose }) {
   const [url, setUrl] = useState(() => {
-    return localStorage.getItem('sgc_supabase_url') || import.meta.env.VITE_SUPABASE_URL || 'https://luhsnaqlajbwkftrsbeg.supabase.co'
+    return localStorage.getItem('sgc_supabase_url') || import.meta.env.VITE_SUPABASE_URL || supabaseUrl
   })
   const [key, setKey] = useState(() => {
-    return localStorage.getItem('sgc_supabase_key') || import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx1aHNuYXFsYWpid2tmdHJzYmVnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwMDk3MjIsImV4cCI6MjA5NTU4NTcyMn0.NqqOG1KkzceGquzudBcPqOSsX1BhB24U_jmew0Mqsc4'
+    return localStorage.getItem('sgc_supabase_key') || import.meta.env.VITE_SUPABASE_ANON_KEY || supabaseAnonKey
   })
   const [saveSuccess, setSaveSuccess] = useState(false)
   const [currentSource, setCurrentSource] = useState(() => {
@@ -9854,8 +9854,8 @@ function SupabaseConfigModal({ isOpen, onClose }) {
 
   React.useEffect(() => {
     if (isOpen) {
-      setUrl(localStorage.getItem('sgc_supabase_url') || import.meta.env.VITE_SUPABASE_URL || 'https://luhsnaqlajbwkftrsbeg.supabase.co')
-      setKey(localStorage.getItem('sgc_supabase_key') || import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx1aHNuYXFsYWpid2tmdHJzYmVnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwMDk3MjIsImV4cCI6MjA5NTU4NTcyMn0.NqqOG1KkzceGquzudBcPqOSsX1BhB24U_jmew0Mqsc4')
+      setUrl(localStorage.getItem('sgc_supabase_url') || import.meta.env.VITE_SUPABASE_URL || supabaseUrl)
+      setKey(localStorage.getItem('sgc_supabase_key') || import.meta.env.VITE_SUPABASE_ANON_KEY || supabaseAnonKey)
       setCurrentSource(() => {
         if (localStorage.getItem('sgc_supabase_url')) return 'local'
         if (import.meta.env.VITE_SUPABASE_URL) return 'env'
@@ -9874,17 +9874,16 @@ function SupabaseConfigModal({ isOpen, onClose }) {
     try {
       const trimmedUrl = url.trim()
       const trimmedKey = key.trim()
-      if (!trimmedUrl || !trimmedKey) {
-        setTestResult({ success: false, message: 'Vui lòng điền đầy đủ URL và Anon Key trước!' })
+      if (!trimmedUrl) {
+        setTestResult({ success: false, message: 'Vui lòng điền URL kết nối trước!' })
         setTesting(false)
         return
       }
 
-      const res = await fetch(`${trimmedUrl}/rest/v1/du_an?select=*&limit=1`, {
-        headers: {
-          'apikey': trimmedKey,
-          'Authorization': `Bearer ${trimmedKey}`
-        }
+      // trimmedUrl đã là Data API URL đầy đủ (kết thúc bằng /rest/v1), không nối thêm.
+      // Key để trống -> Neon Data API tự dùng role "anonymous".
+      const res = await fetch(`${trimmedUrl}/du_an?select=*&limit=1`, {
+        headers: trimmedKey ? { 'Authorization': `Bearer ${trimmedKey}` } : {}
       })
 
       if (res.ok) {
@@ -9893,9 +9892,9 @@ function SupabaseConfigModal({ isOpen, onClose }) {
         const status = res.status
         let customMsg = `Lỗi từ Máy chủ (HTTP ${status})`
         if (status === 401) {
-          customMsg = 'Lỗi 401 Unauthorized: Anon Key của bạn không hợp lệ hoặc đã bị thay đổi/vô hiệu hóa trên trang quản trị Supabase!'
+          customMsg = 'Lỗi 401 Unauthorized: Key/token không hợp lệ, hoặc Data API yêu cầu xác thực mà bạn chưa nhập token!'
         } else if (status === 404) {
-          customMsg = 'Lỗi 404 Not Found: URL dự án Supabase không chính xác!'
+          customMsg = 'Lỗi 404 Not Found: URL Data API không chính xác!'
         } else {
           try {
             const body = await res.json()
@@ -9917,15 +9916,19 @@ function SupabaseConfigModal({ isOpen, onClose }) {
     const trimmedUrl = url.trim()
     const trimmedKey = key.trim()
 
-    if (trimmedUrl && trimmedKey) {
+    if (trimmedUrl) {
       localStorage.setItem('sgc_supabase_url', trimmedUrl)
-      localStorage.setItem('sgc_supabase_key', trimmedKey)
+      if (trimmedKey) {
+        localStorage.setItem('sgc_supabase_key', trimmedKey)
+      } else {
+        localStorage.removeItem('sgc_supabase_key')
+      }
       setSaveSuccess(true)
       setTimeout(() => {
         window.location.reload()
       }, 1000)
     } else {
-      alert('Vui lòng điền đầy đủ cả URL và Anon Key!')
+      alert('Vui lòng điền URL kết nối!')
     }
   }
 
@@ -9933,8 +9936,8 @@ function SupabaseConfigModal({ isOpen, onClose }) {
     if (window.confirm('Bạn có chắc chắn muốn xóa cấu hình thủ công và quay lại dùng cấu hình tích hợp mặc định trong code?')) {
       localStorage.removeItem('sgc_supabase_url')
       localStorage.removeItem('sgc_supabase_key')
-      setUrl(import.meta.env.VITE_SUPABASE_URL || 'https://luhsnaqlajbwkftrsbeg.supabase.co')
-      setKey(import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx1aHNuYXFsYWpid2tmdHJzYmVnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwMDk3MjIsImV4cCI6MjA5NTU4NTcyMn0.NqqOG1KkzceGquzudBcPqOSsX1BhB24U_jmew0Mqsc4')
+      setUrl(import.meta.env.VITE_SUPABASE_URL || supabaseUrl)
+      setKey(import.meta.env.VITE_SUPABASE_ANON_KEY || supabaseAnonKey)
       setCurrentSource(import.meta.env.VITE_SUPABASE_URL ? 'env' : 'default')
       setSaveSuccess(true)
       setTimeout(() => {
@@ -9976,7 +9979,7 @@ function SupabaseConfigModal({ isOpen, onClose }) {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #f1f5f9', paddingBottom: 12 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <Database size={18} color="#0f58a7" />
-            <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: '#0f172a' }}>Cấu hình kết nối cơ sở dữ liệu Supabase</h3>
+            <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: '#0f172a' }}>Cấu hình kết nối cơ sở dữ liệu (Neon)</h3>
           </div>
           <button onClick={onClose} style={{ background: 'transparent', border: 'none', color: '#64748b', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: 4 }}>
             <X size={18} />
@@ -10001,7 +10004,7 @@ function SupabaseConfigModal({ isOpen, onClose }) {
           }} />
           <div style={{ flex: 1 }}>
             <span style={{ fontSize: 13, fontWeight: 700, color: isCurrentlyConnected ? '#065f46' : '#9f1239' }}>
-              Trạng thái: {isCurrentlyConnected ? 'Đã bật đầu nối Supabase' : 'Chưa cấu hình (Offline)'}
+              Trạng thái: {isCurrentlyConnected ? 'Đã bật đầu nối Database (Neon)' : 'Chưa cấu hình (Offline)'}
             </span>
             <p style={{ margin: '1px 0 0 0', fontSize: 11, color: isCurrentlyConnected ? '#047857' : '#be123c' }}>
               {isCurrentlyConnected 
@@ -10030,13 +10033,13 @@ function SupabaseConfigModal({ isOpen, onClose }) {
             {/* Edit Fields */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
               <label style={{ fontSize: 11, fontWeight: 600, color: '#475569', textAlign: 'left' }}>
-                Supabase Project URL (VITE_SUPABASE_URL)
+                Neon Data API URL (VITE_SUPABASE_URL)
               </label>
               <input
                 type="text"
                 className="input"
                 style={{ width: '100%', fontFamily: 'monospace', fontSize: 11, height: '36px', padding: '0 10px' }}
-                placeholder="Ví dụ: https://your-project-id.supabase.co"
+                placeholder="Ví dụ: https://ep-xxx.apirest.region.aws.neon.tech/dbname/rest/v1"
                 value={url}
                 onChange={(e) => setUrl(e.target.value)}
               />
@@ -10044,7 +10047,7 @@ function SupabaseConfigModal({ isOpen, onClose }) {
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
               <label style={{ fontSize: 11, fontWeight: 600, color: '#475569', textAlign: 'left' }}>
-                Supabase Project API Anon Key (VITE_SUPABASE_ANON_KEY)
+                Data API Token / JWT (tùy chọn, để trống nếu dùng role anonymous) (VITE_SUPABASE_ANON_KEY)
               </label>
               <textarea
                 className="input"
