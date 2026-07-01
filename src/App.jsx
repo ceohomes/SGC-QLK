@@ -393,8 +393,7 @@ function Header({ selectedProject, setSelectedProject, duAnOptions, onOpenAddPro
         )}
 
         <div
-          onClick={onOpenConfigModal}
-          title={isSupabaseConfigured ? "Đã kết nối cơ sở dữ liệu — bấm để xem/sửa cấu hình" : "Chưa kết nối cơ sở dữ liệu — bấm để cấu hình"}
+          title={isSupabaseConfigured ? "Đã kết nối cơ sở dữ liệu Supabase" : "Chưa kết nối cơ sở dữ liệu Supabase"}
           style={{
             display: 'flex',
             alignItems: 'center',
@@ -406,13 +405,13 @@ function Header({ selectedProject, setSelectedProject, duAnOptions, onOpenAddPro
             fontSize: 12,
             fontWeight: 600,
             whiteSpace: 'nowrap',
-            cursor: 'pointer',
+            cursor: 'default',
             height: 28,
             boxSizing: 'border-box'
           }}
         >
           <Database size={13} style={{ marginRight: 5, color: isSupabaseConfigured ? '#34d399' : '#fbbf24' }} />
-          <span>{isSupabaseConfigured ? 'Neon Connected' : 'DB Offline'}</span>
+          <span>{isSupabaseConfigured ? 'Supabase Connected' : 'Supabase Offline'}</span>
           <span style={{
             width: 6,
             height: 6,
@@ -7106,7 +7105,7 @@ CREATE POLICY "Allow public delete" ON public.don_gia_vat_tu FOR DELETE USING (t
                         }} />
                       </div>
                       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>
-                        <span>Chưa sử dụng (&gt;30 ngày): <strong>{activeDashStat.unusedCount}</strong> mặt hàng</span>
+                        <span>Chưa sử dụng (>30 ngày): <strong>{activeDashStat.unusedCount}</strong> mặt hàng</span>
                         <span>Đang sử dụng: <strong>{activeDashStat.totalItemsInStock - activeDashStat.unusedCount}</strong> mặt hàng</span>
                       </div>
                     </div>
@@ -9835,98 +9834,116 @@ function DeleteProjectModal({ isOpen, onClose, onConfirm, projectName, giaoRows,
   )
 }
 
-// ─── Neon Config Helper Modal ───────────────────────────────────────────────────
+// ─── Supabase Config Modal ───────────────────────────────────────────────────
 function SupabaseConfigModal({ isOpen, onClose }) {
-  const [copied, setCopied] = useState(false)
-  const [backendUrl, setBackendUrl] = useState(() => {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('backend_api_url') || '';
-    }
-    return '';
+  const [url, setUrl] = useState(() => {
+    return localStorage.getItem('sgc_supabase_url') || import.meta.env.VITE_SUPABASE_URL || 'https://luhsnaqlajbwkftrsbeg.supabase.co'
   })
-  const [neonConnString, setNeonConnString] = useState(() => {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('neon_connection_string') || '';
-    }
-    return '';
+  const [key, setKey] = useState(() => {
+    return localStorage.getItem('sgc_supabase_key') || import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx1aHNuYXFsYWpid2tmdHJzYmVnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwMDk3MjIsImV4cCI6MjA5NTU4NTcyMn0.NqqOG1KkzceGquzudBcPqOSsX1BhB24U_jmew0Mqsc4'
   })
+  const [saveSuccess, setSaveSuccess] = useState(false)
+  const [currentSource, setCurrentSource] = useState(() => {
+    if (localStorage.getItem('sgc_supabase_url')) return 'local'
+    if (import.meta.env.VITE_SUPABASE_URL) return 'env'
+    return 'default'
+  })
+
+  const [testing, setTesting] = useState(false)
+  const [testResult, setTestResult] = useState(null) // { success: boolean, message: string }
+
+  React.useEffect(() => {
+    if (isOpen) {
+      setUrl(localStorage.getItem('sgc_supabase_url') || import.meta.env.VITE_SUPABASE_URL || 'https://luhsnaqlajbwkftrsbeg.supabase.co')
+      setKey(localStorage.getItem('sgc_supabase_key') || import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx1aHNuYXFsYWpid2tmdHJzYmVnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwMDk3MjIsImV4cCI6MjA5NTU4NTcyMn0.NqqOG1KkzceGquzudBcPqOSsX1BhB24U_jmew0Mqsc4')
+      setCurrentSource(() => {
+        if (localStorage.getItem('sgc_supabase_url')) return 'local'
+        if (import.meta.env.VITE_SUPABASE_URL) return 'env'
+        return 'default'
+      })
+      setSaveSuccess(false)
+      setTestResult(null)
+    }
+  }, [isOpen])
 
   if (!isOpen) return null
 
-  const schemaSql = `-- 1. Tạo bảng Danh sách dự án
-CREATE TABLE IF NOT EXISTS public.du_an (
-  id SERIAL PRIMARY KEY,
-  ten_du_an TEXT UNIQUE NOT NULL
-);
+  const handleTestConnection = async () => {
+    setTesting(true)
+    setTestResult(null)
+    try {
+      const trimmedUrl = url.trim()
+      const trimmedKey = key.trim()
+      if (!trimmedUrl || !trimmedKey) {
+        setTestResult({ success: false, message: 'Vui lòng điền đầy đủ URL và Anon Key trước!' })
+        setTesting(false)
+        return
+      }
 
--- 2. Tạo bảng Đơn Giao
-CREATE TABLE IF NOT EXISTS public.don_giao (
-  id SERIAL PRIMARY KEY,
-  ten_du_an TEXT REFERENCES public.du_an(ten_du_an) ON UPDATE CASCADE ON DELETE SET NULL,
-  "maSAP" TEXT,
-  "vung" TEXT,
-  "tinhTrang" TEXT,
-  "loaiDonGiaoNhan" TEXT,
-  "nguoiGiao" TEXT,
-  "ngayGiao" TEXT,
-  "bienSoGiao" TEXT,
-  "maChuyenGiao" TEXT,
-  "slThucTe" TEXT,
-  "ttSap" TEXT,
-  "maDonChuyenTiepLC" TEXT,
-  "soCuocLC" TEXT,
-  "ngayKy" TEXT,
-  "user_email" TEXT
-);
+      const res = await fetch(`${trimmedUrl}/rest/v1/du_an?select=*&limit=1`, {
+        headers: {
+          'apikey': trimmedKey,
+          'Authorization': `Bearer ${trimmedKey}`
+        }
+      })
 
--- 3. Tạo bảng Đơn Nhận
-CREATE TABLE IF NOT EXISTS public.don_nhan (
-  id SERIAL PRIMARY KEY,
-  ten_du_an TEXT REFERENCES public.du_an(ten_du_an) ON UPDATE CASCADE ON DELETE SET NULL,
-  "maSAP" TEXT,
-  "vung" TEXT,
-  "tinhTrang" TEXT,
-  "ngayXongKeHoach" TEXT,
-  "ngayVeKho" TEXT,
-  "taiXeNhan" TEXT,
-  "bienSoNhan" TEXT,
-  "maChuyenNhan" TEXT,
-  "slNhanThucTe" TEXT,
-  "maDonChuyenTiepNB" TEXT,
-  "soCuocNB" TEXT,
-  "user_email" TEXT
-);
-
--- 4. Tạo bảng Đơn Chung
-CREATE TABLE IF NOT EXISTS public.don_chung (
-  id SERIAL PRIMARY KEY,
-  ten_du_an TEXT REFERENCES public.du_an(ten_du_an) ON UPDATE CASCADE ON DELETE SET NULL,
-  "maSAP" TEXT,
-  "vung" TEXT,
-  "tinhTrang" TEXT,
-  "user_email" TEXT
-);
-
--- 5. Tạo bảng Kho Dự Án
-CREATE TABLE IF NOT EXISTS public.don_kho (
-  id SERIAL PRIMARY KEY,
-  ten_du_an TEXT REFERENCES public.du_an(ten_du_an) ON UPDATE CASCADE ON DELETE SET NULL,
-  "maSAP" TEXT,
-  "tenVatTu" TEXT,
-  "slKeHoach" TEXT,
-  "slNhan" TEXT,
-  "slConLai" TEXT,
-  "dvt" TEXT,
-  "khoDau" TEXT,
-  "khoCuoi" TEXT,
-  "user_email" TEXT
-);`;
-
-  const handleCopy = () => {
-    navigator.clipboard.writeText(schemaSql)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
+      if (res.ok) {
+        setTestResult({ success: true, message: 'Kết nối thành công! Cấu hình hoàn toàn chính xác.' })
+      } else {
+        const status = res.status
+        let customMsg = `Lỗi từ Máy chủ (HTTP ${status})`
+        if (status === 401) {
+          customMsg = 'Lỗi 401 Unauthorized: Anon Key của bạn không hợp lệ hoặc đã bị thay đổi/vô hiệu hóa trên trang quản trị Supabase!'
+        } else if (status === 404) {
+          customMsg = 'Lỗi 404 Not Found: URL dự án Supabase không chính xác!'
+        } else {
+          try {
+            const body = await res.json()
+            customMsg = `Lỗi (${status}): ${body.message || body.details || 'Không rõ lý do'}`
+          } catch (err) {
+            customMsg = `Lỗi (${status}): Yêu cầu bị từ chối hoặc sai credentials.`
+          }
+        }
+        setTestResult({ success: false, message: customMsg })
+      }
+    } catch (e) {
+      setTestResult({ success: false, message: `Lỗi kết nối mạng: ${e.message}. Kiểm tra lại tính chính xác của URL.` })
+    } finally {
+      setTesting(false)
+    }
   }
+
+  const handleSave = () => {
+    const trimmedUrl = url.trim()
+    const trimmedKey = key.trim()
+
+    if (trimmedUrl && trimmedKey) {
+      localStorage.setItem('sgc_supabase_url', trimmedUrl)
+      localStorage.setItem('sgc_supabase_key', trimmedKey)
+      setSaveSuccess(true)
+      setTimeout(() => {
+        window.location.reload()
+      }, 1000)
+    } else {
+      alert('Vui lòng điền đầy đủ cả URL và Anon Key!')
+    }
+  }
+
+  const handleClear = () => {
+    if (window.confirm('Bạn có chắc chắn muốn xóa cấu hình thủ công và quay lại dùng cấu hình tích hợp mặc định trong code?')) {
+      localStorage.removeItem('sgc_supabase_url')
+      localStorage.removeItem('sgc_supabase_key')
+      setUrl(import.meta.env.VITE_SUPABASE_URL || 'https://luhsnaqlajbwkftrsbeg.supabase.co')
+      setKey(import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx1aHNuYXFsYWpid2tmdHJzYmVnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwMDk3MjIsImV4cCI6MjA5NTU4NTcyMn0.NqqOG1KkzceGquzudBcPqOSsX1BhB24U_jmew0Mqsc4')
+      setCurrentSource(import.meta.env.VITE_SUPABASE_URL ? 'env' : 'default')
+      setSaveSuccess(true)
+      setTimeout(() => {
+        window.location.reload()
+      }, 1000)
+    }
+  }
+
+  const isCurrentlyConnected = isSupabaseConfigured
 
   return (
     <div style={{
@@ -9945,9 +9962,9 @@ CREATE TABLE IF NOT EXISTS public.don_kho (
       <div style={{
         background: '#ffffff',
         borderRadius: 16,
-        width: '90%',
-        maxWidth: 620,
-        maxHeight: '85vh',
+        width: '100%',
+        maxWidth: 580,
+        maxHeight: '90vh',
         overflowY: 'auto',
         padding: 24,
         boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)',
@@ -9958,264 +9975,333 @@ CREATE TABLE IF NOT EXISTS public.don_kho (
       }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #f1f5f9', paddingBottom: 12 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <Database size={20} color="#00e599" />
-            <h3 style={{ margin: 0, fontSize: 17, fontWeight: 800, color: '#0f172a', letterSpacing: '-0.01em' }}>
-              Cơ sở dữ liệu Neon (PostgreSQL)
-            </h3>
+            <Database size={18} color="#0f58a7" />
+            <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: '#0f172a' }}>Cấu hình kết nối cơ sở dữ liệu Supabase</h3>
           </div>
           <button onClick={onClose} style={{ background: 'transparent', border: 'none', color: '#64748b', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: 4 }}>
             <X size={18} />
           </button>
         </div>
 
+        {/* Status indicator */}
         <div style={{
           display: 'flex',
           alignItems: 'center',
           gap: 12,
-          padding: '12px 14px',
+          padding: '10px 14px',
           borderRadius: 8,
-          backgroundColor: '#ecfdf5',
-          border: '1px solid #a7f3d0'
+          backgroundColor: isCurrentlyConnected ? '#ecfdf5' : '#fff1f2',
+          border: `1px solid ${isCurrentlyConnected ? '#a7f3d0' : '#fecdd3'}`
         }}>
           <div style={{
             width: 8,
             height: 8,
             borderRadius: '50%',
-            backgroundColor: '#10b981',
-            boxShadow: '0 0 8px #10b981'
+            backgroundColor: isCurrentlyConnected ? '#10b981' : '#f43f5e'
           }} />
           <div style={{ flex: 1 }}>
-            <span style={{ fontSize: 13, fontWeight: 700, color: '#065f46' }}>
-              Trạng thái: {localStorage.getItem('neon_connection_string') ? 'Đã kết nối TRỰC TIẾP (Client-Side Direct Neon)' : 'Đã kết nối qua Server-Side'}
+            <span style={{ fontSize: 13, fontWeight: 700, color: isCurrentlyConnected ? '#065f46' : '#9f1239' }}>
+              Trạng thái: {isCurrentlyConnected ? 'Đã bật đầu nối Supabase' : 'Chưa cấu hình (Offline)'}
             </span>
-            <p style={{ margin: '2px 0 0 0', fontSize: 11, color: '#047857', lineHeight: '1.4' }}>
-              {localStorage.getItem('neon_connection_string') 
-                ? 'Ứng dụng đang gửi các truy vấn SQL trực tiếp từ trình duyệt của bạn đến Neon DB một cách siêu tốc và ổn định, không lo lỗi CORS trên GitHub Pages hay Cloudflare Pages.' 
-                : 'Ứng dụng đang liên kết trực tiếp với máy chủ cơ sở dữ liệu Neon của bạn thông qua Express Backend một cách bảo mật, không lộ thông tin API Key/Token ra trình duyệt.'}
+            <p style={{ margin: '1px 0 0 0', fontSize: 11, color: isCurrentlyConnected ? '#047857' : '#be123c' }}>
+              {isCurrentlyConnected 
+                ? `Đang load từ: ${currentSource === 'local' ? 'Trình duyệt Web (Local Storage)' : currentSource === 'env' ? 'Biến môi trường (Vite Env)' : 'Cấu hình tích hợp mặc định (Code)'}`
+                : 'Đang chạy offline bằng bộ dữ liệu tạm thời.'}
             </p>
           </div>
         </div>
 
-        {/* Cấu hình 1: Kết nối trực tiếp (Khuyên dùng khi chạy host tĩnh) */}
-        <div style={{
-          padding: '16px',
-          borderRadius: 12,
-          backgroundColor: '#eff6ff',
-          border: '1px solid #bfdbfe',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 10
-        }}>
-          <span style={{ fontSize: 13, fontWeight: 700, color: '#1e3a8a', display: 'flex', alignItems: 'center', gap: 6 }}>
-            ⚡ Cách 1: Kết nối TRỰC TIẾP từ trình duyệt đến Neon DB (Khuyên dùng &amp; Hoạt động ngay)
-          </span>
-          <p style={{ margin: 0, fontSize: 11, color: '#1e40af', lineHeight: '1.4' }}>
-            Dán <strong>DATABASE_URL / Connection String</strong> của cơ sở dữ liệu Neon tại đây. Phương thức này kết nối thẳng đến Neon qua giao thức serverless từ trình duyệt, <strong>đảm bảo chạy thành công 100% khi deploy lên GitHub Pages hoặc Cloudflare Pages mà không cần deploy thêm server nào!</strong>
-          </p>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <input
-              type="password"
-              value={neonConnString}
-              onChange={(e) => setNeonConnString(e.target.value)}
-              placeholder="postgresql://user:password@host/dbname?sslmode=require"
-              style={{
-                flex: 1,
-                padding: '8px 12px',
-                borderRadius: 6,
-                border: '1px solid #93c5fd',
-                fontSize: 12,
-                outline: 'none',
-                color: '#0f172a'
-              }}
-            />
-            <button
-              onClick={() => {
-                localStorage.setItem('neon_connection_string', neonConnString.trim());
-                alert('Đã lưu cấu hình kết nối Neon trực tiếp thành công! Ứng dụng sẽ tự kết nối client-side và tải lại.');
-                window.location.reload();
-              }}
-              style={{
-                padding: '8px 16px',
-                borderRadius: 6,
-                background: '#2563eb',
-                color: '#ffffff',
-                border: 'none',
-                fontSize: 12,
-                fontWeight: 600,
-                cursor: 'pointer',
-                whiteSpace: 'nowrap'
-              }}
-            >
-              Lưu kết nối trực tiếp
-            </button>
-          </div>
-          {localStorage.getItem('neon_connection_string') ? (
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontSize: 11, color: '#10b981', fontWeight: 600 }}>
-                ✓ Đang kích hoạt chế độ kết nối trực tiếp đến Neon DB!
-              </span>
-              <button
-                onClick={() => {
-                  localStorage.removeItem('neon_connection_string');
-                  alert('Đã xóa cấu hình kết nối trực tiếp. Hệ thống sẽ quay lại sử dụng Server-Side.');
-                  window.location.reload();
-                }}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  color: '#ef4444',
-                  fontSize: 11,
-                  textDecoration: 'underline',
-                  cursor: 'pointer',
-                  padding: 0
-                }}
-              >
-                Xóa cấu hình này
-              </button>
-            </div>
-          ) : null}
-        </div>
-
-        {/* Cấu hình 2: Kết nối qua Server */}
-        <div style={{
-          padding: '16px',
-          borderRadius: 12,
-          backgroundColor: '#f8fafc',
-          border: '1px solid #e2e8f0',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 10
-        }}>
-          <span style={{ fontSize: 13, fontWeight: 700, color: '#0f172a', display: 'flex', alignItems: 'center', gap: 6 }}>
-            🌐 Cách 2: Kết nối thông qua Máy chủ Express (Backend Proxy)
-          </span>
-          <p style={{ margin: 0, fontSize: 11, color: '#64748b', lineHeight: '1.4' }}>
-            Nhập URL của Express Server nếu bạn tự deploy riêng backend của ứng dụng này lên Render, Railway, Fly.io, v.v. để đóng vai trò làm proxy bảo mật. Nếu chạy chung host (ví dụ lúc phát triển trong AI Studio), hãy để trống.
-          </p>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <input
-              type="text"
-              value={backendUrl}
-              onChange={(e) => setBackendUrl(e.target.value)}
-              placeholder="http://localhost:3000 hoặc URL Server thực tế..."
-              style={{
-                flex: 1,
-                padding: '8px 12px',
-                borderRadius: 6,
-                border: '1px solid #cbd5e1',
-                fontSize: 12,
-                outline: 'none',
-                color: '#0f172a'
-              }}
-            />
-            <button
-              onClick={() => {
-                localStorage.setItem('backend_api_url', backendUrl.trim());
-                alert('Đã lưu cấu hình API máy chủ thành công! Hệ thống sẽ tải lại trang.');
-                window.location.reload();
-              }}
-              style={{
-                padding: '8px 16px',
-                borderRadius: 6,
-                background: '#10b981',
-                color: '#ffffff',
-                border: 'none',
-                fontSize: 12,
-                fontWeight: 600,
-                cursor: 'pointer',
-                whiteSpace: 'nowrap'
-              }}
-            >
-              Lưu &amp; Tải lại
-            </button>
-          </div>
-          {typeof window !== 'undefined' && (window.location.hostname.includes('pages.dev') || window.location.hostname.includes('github.io')) && !localStorage.getItem('neon_connection_string') ? (
-            <div style={{ fontSize: 11, color: '#ef4444', fontWeight: 600 }}>
-              ⚠️ Bạn đang chạy Web trên Cloudflare Pages / GitHub Pages. Vui lòng nhập và cấu hình DATABASE_URL ở Cách 1 để chạy trực tiếp không cần server, hoặc cung cấp URL Backend ở Cách 2!
-            </div>
-          ) : null}
-        </div>
-
-        <div style={{ fontSize: 12.5, color: '#334155', lineHeight: '1.5' }}>
-          <p style={{ margin: '0 0 8px 0' }}>
-            Để webapp lưu trữ và đồng bộ hóa dữ liệu trực tiếp lên Neon DB, vui lòng truy cập vào <strong>Neon Console &gt; SQL Editor</strong> và chạy đoạn mã khởi tạo các bảng (tables) dưới đây:
-          </p>
-        </div>
-
-        <div style={{ position: 'relative' }}>
-          <div style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            background: '#1e293b',
-            padding: '6px 12px',
-            borderTopLeftRadius: 8,
-            borderTopRightRadius: 8,
-            fontSize: 11,
-            color: '#94a3b8'
-          }}>
-            <span>SQL SCHEMA INITIALIZATION</span>
-            <button
-              onClick={handleCopy}
-              style={{
-                background: 'rgba(255,255,255,0.1)',
-                border: 'none',
-                borderRadius: 4,
-                padding: '4px 8px',
-                color: '#ffffff',
-                cursor: 'pointer',
-                fontSize: 10,
-                fontWeight: 600
-              }}
-            >
-              {copied ? 'Đã sao chép!' : 'Sao chép mã'}
-            </button>
-          </div>
-          <pre style={{
-            margin: 0,
-            padding: '12px',
-            background: '#0f172a',
-            color: '#38bdf8',
-            borderBottomLeftRadius: 8,
-            borderBottomRightRadius: 8,
-            fontSize: 11,
-            overflowX: 'auto',
-            fontFamily: 'monospace',
-            maxHeight: '260px',
-            lineHeight: '1.4',
-            textAlign: 'left'
-          }}>
-            {schemaSql}
-          </pre>
-        </div>
-
-        <div style={{
-          fontSize: 11.5,
+        {/* Collapsible advanced connection settings block */}
+        <details style={{
+          fontSize: 12,
           color: '#475569',
-          backgroundColor: '#f8fafc',
-          padding: '10px 12px',
+          border: '1px solid #cbd5e1',
           borderRadius: 8,
-          border: '1px solid #e2e8f0',
-          lineHeight: '1.4'
+          padding: '8px 12px',
+          background: '#f8fafc',
+          textAlign: 'left'
         }}>
-          💡 <strong>Mẹo:</strong> Ứng dụng tích hợp công nghệ <strong>Tự phục hồi (Self-healing columns)</strong>. Kể cả khi bạn cập nhật thêm cột hay import các file Excel mới, hệ thống sẽ tự động điều phối để đồng bộ trơn tru mà không bị lỗi cấu trúc dữ liệu!
-        </div>
+          <summary style={{ fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, userSelect: 'none' }}>
+            <Settings size={14} color="#0f58a7" />
+            <span>Hiển thị thông tin cấu hình kết nối (URL / API Key)</span>
+          </summary>
 
+          <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {/* Edit Fields */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <label style={{ fontSize: 11, fontWeight: 600, color: '#475569', textAlign: 'left' }}>
+                Supabase Project URL (VITE_SUPABASE_URL)
+              </label>
+              <input
+                type="text"
+                className="input"
+                style={{ width: '100%', fontFamily: 'monospace', fontSize: 11, height: '36px', padding: '0 10px' }}
+                placeholder="Ví dụ: https://your-project-id.supabase.co"
+                value={url}
+                onChange={(e) => setUrl(e.target.value)}
+              />
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <label style={{ fontSize: 11, fontWeight: 600, color: '#475569', textAlign: 'left' }}>
+                Supabase Project API Anon Key (VITE_SUPABASE_ANON_KEY)
+              </label>
+              <textarea
+                className="input"
+                rows={3}
+                style={{ width: '100%', fontFamily: 'monospace', fontSize: 10, resize: 'vertical', padding: '6px 10px', lineHeight: '1.4' }}
+                placeholder="Nhập chuỗi Anon Key..."
+                value={key}
+                onChange={(e) => setKey(e.target.value)}
+              />
+            </div>
+
+            {/* Live Test connection button & results */}
+            <div style={{ border: '1px dashed #cbd5e1', borderRadius: 8, padding: 12, background: '#ffffff' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontSize: 11, fontWeight: 600, color: '#334155' }}>Kiểm tra trạng thái kết nối trực tiếp:</span>
+                <button
+                  type="button"
+                  onClick={handleTestConnection}
+                  disabled={testing}
+                  style={{
+                    background: testing ? '#e2e8f0' : '#f1f5f9',
+                    border: '1px solid #cbd5e1',
+                    padding: '4px 10px',
+                    borderRadius: 4,
+                    fontSize: 10,
+                    fontWeight: 600,
+                    color: '#1e293b',
+                    cursor: testing ? 'not-allowed' : 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 4
+                  }}
+                >
+                  {testing ? (
+                    <>
+                      <RefreshCw size={10} className="animate-spin" />
+                      Đang kiểm tra...
+                    </>
+                  ) : 'Bấm để Test'}
+                </button>
+              </div>
+
+              {testResult && (
+                <div style={{
+                  marginTop: 8,
+                  padding: 8,
+                  borderRadius: 6,
+                  fontSize: 10,
+                  fontWeight: 500,
+                  backgroundColor: testResult.success ? '#f0fdf4' : '#fef2f2',
+                  border: `1px solid ${testResult.success ? '#bbf7d0' : '#fca5a5'}`,
+                  color: testResult.success ? '#15803d' : '#b91c1c',
+                  textAlign: 'left',
+                  lineHeight: '1.4'
+                }}>
+                  {testResult.message}
+                </div>
+              )}
+            </div>
+          </div>
+        </details>
+
+        {/* Info detail block */}
+        <details style={{ fontSize: 12, color: '#475569', border: '1px solid #e2e8f0', borderRadius: 8, padding: '8px 12px', background: '#f8fafc' }}>
+          <summary style={{ fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, userSelect: 'none' }}>
+            <Info size={14} color="#0f58a7" />
+            <span>Hướng dẫn đồng bộ lên Cloudflare / Pages</span>
+          </summary>
+          <div style={{ marginTop: 8, paddingLeft: 4, display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <p style={{ margin: 0 }}><strong>Cách 1:</strong> Bạn chỉ cần cấu hình ngay tại form này rồi bấm <strong>Lưu kết nối</strong>. Trình duyệt của bạn sẽ tự lưu vĩnh viễn và đồng bộ dữ liệu ngay lập tức.</p>
+            <p style={{ margin: 0 }}><strong>Cách 2:</strong> Vào Cloudflare Dashboard &gt; Settings &gt; Environment variables &gt; Thêm <code style={{ fontSize: 11, background: '#cbd5e1', padding: '1px 3px', borderRadius: 3 }}>VITE_SUPABASE_URL</code> và <code style={{ fontSize: 11, background: '#cbd5e1', padding: '1px 3px', borderRadius: 3 }}>VITE_SUPABASE_ANON_KEY</code> để mọi thiết bị truy cập mặc định online.</p>
+          </div>
+        </details>
+
+        {/* SQL Queries / RLS Policy Instructions */}
+        <details style={{ fontSize: 12, color: '#475569', border: '1px solid #fed7aa', borderRadius: 8, padding: '8px 12px', background: '#fffbeb', marginBottom: 8 }}>
+          <summary style={{ fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, userSelect: 'none', color: '#c2410c' }}>
+            <AlertCircle size={14} color="#ea580c" />
+            <span>Sửa lỗi lưu/xóa (RLS Row Level Security) trong Supabase</span>
+          </summary>
+          <div style={{ marginTop: 8, paddingLeft: 4, display: 'flex', flexDirection: 'column', gap: 6, textAlign: 'left' }}>
+            <p style={{ margin: 0, fontSize: 11.5, color: '#475569', lineHeight: '1.5' }}>
+              Mặc định Supabase bật <strong>Row Level Security (RLS)</strong> nên sẽ chặn các lệnh <strong>INSERT</strong> và <strong>DELETE</strong> từ Client (báo lỗi 401 hoặc lỗi chặn RLS ngay cả khi kết nối Test OK).
+            </p>
+            <p style={{ margin: 0, fontSize: 11.5, color: '#475569', lineHeight: '1.5' }}>
+              Hãy sao chép các câu lệnh SQL dưới đây, dán vào tab <strong>SQL Editor</strong> trong trang quản trị Supabase dự án của bạn rồi chọn <strong>Run</strong> để khắc phục hoàn toàn:
+            </p>
+            <pre style={{
+              margin: '6px 0',
+              padding: '8px 10px',
+              background: '#1e293b',
+              color: '#f8fafc',
+              borderRadius: 6,
+              fontSize: 10.5,
+              overflowX: 'auto',
+              fontFamily: 'monospace',
+              lineHeight: '1.4'
+            }}>
+{`-- 1. Cấp quyền đầy đủ cho bảng du_an (Danh sách kho dự án)
+ALTER TABLE public.du_an ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow public du_an" ON public.du_an;
+CREATE POLICY "Allow public du_an" ON public.du_an FOR ALL USING (true) WITH CHECK (true);
+
+-- 2. Cấp quyền đầy đủ cho bảng don_giao (Báo cáo đơn vị giao)
+ALTER TABLE public.don_giao ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow public don_giao" ON public.don_giao;
+CREATE POLICY "Allow public don_giao" ON public.don_giao FOR ALL USING (true) WITH CHECK (true);
+
+-- 3. Cấp quyền đầy đủ cho bảng don_nhan (Báo cáo đơn vị nhận)
+ALTER TABLE public.don_nhan ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow public don_nhan" ON public.don_nhan;
+CREATE POLICY "Allow public don_nhan" ON public.don_nhan FOR ALL USING (true) WITH CHECK (true);
+
+-- 4. Cấp quyền đầy đủ cho bảng don_chung (Báo cáo đơn chung)
+ALTER TABLE public.don_chung ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow public don_chung" ON public.don_chung;
+CREATE POLICY "Allow public don_chung" ON public.don_chung FOR ALL USING (true) WITH CHECK (true);
+
+-- 5. Cấp quyền đầy đủ cho bảng don_kho (Kho dự án)
+ALTER TABLE public.don_kho ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow public don_kho" ON public.don_kho;
+CREATE POLICY "Allow public don_kho" ON public.don_kho FOR ALL USING (true) WITH CHECK (true);`}
+            </pre>
+          </div>
+        </details>
+
+        {/* SQL Queries / Database Schema configuration instructions */}
+        <details style={{ fontSize: 12, color: '#475569', border: '1px solid #93c5fd', borderRadius: 8, padding: '8px 12px', background: '#f0f9ff' }}>
+          <summary style={{ fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, userSelect: 'none', color: '#1d4ed8' }}>
+            <AlertCircle size={14} color="#2563eb" />
+            <span>Sửa liên kết cột sai (Thêm cột ten_du_an & Tạo khóa ngoại khớp)</span>
+          </summary>
+          <div style={{ marginTop: 8, paddingLeft: 4, display: 'flex', flexDirection: 'column', gap: 6, textAlign: 'left' }}>
+            <p style={{ margin: 0, fontSize: 11.5, color: '#475569', lineHeight: '1.5' }}>
+              Để sửa lỗi liên kết cột không đồng nhất (cột <code>ten_du_an</code> thuộc bảng <code>du_an</code> nhưng lại liên kết vào cột <code>du_an</code> của 2 bảng kia khiến cho sơ đồ Supabase hiển thị lệch lạc), bạn chỉ cần chạy tập lệnh SQL dưới đây trong <strong>SQL Editor</strong>:
+            </p>
+            <pre style={{
+              margin: '6px 0',
+              padding: '8px 10px',
+              background: '#0f172a',
+              color: '#38bdf8',
+              borderRadius: 6,
+              fontSize: 10.5,
+              overflowX: 'auto',
+              fontFamily: 'monospace',
+              lineHeight: '1.4'
+            }}>
+{`-- A. Tạo cột ten_du_an mới cho bảng don_giao & don_nhan & don_chung & don_kho (nếu chưa có)
+ALTER TABLE public.don_giao ADD COLUMN IF NOT EXISTS ten_du_an text;
+ALTER TABLE public.don_nhan ADD COLUMN IF NOT EXISTS ten_du_an text;
+ALTER TABLE public.don_chung ADD COLUMN IF NOT EXISTS ten_du_an text;
+ALTER TABLE public.don_kho ADD COLUMN IF NOT EXISTS ten_du_an text;
+
+-- B. Di chuyển tự động toàn bộ dữ liệu dự án cũ sang cột mới (Bảo toàn dữ liệu cũ)
+UPDATE public.don_giao SET ten_du_an = du_an WHERE ten_du_an IS NULL OR ten_du_an = '';
+UPDATE public.don_nhan SET ten_du_an = du_an WHERE ten_du_an IS NULL OR ten_du_an = '';
+UPDATE public.don_chung SET ten_du_an = du_an WHERE ten_du_an IS NULL OR ten_du_an = '';
+UPDATE public.don_kho SET ten_du_an = du_an WHERE ten_du_an IS NULL OR ten_du_an = '';
+
+-- C. Đảm bảo cột ten_du_an trong bảng du_an có ràng buộc duy nhất (Bắt buộc để làm Khóa Ngoại)
+ALTER TABLE public.du_an DROP CONSTRAINT IF EXISTS du_an_ten_du_an_key;
+ALTER TABLE public.du_an ADD CONSTRAINT du_an_ten_du_an_key UNIQUE (ten_du_an);
+
+-- D. Loại bỏ khóa ngoại cũ liên kết trực tiếp vào cột du_an cũ (nếu có)
+ALTER TABLE public.don_giao DROP CONSTRAINT IF EXISTS don_giao_du_an_fkey;
+ALTER TABLE public.don_nhan DROP CONSTRAINT IF EXISTS don_nhan_du_an_fkey;
+ALTER TABLE public.don_chung DROP CONSTRAINT IF EXISTS don_chung_du_an_fkey;
+ALTER TABLE public.don_kho DROP CONSTRAINT IF EXISTS don_kho_du_an_fkey;
+
+-- E. Thiết lập khóa ngoại liên kết chuẩn xác đến cột ten_du_an của bảng du_an
+ALTER TABLE public.don_giao ADD CONSTRAINT don_giao_ten_du_an_fkey 
+  FOREIGN KEY (ten_du_an) REFERENCES public.du_an (ten_du_an) ON UPDATE CASCADE ON DELETE SET NULL;
+
+ALTER TABLE public.don_nhan ADD CONSTRAINT don_nhan_ten_du_an_fkey 
+  FOREIGN KEY (ten_du_an) REFERENCES public.du_an (ten_du_an) ON UPDATE CASCADE ON DELETE SET NULL;
+
+ALTER TABLE public.don_chung ADD CONSTRAINT don_chung_ten_du_an_fkey 
+  FOREIGN KEY (ten_du_an) REFERENCES public.du_an (ten_du_an) ON UPDATE CASCADE ON DELETE SET NULL;
+
+ALTER TABLE public.don_kho ADD CONSTRAINT don_kho_ten_du_an_fkey 
+  FOREIGN KEY (ten_du_an) REFERENCES public.du_an (ten_du_an) ON UPDATE CASCADE ON DELETE SET NULL;
+
+-- F. (Tùy chọn) Xóa hẳn các cột du_an cũ thừa thãi để sơ đồ Supabase sạch đẹp 100%
+-- ALTER TABLE public.don_giao DROP COLUMN IF EXISTS du_an;
+-- ALTER TABLE public.don_nhan DROP COLUMN IF EXISTS du_an;
+-- ALTER TABLE public.don_chung DROP COLUMN IF EXISTS du_an;
+-- ALTER TABLE public.don_kho DROP COLUMN IF EXISTS du_an;`}
+            </pre>
+            <p style={{ margin: 0, fontSize: 11, color: '#16a34a', fontWeight: 500 }}>
+              ✔️ <strong>Lưu ý:</strong> Ứng dụng đã được tích hợp cơ chế <strong>Tự phục hồi (Self-Healing)</strong> thông minh. Bất kể bạn đang sử dụng cấu trúc cũ (cột <code>du_an</code>) hay cấu trúc mới (cột <code>ten_du_an</code>), phần mềm sẽ tự phát hiện lỗi column, tự gỡ bỏ cột thừa và lưu trữ trơn tru mà không làm ngắt quãng công việc của bạn!
+            </p>
+          </div>
+        </details>
+
+        {/* Footer actions */}
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, borderTop: '1px solid #f1f5f9', paddingTop: 12 }}>
+          {currentSource === 'local' && (
+            <button
+              onClick={handleClear}
+              style={{
+                padding: '6px 12px',
+                borderRadius: 6,
+                background: '#ffffff',
+                border: '1px solid #cbd5e1',
+                color: '#64748b',
+                fontSize: 13,
+                fontWeight: 600,
+                cursor: 'pointer'
+              }}
+            >
+              Phục hồi mặc định
+            </button>
+          )}
           <button
             onClick={onClose}
             style={{
-              padding: '6px 16px',
+              padding: '6px 12px',
               borderRadius: 6,
               border: '1px solid #cbd5e1',
               background: '#ffffff',
-              color: '#334155',
-              fontSize: 12,
+              color: '#475569',
+              fontSize: 13,
               fontWeight: 600,
               cursor: 'pointer'
             }}
           >
-            Đóng lại
+            Hủy bỏ
+          </button>
+          <button
+            onClick={handleSave}
+            disabled={saveSuccess}
+            style={{
+              padding: '6px 14px',
+              borderRadius: 6,
+              border: 'none',
+              background: 'linear-gradient(135deg, #0f58a7 0%, #1a6abf 100%)',
+              color: '#ffffff',
+              fontSize: 13,
+              fontWeight: 600,
+              cursor: saveSuccess ? 'not-allowed' : 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              boxShadow: '0 2px 4px rgba(15,88,167,0.2)'
+            }}
+          >
+            {saveSuccess ? (
+              <>
+                <RefreshCw size={13} className="animate-spin" />
+                Đang lưu...
+              </>
+            ) : (
+              <>
+                <Save size={13} />
+                Lưu kết nối
+              </>
+            )}
           </button>
         </div>
       </div>
@@ -10504,10 +10590,11 @@ async function deleteFromTableAdaptive(tableName, possibleColumns, targetValue) 
       columns = tableSchemaCache[tableName]
     } else {
       try {
-        // supabaseUrl giờ đã là Neon Data API URL (đã có sẵn /rest/v1), không nối thêm nữa.
-        // Chỉ gắn Authorization khi có key, để trống thì Data API dùng role "anonymous".
-        const response = await fetch(`${supabaseUrl}/`, {
-          headers: supabaseAnonKey ? { 'Authorization': `Bearer ${supabaseAnonKey}` } : {}
+        const response = await fetch(`${supabaseUrl}/rest/v1/`, {
+          headers: {
+            'apikey': supabaseAnonKey,
+            'Authorization': `Bearer ${supabaseAnonKey}`
+          }
         })
         if (response.ok) {
           const schema = await response.json()
@@ -11162,8 +11249,8 @@ export default function App() {
     setSyncingType(type)
     setSupabaseMessage({
       text: isAuto 
-        ? (isAppend ? `Đang tự động tải nối tiếp ${rowsToSync.length} dòng lên Neon Database...` : `Đang tự động đồng bộ ${rowsToSync.length} dòng lên Neon Database...`)
-        : `Đang lưu dữ liệu Đơn ${type === 'giao' ? 'Giao' : type === 'nhan' ? 'Nhận' : type === 'kho' ? 'Kho dự án' : 'Chung'} lên Neon Database...`,
+        ? (isAppend ? `Đang tự động tải nối tiếp ${rowsToSync.length} dòng lên Supabase...` : `Đang tự động đồng bộ ${rowsToSync.length} dòng lên Supabase...`)
+        : `Đang lưu dữ liệu Đơn ${type === 'giao' ? 'Giao' : type === 'nhan' ? 'Nhận' : type === 'kho' ? 'Kho dự án' : 'Chung'} lên Supabase...`,
       type: 'info'
     })
 
@@ -11252,15 +11339,15 @@ export default function App() {
 
       setSupabaseMessage({
         text: isAuto 
-          ? `Đã tự động liên thông thành công ${rowsToSync.length} dòng lên Neon Database!`
-          : `Đồng bộ thành công ${rowsToSync.length} dòng dữ liệu lên Neon Database!`,
+          ? `Đã tự động liên thông thành công ${rowsToSync.length} dòng lên Supabase!`
+          : `Đồng bộ thành công ${rowsToSync.length} dòng dữ liệu lên Supabase!`,
         type: 'success'
       })
       setTimeout(() => setSupabaseMessage(null), 5000)
     } catch (err) {
       console.error(err)
       setSupabaseMessage({
-        text: `Lỗi khi đồng bộ lên Neon Database: ${err.message || 'Hãy kiểm tra xem cấu trúc bảng trên Neon đã đúng chưa.'}`,
+        text: `Lỗi khi đồng bộ lên Supabase: ${err.message || 'Hãy kiểm tra xem cấu trúc bảng trên Supabase đã đúng chưa.'}`,
         type: 'error'
       })
       setTimeout(() => setSupabaseMessage(null), 6000)
