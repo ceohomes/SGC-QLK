@@ -2715,6 +2715,26 @@ function KhoDuAnTab({ chungRows, selectedProject, setSelectedProject, allProject
 const IDB_NAME = 'sgc_qlk_cache'
 const IDB_STORE = 'kv'
 
+// Chạy danh sách các hàm trả về Promise (vd: query Supabase) với giới hạn số lượng chạy ĐỒNG THỜI,
+// thay vì bắn tất cả cùng lúc bằng Promise.all (dễ khiến Supabase free tier trả lỗi 500 do vượt quá
+// giới hạn connection/pooler đồng thời). Trả về mảng kết quả theo đúng thứ tự ban đầu.
+async function runWithConcurrencyLimit(taskFns, limit = 6) {
+  const results = new Array(taskFns.length)
+  let nextIndex = 0
+
+  async function worker() {
+    while (nextIndex < taskFns.length) {
+      const currentIndex = nextIndex
+      nextIndex += 1
+      results[currentIndex] = await taskFns[currentIndex]()
+    }
+  }
+
+  const workers = Array.from({ length: Math.min(limit, taskFns.length) }, () => worker())
+  await Promise.all(workers)
+  return results
+}
+
 function openIdb() {
   return new Promise((resolve, reject) => {
     try {
@@ -10129,6 +10149,8 @@ export default function App() {
 
   const syncInProgressRef = React.useRef(false) // Tạm dừng Realtime khi đang sync để tránh flood request
   const realtimeDebounceRef = React.useRef(null) // Debounce timer cho Realtime callbacks
+  const focusSyncingRef = React.useRef(false) // Chặn việc chạy trùng lặp khi 'visibilitychange' và 'focus' cùng bắn 1 lúc
+  const lastFocusSyncAtRef = React.useRef(0) // Throttle: không sync lại nếu vừa mới sync gần đây
   const [selectedProject, setSelectedProject] = useState('')
   const [showAddProjectModal, setShowAddProjectModal] = useState(false)
   const [showEditProjectModal, setShowEditProjectModal] = useState(false)
@@ -10290,10 +10312,12 @@ export default function App() {
     if (!isSupabaseConfigured) return
     if (tableType !== 'chung') return // Skip deleted tables
     const tableName = 'don_chung'
+    // KHAI BÁO Ở ĐÂY (không phải bên trong try) để catch block bên dưới vẫn truy cập được,
+    // tránh lỗi "cachedKey is not defined" khiến dữ liệu tải xong không lưu được vào cache.
+    const cachedKey = 'sgc_chung_rows'
 
     try {
       // Get current cached rows
-      const cachedKey = 'sgc_chung_rows'
       const cachedJson = await idbGet(cachedKey)
       const cachedRows = Array.isArray(cachedJson) ? cachedJson : []
 
@@ -10346,18 +10370,20 @@ export default function App() {
         let lightErr = null
         {
           const lightPagesCount = Math.ceil((serverCount || 0) / LIGHT_PAGE_SIZE)
-          const lightFetchPromises = []
+          const lightFetchTasks = []
           for (let i = 0; i < lightPagesCount; i++) {
             const fromIdx = i * LIGHT_PAGE_SIZE
             const toIdx = fromIdx + LIGHT_PAGE_SIZE - 1
-            lightFetchPromises.push(
+            lightFetchTasks.push(() =>
               supabase
                 .from(tableName)
                 .select(selectFields.join(','))
                 .range(fromIdx, toIdx)
             )
           }
-          const lightResults = await Promise.all(lightFetchPromises)
+          // Giới hạn tối đa 6 request chạy song song cùng lúc (thay vì bắn hết ~146 request 1 lần)
+          // để tránh vượt quá giới hạn connection/pooler của Supabase free tier gây lỗi 500 hàng loạt.
+          const lightResults = await runWithConcurrencyLimit(lightFetchTasks, 6)
           for (const r of lightResults) {
             if (r.error) { lightErr = r.error; break }
             if (r.data) remoteLightData.push(...r.data)
@@ -10492,11 +10518,11 @@ export default function App() {
       console.log(`[Tải DB] Phát hiện ${serverCount} dòng. Tiến hành tải song song ${pagesCount} trang (sử dụng tối giản cột)...`)
 
       if (pagesCount > 0) {
-        const fetchPromises = []
+        const fetchTasks = []
         for (let i = 0; i < pagesCount; i++) {
           const fromIdx = i * PAGE_SIZE
           const toIdx = fromIdx + PAGE_SIZE - 1
-          fetchPromises.push(
+          fetchTasks.push(() =>
             supabase
               .from(tableName)
               .select(tableColumnsStr) // CHỈ SELECT CÁC CỘT CẦN THIẾT thực tế của bảng giúp tải cực nhanh
@@ -10505,7 +10531,9 @@ export default function App() {
           )
         }
 
-        const results = await Promise.all(fetchPromises)
+        // Giới hạn tối đa 6 request đồng thời thay vì bắn ~146 request 1 lúc (nguyên nhân chính gây lỗi 500
+        // hàng loạt và tốn egress lớn mỗi lần tải lại toàn bộ bảng).
+        const results = await runWithConcurrencyLimit(fetchTasks, 6)
 
         for (let i = 0; i < results.length; i++) {
           const { data: pageData, error: pageErr } = results[i]
@@ -10656,11 +10684,21 @@ export default function App() {
 
     // Tự động đồng bộ ngầm siêu nhanh khi người dùng quay lại Tab/App (Focus-based Smart Sync)
     // Giúp loại bỏ hoàn toàn việc lắng nghe Realtime liên tục trên hàng ngàn row gây ngốn Egress bandwidth.
+    const FOCUS_SYNC_MIN_INTERVAL_MS = 60 * 1000 // Không sync lại nếu vừa sync trong vòng 60s gần nhất
     const handleFocus = () => {
-      if (document.visibilityState === 'visible' && isSupabaseConfigured && !syncInProgressRef.current) {
-        console.log('[Focus Sync] Người dùng quay lại Tab. Đang kiểm tra cập nhật mới nhất từ Supabase ngầm...')
-        loadDataFromSupabase()
-      }
+      if (document.visibilityState !== 'visible' || !isSupabaseConfigured || syncInProgressRef.current) return
+      // Chặn trùng lặp: 'visibilitychange' và 'focus' thường bắn gần như cùng lúc khi đổi tab,
+      // nếu không chặn sẽ chạy loadDataFromSupabase() 2 lần song song → gấp đôi số request tới Supabase.
+      if (focusSyncingRef.current) return
+      const now = Date.now()
+      if (now - lastFocusSyncAtRef.current < FOCUS_SYNC_MIN_INTERVAL_MS) return
+
+      focusSyncingRef.current = true
+      lastFocusSyncAtRef.current = now
+      console.log('[Focus Sync] Người dùng quay lại Tab. Đang kiểm tra cập nhật mới nhất từ Supabase ngầm...')
+      loadDataFromSupabase().finally(() => {
+        focusSyncingRef.current = false
+      })
     }
     document.addEventListener('visibilitychange', handleFocus)
     window.addEventListener('focus', handleFocus)

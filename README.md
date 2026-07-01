@@ -55,3 +55,9 @@ Nếu bảng `sgc_summary_configs` chưa được tạo trên Supabase, trước
 
 ### Lưu ý thêm (chưa sửa, để tránh rủi ro)
 Bundle `xlsx` (thư viện đọc/xuất Excel) hiện nặng ~1MB và được tải ngay từ đầu dù chưa dùng đến, cũng góp phần làm chậm lần tải đầu tiên. Có thể tối ưu bằng cách chuyển sang `dynamic import()` chỉ tải khi người dùng bấm nút Import/Export Excel — nhưng việc này động vào ~26 vị trí sử dụng trong file xuất báo cáo, nên chưa tự ý sửa để tránh làm hỏng tính năng xuất Excel. Báo lại nếu bạn muốn mình làm tiếp phần này.
+
+## Changelog — Chống Supabase Free tier bị "pause" (01/07/2026)
+
+Đã thêm `.github/workflows/supabase-keep-alive.yml`: tự động gửi 1 request nhẹ tới Supabase mỗi 3 ngày (qua GitHub Actions, miễn phí) để tránh bị pause do 7 ngày không hoạt động — nguyên nhân chính gây chờ >30s khi mở app sau thời gian dài không dùng.
+
+**Không cần làm gì thêm** sau khi push code lên GitHub — workflow tự chạy theo lịch. Muốn kiểm tra ngay: vào tab **Actions** trên GitHub repo → chọn "Supabase Keep-Alive" → **Run workflow** để chạy thử thủ công.
