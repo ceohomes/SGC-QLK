@@ -35,6 +35,25 @@ function getSqlClient() {
 app.post('/api/db', async (req, res) => {
   try {
     const { action, table, columns, limit, offset, filters, data, functionName, params, count, head, orderColumn, orderAscending } = req.body;
+    
+    // Short-circuit queries targeting deleted tables as requested by the user
+    const DELETED_TABLES = ['du_an', 'don_giao', 'don_nhan', 'don_kho'];
+    if (table && DELETED_TABLES.includes(table)) {
+      console.log(`[SQL Short-Circuit] Table '${table}' is deleted. Safely returning empty dataset.`);
+      if (action === 'select') {
+        return res.json({ data: [], count: 0, error: null });
+      }
+      return res.json({ data: [], error: null });
+    }
+
+    if (action === 'rpc' && (functionName === 'reset_sequence_to_one' || functionName === 'sync_sequence_to_max')) {
+      const pTable = params?.p_table;
+      if (pTable && DELETED_TABLES.includes(pTable)) {
+        console.log(`[SQL RPC Short-Circuit] Sequence alignment table '${pTable}' is deleted. Returning success no-op.`);
+        return res.json({ data: null, error: null });
+      }
+    }
+
     const sql = getSqlClient();
 
     // 1. SELECT Action

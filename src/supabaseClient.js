@@ -15,6 +15,15 @@ async function executeRequest(payload) {
     let backendUrl = '';
     if (typeof window !== 'undefined') {
       backendUrl = window.localStorage.getItem('backend_api_url') || '';
+      
+      // Auto-detect when running on external hosts (like Cloudflare Pages, GitHub Pages, Vercel)
+      if (!backendUrl) {
+        const hostname = window.location.hostname;
+        if (hostname && hostname !== 'localhost' && hostname !== '127.0.0.1' && !hostname.endsWith('.run.app')) {
+          // Default back to the production Cloud Run URL running the custom Neon DB server
+          backendUrl = 'https://ais-pre-7ylvwuj3ycxnp24kvzwo6e-270809794219.asia-east1.run.app';
+        }
+      }
     }
     if (!backendUrl && typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_API_URL) {
       backendUrl = import.meta.env.VITE_API_URL;
