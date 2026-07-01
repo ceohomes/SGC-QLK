@@ -72,7 +72,7 @@ async function executeRequest(payload) {
         if (count === 'exact') {
           const countQueryText = `SELECT COUNT(*)::int as count FROM public."${table}"${whereClause}`;
           try {
-            const countRes = await sql(countQueryText, values);
+            const countRes = await sql.query(countQueryText, values);
             totalCount = countRes[0]?.count || 0;
           } catch (cntErr) {
             console.warn('[Client SQL COUNT Warning] Failed to fetch exact count:', cntErr);
@@ -107,7 +107,7 @@ async function executeRequest(payload) {
         }
 
         console.log(`[Client Direct SQL SELECT] Executing: ${queryText} with values:`, values);
-        const result = await sql(queryText, values);
+        const result = await sql.query(queryText, values);
         return { data: result, count: totalCount, error: null };
       }
 
@@ -153,7 +153,7 @@ async function executeRequest(payload) {
         const queryText = `INSERT INTO public."${table}" (${colsSql}) VALUES ${rowPlaceholders.join(', ')} RETURNING *`;
         console.log(`[Client Direct SQL INSERT] Executing insert to ${table} for ${rowsToInsert.length} rows`);
         
-        const result = await sql(queryText, values);
+        const result = await sql.query(queryText, values);
         return { data: result, error: null };
       }
 
@@ -176,7 +176,7 @@ async function executeRequest(payload) {
         queryText += ' RETURNING *';
 
         console.log(`[Client Direct SQL DELETE] Executing: ${queryText} with values:`, values);
-        const result = await sql(queryText, values);
+        const result = await sql.query(queryText, values);
         return { data: result, error: null };
       }
 
@@ -197,7 +197,7 @@ async function executeRequest(payload) {
 
           try {
             console.log(`[Client Direct SQL RPC] Running sequence alignment for table: ${pTable}`);
-            const result = await sql(queryText);
+            const result = await sql.query(queryText);
             return { data: result, error: null };
           } catch (rpcErr) {
             console.warn('[Client Direct SQL RPC Warning] Failed to reset sequence:', rpcErr);
@@ -206,6 +206,64 @@ async function executeRequest(payload) {
         }
 
         return { data: null, error: { message: `RPC function '${functionName}' is not supported` } };
+      }
+
+      // 5. UPSERT Action
+      if (action === 'upsert') {
+        if (!data) {
+          return { data: null, error: { message: 'No data provided for upsert' } };
+        }
+
+        const rowsToInsert = Array.isArray(data) ? data : [data];
+        if (rowsToInsert.length === 0) {
+          return { data: [], error: null };
+        }
+
+        const allKeys = new Set();
+        rowsToInsert.forEach(row => {
+          Object.keys(row).forEach(k => {
+            if (row[k] !== undefined) {
+              allKeys.add(k);
+            }
+          });
+        });
+
+        const columnsList = Array.from(allKeys);
+        if (columnsList.length === 0) {
+          return { data: null, error: { message: 'Data objects contain no valid keys' } };
+        }
+
+        const colsSql = columnsList.map(c => `"${c}"`).join(', ');
+        const values = [];
+        const rowPlaceholders = [];
+
+        rowsToInsert.forEach(row => {
+          const placeholders = columnsList.map(col => {
+            const val = row[col];
+            const actualVal = val === undefined ? null : val;
+            values.push(actualVal);
+            return `$${values.length}`;
+          });
+          rowPlaceholders.push(`(${placeholders.join(', ')})`);
+        });
+
+        let queryText = `INSERT INTO public."${table}" (${colsSql}) VALUES ${rowPlaceholders.join(', ')}`;
+        
+        const conflictCol = onConflict || 'id';
+        const updateCols = columnsList.filter(c => c !== conflictCol);
+        
+        if (updateCols.length > 0) {
+          const updateSql = updateCols.map(c => `"${c}" = EXCLUDED."${c}"`).join(', ');
+          queryText += ` ON CONFLICT ("${conflictCol}") DO UPDATE SET ${updateSql}`;
+        } else {
+          queryText += ` ON CONFLICT ("${conflictCol}") DO NOTHING`;
+        }
+        
+        queryText += ' RETURNING *';
+
+        console.log(`[Client Direct SQL UPSERT] Executing: ${queryText}`);
+        const result = await sql.query(queryText, values);
+        return { data: result, error: null };
       }
     }
 
@@ -306,6 +364,20 @@ export const supabase = {
         return {
           select() {
             // PostgREST support .insert().select()
+            return executeRequest(payload);
+          },
+          then(onfulfilled, onrejected) {
+            return executeRequest(payload).then(onfulfilled, onrejected);
+          }
+        };
+      },
+
+      upsert(data, options = {}) {
+        payload.action = 'upsert';
+        payload.data = data;
+        payload.onConflict = options.onConflict;
+        return {
+          select() {
             return executeRequest(payload);
           },
           then(onfulfilled, onrejected) {

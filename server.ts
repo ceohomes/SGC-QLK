@@ -220,6 +220,64 @@ app.post('/api/db', async (req, res) => {
       return res.status(400).json({ data: null, error: `RPC function '${functionName}' is not supported` });
     }
 
+    // 5. UPSERT Action
+    if (action === 'upsert') {
+      if (!data) {
+        return res.status(400).json({ data: null, error: 'No data provided for upsert' });
+      }
+
+      const rowsToInsert = Array.isArray(data) ? data : [data];
+      if (rowsToInsert.length === 0) {
+        return res.json({ data: [], error: null });
+      }
+
+      const allKeys = new Set<string>();
+      rowsToInsert.forEach(row => {
+        Object.keys(row).forEach(k => {
+          if (row[k] !== undefined) {
+            allKeys.add(k);
+          }
+        });
+      });
+
+      const columnsList = Array.from(allKeys);
+      if (columnsList.length === 0) {
+        return res.status(400).json({ data: null, error: 'Data objects contain no valid keys' });
+      }
+
+      const colsSql = columnsList.map(c => `"${c}"`).join(', ');
+      const values: any[] = [];
+      const rowPlaceholders: string[] = [];
+
+      rowsToInsert.forEach(row => {
+        const placeholders = columnsList.map(col => {
+          const val = row[col];
+          const actualVal = val === undefined ? null : val;
+          values.push(actualVal);
+          return `$${values.length}`;
+        });
+        rowPlaceholders.push(`(${placeholders.join(', ')})`);
+      });
+
+      let queryText = `INSERT INTO public."${table}" (${colsSql}) VALUES ${rowPlaceholders.join(', ')}`;
+      
+      const conflictCol = (req.body.onConflict as string) || 'id';
+      const updateCols = columnsList.filter(c => c !== conflictCol);
+      
+      if (updateCols.length > 0) {
+        const updateSql = updateCols.map(c => `"${c}" = EXCLUDED."${c}"`).join(', ');
+        queryText += ` ON CONFLICT ("${conflictCol}") DO UPDATE SET ${updateSql}`;
+      } else {
+        queryText += ` ON CONFLICT ("${conflictCol}") DO NOTHING`;
+      }
+      
+      queryText += ' RETURNING *';
+
+      console.log(`[SQL UPSERT] Executing upsert to ${table} with conflict target ${conflictCol}`);
+      const result = await sql.query(queryText, values);
+      return res.json({ data: result, error: null });
+    }
+
     return res.status(400).json({ data: null, error: `Action '${action}' is not supported` });
   } catch (err: any) {
     console.error('[SQL Error] General failure:', err.message || err);
