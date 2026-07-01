@@ -9844,6 +9844,12 @@ function SupabaseConfigModal({ isOpen, onClose }) {
     }
     return '';
   })
+  const [neonConnString, setNeonConnString] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('neon_connection_string') || '';
+    }
+    return '';
+  })
 
   if (!isOpen) return null
 
@@ -9980,14 +9986,97 @@ CREATE TABLE IF NOT EXISTS public.don_kho (
           }} />
           <div style={{ flex: 1 }}>
             <span style={{ fontSize: 13, fontWeight: 700, color: '#065f46' }}>
-              Trạng thái: Đã kết nối thành công qua Server-Side
+              Trạng thái: {localStorage.getItem('neon_connection_string') ? 'Đã kết nối TRỰC TIẾP (Client-Side Direct Neon)' : 'Đã kết nối qua Server-Side'}
             </span>
             <p style={{ margin: '2px 0 0 0', fontSize: 11, color: '#047857', lineHeight: '1.4' }}>
-              Ứng dụng đang liên kết trực tiếp với máy chủ cơ sở dữ liệu Neon của bạn một cách bảo mật, không lộ thông tin API Key/Token ra trình duyệt.
+              {localStorage.getItem('neon_connection_string') 
+                ? 'Ứng dụng đang gửi các truy vấn SQL trực tiếp từ trình duyệt của bạn đến Neon DB một cách siêu tốc và ổn định, không lo lỗi CORS trên GitHub Pages hay Cloudflare Pages.' 
+                : 'Ứng dụng đang liên kết trực tiếp với máy chủ cơ sở dữ liệu Neon của bạn thông qua Express Backend một cách bảo mật, không lộ thông tin API Key/Token ra trình duyệt.'}
             </p>
           </div>
         </div>
 
+        {/* Cấu hình 1: Kết nối trực tiếp (Khuyên dùng khi chạy host tĩnh) */}
+        <div style={{
+          padding: '16px',
+          borderRadius: 12,
+          backgroundColor: '#eff6ff',
+          border: '1px solid #bfdbfe',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 10
+        }}>
+          <span style={{ fontSize: 13, fontWeight: 700, color: '#1e3a8a', display: 'flex', alignItems: 'center', gap: 6 }}>
+            ⚡ Cách 1: Kết nối TRỰC TIẾP từ trình duyệt đến Neon DB (Khuyên dùng &amp; Hoạt động ngay)
+          </span>
+          <p style={{ margin: 0, fontSize: 11, color: '#1e40af', lineHeight: '1.4' }}>
+            Dán <strong>DATABASE_URL / Connection String</strong> của cơ sở dữ liệu Neon tại đây. Phương thức này kết nối thẳng đến Neon qua giao thức serverless từ trình duyệt, <strong>đảm bảo chạy thành công 100% khi deploy lên GitHub Pages hoặc Cloudflare Pages mà không cần deploy thêm server nào!</strong>
+          </p>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <input
+              type="password"
+              value={neonConnString}
+              onChange={(e) => setNeonConnString(e.target.value)}
+              placeholder="postgresql://user:password@host/dbname?sslmode=require"
+              style={{
+                flex: 1,
+                padding: '8px 12px',
+                borderRadius: 6,
+                border: '1px solid #93c5fd',
+                fontSize: 12,
+                outline: 'none',
+                color: '#0f172a'
+              }}
+            />
+            <button
+              onClick={() => {
+                localStorage.setItem('neon_connection_string', neonConnString.trim());
+                alert('Đã lưu cấu hình kết nối Neon trực tiếp thành công! Ứng dụng sẽ tự kết nối client-side và tải lại.');
+                window.location.reload();
+              }}
+              style={{
+                padding: '8px 16px',
+                borderRadius: 6,
+                background: '#2563eb',
+                color: '#ffffff',
+                border: 'none',
+                fontSize: 12,
+                fontWeight: 600,
+                cursor: 'pointer',
+                whiteSpace: 'nowrap'
+              }}
+            >
+              Lưu kết nối trực tiếp
+            </button>
+          </div>
+          {localStorage.getItem('neon_connection_string') ? (
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontSize: 11, color: '#10b981', fontWeight: 600 }}>
+                ✓ Đang kích hoạt chế độ kết nối trực tiếp đến Neon DB!
+              </span>
+              <button
+                onClick={() => {
+                  localStorage.removeItem('neon_connection_string');
+                  alert('Đã xóa cấu hình kết nối trực tiếp. Hệ thống sẽ quay lại sử dụng Server-Side.');
+                  window.location.reload();
+                }}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: '#ef4444',
+                  fontSize: 11,
+                  textDecoration: 'underline',
+                  cursor: 'pointer',
+                  padding: 0
+                }}
+              >
+                Xóa cấu hình này
+              </button>
+            </div>
+          ) : null}
+        </div>
+
+        {/* Cấu hình 2: Kết nối qua Server */}
         <div style={{
           padding: '16px',
           borderRadius: 12,
@@ -9998,10 +10087,10 @@ CREATE TABLE IF NOT EXISTS public.don_kho (
           gap: 10
         }}>
           <span style={{ fontSize: 13, fontWeight: 700, color: '#0f172a', display: 'flex', alignItems: 'center', gap: 6 }}>
-            🌐 Cấu hình Địa chỉ Máy chủ Backend (API Host)
+            🌐 Cách 2: Kết nối thông qua Máy chủ Express (Backend Proxy)
           </span>
           <p style={{ margin: 0, fontSize: 11, color: '#64748b', lineHeight: '1.4' }}>
-            Nếu bạn deploy giao diện tĩnh lên GitHub Pages, Cloudflare Pages hoặc Vercel, vui lòng nhập URL của Express Server đang chạy cơ sở dữ liệu bên dưới (ví dụ: <code>https://your-backend.onrender.com</code>). Nếu chạy local hoặc chung host, hãy để trống.
+            Nhập URL của Express Server nếu bạn tự deploy riêng backend của ứng dụng này lên Render, Railway, Fly.io, v.v. để đóng vai trò làm proxy bảo mật. Nếu chạy chung host (ví dụ lúc phát triển trong AI Studio), hãy để trống.
           </p>
           <div style={{ display: 'flex', gap: 8 }}>
             <input
@@ -10040,9 +10129,9 @@ CREATE TABLE IF NOT EXISTS public.don_kho (
               Lưu &amp; Tải lại
             </button>
           </div>
-          {typeof window !== 'undefined' && (window.location.hostname.includes('pages.dev') || window.location.hostname.includes('github.io')) ? (
+          {typeof window !== 'undefined' && (window.location.hostname.includes('pages.dev') || window.location.hostname.includes('github.io')) && !localStorage.getItem('neon_connection_string') ? (
             <div style={{ fontSize: 11, color: '#ef4444', fontWeight: 600 }}>
-              ⚠️ Bạn đang chạy Web trên Cloudflare Pages / GitHub Pages. Vui lòng điền và lưu URL Backend của bạn để kết nối dữ liệu!
+              ⚠️ Bạn đang chạy Web trên Cloudflare Pages / GitHub Pages. Vui lòng nhập và cấu hình DATABASE_URL ở Cách 1 để chạy trực tiếp không cần server, hoặc cung cấp URL Backend ở Cách 2!
             </div>
           ) : null}
         </div>

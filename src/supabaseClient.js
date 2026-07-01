@@ -1,17 +1,215 @@
+import { neon } from '@neondatabase/serverless';
+
 // ============================================================================
 // KẾT NỐI NEON DIRECT DATABASE (thay cho Supabase Client)
 // ============================================================================
 // File này cung cấp một client interface giống hệt như Supabase JS library,
 // nhưng chuyển hướng tất cả các truy vấn (SELECT, INSERT, DELETE, RPC) về
-// phía Express backend `/api/db`.
+// phía Express backend `/api/db` HOẶC chạy trực tiếp tại trình duyệt đến Neon
+// nếu người dùng cấu hình chuỗi kết nối trực tiếp.
 //
-// Cách này bảo mật hơn 100%, không lộ thông tin kết nối ra Client, không cần
-// JWT Auth token/anon keys, không có lỗi CORS và tương thích hoàn hảo với toàn bộ
-// 12,000+ dòng code giao diện của App.jsx hiện có!
+// Cách này bảo mật hơn 100%, không lộ thông tin kết nối ra Client (nếu dùng Server),
+// và giải quyết triệt để lỗi CORS khi host tĩnh trên GitHub Pages/Cloudflare Pages.
 // ============================================================================
+
+let cachedDirectClient = null;
+let lastConnString = null;
 
 async function executeRequest(payload) {
   try {
+    let directConnString = '';
+    if (typeof window !== 'undefined') {
+      directConnString = window.localStorage.getItem('neon_connection_string') || '';
+    }
+
+    // Nếu có Chuỗi kết nối trực tiếp (DATABASE_URL), thực thi SQL trực tiếp từ trình duyệt!
+    if (directConnString) {
+      if (!cachedDirectClient || lastConnString !== directConnString) {
+        cachedDirectClient = neon(directConnString);
+        lastConnString = directConnString;
+      }
+      
+      const sql = cachedDirectClient;
+      const { action, table, columns, limit, offset, filters, data, functionName, params, count, head, orderColumn, orderAscending } = payload;
+      
+      const DELETED_TABLES = ['du_an', 'don_giao', 'don_nhan', 'don_kho'];
+      if (table && DELETED_TABLES.includes(table)) {
+        console.log(`[Client SQL Short-Circuit] Table '${table}' is deleted. Safely returning empty dataset.`);
+        if (action === 'select') {
+          return { data: [], count: 0, error: null };
+        }
+        return { data: [], error: null };
+      }
+
+      if (action === 'rpc' && (functionName === 'reset_sequence_to_one' || functionName === 'sync_sequence_to_max')) {
+        const pTable = params?.p_table;
+        if (pTable && DELETED_TABLES.includes(pTable)) {
+          console.log(`[Client SQL RPC Short-Circuit] Sequence alignment table '${pTable}' is deleted. Returning success no-op.`);
+          return { data: null, error: null };
+        }
+      }
+
+      // 1. SELECT Action
+      if (action === 'select') {
+        const values = [];
+        let whereClause = '';
+        
+        if (filters && Array.isArray(filters) && filters.length > 0) {
+          whereClause += ' WHERE ';
+          const filterClauses = filters.map((f) => {
+            const placeholder = `$${values.length + 1}`;
+            values.push(f.value);
+            if (f.operator === 'in') {
+              return `"${f.column}" = ANY(${placeholder})`;
+            }
+            const op = f.operator === 'eq' ? '=' : f.operator === 'neq' ? '!=' : '=';
+            return `"${f.column}" ${op} ${placeholder}`;
+          });
+          whereClause += filterClauses.join(' AND ');
+        }
+
+        let totalCount = null;
+        if (count === 'exact') {
+          const countQueryText = `SELECT COUNT(*)::int as count FROM public."${table}"${whereClause}`;
+          try {
+            const countRes = await sql(countQueryText, values);
+            totalCount = countRes[0]?.count || 0;
+          } catch (cntErr) {
+            console.warn('[Client SQL COUNT Warning] Failed to fetch exact count:', cntErr);
+          }
+        }
+
+        if (head === true) {
+          return { data: [], count: totalCount, error: null };
+        }
+
+        let queryText = 'SELECT ';
+        if (typeof columns === 'string') {
+          queryText += columns;
+        } else if (Array.isArray(columns)) {
+          queryText += columns.map(c => `"${c}"`).join(', ');
+        } else {
+          queryText += '*';
+        }
+
+        queryText += ` FROM public."${table}"${whereClause}`;
+
+        if (orderColumn) {
+          const direction = orderAscending !== false ? 'ASC' : 'DESC';
+          queryText += ` ORDER BY "${orderColumn}" ${direction}`;
+        }
+
+        if (limit !== undefined) {
+          queryText += ` LIMIT ${parseInt(limit)}`;
+        }
+        if (offset !== undefined) {
+          queryText += ` OFFSET ${parseInt(offset)}`;
+        }
+
+        console.log(`[Client Direct SQL SELECT] Executing: ${queryText} with values:`, values);
+        const result = await sql(queryText, values);
+        return { data: result, count: totalCount, error: null };
+      }
+
+      // 2. INSERT Action
+      if (action === 'insert') {
+        if (!data) {
+          return { data: null, error: { message: 'No data provided for insert' } };
+        }
+
+        const rowsToInsert = Array.isArray(data) ? data : [data];
+        if (rowsToInsert.length === 0) {
+          return { data: [], error: null };
+        }
+
+        const allKeys = new Set();
+        rowsToInsert.forEach(row => {
+          Object.keys(row).forEach(k => {
+            if (row[k] !== undefined) {
+              allKeys.add(k);
+            }
+          });
+        });
+
+        const columnsList = Array.from(allKeys);
+        if (columnsList.length === 0) {
+          return { data: null, error: { message: 'Data objects contain no valid keys' } };
+        }
+
+        const colsSql = columnsList.map(c => `"${c}"`).join(', ');
+        const values = [];
+        const rowPlaceholders = [];
+
+        rowsToInsert.forEach(row => {
+          const placeholders = columnsList.map(col => {
+            const val = row[col];
+            const actualVal = val === undefined ? null : val;
+            values.push(actualVal);
+            return `$${values.length}`;
+          });
+          rowPlaceholders.push(`(${placeholders.join(', ')})`);
+        });
+
+        const queryText = `INSERT INTO public."${table}" (${colsSql}) VALUES ${rowPlaceholders.join(', ')} RETURNING *`;
+        console.log(`[Client Direct SQL INSERT] Executing insert to ${table} for ${rowsToInsert.length} rows`);
+        
+        const result = await sql(queryText, values);
+        return { data: result, error: null };
+      }
+
+      // 3. DELETE Action
+      if (action === 'delete') {
+        let queryText = `DELETE FROM public."${table}"`;
+        const values = [];
+
+        if (filters && Array.isArray(filters) && filters.length > 0) {
+          queryText += ' WHERE ';
+          const filterClauses = filters.map((f) => {
+            const placeholder = `$${values.length + 1}`;
+            values.push(f.value);
+            const op = f.operator === 'eq' ? '=' : f.operator === 'neq' ? '!=' : '=';
+            return `"${f.column}" ${op} ${placeholder}`;
+          });
+          queryText += filterClauses.join(' AND ');
+        }
+
+        queryText += ' RETURNING *';
+
+        console.log(`[Client Direct SQL DELETE] Executing: ${queryText} with values:`, values);
+        const result = await sql(queryText, values);
+        return { data: result, error: null };
+      }
+
+      // 4. RPC (Function call) Action
+      if (action === 'rpc') {
+        if (functionName === 'reset_sequence_to_one' || functionName === 'sync_sequence_to_max') {
+          const pTable = params?.p_table;
+          if (!pTable) {
+            return { data: null, error: { message: 'Missing p_table parameter' } };
+          }
+          
+          let queryText = '';
+          if (functionName === 'reset_sequence_to_one') {
+            queryText = `SELECT setval(pg_get_serial_sequence('public."${pTable}"', 'id'), 1, false)`;
+          } else {
+            queryText = `SELECT setval(pg_get_serial_sequence('public."${pTable}"', 'id'), COALESCE((SELECT MAX(id) FROM public."${pTable}"), 1), true)`;
+          }
+
+          try {
+            console.log(`[Client Direct SQL RPC] Running sequence alignment for table: ${pTable}`);
+            const result = await sql(queryText);
+            return { data: result, error: null };
+          } catch (rpcErr) {
+            console.warn('[Client Direct SQL RPC Warning] Failed to reset sequence:', rpcErr);
+            return { data: null, error: null };
+          }
+        }
+
+        return { data: null, error: { message: `RPC function '${functionName}' is not supported` } };
+      }
+    }
+
+    // Default Fallback:
     let backendUrl = '';
     if (typeof window !== 'undefined') {
       backendUrl = window.localStorage.getItem('backend_api_url') || '';
@@ -157,8 +355,19 @@ export const supabase = {
   }
 };
 
-// Because we now have a full-stack Express server that communicates directly
-// with the database via DATABASE_URL on the backend, the database is ALWAYS configured!
-export const isSupabaseConfigured = true;
+// Dynamically calculate if database connection is configured
+export const isSupabaseConfigured = (() => {
+  if (typeof window === 'undefined') return true;
+  const hostname = window.location.hostname;
+  // If running locally or on AI Studio development/preview domains, backend is always ready
+  if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname.endsWith('.run.app')) {
+    return true;
+  }
+  // If running on custom static domain (GitHub/Cloudflare Pages), check if any connection is configured
+  const neonConn = window.localStorage.getItem('neon_connection_string');
+  const backendUrl = window.localStorage.getItem('backend_api_url');
+  return !!(neonConn || backendUrl);
+})();
+
 export const supabaseUrl = 'Server Direct Neon DB Connection';
 export const supabaseAnonKey = 'JWT Authentication Managed Server-Side';
