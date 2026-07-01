@@ -16,6 +16,19 @@ import { NeonPostgrestClient } from '@neondatabase/postgrest-js'
 // ============================================================================
 
 // Ưu tiên: localStorage (người dùng tự đổi trong Cài đặt) > biến môi trường > mặc định
+//
+// TỰ ĐỘNG DỌN RÁC: nếu trình duyệt còn lưu URL Supabase cũ từ trước khi chuyển
+// sang Neon (localStorage 'sgc_supabase_url' chứa domain "supabase.co"), xoá nó
+// đi ngay lập tức và dùng lại default Neon — để không phải nhờ người dùng tự
+// vào Console/DevTools xoá cache thủ công nữa.
+if (typeof window !== 'undefined') {
+  const cachedUrl = localStorage.getItem('sgc_supabase_url')
+  if (cachedUrl && cachedUrl.includes('supabase.co')) {
+    localStorage.removeItem('sgc_supabase_url')
+    localStorage.removeItem('sgc_supabase_key')
+  }
+}
+
 const storedUrl = typeof window !== 'undefined' ? localStorage.getItem('sgc_supabase_url') : null
 const storedKey = typeof window !== 'undefined' ? localStorage.getItem('sgc_supabase_key') : null
 
