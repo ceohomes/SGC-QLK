@@ -15,25 +15,42 @@ import { Pool } from '@neondatabase/serverless';
 let cachedDirectClient = null;
 let lastConnString = null;
 
+function maskConnectionString(connStr) {
+  if (!connStr) return 'Trống (None)';
+  try {
+    return connStr.replace(/:\/\/([^:]+):([^@]+)@/, '://$1:***@');
+  } catch (e) {
+    return 'Định dạng không hợp lệ';
+  }
+}
+
 async function executeRequest(payload) {
   try {
     let directConnString = '';
-    if (typeof window !== 'undefined') {
-      directConnString = window.localStorage.getItem('neon_connection_string') || '';
+    let connSource = '';
+
+    // 1. Ưu tiên lấy từ biến môi trường của Vite trước (VITE_DATABASE_URL hoặc VITE_NEON_DATABASE_URL)
+    try {
+      directConnString = import.meta.env.VITE_DATABASE_URL || import.meta.env.VITE_NEON_DATABASE_URL || '';
+      if (directConnString) {
+        connSource = 'Biến môi trường (VITE_DATABASE_URL)';
+      }
+    } catch (e) {
+      console.warn('[Vite Env] Không thể đọc biến môi trường VITE_DATABASE_URL:', e);
     }
 
-    // Nếu không có trong localStorage, tự động lấy từ biến môi trường của Vite (đặc biệt khi deploy tĩnh lên Cloudflare Pages)
-    if (!directConnString) {
-      try {
-        directConnString = import.meta.env.VITE_DATABASE_URL || import.meta.env.VITE_NEON_DATABASE_URL || '';
-      } catch (e) {
-        console.warn('[Vite Env] Không thể đọc biến môi trường VITE_DATABASE_URL:', e);
+    // 2. Nếu không có biến môi trường, lấy từ localStorage của trình duyệt
+    if (!directConnString && typeof window !== 'undefined') {
+      directConnString = window.localStorage.getItem('neon_connection_string') || '';
+      if (directConnString) {
+        connSource = 'LocalStorage của trình duyệt';
       }
     }
 
     // Nếu có Chuỗi kết nối trực tiếp (DATABASE_URL), thực thi SQL trực tiếp từ trình duyệt!
     if (directConnString) {
       if (!cachedDirectClient || lastConnString !== directConnString) {
+        console.log(`[Neon Connection] Đang kết nối bằng: ${connSource}. Chuỗi kết nối (đã ẩn mật khẩu): ${maskConnectionString(directConnString)}`);
         cachedDirectClient = new Pool({ connectionString: directConnString });
         lastConnString = directConnString;
       }
