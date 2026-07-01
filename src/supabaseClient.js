@@ -1,4 +1,4 @@
-import { neon } from '@neondatabase/serverless';
+import { Pool } from '@neondatabase/serverless';
 
 // ============================================================================
 // KẾT NỐI NEON DIRECT DATABASE (thay cho Supabase Client)
@@ -22,14 +22,23 @@ async function executeRequest(payload) {
       directConnString = window.localStorage.getItem('neon_connection_string') || '';
     }
 
+    // Nếu không có trong localStorage, tự động lấy từ biến môi trường của Vite (đặc biệt khi deploy tĩnh lên Cloudflare Pages)
+    if (!directConnString) {
+      try {
+        directConnString = import.meta.env.VITE_DATABASE_URL || import.meta.env.VITE_NEON_DATABASE_URL || '';
+      } catch (e) {
+        console.warn('[Vite Env] Không thể đọc biến môi trường VITE_DATABASE_URL:', e);
+      }
+    }
+
     // Nếu có Chuỗi kết nối trực tiếp (DATABASE_URL), thực thi SQL trực tiếp từ trình duyệt!
     if (directConnString) {
       if (!cachedDirectClient || lastConnString !== directConnString) {
-        cachedDirectClient = neon(directConnString);
+        cachedDirectClient = new Pool({ connectionString: directConnString });
         lastConnString = directConnString;
       }
       
-      const sql = cachedDirectClient;
+      const pool = cachedDirectClient;
       const { action, table, columns, limit, offset, filters, data, functionName, params, count, head, orderColumn, orderAscending } = payload;
       
       const DELETED_TABLES = ['du_an', 'don_giao', 'don_nhan', 'don_kho'];
@@ -72,8 +81,8 @@ async function executeRequest(payload) {
         if (count === 'exact') {
           const countQueryText = `SELECT COUNT(*)::int as count FROM public."${table}"${whereClause}`;
           try {
-            const countRes = await sql.query(countQueryText, values);
-            totalCount = countRes[0]?.count || 0;
+            const countRes = await pool.query(countQueryText, values);
+            totalCount = countRes.rows[0]?.count || 0;
           } catch (cntErr) {
             console.warn('[Client SQL COUNT Warning] Failed to fetch exact count:', cntErr);
           }
@@ -107,8 +116,8 @@ async function executeRequest(payload) {
         }
 
         console.log(`[Client Direct SQL SELECT] Executing: ${queryText} with values:`, values);
-        const result = await sql.query(queryText, values);
-        return { data: result, count: totalCount, error: null };
+        const resultRes = await pool.query(queryText, values);
+        return { data: resultRes.rows, count: totalCount, error: null };
       }
 
       // 2. INSERT Action
@@ -153,8 +162,8 @@ async function executeRequest(payload) {
         const queryText = `INSERT INTO public."${table}" (${colsSql}) VALUES ${rowPlaceholders.join(', ')} RETURNING *`;
         console.log(`[Client Direct SQL INSERT] Executing insert to ${table} for ${rowsToInsert.length} rows`);
         
-        const result = await sql.query(queryText, values);
-        return { data: result, error: null };
+        const resultRes = await pool.query(queryText, values);
+        return { data: resultRes.rows, error: null };
       }
 
       // 3. DELETE Action
@@ -176,8 +185,8 @@ async function executeRequest(payload) {
         queryText += ' RETURNING *';
 
         console.log(`[Client Direct SQL DELETE] Executing: ${queryText} with values:`, values);
-        const result = await sql.query(queryText, values);
-        return { data: result, error: null };
+        const resultRes = await pool.query(queryText, values);
+        return { data: resultRes.rows, error: null };
       }
 
       // 4. RPC (Function call) Action
@@ -197,8 +206,8 @@ async function executeRequest(payload) {
 
           try {
             console.log(`[Client Direct SQL RPC] Running sequence alignment for table: ${pTable}`);
-            const result = await sql.query(queryText);
-            return { data: result, error: null };
+            const resultRes = await pool.query(queryText);
+            return { data: resultRes.rows, error: null };
           } catch (rpcErr) {
             console.warn('[Client Direct SQL RPC Warning] Failed to reset sequence:', rpcErr);
             return { data: null, error: null };
@@ -262,8 +271,8 @@ async function executeRequest(payload) {
         queryText += ' RETURNING *';
 
         console.log(`[Client Direct SQL UPSERT] Executing: ${queryText}`);
-        const result = await sql.query(queryText, values);
-        return { data: result, error: null };
+        const resultRes = await pool.query(queryText, values);
+        return { data: resultRes.rows, error: null };
       }
     }
 
@@ -435,10 +444,20 @@ export const isSupabaseConfigured = (() => {
   if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname.endsWith('.run.app')) {
     return true;
   }
+
+  // Kiểm tra biến môi trường Vite trước (VITE_DATABASE_URL hoặc VITE_NEON_DATABASE_URL)
+  let hasEnvVar = false;
+  try {
+    const envUrl = import.meta.env.VITE_DATABASE_URL || import.meta.env.VITE_NEON_DATABASE_URL;
+    if (envUrl) {
+      hasEnvVar = true;
+    }
+  } catch (e) {}
+
   // If running on custom static domain (GitHub/Cloudflare Pages), check if any connection is configured
   const neonConn = window.localStorage.getItem('neon_connection_string');
   const backendUrl = window.localStorage.getItem('backend_api_url');
-  return !!(neonConn || backendUrl);
+  return !!(neonConn || backendUrl || hasEnvVar);
 })();
 
 export const supabaseUrl = 'Server Direct Neon DB Connection';
