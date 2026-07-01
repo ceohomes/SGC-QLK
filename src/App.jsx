@@ -7,7 +7,7 @@ import {
   ChevronDown, ChevronRight, Download, Truck, PackageCheck, Settings, BarChart3,
   AlertCircle, CheckCircle2, Filter, ArrowUpDown, Clock, CloudUpload, Database, Save,
   Pencil, Trash2, Lock, ClipboardList, Warehouse, Building2, Users, HelpCircle,
-  Calendar, AlertTriangle
+  Calendar, AlertTriangle, DollarSign, Copy, Terminal
 } from 'lucide-react'
 import { COLS_GIAO_NHAN, parseXlsxToRows, formatVal, getTrangThaiColor, isApprovedStatus, isPendingStatus, isRejectedStatus } from './constants.js'
 import { supabase, isSupabaseConfigured, supabaseUrl, supabaseAnonKey } from './supabaseClient.js'
@@ -2012,6 +2012,7 @@ function KhoDuAnTab({ chungRows, selectedProject, setSelectedProject, allProject
   // Load custom classifications from Supabase table phan_loai_don_vi
   React.useEffect(() => {
     let isMounted = true
+    let channel = null
     const loadCustomClassifications = async () => {
       if (!isSupabaseConfigured) {
         if (isMounted) {
@@ -2042,8 +2043,42 @@ function KhoDuAnTab({ chungRows, selectedProject, setSelectedProject, allProject
       }
     }
     loadCustomClassifications()
+
+    if (isSupabaseConfigured) {
+      channel = supabase
+        .channel('phan_loai_don_vi-changes')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'phan_loai_don_vi' }, (payload) => {
+          console.log('[Realtime] Nhận sự kiện thay đổi trên phan_loai_don_vi:', payload.eventType, payload)
+          if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
+            const row = payload.new
+            if (row && row.ten_don_vi) {
+              setCustomCategoryMap(prev => ({ ...prev, [row.ten_don_vi]: row.nhom_don_vi }))
+              setDbCategoryMap(prev => ({ ...prev, [row.ten_don_vi]: row.nhom_don_vi }))
+            }
+          } else if (payload.eventType === 'DELETE') {
+            const oldRow = payload.old
+            if (oldRow && oldRow.ten_don_vi) {
+              setCustomCategoryMap(prev => {
+                const next = { ...prev }
+                delete next[oldRow.ten_don_vi]
+                return next
+              })
+              setDbCategoryMap(prev => {
+                const next = { ...prev }
+                delete next[oldRow.ten_don_vi]
+                return next
+              })
+            }
+          }
+        })
+        .subscribe()
+    }
+
     return () => {
       isMounted = false
+      if (channel) {
+        supabase.removeChannel(channel)
+      }
     }
   }, [])
 
@@ -4632,6 +4667,309 @@ function BaoCaoXuatNhapTonTab({ chungRows = [], giaoRows = [], nhanRows = [], se
   // và không đồng bộ ngược lại selectedProject toàn cục — tránh ảnh hưởng
   // tới các tab/sheet khác như Đơn chung, Kho dự án.
   const [localProject, setLocalProject] = React.useState('')
+  const [subTab, setSubTab] = React.useState('summary') // 'summary' | 'dongia'
+  const [loadingDbPrices, setLoadingDbPrices] = React.useState(false)
+  const [priceSearchQuery, setPriceSearchQuery] = React.useState('')
+
+  const [materialPriceRows, setMaterialPriceRows] = React.useState(() => {
+    try {
+      const saved = localStorage.getItem('sgc_report_material_price_rows')
+      return saved ? JSON.parse(saved) : []
+    } catch (e) {
+      return []
+    }
+  })
+
+  const [materialPrices, setMaterialPrices] = React.useState(() => {
+    try {
+      const saved = localStorage.getItem('sgc_report_material_prices')
+      return saved ? JSON.parse(saved) : {}
+    } catch (e) {
+      return {}
+    }
+  })
+
+  const [materialClassifications, setMaterialClassifications] = React.useState(() => {
+    try {
+      const saved = localStorage.getItem('sgc_report_material_classifications')
+      return saved ? JSON.parse(saved) : {}
+    } catch (e) {
+      return {}
+    }
+  })
+
+  const loadPricesFromSupabase = async () => {
+    if (!isSupabaseConfigured) return
+    setLoadingDbPrices(true)
+    try {
+      const { data, error } = await supabase
+        .from('don_gia_vat_tu')
+        .select('*')
+      
+      if (error) {
+        console.error('Lỗi khi tải đơn giá từ Supabase:', error)
+      } else if (data && data.length > 0) {
+        const rows = data.map(item => ({
+          maSAP: item.ma_sap,
+          khoiLuongTong: item.khoi_luong_tong || 0,
+          thanhTien: item.thanh_tien || 0,
+          donGiaTrungBinh: item.don_gia_trung_binh || 0,
+          donGiaTrungBinh1Ngay: item.don_gia_trung_binh_1_ngay || 0,
+          phanLoaiVatTu: item.phan_loai_vat_tu || ''
+        }))
+        setMaterialPriceRows(rows)
+        localStorage.setItem('sgc_report_material_price_rows', JSON.stringify(rows))
+
+        const prices = {}
+        const classifications = {}
+        rows.forEach(r => {
+          prices[r.maSAP] = r.donGiaTrungBinh
+          classifications[r.maSAP] = r.phanLoaiVatTu
+        })
+        setMaterialPrices(prices)
+        setMaterialClassifications(classifications)
+        localStorage.setItem('sgc_report_material_prices', JSON.stringify(prices))
+        localStorage.setItem('sgc_report_material_classifications', JSON.stringify(classifications))
+      }
+    } catch (err) {
+      console.error('Lỗi khi truy vấn Supabase:', err)
+    } finally {
+      setLoadingDbPrices(false)
+    }
+  }
+
+  React.useEffect(() => {
+    loadPricesFromSupabase()
+  }, [])
+
+  const handleUploadPriceExcel = async (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    const reader = new FileReader()
+    reader.onload = async (evt) => {
+      try {
+        const bstr = evt.target.result
+        const wb = XLSX.read(bstr, { type: 'binary' })
+        const wsname = wb.SheetNames[0]
+        const ws = wb.Sheets[wsname]
+        const data = XLSX.utils.sheet_to_json(ws, { header: 1 })
+
+        if (data.length < 2) {
+          alert('File Excel không có đủ dữ liệu.')
+          return
+        }
+
+        let headerRowIdx = 0
+        const row0 = data[0] || []
+        const hasSapHeader = row0.some(c => String(c || '').toLowerCase().includes('sap'))
+        if (!hasSapHeader && data[1]) {
+          const row1 = data[1] || []
+          if (row1.some(c => String(c || '').toLowerCase().includes('sap'))) {
+            headerRowIdx = 1
+          }
+        }
+
+        let colIdxSap = 0
+        let colIdxKlTong = 1
+        let colIdxThanhTien = 2
+        let colIdxDonGiaTb = 3
+        let colIdxDonGiaTb1Ngay = 4
+        let colIdxPhanLoai = 5
+
+        const headers = data[headerRowIdx] || []
+        headers.forEach((cell, idx) => {
+          const s = String(cell || '').trim().toLowerCase()
+          if (s.includes('sap') || s.includes('mã s')) colIdxSap = idx
+          else if (s.includes('khối lượng') || s.includes('khoi luong') || s.includes('kl tổng') || s.includes('kl tong')) colIdxKlTong = idx
+          else if (s.includes('thành tiền') || s.includes('thanh tien')) colIdxThanhTien = idx
+          else if (s.includes('trung bình') && !s.includes('1 ngày') && !s.includes('1 ngay') && !s.includes('1 ngày')) colIdxDonGiaTb = idx
+          else if (s.includes('1 ngày') || s.includes('1 ngay')) colIdxDonGiaTb1Ngay = idx
+          else if (s.includes('phân loại') || s.includes('phan loai')) colIdxPhanLoai = idx
+        })
+
+        const rows = []
+        const newPrices = { ...materialPrices }
+        const newClassifications = { ...materialClassifications }
+
+        const parseNum = (val) => {
+          if (val === null || val === undefined) return 0
+          if (typeof val === 'number') return val
+          const clean = String(val).replace(/\s/g, '').replace(/\./g, '').replace(',', '.')
+          const parsed = parseFloat(clean)
+          return isNaN(parsed) ? 0 : parsed
+        }
+
+        for (let i = headerRowIdx + 1; i < data.length; i++) {
+          const row = data[i]
+          if (!row || row.length === 0) continue
+
+          const sap = String(row[colIdxSap] || '').trim()
+          if (!sap) continue
+
+          const klTong = parseNum(row[colIdxKlTong])
+          const thanhTien = parseNum(row[colIdxThanhTien])
+          const donGiaTb = parseNum(row[colIdxDonGiaTb])
+          const donGiaTb1Ngay = parseNum(row[colIdxDonGiaTb1Ngay])
+          const phanLoai = String(row[colIdxPhanLoai] || '').trim()
+
+          rows.push({
+            maSAP: sap,
+            khoiLuongTong: klTong,
+            thanhTien: thanhTien,
+            donGiaTrungBinh: donGiaTb,
+            donGiaTrungBinh1Ngay: donGiaTb1Ngay,
+            phanLoaiVatTu: phanLoai
+          })
+
+          newPrices[sap] = donGiaTb
+          newClassifications[sap] = phanLoai
+        }
+
+        if (rows.length === 0) {
+          alert('Không tìm thấy dòng dữ liệu hợp lệ nào.')
+          return
+        }
+
+        setMaterialPriceRows(rows)
+        setMaterialPrices(newPrices)
+        setMaterialClassifications(newClassifications)
+
+        localStorage.setItem('sgc_report_material_price_rows', JSON.stringify(rows))
+        localStorage.setItem('sgc_report_material_prices', JSON.stringify(newPrices))
+        localStorage.setItem('sgc_report_material_classifications', JSON.stringify(newClassifications))
+
+        alert(`Đã tải lên thành công ${rows.length} đơn giá vật tư cục bộ!`)
+
+        if (isSupabaseConfigured) {
+          try {
+            const payload = rows.map(r => ({
+              ma_sap: r.maSAP,
+              khoi_luong_tong: r.khoiLuongTong,
+              thanh_tien: r.thanhTien,
+              don_gia_trung_binh: r.donGiaTrungBinh,
+              don_gia_trung_binh_1_ngay: r.donGiaTrungBinh1Ngay,
+              phan_loai_vat_tu: r.phanLoaiVatTu
+            }))
+
+            const { error } = await supabase
+              .from('don_gia_vat_tu')
+              .upsert(payload, { onConflict: 'ma_sap' })
+
+            if (error) {
+              console.error('Lỗi khi đồng bộ lên Supabase:', error)
+              alert('Đã lưu cục bộ thành công nhưng lỗi đồng bộ lên Supabase: ' + error.message)
+            } else {
+              alert('Đã đồng bộ thành công dữ liệu đơn giá vật tư lên Supabase!')
+            }
+          } catch (dbErr) {
+            console.error('Lỗi khi gọi API Supabase:', dbErr)
+            alert('Lỗi kết nối Supabase: ' + dbErr.message)
+          }
+        }
+      } catch (err) {
+        console.error('Lỗi phân tích file Excel:', err)
+        alert('Lỗi khi phân tích file Excel: ' + err.message)
+      }
+    }
+    reader.readAsBinaryString(file)
+    e.target.value = ''
+  }
+
+  const handlePriceChange = (maSAP, value) => {
+    const updated = { ...materialPrices, [maSAP]: value }
+    setMaterialPrices(updated)
+    localStorage.setItem('sgc_report_material_prices', JSON.stringify(updated))
+  }
+
+  const handleClassificationChange = (maSAP, value) => {
+    const updated = { ...materialClassifications, [maSAP]: value }
+    setMaterialClassifications(updated)
+    localStorage.setItem('sgc_report_material_classifications', JSON.stringify(updated))
+  }
+
+  const [sqlCopied, setSqlCopied] = React.useState(false)
+
+  const handleCopySql = () => {
+    navigator.clipboard.writeText(sqlQueryText)
+    setSqlCopied(true)
+    setTimeout(() => setSqlCopied(false), 2000)
+  }
+
+  const filteredPriceRows = React.useMemo(() => {
+    const q = priceSearchQuery.toLowerCase().trim()
+    if (!q) return materialPriceRows
+    return materialPriceRows.filter(r => 
+      String(r.maSAP || '').toLowerCase().includes(q) || 
+      String(r.phanLoaiVatTu || '').toLowerCase().includes(q)
+    )
+  }, [materialPriceRows, priceSearchQuery])
+
+  const sqlQueryText = `-- Bảng lưu Đơn giá vật tư
+CREATE TABLE IF NOT EXISTS public.don_gia_vat_tu (
+    id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    ma_sap text NOT NULL UNIQUE,
+    khoi_luong_tong numeric,
+    thanh_tien numeric,
+    don_gia_trung_binh numeric,
+    don_gia_trung_binh_1_ngay numeric,
+    phan_loai_vat_tu text,
+    created_at timestamp with time zone DEFAULT timezone('utc'::text, now())
+);
+
+-- Bật Row Level Security (RLS)
+ALTER TABLE public.don_gia_vat_tu ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Allow public read" ON public.don_gia_vat_tu FOR SELECT USING (true);
+CREATE POLICY "Allow public insert" ON public.don_gia_vat_tu FOR INSERT WITH CHECK (true);
+CREATE POLICY "Allow public update" ON public.don_gia_vat_tu FOR UPDATE USING (true);
+CREATE POLICY "Allow public delete" ON public.don_gia_vat_tu FOR DELETE USING (true);`
+
+  const formatDate = (date) => {
+    if (!date) return '—'
+    const d = (date instanceof Date) ? date : new Date(date)
+    if (isNaN(d.getTime())) return '—'
+    const day = String(d.getDate()).padStart(2, '0')
+    const month = String(d.getMonth() + 1).padStart(2, '0')
+    const year = d.getFullYear()
+    return `${day}/${month}/${year}`
+  }
+
+  const getDaysToToday = (dateVal) => {
+    if (!dateVal) return '—'
+    const d = (dateVal instanceof Date) ? dateVal : parseRowDate(dateVal)
+    if (!d || isNaN(d.getTime())) return '—'
+    const dDate = new Date(d.getFullYear(), d.getMonth(), d.getDate())
+    const todayObj = new Date()
+    const dToday = new Date(todayObj.getFullYear(), todayObj.getMonth(), todayObj.getDate())
+    const diffTime = dToday.getTime() - dDate.getTime()
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24))
+    if (diffDays < 0) return 0
+    return diffDays
+  }
+
+  const getUnusedStatus = React.useCallback((item, stockVal) => {
+    const stock = stockVal !== undefined ? stockVal : item.stock
+    if (stock <= 0) {
+      return 'Đã dùng hết'
+    }
+    
+    // Nếu chưa bao giờ xuất (không có ngày xuất muộn nhất hoặc khối lượng xuất = 0)
+    if (!item.latestIssuedDate || item.issued === 0) {
+      const daysSinceRec = getDaysToToday(item.latestReceivedDate)
+      if (typeof daysSinceRec === 'number' && daysSinceRec > 30) {
+        return 'Chưa sử dụng (> 30 ngày)'
+      }
+      return 'Đang sử dụng'
+    }
+    
+    const daysSinceIss = getDaysToToday(item.latestIssuedDate)
+    if (typeof daysSinceIss === 'number' && daysSinceIss > 30) {
+      return 'Chưa sử dụng (> 30 ngày)'
+    }
+    
+    return 'Đang sử dụng'
+  }, [])
+
   const [searchTerm, setSearchTerm] = React.useState('')
   const [statusFilter, setStatusFilter] = React.useState('approved_only') // 'approved_only' | 'approved_pending' | 'all'
 
@@ -4779,9 +5117,17 @@ function BaoCaoXuatNhapTonTab({ chungRows = [], giaoRows = [], nhanRows = [], se
     // Map groups to list and compute stock/inventory
     const result = Object.values(groups).map(g => {
       const stock = g.received - g.issued
+      const unusedStatus = getUnusedStatus(g, stock)
+      const estimatedUnitPrice = materialPrices[g.maSAP] || 0
+      const valueOver30Days = (unusedStatus === 'Chưa sử dụng (> 30 ngày)' && stock > 0) ? stock * estimatedUnitPrice : 0
+      const materialClassification = materialClassifications[g.maSAP] || ''
       return {
         ...g,
-        stock
+        stock,
+        unusedStatus,
+        estimatedUnitPrice,
+        valueOver30Days,
+        materialClassification
       }
     })
 
@@ -4792,7 +5138,9 @@ function BaoCaoXuatNhapTonTab({ chungRows = [], giaoRows = [], nhanRows = [], se
           item.maSAP.toLowerCase().includes(s) ||
           item.maVatTu.toLowerCase().includes(s) ||
           item.tenVatTu.toLowerCase().includes(s) ||
-          item.thongSoKyThuat.toLowerCase().includes(s)
+          item.thongSoKyThuat.toLowerCase().includes(s) ||
+          item.unusedStatus.toLowerCase().includes(s) ||
+          item.materialClassification.toLowerCase().includes(s)
         )
       : result
 
@@ -4811,6 +5159,15 @@ function BaoCaoXuatNhapTonTab({ chungRows = [], giaoRows = [], nhanRows = [], se
       } else if (sortField === 'stock') {
         valA = a.stock
         valB = b.stock
+      } else if (sortField === 'estimatedUnitPrice') {
+        valA = a.estimatedUnitPrice
+        valB = b.estimatedUnitPrice
+      } else if (sortField === 'valueOver30Days') {
+        valA = a.valueOver30Days
+        valB = b.valueOver30Days
+      } else if (sortField === 'materialClassification') {
+        valA = a.materialClassification.toLowerCase()
+        valB = b.materialClassification.toLowerCase()
       }
 
       if (valA < valB) return sortDirection === 'asc' ? -1 : 1
@@ -4819,7 +5176,7 @@ function BaoCaoXuatNhapTonTab({ chungRows = [], giaoRows = [], nhanRows = [], se
     })
 
     return filtered
-  }, [chungRows, giaoRows, nhanRows, localProject, searchTerm, matchStatusFilter, sortField, sortDirection])
+  }, [chungRows, giaoRows, nhanRows, localProject, searchTerm, matchStatusFilter, sortField, sortDirection, materialPrices, materialClassifications])
 
   // Chi tiết các đơn nhận / đơn xuất cấu thành nên khối lượng nhận - khối lượng xuất ở bảng tổng hợp.
   // Dùng đúng logic lọc (Kho/Dự án + trạng thái) như reportData để đảm bảo số liệu khớp 100%.
@@ -4909,15 +5266,18 @@ function BaoCaoXuatNhapTonTab({ chungRows = [], giaoRows = [], nhanRows = [], se
     let totalReceived = 0
     let totalIssued = 0
     let totalStock = 0
+    let totalValueOver30Days = 0
     reportData.forEach(item => {
       totalReceived += item.received
       totalIssued += item.issued
       totalStock += item.stock
+      totalValueOver30Days += item.valueOver30Days || 0
     })
     return {
       totalReceived,
       totalIssued,
       totalStock,
+      totalValueOver30Days,
       totalItems: reportData.length
     }
   }, [reportData])
@@ -4943,25 +5303,31 @@ function BaoCaoXuatNhapTonTab({ chungRows = [], giaoRows = [], nhanRows = [], se
 
     // Set columns widths
     const cols = [
-      { key: 'STT', label: 'STT', width: 60 },
-      { key: 'maSAP', label: 'Mã SAP', width: 120 },
-      { key: 'maVatTu', label: 'Mã vật tư', width: 120 },
-      { key: 'tenVatTu', label: 'Tên vật tư', width: 250 },
-      { key: 'dvt', label: 'ĐVT', width: 80 },
-      { key: 'thongSoKyThuat', label: 'Thông số kỹ thuật', width: 200 },
-      { key: 'received', label: 'Khối lượng nhận', width: 150 },
-      { key: 'issued', label: 'Khối lượng xuất', width: 150 },
-      { key: 'stock', label: 'Khối lượng tồn kho', width: 150 },
-      { key: 'latestReceivedDate', label: 'Ngày nhận muộn nhất', width: 130 },
-      { key: 'latestIssuedDate', label: 'Ngày xuất muộn nhất', width: 130 }
+      { key: 'STT', label: 'STT', wch: 6 },
+      { key: 'maSAP', label: 'Mã SAP', wch: 14 },
+      { key: 'maVatTu', label: 'Mã vật tư', wch: 12 },
+      { key: 'tenVatTu', label: 'Tên vật tư', wch: 35 },
+      { key: 'dvt', label: 'ĐVT', wch: 8 },
+      { key: 'thongSoKyThuat', label: 'Thông số kỹ thuật', wch: 12 },
+      { key: 'received', label: 'Khối lượng nhận', wch: 12 },
+      { key: 'issued', label: 'Khối lượng xuất', wch: 12 },
+      { key: 'stock', label: 'Khối lượng tồn kho', wch: 12 },
+      { key: 'latestReceivedDate', label: 'Ngày nhập muộn nhất', wch: 12 },
+      { key: 'daysSinceReceived', label: 'Số ngày nhập muộn nhất đến hôm nay', wch: 12 },
+      { key: 'latestIssuedDate', label: 'Ngày xuất muộn nhất', wch: 12 },
+      { key: 'daysSinceIssued', label: 'Số ngày xuất muộn nhất đến hôm nay', wch: 12 },
+      { key: 'unusedStatus', label: 'Trạng thái vật tư không sử dụng', wch: 22 },
+      { key: 'estimatedUnitPrice', label: 'Đơn giá trung bình tạm tính', wch: 16 },
+      { key: 'valueOver30Days', label: 'Thành tiền vật tư tồn >30 ngày', wch: 20 },
+      { key: 'materialClassification', label: 'Phân loại vật tư', wch: 18 }
     ]
-    // Quy đổi Date -> Excel serial number để dùng được trong công thức MAXIFS/định dạng ngày
+    // Quy đổi Date -> Excel serial number để dùng được trong công thức/định dạng ngày
     const toExcelSerial = (dateVal) => {
       const d = (dateVal instanceof Date) ? dateVal : parseRowDate(dateVal)
       if (!d || isNaN(d.getTime())) return null
       return Math.round(d.getTime() / 86400000) + 25569
     }
-    ws['!cols'] = cols.map(c => ({ wpx: c.width }))
+    ws['!cols'] = cols.map(c => ({ wch: c.wch }))
 
     // Title Row
     ws['A1'] = {
@@ -5002,7 +5368,7 @@ function BaoCaoXuatNhapTonTab({ chungRows = [], giaoRows = [], nhanRows = [], se
         s: {
           fill: { patternType: 'solid', fgColor: { rgb: '0F58A7' } },
           font: { name: 'Segoe UI', sz: 10, bold: true, color: { rgb: 'FFFFFF' } },
-          alignment: { horizontal: 'center', vertical: 'center' },
+          alignment: { horizontal: 'center', vertical: 'center', wrapText: true },
           border: {
             top: { style: 'thin', color: { rgb: '0A3D73' } },
             bottom: { style: 'medium', color: { rgb: '0A3D73' } },
@@ -5035,11 +5401,21 @@ function BaoCaoXuatNhapTonTab({ chungRows = [], giaoRows = [], nhanRows = [], se
           : 0,
         { f: `G${rowIdx}-H${rowIdx}`, v: item.stock },
         donNhanLastRow >= 5
-          ? { f: `MAXIFS(Don_Nhan!$B$5:$B$${donNhanLastRow},Don_Nhan!$C$5:$C$${donNhanLastRow},${sapCell})`, v: toExcelSerial(item.latestReceivedDate), isDate: true }
+          ? { f: `IF(MAX(INDEX((Don_Nhan!$C$5:$C$${donNhanLastRow}=${sapCell})*Don_Nhan!$B$5:$B$${donNhanLastRow},0))>0, MAX(INDEX((Don_Nhan!$C$5:$C$${donNhanLastRow}=${sapCell})*Don_Nhan!$B$5:$B$${donNhanLastRow},0)), "")`, v: toExcelSerial(item.latestReceivedDate), isDate: true }
+          : { v: '', isDate: true },
+        donNhanLastRow >= 5
+          ? { f: `IF(ISNUMBER(J${rowIdx}), TODAY()-J${rowIdx}, "")`, v: getDaysToToday(item.latestReceivedDate) }
+          : '',
+        donXuatLastRow >= 5
+          ? { f: `IF(MAX(INDEX((Don_Xuat!$C$5:$C$${donXuatLastRow}=${sapCell})*Don_Xuat!$B$5:$B$${donXuatLastRow},0))>0, MAX(INDEX((Don_Xuat!$C$5:$C$${donXuatLastRow}=${sapCell})*Don_Xuat!$B$5:$B$${donXuatLastRow},0)), "")`, v: toExcelSerial(item.latestIssuedDate), isDate: true }
           : { v: '', isDate: true },
         donXuatLastRow >= 5
-          ? { f: `MAXIFS(Don_Xuat!$B$5:$B$${donXuatLastRow},Don_Xuat!$C$5:$C$${donXuatLastRow},${sapCell})`, v: toExcelSerial(item.latestIssuedDate), isDate: true }
-          : { v: '', isDate: true }
+          ? { f: `IF(ISNUMBER(L${rowIdx}), TODAY()-L${rowIdx}, "")`, v: getDaysToToday(item.latestIssuedDate) }
+          : '',
+        item.unusedStatus,
+        item.estimatedUnitPrice,
+        { f: `IF(N${rowIdx}="Chưa sử dụng (> 30 ngày)", I${rowIdx}*O${rowIdx}, 0)`, v: item.valueOver30Days },
+        item.materialClassification
       ]
 
       cells.forEach((val, colIdx) => {
@@ -5049,22 +5425,49 @@ function BaoCaoXuatNhapTonTab({ chungRows = [], giaoRows = [], nhanRows = [], se
         const cellVal = isFormula || isDateCol ? val.v : val
         const isNum = isDateCol ? (cellVal !== null && cellVal !== '') : (isFormula ? true : typeof val === 'number')
 
+        const cellStyle = {
+          font: { name: 'Segoe UI', sz: 9.5 },
+          alignment: { 
+            horizontal: colIdx === 3 || colIdx === 5 || colIdx === 16 ? 'left' : (isNum ? 'right' : 'center'), 
+            vertical: 'center',
+            wrapText: true
+          },
+          border: {
+            top: { style: 'thin', color: { rgb: 'E2E8F0' } },
+            bottom: { style: 'thin', color: { rgb: 'E2E8F0' } },
+            left: { style: 'thin', color: { rgb: 'E2E8F0' } },
+            right: { style: 'thin', color: { rgb: 'E2E8F0' } }
+          }
+        }
+
+        // Color negative values in red with light pink background
+        if (isNum && typeof cellVal === 'number' && cellVal < 0) {
+          cellStyle.fill = { patternType: 'solid', fgColor: { rgb: 'FEE2E2' } }
+          cellStyle.font = { name: 'Segoe UI', sz: 9.5, bold: true, color: { rgb: 'EF4444' } }
+        }
+
+        if (colIdx === 13) {
+          const status = item.unusedStatus
+          let bg = 'F1F5F9'
+          let fg = '64748B'
+          if (status === 'Đang sử dụng') {
+            bg = 'ECFDF5'
+            fg = '047857'
+          } else if (status === 'Chưa sử dụng (> 30 ngày)') {
+            bg = 'FFFBEB'
+            fg = 'D97706'
+          } else if (status === 'Đã dùng hết') {
+            bg = 'F1F5F9'
+            fg = '64748B'
+          }
+          cellStyle.fill = { patternType: 'solid', fgColor: { rgb: bg } }
+          cellStyle.font = { name: 'Segoe UI', sz: 9.5, bold: true, color: { rgb: fg } }
+        }
+
         ws[cellRef] = {
           v: isNum ? cellVal : (cellVal ?? ''),
           t: isNum ? 'n' : 's',
-          s: {
-            font: { name: 'Segoe UI', sz: 9.5 },
-            alignment: { 
-              horizontal: colIdx === 3 || colIdx === 5 ? 'left' : (isNum ? 'right' : 'center'), 
-              vertical: 'center' 
-            },
-            border: {
-              top: { style: 'thin', color: { rgb: 'E2E8F0' } },
-              bottom: { style: 'thin', color: { rgb: 'E2E8F0' } },
-              left: { style: 'thin', color: { rgb: 'E2E8F0' } },
-              right: { style: 'thin', color: { rgb: 'E2E8F0' } }
-            }
-          }
+          s: cellStyle
         }
         if (isFormula) ws[cellRef].f = val.f
 
@@ -5072,7 +5475,11 @@ function BaoCaoXuatNhapTonTab({ chungRows = [], giaoRows = [], nhanRows = [], se
         if (isDateCol) {
           if (isNum) ws[cellRef].z = 'dd/mm/yyyy'
         } else if (isNum && colIdx >= 6) {
-          ws[cellRef].z = '#,##0.000'
+          if (colIdx === 10 || colIdx === 12 || colIdx === 14 || colIdx === 15) {
+            ws[cellRef].z = '#,##0;[Red]-#,##0;"-"'
+          } else {
+            ws[cellRef].z = '#,##0.000;[Red]-#,##0.000;"-"'
+          }
         }
       })
     })
@@ -5127,7 +5534,7 @@ function BaoCaoXuatNhapTonTab({ chungRows = [], giaoRows = [], nhanRows = [], se
     ws[totalReceivedCell] = {
       v: metrics.totalReceived,
       t: 'n',
-      z: '#,##0.000',
+      z: '#,##0.000;[Red]-#,##0.000;"-"',
       s: {
         font: { name: 'Segoe UI', sz: 10, bold: true },
         alignment: { horizontal: 'right', vertical: 'center' },
@@ -5144,7 +5551,7 @@ function BaoCaoXuatNhapTonTab({ chungRows = [], giaoRows = [], nhanRows = [], se
     ws[totalIssuedCell] = {
       v: metrics.totalIssued,
       t: 'n',
-      z: '#,##0.000',
+      z: '#,##0.000;[Red]-#,##0.000;"-"',
       s: {
         font: { name: 'Segoe UI', sz: 10, bold: true },
         alignment: { horizontal: 'right', vertical: 'center' },
@@ -5161,7 +5568,7 @@ function BaoCaoXuatNhapTonTab({ chungRows = [], giaoRows = [], nhanRows = [], se
     ws[totalStockCell] = {
       v: metrics.totalStock,
       t: 'n',
-      z: '#,##0.000',
+      z: '#,##0.000;[Red]-#,##0.000;"-"',
       s: {
         font: { name: 'Segoe UI', sz: 10, bold: true },
         alignment: { horizontal: 'right', vertical: 'center' },
@@ -5175,8 +5582,47 @@ function BaoCaoXuatNhapTonTab({ chungRows = [], giaoRows = [], nhanRows = [], se
       }
     }
 
+    // Total for Column P: Thành tiền vật tư tồn >30 ngày (column index 15)
+    const totalValueOver30DaysCell = `P${rowIdx}`
+    ws[totalValueOver30DaysCell] = {
+      f: `SUM(P6:P${rowIdx - 1})`,
+      v: metrics.totalValueOver30Days,
+      t: 'n',
+      z: '#,##0;[Red]-#,##0;"-"',
+      s: {
+        font: { name: 'Segoe UI', sz: 10, bold: true, color: { rgb: 'B91C1C' } },
+        alignment: { horizontal: 'right', vertical: 'center' },
+        fill: { patternType: 'solid', fgColor: { rgb: 'F1F5F9' } },
+        border: {
+          top: { style: 'medium', color: { rgb: '0A3D73' } },
+          bottom: { style: 'medium', color: { rgb: '0A3D73' } },
+          left: { style: 'thin', color: { rgb: 'E2E8F0' } },
+          right: { style: 'thin', color: { rgb: 'E2E8F0' } }
+        }
+      }
+    }
+
+    // Style other columns J to N (9 to 13), O (14), Q (16) in total row to match styling
+    const emptyCols = [9, 10, 11, 12, 13, 14, 16] // J, K, L, M, N, O, Q
+    emptyCols.forEach(c => {
+      const cellRef = `${String.fromCharCode(65 + c)}${rowIdx}`
+      ws[cellRef] = {
+        v: '',
+        t: 's',
+        s: {
+          fill: { patternType: 'solid', fgColor: { rgb: 'F1F5F9' } },
+          border: {
+            top: { style: 'medium', color: { rgb: '0A3D73' } },
+            bottom: { style: 'medium', color: { rgb: '0A3D73' } },
+            left: { style: 'thin', color: { rgb: 'E2E8F0' } },
+            right: { style: 'thin', color: { rgb: 'E2E8F0' } }
+          }
+        }
+      }
+    })
+
     // Set sheet range bounds
-    ws['!ref'] = `A1:K${rowIdx}`
+    ws['!ref'] = `A1:Q${rowIdx}`
 
     XLSXStyle.utils.book_append_sheet(wb, ws, "Xuat_Nhap_Ton")
 
@@ -5414,6 +5860,14 @@ function BaoCaoXuatNhapTonTab({ chungRows = [], giaoRows = [], nhanRows = [], se
       icon: <Database size={18} />
     },
     {
+      label: 'Thành tiền tồn >30 ngày',
+      value: metrics.totalValueOver30Days.toLocaleString('vi-VN') + ' đ',
+      color: '#ef4444',
+      bg: '#fef2f2',
+      border: '#fca5a5',
+      icon: <DollarSign size={18} />
+    },
+    {
       label: 'Tổng số mặt hàng',
       value: metrics.totalItems.toLocaleString('vi-VN'),
       color: '#8b5cf6',
@@ -5425,8 +5879,50 @@ function BaoCaoXuatNhapTonTab({ chungRows = [], giaoRows = [], nhanRows = [], se
 
   return (
     <div id="baocao-xuat-nhap-ton-root" style={{ padding: '16px 24px 24px 24px', height: '100%', display: 'flex', flexDirection: 'column', boxSizing: 'border-box', overflow: 'hidden', fontFamily: "'Roboto', sans-serif" }}>
-      {/* Title Header Card */}
-      <div style={{
+      {/* Sub-tabs for Inventory Report view */}
+      <div style={{ display: 'flex', gap: 6, marginBottom: 12, borderBottom: '1px solid var(--border)', paddingBottom: 6, flexShrink: 0 }}>
+        <button
+          onClick={() => setSubTab('summary')}
+          style={{
+            padding: '8px 16px',
+            borderRadius: '6px 6px 0 0',
+            fontSize: '13.5px',
+            fontWeight: subTab === 'summary' ? 700 : 500,
+            background: subTab === 'summary' ? 'var(--primary)' : 'transparent',
+            color: subTab === 'summary' ? '#ffffff' : 'var(--text-muted)',
+            border: 'none',
+            cursor: 'pointer',
+            transition: 'all 0.15s',
+            boxShadow: subTab === 'summary' ? 'var(--shadow-sm)' : 'none',
+            borderBottom: subTab === 'summary' ? '2px solid var(--primary)' : 'none'
+          }}
+        >
+          Bảng tổng hợp
+        </button>
+        <button
+          onClick={() => setSubTab('dongia')}
+          style={{
+            padding: '8px 16px',
+            borderRadius: '6px 6px 0 0',
+            fontSize: '13.5px',
+            fontWeight: subTab === 'dongia' ? 700 : 500,
+            background: subTab === 'dongia' ? 'var(--primary)' : 'transparent',
+            color: subTab === 'dongia' ? '#ffffff' : 'var(--text-muted)',
+            border: 'none',
+            cursor: 'pointer',
+            transition: 'all 0.15s',
+            boxShadow: subTab === 'dongia' ? 'var(--shadow-sm)' : 'none',
+            borderBottom: subTab === 'dongia' ? '2px solid var(--primary)' : 'none'
+          }}
+        >
+          Đơn giá vật tư
+        </button>
+      </div>
+
+      {subTab === 'summary' ? (
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: 0 }}>
+          {/* Title Header Card */}
+          <div style={{
         background: '#ffffff',
         borderRadius: 8,
         border: '1px solid var(--border)',
@@ -5638,49 +6134,91 @@ function BaoCaoXuatNhapTonTab({ chungRows = [], giaoRows = [], nhanRows = [], se
                   </th>
                   <th 
                     onClick={() => toggleSort('maSAP')}
-                    style={{ width: 130, minWidth: 130, cursor: 'pointer', fontSize: '12px', padding: '8px 10px', textAlign: 'left', verticalAlign: 'middle' }}
+                    style={{ width: 130, minWidth: 130, cursor: 'pointer', fontSize: '12px', padding: '8px 10px', textAlign: 'center', verticalAlign: 'middle' }}
                   >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4, justifyContent: 'center', width: '100%' }}>
                       <span>Mã SAP</span>
                       <ArrowUpDown size={12} style={{ opacity: 0.7 }} />
                     </div>
                   </th>
-                  <th style={{ width: 130, minWidth: 130, fontSize: '12px', padding: '8px 10px', textAlign: 'left', verticalAlign: 'middle' }}>
+                  <th style={{ width: 75, minWidth: 75, fontSize: '12px', padding: '8px 10px', textAlign: 'center', verticalAlign: 'middle' }}>
                     Mã vật tư
                   </th>
-                  <th style={{ minWidth: 200, fontSize: '12px', padding: '8px 10px', textAlign: 'left', verticalAlign: 'middle' }}>
+                  <th style={{ minWidth: 200, fontSize: '12px', padding: '8px 10px', textAlign: 'center', verticalAlign: 'middle' }}>
                     Tên vật tư
                   </th>
-                  <th style={{ width: 80, minWidth: 80, textAlign: 'center', fontSize: '12px', padding: '8px 10px', verticalAlign: 'middle' }}>
+                  <th style={{ width: 60, minWidth: 60, textAlign: 'center', fontSize: '12px', padding: '8px 10px', verticalAlign: 'middle' }}>
                     ĐVT
                   </th>
-                  <th style={{ minWidth: 150, fontSize: '12px', padding: '8px 10px', textAlign: 'left', verticalAlign: 'middle' }}>
+                  <th style={{ width: 75, minWidth: 75, fontSize: '12px', padding: '8px 10px', textAlign: 'center', verticalAlign: 'middle' }}>
                     Thông số kỹ thuật
                   </th>
                   <th 
                     onClick={() => toggleSort('received')}
-                    style={{ width: 150, minWidth: 150, cursor: 'pointer', fontSize: '12px', padding: '8px 10px', textAlign: 'right', verticalAlign: 'middle' }}
+                    style={{ width: 90, minWidth: 90, cursor: 'pointer', fontSize: '12px', padding: '8px 10px', textAlign: 'center', verticalAlign: 'middle' }}
                   >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 4, justifyContent: 'flex-end' }}>
+                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4, justifyContent: 'center', width: '100%' }}>
                       <span>Khối lượng nhận</span>
                       <ArrowUpDown size={12} style={{ opacity: 0.7 }} />
                     </div>
                   </th>
                   <th 
                     onClick={() => toggleSort('issued')}
-                    style={{ width: 150, minWidth: 150, cursor: 'pointer', fontSize: '12px', padding: '8px 10px', textAlign: 'right', verticalAlign: 'middle' }}
+                    style={{ width: 90, minWidth: 90, cursor: 'pointer', fontSize: '12px', padding: '8px 10px', textAlign: 'center', verticalAlign: 'middle' }}
                   >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 4, justifyContent: 'flex-end' }}>
+                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4, justifyContent: 'center', width: '100%' }}>
                       <span>Khối lượng xuất</span>
                       <ArrowUpDown size={12} style={{ opacity: 0.7 }} />
                     </div>
                   </th>
                   <th 
                     onClick={() => toggleSort('stock')}
-                    style={{ width: 160, minWidth: 160, cursor: 'pointer', fontSize: '12px', padding: '8px 10px', textAlign: 'right', verticalAlign: 'middle' }}
+                    style={{ width: 85, minWidth: 85, cursor: 'pointer', fontSize: '12px', padding: '8px 10px', textAlign: 'center', verticalAlign: 'middle' }}
                   >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 4, justifyContent: 'flex-end' }}>
+                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4, justifyContent: 'center', width: '100%' }}>
                       <span>Tồn kho</span>
+                      <ArrowUpDown size={12} style={{ opacity: 0.7 }} />
+                    </div>
+                  </th>
+                  <th style={{ width: 95, minWidth: 95, fontSize: '12px', padding: '8px 10px', textAlign: 'center', verticalAlign: 'middle', whiteSpace: 'normal', lineHeight: '1.2' }}>
+                    <span>Ngày nhập muộn nhất</span>
+                  </th>
+                  <th style={{ width: 90, minWidth: 90, fontSize: '11px', padding: '8px 6px', textAlign: 'center', verticalAlign: 'middle', whiteSpace: 'normal', lineHeight: '1.2' }}>
+                    <span>Số ngày nhập muộn nhất đến hôm nay</span>
+                  </th>
+                  <th style={{ width: 95, minWidth: 95, fontSize: '12px', padding: '8px 10px', textAlign: 'center', verticalAlign: 'middle', whiteSpace: 'normal', lineHeight: '1.2' }}>
+                    <span>Ngày xuất muộn nhất</span>
+                  </th>
+                  <th style={{ width: 90, minWidth: 90, fontSize: '11px', padding: '8px 6px', textAlign: 'center', verticalAlign: 'middle', whiteSpace: 'normal', lineHeight: '1.2' }}>
+                    <span>Số ngày xuất muộn nhất đến hôm nay</span>
+                  </th>
+                  <th style={{ width: 145, minWidth: 145, fontSize: '12px', padding: '8px 10px', textAlign: 'center', verticalAlign: 'middle', whiteSpace: 'normal', lineHeight: '1.2' }}>
+                    <span>Trạng thái vật tư không sử dụng</span>
+                  </th>
+                  <th 
+                    onClick={() => toggleSort('estimatedUnitPrice')}
+                    style={{ width: 110, minWidth: 110, cursor: 'pointer', fontSize: '11px', padding: '8px 6px', textAlign: 'center', verticalAlign: 'middle', whiteSpace: 'normal', lineHeight: '1.2' }}
+                  >
+                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4, justifyContent: 'center', width: '100%' }}>
+                      <span>Đơn giá trung bình tạm tính</span>
+                      <ArrowUpDown size={12} style={{ opacity: 0.7 }} />
+                    </div>
+                  </th>
+                  <th 
+                    onClick={() => toggleSort('valueOver30Days')}
+                    style={{ width: 130, minWidth: 130, cursor: 'pointer', fontSize: '11px', padding: '8px 6px', textAlign: 'center', verticalAlign: 'middle', whiteSpace: 'normal', lineHeight: '1.2' }}
+                  >
+                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4, justifyContent: 'center', width: '100%' }}>
+                      <span>Thành tiền vật tư tồn &gt;30 ngày</span>
+                      <ArrowUpDown size={12} style={{ opacity: 0.7 }} />
+                    </div>
+                  </th>
+                  <th 
+                    onClick={() => toggleSort('materialClassification')}
+                    style={{ width: 110, minWidth: 110, cursor: 'pointer', fontSize: '11px', padding: '8px 6px', textAlign: 'center', verticalAlign: 'middle', whiteSpace: 'normal', lineHeight: '1.2' }}
+                  >
+                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4, justifyContent: 'center', width: '100%' }}>
+                      <span>Phân loại vật tư</span>
                       <ArrowUpDown size={12} style={{ opacity: 0.7 }} />
                     </div>
                   </th>
@@ -5700,31 +6238,156 @@ function BaoCaoXuatNhapTonTab({ chungRows = [], giaoRows = [], nhanRows = [], se
                       <td style={{ width: 130, minWidth: 130, fontSize: '13px', fontWeight: 700, fontFamily: "'Roboto', sans-serif", color: 'var(--text)', padding: '6px 10px' }}>
                         {item.maSAP}
                       </td>
-                      <td style={{ width: 130, minWidth: 130, fontSize: '13px', fontFamily: "'Roboto', sans-serif", color: 'var(--text-muted)', padding: '6px 10px' }}>
+                      <td style={{ width: 75, minWidth: 75, fontSize: '13px', fontFamily: "'Roboto', sans-serif", color: 'var(--text-muted)', padding: '6px 10px' }}>
                         {item.maVatTu || '—'}
                       </td>
                       <td style={{ minWidth: 200, fontSize: '13px', fontWeight: 600, color: 'var(--text)', whiteSpace: 'normal', wordBreak: 'break-word', padding: '6px 10px' }}>
                         {item.tenVatTu || '—'}
                       </td>
-                      <td style={{ width: 80, minWidth: 80, textAlign: 'center', padding: '6px 10px' }}>
+                      <td style={{ width: 60, minWidth: 60, textAlign: 'center', padding: '6px 10px' }}>
                         <span className="badge badge-gray" style={{ fontSize: '11px', padding: '2px 6px' }}>{item.dvt || '—'}</span>
                       </td>
-                      <td style={{ minWidth: 150, fontSize: '13px', color: 'var(--text-muted)', whiteSpace: 'normal', wordBreak: 'break-word', padding: '6px 10px' }}>
+                      <td style={{ width: 75, minWidth: 75, fontSize: '13px', color: 'var(--text-muted)', whiteSpace: 'normal', wordBreak: 'break-word', padding: '6px 10px' }}>
                         {item.thongSoKyThuat || '—'}
                       </td>
-                      <td style={{ width: 150, minWidth: 150, textAlign: 'right', fontSize: '13px', fontWeight: 700, color: '#10b981', padding: '6px 10px' }}>
+                      <td style={{ width: 90, minWidth: 90, textAlign: 'right', fontSize: '13px', fontWeight: 700, color: '#10b981', padding: '6px 10px' }}>
                         {item.received > 0 ? item.received.toLocaleString('vi-VN', { maximumFractionDigits: 3 }) : '0'}
                       </td>
-                      <td style={{ width: 150, minWidth: 150, textAlign: 'right', fontSize: '13px', fontWeight: 700, color: '#f97316', padding: '6px 10px' }}>
+                      <td style={{ width: 90, minWidth: 90, textAlign: 'right', fontSize: '13px', fontWeight: 700, color: '#f97316', padding: '6px 10px' }}>
                         {item.issued > 0 ? item.issued.toLocaleString('vi-VN', { maximumFractionDigits: 3 }) : '0'}
                       </td>
                       <td style={{
-                        width: 160, minWidth: 160, textAlign: 'right', fontSize: '13px', fontWeight: 800,
+                        width: 85, minWidth: 85, textAlign: 'right', fontSize: '13px', fontWeight: 800,
                         color: isNegative ? '#ef4444' : (isZero ? 'var(--text-muted)' : 'var(--primary)'),
                         background: isNegative ? '#fef2f2' : (isZero ? 'transparent' : 'var(--primary-light)'),
                         padding: '6px 10px'
                       }}>
                         {item.stock.toLocaleString('vi-VN', { maximumFractionDigits: 3 })}
+                      </td>
+                      <td style={{ width: 95, minWidth: 95, textAlign: 'center', fontSize: '13px', color: 'var(--text-muted)', padding: '6px 10px' }}>
+                        {formatDate(item.latestReceivedDate)}
+                      </td>
+                      <td style={{ width: 90, minWidth: 90, textAlign: 'center', fontSize: '13px', fontWeight: 700, color: item.latestReceivedDate ? '#475569' : 'var(--text-muted)', padding: '6px 10px' }}>
+                        {getDaysToToday(item.latestReceivedDate)}
+                      </td>
+                      <td style={{ width: 95, minWidth: 95, textAlign: 'center', fontSize: '13px', color: 'var(--text-muted)', padding: '6px 10px' }}>
+                        {formatDate(item.latestIssuedDate)}
+                      </td>
+                      <td style={{ width: 90, minWidth: 90, textAlign: 'center', fontSize: '13px', fontWeight: 700, color: item.latestIssuedDate ? '#475569' : 'var(--text-muted)', padding: '6px 10px' }}>
+                        {getDaysToToday(item.latestIssuedDate)}
+                      </td>
+                      <td style={{ width: 145, minWidth: 145, textAlign: 'center', padding: '6px 10px' }}>
+                        {(() => {
+                          const status = item.unusedStatus
+                          let bg = '#f1f5f9'
+                          let fg = '#64748b'
+                          if (status === 'Đang sử dụng') {
+                            bg = '#ecfdf5'
+                            fg = '#047857'
+                          } else if (status === 'Chưa sử dụng (> 30 ngày)') {
+                            bg = '#fffbeb'
+                            fg = '#d97706'
+                          }
+                          return (
+                            <span className="badge" style={{
+                              fontSize: '11px',
+                              padding: '2px 6px',
+                              borderRadius: '4px',
+                              fontWeight: 700,
+                              background: bg,
+                              color: fg,
+                              display: 'inline-block',
+                              whiteSpace: 'normal',
+                              lineHeight: '1.2'
+                            }}>
+                              {status}
+                            </span>
+                          )
+                        })()}
+                      </td>
+
+                      {/* Đơn giá trung bình tạm tính */}
+                      <td style={{ width: 110, minWidth: 110, textAlign: 'right', padding: '6px 10px' }}>
+                        <input
+                          type="text"
+                          placeholder="Nhập..."
+                          value={materialPrices[item.maSAP] !== undefined && materialPrices[item.maSAP] !== 0 ? materialPrices[item.maSAP].toLocaleString('vi-VN') : ''}
+                          onChange={(e) => {
+                            const rawVal = e.target.value.replace(/[^\d]/g, '')
+                            const numVal = rawVal ? parseInt(rawVal, 10) : 0
+                            handlePriceChange(item.maSAP, numVal)
+                          }}
+                          style={{
+                            width: '100%',
+                            textAlign: 'right',
+                            fontSize: '13px',
+                            fontWeight: 600,
+                            color: 'var(--text)',
+                            padding: '4px 6px',
+                            borderRadius: '4px',
+                            border: '1px solid #cbd5e1',
+                            outline: 'none',
+                            background: '#f8fafc',
+                            transition: 'all 0.15s'
+                          }}
+                          onFocus={(e) => {
+                            e.target.style.background = '#ffffff'
+                            e.target.style.borderColor = 'var(--primary)'
+                            e.target.style.boxShadow = '0 0 0 2px var(--primary-light)'
+                            const val = materialPrices[item.maSAP]
+                            e.target.value = val !== undefined && val !== 0 ? String(val) : ''
+                          }}
+                          onBlur={(e) => {
+                            e.target.style.background = '#f8fafc'
+                            e.target.style.borderColor = '#cbd5e1'
+                            e.target.style.boxShadow = 'none'
+                            const val = materialPrices[item.maSAP]
+                            e.target.value = val !== undefined && val !== 0 ? val.toLocaleString('vi-VN') : ''
+                          }}
+                        />
+                      </td>
+
+                      {/* Thành tiền vật tư tồn >30 ngày */}
+                      <td style={{
+                        width: 130, minWidth: 130, textAlign: 'right', fontSize: '13px', fontWeight: 800,
+                        color: item.valueOver30Days > 0 ? '#b91c1c' : 'var(--text-muted)',
+                        background: item.valueOver30Days > 0 ? '#fff5f5' : 'transparent',
+                        padding: '6px 10px'
+                      }}>
+                        {item.valueOver30Days > 0 ? item.valueOver30Days.toLocaleString('vi-VN') : '0'}
+                      </td>
+
+                      {/* Phân loại vật tư */}
+                      <td style={{ width: 110, minWidth: 110, textAlign: 'center', padding: '6px 10px' }}>
+                        <input
+                          type="text"
+                          placeholder="Phân loại..."
+                          value={materialClassifications[item.maSAP] || ''}
+                          onChange={(e) => handleClassificationChange(item.maSAP, e.target.value)}
+                          style={{
+                            width: '100%',
+                            textAlign: 'center',
+                            fontSize: '12.5px',
+                            fontWeight: 500,
+                            color: 'var(--text)',
+                            padding: '4px 6px',
+                            borderRadius: '4px',
+                            border: '1px solid #cbd5e1',
+                            outline: 'none',
+                            background: '#f8fafc',
+                            transition: 'all 0.15s'
+                          }}
+                          onFocus={(e) => {
+                            e.target.style.background = '#ffffff'
+                            e.target.style.borderColor = 'var(--primary)'
+                            e.target.style.boxShadow = '0 0 0 2px var(--primary-light)'
+                          }}
+                          onBlur={(e) => {
+                            e.target.style.background = '#f8fafc'
+                            e.target.style.borderColor = '#cbd5e1'
+                            e.target.style.boxShadow = 'none'
+                          }}
+                        />
                       </td>
                     </tr>
                   )
@@ -5787,6 +6450,194 @@ function BaoCaoXuatNhapTonTab({ chungRows = [], giaoRows = [], nhanRows = [], se
                 </button>
               </div>
             )}
+          </div>
+        </div>
+      )}
+        </div>
+      ) : (
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: 0 }}>
+          {/* Title and Controls Card */}
+          <div style={{
+            background: '#ffffff',
+            borderRadius: 8,
+            border: '1px solid var(--border)',
+            padding: '16px 20px',
+            marginBottom: 12,
+            boxShadow: 'var(--shadow-sm)',
+            flexShrink: 0,
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center'
+          }}>
+            <div>
+              <h2 style={{ fontSize: 18, fontWeight: 800, color: 'var(--text)', margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
+                <PackageCheck size={20} style={{ color: 'var(--primary)' }} />
+                Đơn giá vật tư & Phân loại
+              </h2>
+              <p style={{ color: 'var(--text-muted)', fontSize: 13, margin: '4px 0 0 0' }}>
+                Cập nhật đơn giá trung bình và phân loại vật tư bằng cách tải lên file Excel hoặc nhập trực tiếp. Dữ liệu này sẽ tự động liên thông với Bảng tổng hợp xuất nhập tồn.
+              </p>
+            </div>
+            
+            <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+              <label className="btn btn-primary" style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                cursor: 'pointer',
+                background: 'var(--primary)',
+                color: '#ffffff',
+                padding: '8px 16px',
+                borderRadius: 6,
+                fontSize: 13,
+                fontWeight: 600,
+                border: 'none',
+                boxShadow: 'var(--shadow-sm)',
+                transition: 'all 0.15s'
+              }}>
+                <Upload size={14} />
+                <span>Tải lên Excel đơn giá</span>
+                <input
+                  type="file"
+                  accept=".xlsx, .xls"
+                  onChange={handleUploadPriceExcel}
+                  style={{ display: 'none' }}
+                />
+              </label>
+
+              <button
+                onClick={async () => {
+                  if (window.confirm('Bạn có chắc chắn muốn xóa toàn bộ danh sách đơn giá vật tư này không?')) {
+                    setMaterialPriceRows([]);
+                    setMaterialPrices({});
+                    setMaterialClassifications({});
+                    localStorage.removeItem('sgc_report_material_price_rows');
+                    localStorage.removeItem('sgc_report_material_prices');
+                    localStorage.removeItem('sgc_report_material_classifications');
+                    if (isSupabaseConfigured) {
+                      try {
+                        const { error } = await supabase.from('don_gia_vat_tu').delete().neq('id', -999);
+                        if (error) alert('Lỗi xóa trên Supabase: ' + error.message);
+                        else alert('Đã xóa sạch dữ liệu trên cả cục bộ và Supabase!');
+                      } catch (e) {
+                        alert('Lỗi kết nối Supabase: ' + e.message);
+                      }
+                    } else {
+                      alert('Đã xóa sạch dữ liệu cục bộ!');
+                    }
+                  }
+                }}
+                className="btn"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  cursor: 'pointer',
+                  background: '#ef4444',
+                  color: '#ffffff',
+                  padding: '8px 16px',
+                  borderRadius: 6,
+                  fontSize: 13,
+                  fontWeight: 600,
+                  border: 'none',
+                  boxShadow: 'var(--shadow-sm)',
+                  transition: 'all 0.15s'
+                }}
+              >
+                <Trash2 size={14} />
+                <span>Xóa sạch</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Search bar & Grid */}
+          <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, overflow: 'hidden', paddingBottom: 4 }}>
+            {/* Table side */}
+            <div style={{ background: '#ffffff', borderRadius: 8, border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: 'var(--shadow-sm)', flex: 1 }}>
+              {/* Search bar inside table */}
+              <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border)', background: '#f8fafc', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
+                <div style={{ position: 'relative', width: 280 }}>
+                  <Search size={15} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+                  <input
+                    type="text"
+                    placeholder="Tìm kiếm theo mã SAP hoặc phân loại..."
+                    value={priceSearchQuery}
+                    onChange={(e) => setPriceSearchQuery(e.target.value)}
+                    style={{
+                      width: '100%',
+                      padding: '6px 10px 6px 32px',
+                      fontSize: '13px',
+                      border: '1px solid var(--border)',
+                      borderRadius: 6,
+                      background: '#ffffff',
+                      outline: 'none',
+                      color: 'var(--text)'
+                    }}
+                  />
+                </div>
+                <div style={{ fontSize: '12.5px', color: 'var(--text-muted)', fontWeight: 500 }}>
+                  Có <strong>{filteredPriceRows.length}</strong> vật tư được thiết lập đơn giá
+                </div>
+              </div>
+
+              {/* Table wrapper */}
+              <div style={{ flex: 1, overflow: 'auto', minHeight: 0 }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', borderSpacing: 0, tableLayout: 'fixed' }}>
+                  <thead>
+                    <tr style={{ position: 'sticky', top: 0, background: '#f1f5f9', zIndex: 10, borderBottom: '2px solid var(--border)' }}>
+                      <th style={{ width: 50, textAlign: 'center', fontSize: 12, fontWeight: 700, color: '#475569', padding: '10px' }}>STT</th>
+                      <th style={{ width: 120, textAlign: 'left', fontSize: 12, fontWeight: 700, color: '#475569', padding: '10px' }}>Mã SAP</th>
+                      <th style={{ width: 140, textAlign: 'right', fontSize: 12, fontWeight: 700, color: '#475569', padding: '10px' }}>Khối lượng tổng</th>
+                      <th style={{ width: 150, textAlign: 'right', fontSize: 12, fontWeight: 700, color: '#475569', padding: '10px' }}>Thành tiền</th>
+                      <th style={{ width: 140, textAlign: 'right', fontSize: 12, fontWeight: 700, color: '#475569', padding: '10px' }}>Đơn giá trung bình</th>
+                      <th style={{ width: 160, textAlign: 'right', fontSize: 12, fontWeight: 700, color: '#475569', padding: '10px' }}>Đơn giá TB 1 ngày</th>
+                      <th style={{ width: 160, textAlign: 'center', fontSize: 12, fontWeight: 700, color: '#475569', padding: '10px' }}>Phân loại vật tư</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredPriceRows.length === 0 ? (
+                      <tr>
+                        <td colSpan={7} style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '13.5px' }}>
+                          Chưa có đơn giá nào được thiết lập. Hãy tải lên file Excel để xem dữ liệu.
+                        </td>
+                      </tr>
+                    ) : (
+                      filteredPriceRows.map((row, idx) => (
+                        <tr key={row.maSAP + idx} style={{ borderBottom: '1px solid #f1f5f9', background: idx % 2 === 0 ? '#ffffff' : '#f8fafc' }}>
+                          <td style={{ textAlign: 'center', padding: '10px', fontSize: 13, color: 'var(--text-muted)' }}>{idx + 1}</td>
+                          <td style={{ fontWeight: 700, padding: '10px', fontSize: 13, color: 'var(--text)' }}>{row.maSAP}</td>
+                          <td style={{ textAlign: 'right', padding: '10px', fontSize: 13, color: 'var(--text)' }}>
+                            {row.khoiLuongTong ? row.khoiLuongTong.toLocaleString('vi-VN', { maximumFractionDigits: 3 }) : '0'}
+                          </td>
+                          <td style={{ textAlign: 'right', padding: '10px', fontSize: 13, color: 'var(--text)', fontWeight: 600 }}>
+                            {row.thanhTien ? row.thanhTien.toLocaleString('vi-VN') : '0'}
+                          </td>
+                          <td style={{ textAlign: 'right', padding: '10px', fontSize: 13, color: 'var(--primary)', fontWeight: 700 }}>
+                            {row.donGiaTrungBinh ? row.donGiaTrungBinh.toLocaleString('vi-VN') : '0'}
+                          </td>
+                          <td style={{ textAlign: 'right', padding: '10px', fontSize: 13, color: 'var(--text-muted)' }}>
+                            {row.donGiaTrungBinh1Ngay ? row.donGiaTrungBinh1Ngay.toLocaleString('vi-VN') : '0'}
+                          </td>
+                          <td style={{ textAlign: 'center', padding: '10px', fontSize: 13 }}>
+                            <span style={{
+                              background: '#f1f5f9',
+                              color: '#475569',
+                              padding: '2px 8px',
+                              borderRadius: 4,
+                              fontWeight: 600,
+                              fontSize: 11.5,
+                              display: 'inline-block'
+                            }}>
+                              {row.phanLoaiVatTu || 'Chưa phân loại'}
+                            </span>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
           </div>
         </div>
       )}
@@ -8559,83 +9410,140 @@ export default function App() {
     if (tableType !== 'chung') return // Skip deleted tables
     const tableName = 'don_chung'
 
-    if (!forceBypassCache) {
+    try {
+      // Get current cached rows
+      const cachedKey = 'sgc_chung_rows'
+      const cachedJson = await idbGet(cachedKey)
+      const cachedRows = Array.isArray(cachedJson) ? cachedJson : []
+
+      // 0. Tự động phát hiện các cột thực tế đang tồn tại trong bảng (Chống lỗi 400 Bad Request triệt để)
+      let tableColumnsStr = '*'
       try {
-        // 1. Fetch exact total row count on Supabase (uses almost zero bandwidth/egress since there is no data body)
-        const { count, error: countErr } = await supabase
+        const { data: sampleRow, error: sampleErr } = await supabase
           .from(tableName)
-          .select('*', { count: 'exact', head: true })
+          .select('*')
+          .limit(1)
+        
+        if (!sampleErr && sampleRow && sampleRow.length > 0) {
+          const skipCols = ['created_at', 'updated_at']
+          const cols = Object.keys(sampleRow[0]).filter(k => !skipCols.includes(k))
+          if (cols.length > 0) {
+            tableColumnsStr = cols.join(',')
+          }
+        }
+      } catch (colErr) {
+        console.warn('Lỗi nhận diện cột động, sử dụng fallback "*" :', colErr)
+      }
 
-        if (!countErr && count !== null) {
-          // 2. Fetch highest record ID (uses almost zero bandwidth/egress)
-          const { data: maxIdData, error: maxIdErr } = await supabase
+      // 1. Fetch exact total row count on Supabase (uses almost zero bandwidth/egress since there is no data body)
+      const { count: serverCount, error: countErr } = await supabase
+        .from(tableName)
+        .select('id', { count: 'exact', head: true })
+
+      if (countErr) throw countErr
+
+      // 2. Fetch highest record ID (uses almost zero bandwidth/egress)
+      const { data: maxIdData, error: maxIdErr } = await supabase
+        .from(tableName)
+        .select('id')
+        .order('id', { ascending: false })
+        .limit(1)
+
+      if (maxIdErr) throw maxIdErr
+
+      const maxRemoteId = maxIdData && maxIdData.length > 0 ? Number(maxIdData[0].id) : 0
+      const maxLocalId = cachedRows.length > 0 ? Math.max(...cachedRows.map(r => Number(r.id) || 0)) : 0
+
+      if (!forceBypassCache && serverCount !== null) {
+        // TRƯỜNG HỢP 1: Cache trùng khớp 100% -> Dùng luôn cache
+        if (serverCount === cachedRows.length && maxRemoteId === maxLocalId) {
+          console.log(`[Cache Tối Ưu] ${tableName} trùng khớp 100% dữ liệu. Bỏ qua tải dữ liệu.`)
+          setChungRows(cachedRows)
+          setChungFileName(cachedRows.length > 0 ? 'Report_Orders_Don_chung (Cached DB)' : '')
+          setIsInitialLoading(false)
+          return
+        }
+
+        // TRƯỜNG HỢP 2: Cache cũ nhưng chỉ có dữ liệu mới được INSERT thêm (không bị xóa)
+        if (maxRemoteId > maxLocalId && serverCount >= cachedRows.length) {
+          console.log(`[Incremental Sync] Phát hiện ${serverCount - cachedRows.length} dòng mới. Đang tải các dòng có ID > ${maxLocalId}...`)
+          const { data: newDbRows, error: fetchNewErr } = await supabase
             .from(tableName)
-            .select('id')
-            .order('id', { ascending: false })
-            .limit(1)
+            .select(tableColumnsStr)
+            .gt('id', maxLocalId)
+            .order('id', { ascending: true })
 
-          const maxRemoteId = maxIdData && maxIdData.length > 0 ? Number(maxIdData[0].id) : 0
+          if (!fetchNewErr && newDbRows) {
+            const expectedCount = serverCount - cachedRows.length
+            if (newDbRows.length === 1000 && expectedCount > 1000) {
+              console.warn('[Incremental Sync] Số dòng mới nhận được bị giới hạn bởi PostgREST (1000 dòng). Chuyển sang tải đầy đủ...')
+            } else {
+              console.log(`[Incremental Sync] Đã tải thêm ${newDbRows.length} dòng mới thành công.`)
+              const normalizedNewRows = newDbRows.map((item, idx) => {
+                const normalized = normalizeDbRow(item)
+                return { id: normalized.id || (maxLocalId + idx + 1), ...normalized }
+              })
 
-          // Get our current cached rows
-          const cachedKey = tableType === 'chung' ? 'sgc_chung_rows' : tableType === 'giao' ? 'sgc_giao_rows' : tableType === 'nhan' ? 'sgc_nhan_rows' : 'sgc_kho_rows'
-          const cachedJson = await idbGet(cachedKey)
-          if (Array.isArray(cachedJson)) {
-            const maxLocalId = cachedJson.length > 0 ? Math.max(...cachedJson.map(r => Number(r.id) || 0)) : 0
-
-            // If count and high ID match, we can skip fetching from Supabase!
-            if (count === cachedJson.length && maxRemoteId === maxLocalId) {
-              console.log(`[Cache Tối Ưu] ${tableName} trùng khớp dữ liệu (Egress = 0). Dùng cache gốc.`);
-              if (tableType === 'giao') {
-                setGiaoRows(cachedJson)
-                setGiaoFileName(cachedJson.length > 0 ? 'Report_Orders_Don_giao (Cached DB)' : '')
-              } else if (tableType === 'nhan') {
-                setNhanRows(cachedJson)
-                setNhanFileName(cachedJson.length > 0 ? 'Report_Orders_Don_nhan (Cached DB)' : '')
-              } else if (tableType === 'kho') {
-                setKhoRows(cachedJson)
-                setKhoFileName(cachedJson.length > 0 ? 'Report_Orders_Kho_du_an (Cached DB)' : '')
-              } else {
-                setChungRows(cachedJson)
-                setChungFileName(cachedJson.length > 0 ? 'Report_Orders_Don_chung (Cached DB)' : '')
-              }
+              const updatedRows = [...cachedRows, ...normalizedNewRows].sort((a, b) => Number(a.id) - Number(b.id))
+              setChungRows(updatedRows)
+              setChungFileName(updatedRows.length > 0 ? 'Report_Orders_Don_chung (Supabase DB - Incremental)' : '')
+              setIsInitialLoading(false)
               return
+            }
+          } else {
+            console.warn('[Incremental Sync] Thất bại, chuyển sang tải đầy đủ...', fetchNewErr)
+          }
+        }
+      }
+
+      // TRƯỜNG HỢP 3: Cache miss hoặc force reload hoặc có thay đổi phức tạp (sửa/xóa lệch số dòng)
+      console.log(`[Tải DB] Bắt đầu tải mới toàn bộ từ Supabase cho bảng "${tableName}"...`)
+      const PAGE_SIZE = 10000 // Tăng từ 1000 lên 10000/lần để tối ưu hóa tốc độ tải và số lượng request
+      let allData = []
+      let errorObj = null
+
+      const pagesCount = Math.ceil((serverCount || 0) / PAGE_SIZE)
+      console.log(`[Tải DB] Phát hiện ${serverCount} dòng. Tiến hành tải song song ${pagesCount} trang (sử dụng tối giản cột)...`)
+
+      if (pagesCount > 0) {
+        const fetchPromises = []
+        for (let i = 0; i < pagesCount; i++) {
+          const fromIdx = i * PAGE_SIZE
+          const toIdx = fromIdx + PAGE_SIZE - 1
+          fetchPromises.push(
+            supabase
+              .from(tableName)
+              .select(tableColumnsStr) // CHỈ SELECT CÁC CỘT CẦN THIẾT thực tế của bảng giúp tải cực nhanh
+              .order('id', { ascending: true })
+              .range(fromIdx, toIdx)
+          )
+        }
+
+        const results = await Promise.all(fetchPromises)
+        let hasCapLimit = false
+
+        for (let i = 0; i < results.length; i++) {
+          const { data: pageData, error: pageErr } = results[i]
+          if (pageErr) {
+            errorObj = pageErr
+            break
+          }
+          if (pageData) {
+            allData = [...allData, ...pageData]
+            // Tự động nhận diện nếu server giới hạn cứng 1000 dòng/request (PostgREST max_rows default cap)
+            if (pageData.length === 1000 && PAGE_SIZE > 1000 && serverCount > 1000) {
+              hasCapLimit = true
             }
           }
         }
-      } catch (cacheErr) {
-        console.warn(`[Cache Check Bypass] Lỗi kiểm tra trùng khớp cho ${tableName}:`, cacheErr)
-      }
-    }
 
-    // Cache miss or force reload triggered -> Fetch fresh rows
-    console.log(`[Tải DB] Bắt đầu tải mới từ Supabase cho bảng "${tableName}"...`)
-    const PAGE_SIZE = 1000
-    let allData = []
-    let from = 0
-    let hasMore = true
-    let errorObj = null
-
-    try {
-      while (hasMore) {
-        const { data: page, error } = await supabase
-          .from(tableName)
-          .select('*')
-          .order('id', { ascending: true })
-          .range(from, from + PAGE_SIZE - 1)
-
-        if (error) { errorObj = error; break }
-        if (page && page.length > 0) {
-          allData = [...allData, ...page]
-          hasMore = page.length === PAGE_SIZE
-          from += PAGE_SIZE
-        } else {
-          hasMore = false
+        if (hasCapLimit) {
+          throw new Error('cap_limit_reached')
         }
       }
 
       if (errorObj) {
-        if (errorObj.status === 401) setSupabaseAuthError(true)
-        return
+        throw errorObj
       }
 
       const mapped = allData.map((item, idx) => {
@@ -8643,23 +9551,74 @@ export default function App() {
         return { id: normalized.id || idx, ...normalized }
       }).sort((a, b) => Number(a.id) - Number(b.id))
 
-      if (tableType === 'giao') {
-        setGiaoRows(mapped)
-        setGiaoFileName(mapped.length > 0 ? 'Report_Orders_Don_giao (Supabase DB)' : '')
-      } else if (tableType === 'nhan') {
-        setNhanRows(mapped)
-        setNhanFileName(mapped.length > 0 ? 'Report_Orders_Don_nhan (Supabase DB)' : '')
-      } else if (tableType === 'kho') {
-        setKhoRows(mapped)
-        setKhoFileName(mapped.length > 0 ? 'Report_Orders_Kho_du_an (Supabase DB)' : '')
-      } else {
+      setChungRows(mapped)
+      setChungFileName(mapped.length > 0 ? 'Report_Orders_Don_chung (Supabase DB)' : '')
+      setIsInitialLoading(false)
+    } catch (e) {
+      console.warn('[Tải DB] Có lỗi khi tải song song, chuyển sang chế độ tải tuần tự...', e)
+      let allData = []
+      let errorObj = null
+      let from = 0
+      let hasMore = true
+      const PAGE_SIZE = 1000
+
+      try {
+        // Tự động phát hiện các cột thực tế đang tồn tại trong bảng (Chống lỗi 400 Bad Request triệt để)
+        let tableColumnsStr = '*'
+        try {
+          const { data: sampleRow, error: sampleErr } = await supabase
+            .from(tableName)
+            .select('*')
+            .limit(1)
+          
+          if (!sampleErr && sampleRow && sampleRow.length > 0) {
+            const skipCols = ['created_at', 'updated_at']
+            const cols = Object.keys(sampleRow[0]).filter(k => !skipCols.includes(k))
+            if (cols.length > 0) {
+              tableColumnsStr = cols.join(',')
+            }
+          }
+        } catch (colErr) {
+          console.warn('Lỗi nhận diện cột động trong tuần tự, sử dụng fallback "*" :', colErr)
+        }
+
+        while (hasMore) {
+          const { data: page, error } = await supabase
+            .from(tableName)
+            .select(tableColumnsStr) // CHỈ SELECT CÁC CỘT CẦN THIẾT thực tế
+            .order('id', { ascending: true })
+            .range(from, from + PAGE_SIZE - 1)
+
+          if (error) { errorObj = error; break }
+          if (page && page.length > 0) {
+            allData = [...allData, ...page]
+            hasMore = page.length === PAGE_SIZE
+            from += PAGE_SIZE
+          } else {
+            hasMore = false
+          }
+        }
+
+        if (errorObj) {
+          if (errorObj.status === 401) setSupabaseAuthError(true)
+          setIsInitialLoading(false)
+          return
+        }
+
+        const mapped = allData.map((item, idx) => {
+          const normalized = normalizeDbRow(item)
+          return { id: normalized.id || idx, ...normalized }
+        }).sort((a, b) => Number(a.id) - Number(b.id))
+
         setChungRows(mapped)
         setChungFileName(mapped.length > 0 ? 'Report_Orders_Don_chung (Supabase DB)' : '')
+        setIsInitialLoading(false)
+      } catch (sequentialErr) {
+        console.error(`Lỗi tải bảng ${tableName}:`, sequentialErr)
+        setIsInitialLoading(false)
       }
-    } catch (e) {
-      console.error(`Lỗi tải bảng ${tableName}:`, e)
     }
-  }, [])
+  }, [isSupabaseConfigured])
 
   const loadDataFromSupabase = React.useCallback(async (forceBypassCache = false) => {
     if (!isSupabaseConfigured) return
@@ -8672,11 +9631,47 @@ export default function App() {
 
   // Fetch initial data from Supabase if connected
   React.useEffect(() => {
-    if (!isSupabaseConfigured) {
-      setIsInitialLoading(false)
-    } else {
-      loadDataFromSupabase().finally(() => setIsInitialLoading(false))
+    let isMounted = true
+
+    const initData = async () => {
+      if (!isSupabaseConfigured) {
+        setIsInitialLoading(false)
+        return
+      }
+
+      // ĐỌC CACHE TRƯỚC (Offline-First / Stale-While-Revalidate):
+      // Đọc nhanh từ IndexedDB và hiển thị lên UI NGAY LẬP TỨC (mất ~0.05s) giúp người dùng truy cập phát được luôn!
+      try {
+        const cachedChung = await idbGet('sgc_chung_rows')
+        const cachedGiao = await idbGet('sgc_giao_rows')
+        const cachedNhan = await idbGet('sgc_nhan_rows')
+        const cachedKho = await idbGet('sgc_kho_rows')
+
+        if (isMounted && Array.isArray(cachedChung) && cachedChung.length > 0) {
+          setChungRows(cachedChung)
+          setChungFileName('Report_Orders_Don_chung (Cached DB)')
+          
+          if (Array.isArray(cachedGiao)) setGiaoRows(cachedGiao)
+          if (Array.isArray(cachedNhan)) setNhanRows(cachedNhan)
+          if (Array.isArray(cachedKho)) setKhoRows(cachedKho)
+
+          // TẮT LOADING NGAY LẬP TỨC! Người dùng không phải chờ đợi màn hình loading nữa
+          setIsInitialLoading(false)
+          console.log('[Offline-First Cache] Đã hiển thị dữ liệu từ IndexedDB, tiến hành đồng bộ ngầm dưới nền...')
+        }
+      } catch (cacheErr) {
+        console.warn('[Offline-First Cache] Không thể đọc cache ban đầu:', cacheErr)
+      }
+
+      // Tiếp tục kiểm tra/đồng bộ ngầm với Supabase để lấy cập nhật mới nhất
+      loadDataFromSupabase().finally(() => {
+        if (isMounted) {
+          setIsInitialLoading(false)
+        }
+      })
     }
+
+    initData()
 
     if (!isSupabaseConfigured) return
 
@@ -8692,19 +9687,64 @@ export default function App() {
     }
 
     const channel = supabase
-      .channel('du_an-changes')
+      .channel('db-changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'du_an' }, () => {
         if (syncInProgressRef.current) return
         console.log('[Realtime] Cập nhật danh sách Dự Án...')
         debouncedLoadProjects()
       })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'don_chung' }, (payload) => {
+        console.log('[Realtime] Nhận sự kiện thay đổi trên don_chung:', payload.eventType, payload)
+        
+        // Nếu chính tab này đang thực hiện đồng bộ, bỏ qua sự kiện này để tránh lặp và xung đột
+        if (syncInProgressRef.current) {
+          console.log('[Realtime] Bỏ qua sự kiện vì tab này đang tự thực hiện đồng bộ.')
+          return
+        }
+
+        const eventType = payload.eventType
+
+        if (eventType === 'INSERT') {
+          const newRow = normalizeDbRow(payload.new)
+          setChungRows(prev => {
+            if (prev.some(r => Number(r.id) === Number(newRow.id))) return prev
+            const updated = [...prev, newRow].sort((a, b) => Number(a.id) - Number(b.id))
+            idbSet('sgc_chung_rows', updated)
+            return updated
+          })
+        } else if (eventType === 'UPDATE') {
+          const updatedRow = normalizeDbRow(payload.new)
+          setChungRows(prev => {
+            const index = prev.findIndex(r => Number(r.id) === Number(updatedRow.id))
+            if (index === -1) {
+              const updated = [...prev, updatedRow].sort((a, b) => Number(a.id) - Number(b.id))
+              idbSet('sgc_chung_rows', updated)
+              return updated
+            }
+            const updated = [...prev]
+            updated[index] = { ...updated[index], ...updatedRow }
+            idbSet('sgc_chung_rows', updated)
+            return updated
+          })
+        } else if (eventType === 'DELETE') {
+          const deletedId = payload.old?.id
+          if (deletedId) {
+            setChungRows(prev => {
+              const updated = prev.filter(r => Number(r.id) !== Number(deletedId))
+              idbSet('sgc_chung_rows', updated)
+              return updated
+            })
+          }
+        }
+      })
       .subscribe()
 
     return () => {
+      isMounted = false
       if (realtimeDebounceRef.current) clearTimeout(realtimeDebounceRef.current)
       supabase.removeChannel(channel)
     }
-  }, [loadDataFromSupabase, loadProjectsFromSupabase])
+  }, [isSupabaseConfigured, loadDataFromSupabase, loadProjectsFromSupabase])
 
   const syncRowsToSupabase = async (type, rowsToSync, isAuto = false, isAppend = false) => {
     if (!isSupabaseConfigured) return
