@@ -5001,14 +5001,127 @@ CREATE POLICY "Allow public delete" ON public.don_gia_vat_tu FOR DELETE USING (t
     return bchList.length > 0 ? bchList : uniqueWarehouses
   }, [uniqueWarehouses])
 
+  // TỐI ƯU HIỆU NĂNG: Trước đây dashboardStats gọi computeProjectReportData() riêng cho TỪNG kho BCH
+  // (68 kho) → quét toàn bộ 145.515 dòng 68 LẦN (~9.9 triệu lượt duyệt), gây khựng ~5s khi mở tab
+  // "Dashboard báo cáo". Giờ chỉ quét chungRows MỘT LẦN duy nhất, gom nhóm dữ liệu cho tất cả các kho
+  // BCH cùng lúc, và dùng Map tra cứu đơn giá thay vì .find() (vốn cũng chạy O(n) cho mỗi mặt hàng).
   const dashboardStats = React.useMemo(() => {
-    return bchWarehouses.map(projName => {
-      const items = computeProjectReportData(projName)
-      
+    if (bchWarehouses.length === 0) return []
+
+    const parseVal = (val) => {
+      if (val === null || val === undefined) return 0
+      if (typeof val === 'number') return val
+      const cleaned = String(val).replace(/[^\d.-]/g, '').replace(',', '.')
+      const num = parseFloat(cleaned)
+      return isNaN(num) ? 0 : num
+    }
+
+    // Chuẩn hóa tên kho BCH để tra cứu O(1) trong lúc quét dữ liệu
+    const bchNormToOriginal = new Map()
+    bchWarehouses.forEach(w => {
+      bchNormToOriginal.set(String(w || '').trim().toLowerCase(), w)
+    })
+
+    // groupsByProject: projNormalized -> { [maSAP]: groupObj }
+    const groupsByProject = new Map()
+    bchNormToOriginal.forEach((_, norm) => groupsByProject.set(norm, {}))
+
+    const sourceRows = (chungRows && chungRows.length > 0)
+      ? chungRows
+      : [...giaoRows, ...nhanRows]
+
+    sourceRows.forEach(r => {
+      if (!matchStatusFilter(r.trangThai)) return
+
+      const nhanUnit = String(r.donViNhan || '').trim().toLowerCase()
+      const giaoUnit = String(r.donViGiao || '').trim().toLowerCase()
+
+      const nhanGroups = groupsByProject.get(nhanUnit)
+      const giaoGroups = groupsByProject.get(giaoUnit)
+      if (!nhanGroups && !giaoGroups) return // Dòng này không thuộc bất kỳ kho BCH nào cần tính
+
+      const sap = String(r.maSAP || '').trim()
+      if (!sap) return
+
+      const rowDate = parseRowDate(r.ngayXuatNhap)
+      const ensureGroup = (groups) => {
+        if (!groups[sap]) {
+          groups[sap] = {
+            maSAP: sap,
+            maVatTu: String(r.maVatTu || '').trim(),
+            tenVatTu: String(r.tenVatTu || '').trim(),
+            dvt: String(r.dvt || '').trim(),
+            thongSoKyThuat: String(r.thongSoKyThuat || '').trim(),
+            received: 0,
+            issued: 0,
+            latestReceivedDate: null,
+            latestIssuedDate: null
+          }
+        } else {
+          if (!groups[sap].maVatTu && r.maVatTu) groups[sap].maVatTu = String(r.maVatTu).trim()
+          if (!groups[sap].tenVatTu && r.tenVatTu) groups[sap].tenVatTu = String(r.tenVatTu).trim()
+          if (!groups[sap].dvt && r.dvt) groups[sap].dvt = String(r.dvt).trim()
+          if (!groups[sap].thongSoKyThuat && r.thongSoKyThuat) groups[sap].thongSoKyThuat = String(r.thongSoKyThuat).trim()
+        }
+        return groups[sap]
+      }
+
+      if (nhanGroups) {
+        const g = ensureGroup(nhanGroups)
+        g.received += parseVal(r.khoiLuongNhap) || parseVal(r.khoiLuongXuat)
+        if (rowDate && (!g.latestReceivedDate || rowDate > g.latestReceivedDate)) g.latestReceivedDate = rowDate
+      }
+      if (giaoGroups) {
+        const g = ensureGroup(giaoGroups)
+        g.issued += parseVal(r.khoiLuongXuat) || parseVal(r.khoiLuongNhap)
+        if (rowDate && (!g.latestIssuedDate || rowDate > g.latestIssuedDate)) g.latestIssuedDate = rowDate
+      }
+    })
+
+    // Tra cứu đơn giá bằng Map (O(1)) thay vì materialPriceRows.find() (O(n)) cho mỗi mặt hàng
+    const priceMap = new Map()
+    materialPriceRows.forEach(pr => {
+      const key = String(pr.maSAP || '').trim().toLowerCase()
+      if (key && !priceMap.has(key)) priceMap.set(key, pr)
+    })
+
+    const results = []
+    bchNormToOriginal.forEach((projName, norm) => {
+      const groups = groupsByProject.get(norm)
+      const items = Object.values(groups).map(g => {
+        const stock = g.received - g.issued
+        const unusedStatus = getUnusedStatus(g, stock)
+
+        const materialClassification = materialClassifications[g.maSAP] || ''
+        const isKhauHao = String(materialClassification).toLowerCase().includes('khấu hao') || String(materialClassification).toLowerCase().includes('tài sản')
+
+        let estimatedUnitPrice = 0
+        let valueOver30Days = 0
+        const priceRow = priceMap.get(String(g.maSAP || '').trim().toLowerCase())
+
+        if (isKhauHao) {
+          estimatedUnitPrice = priceRow ? (priceRow.donGiaTrungBinh1Ngay || 0) : 0
+          if (unusedStatus === 'Chưa sử dụng (> 30 ngày)' && stock > 0) {
+            const days = getDaysToToday(g.latestReceivedDate)
+            const numDays = typeof days === 'number' ? days : 0
+            valueOver30Days = numDays * stock * estimatedUnitPrice
+          }
+        } else {
+          estimatedUnitPrice = priceRow ? (priceRow.donGiaTrungBinh || 0) : (materialPrices[g.maSAP] || 0)
+          if (unusedStatus === 'Chưa sử dụng (> 30 ngày)' && stock > 0) {
+            valueOver30Days = stock * estimatedUnitPrice
+          }
+        }
+
+        valueOver30Days = Math.round(valueOver30Days)
+
+        return { ...g, stock, unusedStatus, estimatedUnitPrice, valueOver30Days, materialClassification }
+      })
+
       let totalStock = 0
       let totalReceived = 0
       let totalIssued = 0
-      
+
       let totalItemsInStock = 0
       let unusedCount = 0
       let unusedQty = 0
@@ -5037,7 +5150,7 @@ CREATE POLICY "Allow public delete" ON public.don_gia_vat_tu FOR DELETE USING (t
       let alarmColor = '#10b981' // Green
       let alarmBg = '#ecfdf5'
       let alarmBorder = '#a7f3d0'
-      
+
       if (unusedValue > 1000000000 || unusedRatio > 50) {
         alarmLevel = 'Nguy cơ cao (Đỏ)'
         alarmColor = '#ef4444' // Red
@@ -5056,7 +5169,7 @@ CREATE POLICY "Allow public delete" ON public.don_gia_vat_tu FOR DELETE USING (t
         .sort((a, b) => (b.valueOver30Days || 0) - (a.valueOver30Days || 0))
         .slice(0, 10)
 
-      return {
+      results.push({
         projectName: projName,
         totalReceived,
         totalIssued,
@@ -5072,9 +5185,11 @@ CREATE POLICY "Allow public delete" ON public.don_gia_vat_tu FOR DELETE USING (t
         alarmBorder,
         topStagnant,
         allItems: items
-      }
-    }).sort((a, b) => b.unusedValue - a.unusedValue)
-  }, [bchWarehouses, computeProjectReportData])
+      })
+    })
+
+    return results.sort((a, b) => b.unusedValue - a.unusedValue)
+  }, [bchWarehouses, chungRows, giaoRows, nhanRows, materialClassifications, materialPriceRows, materialPrices, matchStatusFilter, getUnusedStatus])
 
   // Cho phép người dùng chọn 1 kho dự án BCH cụ thể để xem báo cáo Dashboard,
   // thay vì luôn cộng dồn/hiển thị toàn bộ các kho.
