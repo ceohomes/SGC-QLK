@@ -5400,6 +5400,15 @@ CREATE POLICY "Allow public delete" ON public.don_gia_vat_tu FOR DELETE USING (t
     }).sort((a, b) => b.unusedValue - a.unusedValue)
   }, [bchWarehouses, computeProjectReportData])
 
+  // Cho phép người dùng chọn 1 kho dự án BCH cụ thể để xem báo cáo Dashboard,
+  // thay vì luôn cộng dồn/hiển thị toàn bộ các kho.
+  const [dashboardWarehouseFilter, setDashboardWarehouseFilter] = React.useState('all')
+
+  const filteredDashboardStats = React.useMemo(() => {
+    if (dashboardWarehouseFilter === 'all') return dashboardStats
+    return dashboardStats.filter(s => s.projectName === dashboardWarehouseFilter)
+  }, [dashboardStats, dashboardWarehouseFilter])
+
   const dashboardSummary = React.useMemo(() => {
     let grandUnusedValue = 0
     let grandUnusedCount = 0
@@ -5407,7 +5416,7 @@ CREATE POLICY "Allow public delete" ON public.don_gia_vat_tu FOR DELETE USING (t
     let highestUnusedWarehouse = 'Chưa xác định'
     let highestUnusedVal = 0
 
-    dashboardStats.forEach(stat => {
+    filteredDashboardStats.forEach(stat => {
       grandUnusedValue += stat.unusedValue
       grandUnusedCount += stat.unusedCount
       grandTotalItems += stat.totalItemsInStock
@@ -5427,15 +5436,15 @@ CREATE POLICY "Allow public delete" ON public.don_gia_vat_tu FOR DELETE USING (t
       highestUnusedWarehouse,
       highestUnusedVal
     }
-  }, [dashboardStats])
+  }, [filteredDashboardStats])
 
   const [selectedDashProject, setSelectedDashProject] = React.useState(null)
 
   const activeDashStat = React.useMemo(() => {
-    if (dashboardStats.length === 0) return null
-    if (!selectedDashProject) return dashboardStats[0]
-    return dashboardStats.find(s => s.projectName === selectedDashProject) || dashboardStats[0]
-  }, [dashboardStats, selectedDashProject])
+    if (filteredDashboardStats.length === 0) return null
+    if (!selectedDashProject) return filteredDashboardStats[0]
+    return filteredDashboardStats.find(s => s.projectName === selectedDashProject) || filteredDashboardStats[0]
+  }, [filteredDashboardStats, selectedDashProject])
 
   // Chi tiết các đơn nhận / đơn xuất cấu thành nên khối lượng nhận - khối lượng xuất ở bảng tổng hợp.
   // Dùng đúng logic lọc (Kho/Dự án + trạng thái) như reportData để đảm bảo số liệu khớp 100%.
@@ -6175,6 +6184,76 @@ CREATE POLICY "Allow public delete" ON public.don_gia_vat_tu FOR DELETE USING (t
 
       {subTab === 'dashboard' && (
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'auto', gap: 16, paddingBottom: 16 }}>
+          {/* Bộ lọc chọn kho báo cáo cụ thể */}
+          <div style={{
+            background: '#ffffff',
+            borderRadius: 8,
+            border: '1px solid var(--border)',
+            padding: '12px 16px',
+            boxShadow: 'var(--shadow-sm)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 12,
+            flexWrap: 'wrap',
+            flexShrink: 0
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>
+              <Warehouse size={16} style={{ color: 'var(--primary)' }} />
+              Chọn kho báo cáo:
+            </div>
+            <select
+              value={dashboardWarehouseFilter}
+              onChange={(e) => {
+                const val = e.target.value
+                setDashboardWarehouseFilter(val)
+                // Đồng bộ luôn phần chi tiết bên phải với kho vừa chọn
+                setSelectedDashProject(val === 'all' ? null : val)
+              }}
+              style={{
+                flex: '0 1 360px',
+                minWidth: 220,
+                padding: '7px 10px',
+                borderRadius: 6,
+                border: '1px solid var(--border)',
+                fontSize: 13,
+                fontWeight: 600,
+                color: 'var(--text)',
+                background: '#f8fafc',
+                cursor: 'pointer'
+              }}
+            >
+              <option value="all">— Tất cả kho dự án BCH ({bchWarehouses.length} kho) —</option>
+              {bchWarehouses.map(w => (
+                <option key={w} value={w}>{w}</option>
+              ))}
+            </select>
+            {dashboardWarehouseFilter !== 'all' && (
+              <button
+                onClick={() => {
+                  setDashboardWarehouseFilter('all')
+                  setSelectedDashProject(null)
+                }}
+                style={{
+                  padding: '6px 12px',
+                  borderRadius: 6,
+                  border: '1px solid var(--border)',
+                  background: '#ffffff',
+                  color: 'var(--text-muted)',
+                  fontSize: 12.5,
+                  fontWeight: 600,
+                  cursor: 'pointer'
+                }}
+              >
+                Xem tất cả
+              </button>
+            )}
+            <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+              {dashboardWarehouseFilter === 'all'
+                ? 'Đang hiển thị báo cáo tổng hợp của tất cả kho dự án BCH.'
+                : `Đang hiển thị báo cáo riêng cho kho: ${dashboardWarehouseFilter}`}
+            </div>
+          </div>
+
           {/* Summary Cards Row */}
           <div style={{
             display: 'grid',
@@ -6212,7 +6291,7 @@ CREATE POLICY "Allow public delete" ON public.don_gia_vat_tu FOR DELETE USING (t
                   {dashboardSummary.grandUnusedValue.toLocaleString('vi-VN')} đ
                 </div>
                 <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
-                  Tích lũy từ tất cả dự án BCH (> 30 ngày)
+                  {dashboardWarehouseFilter === 'all' ? 'Tích lũy từ tất cả dự án BCH (> 30 ngày)' : `Kho: ${dashboardWarehouseFilter} (> 30 ngày)`}
                 </div>
               </div>
             </div>
@@ -6312,13 +6391,15 @@ CREATE POLICY "Allow public delete" ON public.don_gia_vat_tu FOR DELETE USING (t
               </div>
               <div>
                 <div style={{ fontSize: 12.5, color: 'var(--text-muted)', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                  Kho dự án BCH theo dõi
+                  {dashboardWarehouseFilter === 'all' ? 'Kho dự án BCH theo dõi' : 'Đang xem báo cáo kho'}
                 </div>
-                <div style={{ fontSize: 20, fontWeight: 800, color: '#10b981', margin: '4px 0 2px 0' }}>
-                  {bchWarehouses.length} <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-muted)' }}>kho dự án</span>
+                <div style={{ fontSize: dashboardWarehouseFilter === 'all' ? 20 : 15, fontWeight: 800, color: '#10b981', margin: '4px 0 2px 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={dashboardWarehouseFilter === 'all' ? undefined : dashboardWarehouseFilter}>
+                  {dashboardWarehouseFilter === 'all'
+                    ? <>{bchWarehouses.length} <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-muted)' }}>kho dự án</span></>
+                    : dashboardWarehouseFilter}
                 </div>
                 <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
-                  Giám sát tự động tình trạng tồn đọng
+                  {dashboardWarehouseFilter === 'all' ? 'Giám sát tự động tình trạng tồn đọng' : `Trong tổng số ${bchWarehouses.length} kho dự án BCH`}
                 </div>
               </div>
             </div>
@@ -6335,11 +6416,13 @@ CREATE POLICY "Allow public delete" ON public.don_gia_vat_tu FOR DELETE USING (t
           }}>
             <h3 style={{ fontSize: 14.5, fontWeight: 700, color: 'var(--text)', margin: '0 0 12px 0', display: 'flex', alignItems: 'center', gap: 6 }}>
               <BarChart3 size={16} style={{ color: 'var(--primary)' }} />
-              BIỂU ĐỒ SO SÁNH GIÁ TRỊ TỒN CHƯA SỬ DỤNG (> 30 NGÀY) GIỮA CÁC KHO DỰ ÁN BCH
+              {dashboardWarehouseFilter === 'all'
+                ? 'BIỂU ĐỒ SO SÁNH GIÁ TRỊ TỒN CHƯA SỬ DỤNG (> 30 NGÀY) GIỮA CÁC KHO DỰ ÁN BCH'
+                : `GIÁ TRỊ TỒN CHƯA SỬ DỤNG (> 30 NGÀY) — KHO: ${dashboardWarehouseFilter}`}
             </h3>
             
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {dashboardStats.map((stat, index) => {
+              {filteredDashboardStats.map((stat, index) => {
                 const maxVal = dashboardSummary.highestUnusedVal || 1
                 const percent = (stat.unusedValue / maxVal) * 100
                 const isSelected = selectedDashProject === stat.projectName || (!selectedDashProject && index === 0)
@@ -6411,7 +6494,7 @@ CREATE POLICY "Allow public delete" ON public.don_gia_vat_tu FOR DELETE USING (t
               }}>
                 <h3 style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text)', margin: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
                   <ClipboardList size={15} style={{ color: 'var(--primary)' }} />
-                  DANH SÁCH XẾP HẠNG CẢNH BÁO KHO DỰ ÁN BCH
+                  {dashboardWarehouseFilter === 'all' ? 'DANH SÁCH XẾP HẠNG CẢNH BÁO KHO DỰ ÁN BCH' : 'CHI TIẾT CẢNH BÁO KHO ĐÃ CHỌN'}
                 </h3>
                 <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
                   Theo giá trị tồn đọng chưa dùng giảm dần
@@ -6431,14 +6514,14 @@ CREATE POLICY "Allow public delete" ON public.don_gia_vat_tu FOR DELETE USING (t
                     </tr>
                   </thead>
                   <tbody>
-                    {dashboardStats.length === 0 ? (
+                    {filteredDashboardStats.length === 0 ? (
                       <tr>
                         <td colSpan={6} style={{ padding: 30, textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>
                           Không có dữ liệu kho dự án BCH nào
                         </td>
                       </tr>
                     ) : (
-                      dashboardStats.map((stat, idx) => {
+                      filteredDashboardStats.map((stat, idx) => {
                         const isSelected = selectedDashProject === stat.projectName || (!selectedDashProject && idx === 0)
                         return (
                           <tr 
@@ -10108,8 +10191,13 @@ export default function App() {
   const [isSgcSummaryConfigsMissing, setIsSgcSummaryConfigsMissing] = useState(false)
   const [isInitialLoading, setIsInitialLoading] = useState(true)
 
-  const fetchConfigsFromSupabaseInApp = React.useCallback(async () => {
+  // Ghi nhớ trong phiên làm việc rằng bảng sgc_summary_configs đã xác nhận là chưa tồn tại,
+  // để tránh gửi lại request 400 lặp đi lặp lại mỗi lần chuyển tab / đồng bộ ngầm.
+  const sgcConfigsMissingRef = React.useRef(false)
+
+  const fetchConfigsFromSupabaseInApp = React.useCallback(async (forceRecheck = false) => {
     if (!isSupabaseConfigured) return
+    if (sgcConfigsMissingRef.current && !forceRecheck) return
     try {
       const { data, error } = await supabase
         .from('sgc_summary_configs')
@@ -10119,12 +10207,15 @@ export default function App() {
       if (error) {
         if (error.message.includes('Could not find the table') || error.message.includes('sgc_summary_configs')) {
           console.warn('Lỗi tải cấu hình tổng hợp từ Supabase (App): Bảng sgc_summary_configs chưa được tạo trong database Supabase.')
+          sgcConfigsMissingRef.current = true
           setIsSgcSummaryConfigsMissing(true)
         } else {
           console.error('Lỗi tải cấu hình tổng hợp từ Supabase (App):', error.message)
         }
         return
       }
+
+      sgcConfigsMissingRef.current = false
 
       setIsSgcSummaryConfigsMissing(false)
       if (data) {
@@ -10247,9 +10338,31 @@ export default function App() {
         if (hasUpdatedAt) selectFields.push('updated_at')
         else if (hasCreatedAt) selectFields.push('created_at')
 
-        const { data: remoteLightData, error: lightErr } = await supabase
-          .from(tableName)
-          .select(selectFields.join(','))
+        // QUAN TRỌNG: Supabase/PostgREST giới hạn cứng 1000 dòng/request. Phải phân trang
+        // để lấy ĐỦ toàn bộ id/timestamp, nếu không các dòng ngoài 1000 đầu tiên sẽ bị
+        // hiểu nhầm là "đã xoá trên server" và gây sai lệch dữ liệu.
+        const LIGHT_PAGE_SIZE = 1000
+        let remoteLightData = []
+        let lightErr = null
+        {
+          const lightPagesCount = Math.ceil((serverCount || 0) / LIGHT_PAGE_SIZE)
+          const lightFetchPromises = []
+          for (let i = 0; i < lightPagesCount; i++) {
+            const fromIdx = i * LIGHT_PAGE_SIZE
+            const toIdx = fromIdx + LIGHT_PAGE_SIZE - 1
+            lightFetchPromises.push(
+              supabase
+                .from(tableName)
+                .select(selectFields.join(','))
+                .range(fromIdx, toIdx)
+            )
+          }
+          const lightResults = await Promise.all(lightFetchPromises)
+          for (const r of lightResults) {
+            if (r.error) { lightErr = r.error; break }
+            if (r.data) remoteLightData.push(...r.data)
+          }
+        }
 
         if (!lightErr && remoteLightData) {
           const remoteIdSet = new Set(remoteLightData.map(r => Number(r.id)))
@@ -10367,7 +10480,11 @@ export default function App() {
 
       // TRƯỜNG HỢP 3: Cache miss hoặc force reload hoặc có thay đổi phức tạp lượng lớn (> 5000 dòng)
       console.log(`[Tải DB] Bắt đầu tải mới toàn bộ từ Supabase cho bảng "${tableName}"...`)
-      const PAGE_SIZE = 10000 // Tăng từ 1000 lên 10000/lần để tối ưu hóa tốc độ tải và số lượng request
+      // LƯU Ý: Supabase/PostgREST mặc định giới hạn cứng tối đa 1000 dòng/request (max_rows).
+      // Trước đây PAGE_SIZE=10000 khiến mọi trang đều bị cắt còn 1000 dòng, code phải huỷ toàn bộ
+      // kết quả song song rồi tải lại tuần tự từ đầu (tải 2 lần, gây chậm >30s). Đặt đúng 1000 để
+      // request song song thành công ngay từ lần đầu, không cần tải lại.
+      const PAGE_SIZE = 1000
       let allData = []
       let errorObj = null
 
@@ -10389,7 +10506,6 @@ export default function App() {
         }
 
         const results = await Promise.all(fetchPromises)
-        let hasCapLimit = false
 
         for (let i = 0; i < results.length; i++) {
           const { data: pageData, error: pageErr } = results[i]
@@ -10399,15 +10515,7 @@ export default function App() {
           }
           if (pageData) {
             allData = [...allData, ...pageData]
-            // Tự động nhận diện nếu server giới hạn cứng 1000 dòng/request (PostgREST max_rows default cap)
-            if (pageData.length === 1000 && PAGE_SIZE > 1000 && serverCount > 1000) {
-              hasCapLimit = true
-            }
           }
-        }
-
-        if (hasCapLimit) {
-          throw new Error('cap_limit_reached')
         }
       }
 
@@ -10496,7 +10604,7 @@ export default function App() {
     await Promise.all([
       loadProjectsFromSupabase(),
       loadTableFromSupabase('chung', forceBypassCache),
-      fetchConfigsFromSupabaseInApp(),
+      fetchConfigsFromSupabaseInApp(forceBypassCache),
     ])
   }, [loadProjectsFromSupabase, loadTableFromSupabase, fetchConfigsFromSupabaseInApp])
 
