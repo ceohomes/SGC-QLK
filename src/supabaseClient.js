@@ -12,7 +12,21 @@
 
 async function executeRequest(payload) {
   try {
-    const res = await fetch('/api/db', {
+    let backendUrl = '';
+    if (typeof window !== 'undefined') {
+      backendUrl = window.localStorage.getItem('backend_api_url') || '';
+    }
+    if (!backendUrl && typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_API_URL) {
+      backendUrl = import.meta.env.VITE_API_URL;
+    }
+    
+    if (backendUrl && backendUrl.endsWith('/')) {
+      backendUrl = backendUrl.slice(0, -1);
+    }
+    
+    const apiEndpoint = backendUrl ? `${backendUrl}/api/db` : '/api/db';
+
+    const res = await fetch(apiEndpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),

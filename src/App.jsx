@@ -9838,6 +9838,12 @@ function DeleteProjectModal({ isOpen, onClose, onConfirm, projectName, giaoRows,
 // ─── Neon Config Helper Modal ───────────────────────────────────────────────────
 function SupabaseConfigModal({ isOpen, onClose }) {
   const [copied, setCopied] = useState(false)
+  const [backendUrl, setBackendUrl] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('backend_api_url') || '';
+    }
+    return '';
+  })
 
   if (!isOpen) return null
 
@@ -9980,6 +9986,65 @@ CREATE TABLE IF NOT EXISTS public.don_kho (
               Ứng dụng đang liên kết trực tiếp với máy chủ cơ sở dữ liệu Neon của bạn một cách bảo mật, không lộ thông tin API Key/Token ra trình duyệt.
             </p>
           </div>
+        </div>
+
+        <div style={{
+          padding: '16px',
+          borderRadius: 12,
+          backgroundColor: '#f8fafc',
+          border: '1px solid #e2e8f0',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 10
+        }}>
+          <span style={{ fontSize: 13, fontWeight: 700, color: '#0f172a', display: 'flex', alignItems: 'center', gap: 6 }}>
+            🌐 Cấu hình Địa chỉ Máy chủ Backend (API Host)
+          </span>
+          <p style={{ margin: 0, fontSize: 11, color: '#64748b', lineHeight: '1.4' }}>
+            Nếu bạn deploy giao diện tĩnh lên GitHub Pages, Cloudflare Pages hoặc Vercel, vui lòng nhập URL của Express Server đang chạy cơ sở dữ liệu bên dưới (ví dụ: <code>https://your-backend.onrender.com</code>). Nếu chạy local hoặc chung host, hãy để trống.
+          </p>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <input
+              type="text"
+              value={backendUrl}
+              onChange={(e) => setBackendUrl(e.target.value)}
+              placeholder="http://localhost:3000 hoặc URL Server thực tế..."
+              style={{
+                flex: 1,
+                padding: '8px 12px',
+                borderRadius: 6,
+                border: '1px solid #cbd5e1',
+                fontSize: 12,
+                outline: 'none',
+                color: '#0f172a'
+              }}
+            />
+            <button
+              onClick={() => {
+                localStorage.setItem('backend_api_url', backendUrl.trim());
+                alert('Đã lưu cấu hình API máy chủ thành công! Hệ thống sẽ tải lại trang.');
+                window.location.reload();
+              }}
+              style={{
+                padding: '8px 16px',
+                borderRadius: 6,
+                background: '#10b981',
+                color: '#ffffff',
+                border: 'none',
+                fontSize: 12,
+                fontWeight: 600,
+                cursor: 'pointer',
+                whiteSpace: 'nowrap'
+              }}
+            >
+              Lưu &amp; Tải lại
+            </button>
+          </div>
+          {typeof window !== 'undefined' && (window.location.hostname.includes('pages.dev') || window.location.hostname.includes('github.io')) ? (
+            <div style={{ fontSize: 11, color: '#ef4444', fontWeight: 600 }}>
+              ⚠️ Bạn đang chạy Web trên Cloudflare Pages / GitHub Pages. Vui lòng điền và lưu URL Backend của bạn để kết nối dữ liệu!
+            </div>
+          ) : null}
         </div>
 
         <div style={{ fontSize: 12.5, color: '#334155', lineHeight: '1.5' }}>

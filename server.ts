@@ -9,6 +9,17 @@ dotenv.config();
 const app = express();
 const PORT = 3000;
 
+// Enable CORS for external frontend deployments (e.g., Cloudflare Pages)
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  if (req.method === 'OPTIONS') {
+    return res.sendStatus(200);
+  }
+  next();
+});
+
 app.use(express.json({ limit: '50mb' }));
 
 // Helper function to get Neon SQL client
@@ -193,7 +204,12 @@ app.post('/api/db', async (req, res) => {
     return res.status(400).json({ data: null, error: `Action '${action}' is not supported` });
   } catch (err: any) {
     console.error('[SQL Error] General failure:', err.message || err);
-    return res.json({ data: null, error: { message: err.message || String(err) } });
+    const errMsg = String(err.message || err);
+    if (errMsg.includes('relation') && (errMsg.includes('does not exist') || errMsg.includes('chưa tồn tại') || errMsg.includes('không tồn tại'))) {
+      console.warn(`[SQL Warning] Gracefully handling non-existent relation for table: ${req.body.table}`);
+      return res.json({ data: [], count: 0, error: null });
+    }
+    return res.json({ data: null, error: { message: errMsg } });
   }
 });
 
