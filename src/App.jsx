@@ -1786,7 +1786,7 @@ function OrderTab({
     XLSXStyle.utils.book_append_sheet(wb, ws, sheetName)
     
     // Save
-    const wbout = XLSXStyle.write(wb, { bookType: 'xlsx', type: 'binary' })
+    const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'binary', compression: true })
     function s2ab(s) {
       const buf = new ArrayBuffer(s.length)
       const view = new Uint8Array(buf)
@@ -2307,7 +2307,7 @@ function KhoDuAnTab({ chungRows, selectedProject, setSelectedProject, allProject
     createSheetForList(categorizedUnits.todoi, 'Tổ đội', '059669')
 
     // Save
-    const wbout = XLSXStyle.write(wb, { bookType: 'xlsx', type: 'binary' })
+    const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'binary', compression: true })
     function s2ab(s) {
       const buf = new ArrayBuffer(s.length)
       const view = new Uint8Array(buf)
@@ -4667,7 +4667,7 @@ function BaoCaoXuatNhapTonTab({ chungRows = [], giaoRows = [], nhanRows = [], se
   // và không đồng bộ ngược lại selectedProject toàn cục — tránh ảnh hưởng
   // tới các tab/sheet khác như Đơn chung, Kho dự án.
   const [localProject, setLocalProject] = React.useState('')
-  const [subTab, setSubTab] = React.useState('summary') // 'summary' | 'dongia'
+  const [subTab, setSubTab] = React.useState('dashboard') // 'dashboard' | 'dongia' | 'summary'
   const [loadingDbPrices, setLoadingDbPrices] = React.useState(false)
   const [priceSearchQuery, setPriceSearchQuery] = React.useState('')
 
@@ -4700,15 +4700,49 @@ function BaoCaoXuatNhapTonTab({ chungRows = [], giaoRows = [], nhanRows = [], se
 
   const loadPricesFromSupabase = async () => {
     if (!isSupabaseConfigured) return
+
+    // Read from cache first to render instantly
+    const cachedRowsStr = localStorage.getItem('sgc_report_material_price_rows')
+    let cachedRows = []
+    try {
+      if (cachedRowsStr) {
+        cachedRows = JSON.parse(cachedRowsStr)
+        if (Array.isArray(cachedRows) && cachedRows.length > 0) {
+          setMaterialPriceRows(cachedRows)
+          const prices = {}
+          const classifications = {}
+          cachedRows.forEach(r => {
+            prices[r.maSAP] = r.donGiaTrungBinh
+            classifications[r.maSAP] = r.phanLoaiVatTu
+          })
+          setMaterialPrices(prices)
+          setMaterialClassifications(classifications)
+        }
+      }
+    } catch (e) {
+      console.warn('Lỗi đọc cache đơn giá:', e)
+    }
+
     setLoadingDbPrices(true)
     try {
+      // Fetch server count (uses almost zero egress) to check if we can skip download
+      const { count: serverCount, error: countErr } = await supabase
+        .from('don_gia_vat_tu')
+        .select('id', { count: 'exact', head: true })
+
+      if (!countErr && serverCount !== null && cachedRows.length > 0 && serverCount === cachedRows.length) {
+        console.log('[Cache Tối Ưu] Đơn giá vật tư trùng khớp số lượng. Bỏ qua tải tải từ Supabase.')
+        setLoadingDbPrices(false)
+        return
+      }
+
       const { data, error } = await supabase
         .from('don_gia_vat_tu')
         .select('*')
       
       if (error) {
         console.error('Lỗi khi tải đơn giá từ Supabase:', error)
-      } else if (data && data.length > 0) {
+      } else if (data) {
         const rows = data.map(item => ({
           maSAP: item.ma_sap,
           khoiLuongTong: item.khoi_luong_tong || 0,
@@ -4905,6 +4939,35 @@ function BaoCaoXuatNhapTonTab({ chungRows = [], giaoRows = [], nhanRows = [], se
     )
   }, [materialPriceRows, priceSearchQuery])
 
+  const materialMetadataMap = React.useMemo(() => {
+    const map = new Map()
+    if (nhanRows && Array.isArray(nhanRows)) {
+      nhanRows.forEach(r => {
+        const sap = String(r.maSAP || '').trim().toLowerCase()
+        if (sap) {
+          map.set(sap, { tenVatTu: r.tenVatTu || '', dvt: r.dvt || '' })
+        }
+      })
+    }
+    if (giaoRows && Array.isArray(giaoRows)) {
+      giaoRows.forEach(r => {
+        const sap = String(r.maSAP || '').trim().toLowerCase()
+        if (sap) {
+          map.set(sap, { tenVatTu: r.tenVatTu || '', dvt: r.dvt || '' })
+        }
+      })
+    }
+    if (chungRows && Array.isArray(chungRows)) {
+      chungRows.forEach(r => {
+        const sap = String(r.maSAP || '').trim().toLowerCase()
+        if (sap) {
+          map.set(sap, { tenVatTu: r.tenVatTu || '', dvt: r.dvt || '' })
+        }
+      })
+    }
+    return map
+  }, [chungRows, giaoRows, nhanRows])
+
   const sqlQueryText = `-- Bảng lưu Đơn giá vật tư
 CREATE TABLE IF NOT EXISTS public.don_gia_vat_tu (
     id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
@@ -4990,7 +5053,7 @@ CREATE POLICY "Allow public delete" ON public.don_gia_vat_tu FOR DELETE USING (t
   }, [statusFilter])
   const [currentPage, setCurrentPage] = React.useState(1)
   const [pageSize, setPageSize] = React.useState(50)
-  const [sortField, setSortField] = React.useState('maSAP') // 'maSAP' | 'received' | 'issued' | 'stock'
+  const [sortField, setSortField] = React.useState('default') // 'default' | 'maSAP' | 'received' | 'issued' | 'stock'
   const [sortDirection, setSortDirection] = React.useState('asc') // 'asc' | 'desc'
 
   // Extract all unique warehouses
@@ -5018,10 +5081,10 @@ CREATE POLICY "Allow public delete" ON public.don_gia_vat_tu FOR DELETE USING (t
     return [...list].sort()
   }, [allProjects, chungRows, giaoRows, nhanRows])
 
-  // Process rows and group by maSAP
-  const reportData = React.useMemo(() => {
+  // Process raw rows and group by maSAP for a given project/warehouse
+  const computeProjectReportData = React.useCallback((proj) => {
     const groups = {}
-    const projLower = localProject ? localProject.trim().toLowerCase() : ''
+    const projLower = proj ? proj.trim().toLowerCase() : ''
 
     // Helper to parse double values safely
     const parseVal = (val) => {
@@ -5048,7 +5111,7 @@ CREATE POLICY "Allow public delete" ON public.don_gia_vat_tu FOR DELETE USING (t
       let isNhan = false
       let isGiao = false
 
-      if (localProject) {
+      if (proj) {
         isNhan = nhanUnit === projLower
         isGiao = giaoUnit === projLower
         // If this row is not related to our selected warehouse, skip
@@ -5060,7 +5123,7 @@ CREATE POLICY "Allow public delete" ON public.don_gia_vat_tu FOR DELETE USING (t
 
       // Use maSAP as grouping key (fallback to empty string if not present)
       const sap = String(r.maSAP || '').trim()
-      if (!sap) return // Skip rows without SAP code as per requirement: "thống kê báo cáo với Mã SAP"
+      if (!sap) return // Skip rows without SAP code as per requirement
 
       // Initialize group if not exists
       if (!groups[sap]) {
@@ -5086,7 +5149,7 @@ CREATE POLICY "Allow public delete" ON public.don_gia_vat_tu FOR DELETE USING (t
       const rowDate = parseRowDate(r.ngayXuatNhap)
 
       // Add to received/issued
-      if (localProject) {
+      if (proj) {
         if (isNhan) {
           // Receiving unit: add to received
           groups[sap].received += parseVal(r.khoiLuongNhap) || parseVal(r.khoiLuongXuat)
@@ -5118,9 +5181,34 @@ CREATE POLICY "Allow public delete" ON public.don_gia_vat_tu FOR DELETE USING (t
     const result = Object.values(groups).map(g => {
       const stock = g.received - g.issued
       const unusedStatus = getUnusedStatus(g, stock)
-      const estimatedUnitPrice = materialPrices[g.maSAP] || 0
-      const valueOver30Days = (unusedStatus === 'Chưa sử dụng (> 30 ngày)' && stock > 0) ? stock * estimatedUnitPrice : 0
+      
       const materialClassification = materialClassifications[g.maSAP] || ''
+      const isKhauHao = String(materialClassification).toLowerCase().includes('khấu hao') || String(materialClassification).toLowerCase().includes('tài sản')
+      
+      let estimatedUnitPrice = 0
+      let valueOver30Days = 0
+
+      // Match price from materialPriceRows first
+      const priceRow = materialPriceRows.find(r => String(r.maSAP || '').trim().toLowerCase() === String(g.maSAP || '').trim().toLowerCase())
+
+      if (isKhauHao) {
+        // Đơn giá tạm tính lấy theo cột đơn giá 1 ngày
+        estimatedUnitPrice = priceRow ? (priceRow.donGiaTrungBinh1Ngay || 0) : 0
+        if (unusedStatus === 'Chưa sử dụng (> 30 ngày)' && stock > 0) {
+          const days = getDaysToToday(g.latestReceivedDate)
+          const numDays = typeof days === 'number' ? days : 0
+          valueOver30Days = numDays * stock * estimatedUnitPrice
+        }
+      } else {
+        // Vật tư tiêu hao hoặc khác
+        estimatedUnitPrice = priceRow ? (priceRow.donGiaTrungBinh || 0) : (materialPrices[g.maSAP] || 0)
+        if (unusedStatus === 'Chưa sử dụng (> 30 ngày)' && stock > 0) {
+          valueOver30Days = stock * estimatedUnitPrice
+        }
+      }
+
+      valueOver30Days = Math.round(valueOver30Days)
+
       return {
         ...g,
         stock,
@@ -5130,6 +5218,13 @@ CREATE POLICY "Allow public delete" ON public.don_gia_vat_tu FOR DELETE USING (t
         materialClassification
       }
     })
+
+    return result
+  }, [chungRows, giaoRows, nhanRows, materialClassifications, materialPriceRows, materialPrices, matchStatusFilter, getUnusedStatus])
+
+  // Process rows and group by maSAP
+  const reportData = React.useMemo(() => {
+    const result = computeProjectReportData(localProject)
 
     // Filter by search term
     const s = searchTerm.trim().toLowerCase()
@@ -5146,6 +5241,49 @@ CREATE POLICY "Allow public delete" ON public.don_gia_vat_tu FOR DELETE USING (t
 
     // Sort
     filtered.sort((a, b) => {
+      if (sortField === 'default') {
+        const getStatusRank = (status) => {
+          const sLower = String(status || '').trim().toLowerCase()
+          if (sLower.includes('chưa sử dụng')) return 1
+          if (sLower.includes('đang sử dụng')) return 2
+          if (sLower.includes('đã dùng hết') || sLower.includes('dùng hết')) return 3
+          return 4
+        }
+
+        const getClassificationRank = (c) => {
+          const cLower = String(c || '').trim().toLowerCase()
+          if (cLower.includes('tiêu hao')) return 1
+          if (cLower.includes('khấu hao') || cLower.includes('tài sản')) return 2
+          return 3
+        }
+
+        // 1. Trạng thái vật tư không sử dụng Từ Chưa sử dụng đến Đang sử dụng đến đã dùng hết
+        const statusRankA = getStatusRank(a.unusedStatus)
+        const statusRankB = getStatusRank(b.unusedStatus)
+        if (statusRankA !== statusRankB) {
+          return sortDirection === 'asc' ? (statusRankA - statusRankB) : (statusRankB - statusRankA)
+        }
+
+        // 2. Phân loại vật tư: Vật tư tiêu hao rồi đến tài Sản khấu hao
+        const classRankA = getClassificationRank(a.materialClassification)
+        const classRankB = getClassificationRank(b.materialClassification)
+        if (classRankA !== classRankB) {
+          return sortDirection === 'asc' ? (classRankA - classRankB) : (classRankB - classRankA)
+        }
+
+        // 3. Thành tiền vật tư tồn: Từ giá trị lớn đến giá trị nhỏ
+        const valA = a.valueOver30Days || 0
+        const valB = b.valueOver30Days || 0
+        if (valA !== valB) {
+          return sortDirection === 'asc' ? (valB - valA) : (valA - valB)
+        }
+
+        // Fallback to maSAP alphabetically
+        const sapA = String(a.maSAP || '').toLowerCase()
+        const sapB = String(b.maSAP || '').toLowerCase()
+        return sortDirection === 'asc' ? sapA.localeCompare(sapB) : sapB.localeCompare(sapA)
+      }
+
       let valA, valB
       if (sortField === 'maSAP') {
         valA = a.maSAP.toLowerCase()
@@ -5176,7 +5314,128 @@ CREATE POLICY "Allow public delete" ON public.don_gia_vat_tu FOR DELETE USING (t
     })
 
     return filtered
-  }, [chungRows, giaoRows, nhanRows, localProject, searchTerm, matchStatusFilter, sortField, sortDirection, materialPrices, materialClassifications])
+  }, [computeProjectReportData, localProject, searchTerm, sortField, sortDirection])
+
+  // Extract and group dashboard statistics specifically for BCH warehouses
+  const bchWarehouses = React.useMemo(() => {
+    const bchList = uniqueWarehouses.filter(w => {
+      const lower = String(w || '').trim().toLowerCase()
+      return lower.includes('bch')
+    })
+    return bchList.length > 0 ? bchList : uniqueWarehouses
+  }, [uniqueWarehouses])
+
+  const dashboardStats = React.useMemo(() => {
+    return bchWarehouses.map(projName => {
+      const items = computeProjectReportData(projName)
+      
+      let totalStock = 0
+      let totalReceived = 0
+      let totalIssued = 0
+      
+      let totalItemsInStock = 0
+      let unusedCount = 0
+      let unusedQty = 0
+      let unusedValue = 0
+
+      items.forEach(item => {
+        if (item.received > 0 || item.issued > 0) {
+          totalReceived += item.received
+          totalIssued += item.issued
+        }
+        if (item.stock > 0) {
+          totalItemsInStock++
+          totalStock += item.stock
+          if (item.unusedStatus === 'Chưa sử dụng (> 30 ngày)') {
+            unusedCount++
+            unusedQty += item.stock
+            unusedValue += item.valueOver30Days || 0
+          }
+        }
+      })
+
+      const unusedRatio = totalItemsInStock > 0 ? (unusedCount / totalItemsInStock) * 100 : 0
+
+      // Determine alarm level
+      let alarmLevel = 'Bình thường'
+      let alarmColor = '#10b981' // Green
+      let alarmBg = '#ecfdf5'
+      let alarmBorder = '#a7f3d0'
+      
+      if (unusedValue > 1000000000 || unusedRatio > 50) {
+        alarmLevel = 'Nguy cơ cao (Đỏ)'
+        alarmColor = '#ef4444' // Red
+        alarmBg = '#fef2f2'
+        alarmBorder = '#fca5a5'
+      } else if (unusedValue > 100000000 || unusedRatio > 25) {
+        alarmLevel = 'Cảnh báo (Vàng)'
+        alarmColor = '#f59e0b' // Yellow
+        alarmBg = '#fffbeb'
+        alarmBorder = '#fde68a'
+      }
+
+      // Sort stagnant items to find the top 10 with highest unusedValue
+      const topStagnant = [...items]
+        .filter(item => item.unusedStatus === 'Chưa sử dụng (> 30 ngày)' && item.stock > 0)
+        .sort((a, b) => (b.valueOver30Days || 0) - (a.valueOver30Days || 0))
+        .slice(0, 10)
+
+      return {
+        projectName: projName,
+        totalReceived,
+        totalIssued,
+        totalStock,
+        totalItemsInStock,
+        unusedCount,
+        unusedQty,
+        unusedValue,
+        unusedRatio,
+        alarmLevel,
+        alarmColor,
+        alarmBg,
+        alarmBorder,
+        topStagnant,
+        allItems: items
+      }
+    }).sort((a, b) => b.unusedValue - a.unusedValue)
+  }, [bchWarehouses, computeProjectReportData])
+
+  const dashboardSummary = React.useMemo(() => {
+    let grandUnusedValue = 0
+    let grandUnusedCount = 0
+    let grandTotalItems = 0
+    let highestUnusedWarehouse = 'Chưa xác định'
+    let highestUnusedVal = 0
+
+    dashboardStats.forEach(stat => {
+      grandUnusedValue += stat.unusedValue
+      grandUnusedCount += stat.unusedCount
+      grandTotalItems += stat.totalItemsInStock
+      if (stat.unusedValue > highestUnusedVal) {
+        highestUnusedVal = stat.unusedValue
+        highestUnusedWarehouse = stat.projectName
+      }
+    })
+
+    const averageUnusedRatio = grandTotalItems > 0 ? (grandUnusedCount / grandTotalItems) * 100 : 0
+
+    return {
+      grandUnusedValue,
+      grandUnusedCount,
+      grandTotalItems,
+      averageUnusedRatio,
+      highestUnusedWarehouse,
+      highestUnusedVal
+    }
+  }, [dashboardStats])
+
+  const [selectedDashProject, setSelectedDashProject] = React.useState(null)
+
+  const activeDashStat = React.useMemo(() => {
+    if (dashboardStats.length === 0) return null
+    if (!selectedDashProject) return dashboardStats[0]
+    return dashboardStats.find(s => s.projectName === selectedDashProject) || dashboardStats[0]
+  }, [dashboardStats, selectedDashProject])
 
   // Chi tiết các đơn nhận / đơn xuất cấu thành nên khối lượng nhận - khối lượng xuất ở bảng tổng hợp.
   // Dùng đúng logic lọc (Kho/Dự án + trạng thái) như reportData để đảm bảo số liệu khớp 100%.
@@ -5414,7 +5673,7 @@ CREATE POLICY "Allow public delete" ON public.don_gia_vat_tu FOR DELETE USING (t
           : '',
         item.unusedStatus,
         item.estimatedUnitPrice,
-        { f: `IF(N${rowIdx}="Chưa sử dụng (> 30 ngày)", I${rowIdx}*O${rowIdx}, 0)`, v: item.valueOver30Days },
+        { f: `IF(N${rowIdx}="Chưa sử dụng (> 30 ngày)", ROUND(IF(OR(ISNUMBER(SEARCH("khấu hao", Q${rowIdx})), ISNUMBER(SEARCH("tài sản", Q${rowIdx}))), K${rowIdx}*I${rowIdx}*O${rowIdx}, I${rowIdx}*O${rowIdx}), 0), 0)`, v: item.valueOver30Days },
         item.materialClassification
       ]
 
@@ -5692,17 +5951,7 @@ CREATE POLICY "Allow public delete" ON public.don_gia_vat_tu FOR DELETE USING (t
             const serial = toExcelSerial(val)
             dws[cellRef] = {
               v: serial !== null ? serial : (val || ''),
-              t: serial !== null ? 'n' : 's',
-              s: {
-                font: { name: 'Segoe UI', sz: 9.5 },
-                alignment: { horizontal: 'center', vertical: 'center' },
-                border: {
-                  top: { style: 'thin', color: { rgb: 'E2E8F0' } },
-                  bottom: { style: 'thin', color: { rgb: 'E2E8F0' } },
-                  left: { style: 'thin', color: { rgb: 'E2E8F0' } },
-                  right: { style: 'thin', color: { rgb: 'E2E8F0' } }
-                }
-              }
+              t: serial !== null ? 'n' : 's'
             }
             if (serial !== null) dws[cellRef].z = 'dd/mm/yyyy'
             return
@@ -5711,20 +5960,7 @@ CREATE POLICY "Allow public delete" ON public.don_gia_vat_tu FOR DELETE USING (t
           const isNum = typeof val === 'number'
           dws[cellRef] = {
             v: val ?? '',
-            t: isNum ? 'n' : 's',
-            s: {
-              font: { name: 'Segoe UI', sz: 9.5 },
-              alignment: {
-                horizontal: col.key === 'tenVatTu' || col.key === 'thongSoKyThuat' || col.key === 'ghiChu' ? 'left' : (isNum ? 'right' : 'center'),
-                vertical: 'center'
-              },
-              border: {
-                top: { style: 'thin', color: { rgb: 'E2E8F0' } },
-                bottom: { style: 'thin', color: { rgb: 'E2E8F0' } },
-                left: { style: 'thin', color: { rgb: 'E2E8F0' } },
-                right: { style: 'thin', color: { rgb: 'E2E8F0' } }
-              }
-            }
+            t: isNum ? 'n' : 's'
           }
           if (isNum) dws[cellRef].z = '#,##0.000'
         })
@@ -5789,7 +6025,7 @@ CREATE POLICY "Allow public delete" ON public.don_gia_vat_tu FOR DELETE USING (t
     const xuatSheet = buildDetailSheet(detailRows.xuatList, 'CHI TIẾT ĐƠN XUẤT (cấu thành Khối lượng xuất)', 'Khối lượng xuất')
     XLSXStyle.utils.book_append_sheet(wb, xuatSheet, "Don_Xuat")
 
-    const wbout = XLSXStyle.write(wb, { bookType: 'xlsx', type: 'binary' })
+    const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'binary', compression: true })
 
     const s2ab = (s) => {
       const buf = new ArrayBuffer(s.length)
@@ -5882,24 +6118,6 @@ CREATE POLICY "Allow public delete" ON public.don_gia_vat_tu FOR DELETE USING (t
       {/* Sub-tabs for Inventory Report view */}
       <div style={{ display: 'flex', gap: 6, marginBottom: 12, borderBottom: '1px solid var(--border)', paddingBottom: 6, flexShrink: 0 }}>
         <button
-          onClick={() => setSubTab('summary')}
-          style={{
-            padding: '8px 16px',
-            borderRadius: '6px 6px 0 0',
-            fontSize: '13.5px',
-            fontWeight: subTab === 'summary' ? 700 : 500,
-            background: subTab === 'summary' ? 'var(--primary)' : 'transparent',
-            color: subTab === 'summary' ? '#ffffff' : 'var(--text-muted)',
-            border: 'none',
-            cursor: 'pointer',
-            transition: 'all 0.15s',
-            boxShadow: subTab === 'summary' ? 'var(--shadow-sm)' : 'none',
-            borderBottom: subTab === 'summary' ? '2px solid var(--primary)' : 'none'
-          }}
-        >
-          Bảng tổng hợp
-        </button>
-        <button
           onClick={() => setSubTab('dongia')}
           style={{
             padding: '8px 16px',
@@ -5917,9 +6135,548 @@ CREATE POLICY "Allow public delete" ON public.don_gia_vat_tu FOR DELETE USING (t
         >
           Đơn giá vật tư
         </button>
+        <button
+          onClick={() => setSubTab('summary')}
+          style={{
+            padding: '8px 16px',
+            borderRadius: '6px 6px 0 0',
+            fontSize: '13.5px',
+            fontWeight: subTab === 'summary' ? 700 : 500,
+            background: subTab === 'summary' ? 'var(--primary)' : 'transparent',
+            color: subTab === 'summary' ? '#ffffff' : 'var(--text-muted)',
+            border: 'none',
+            cursor: 'pointer',
+            transition: 'all 0.15s',
+            boxShadow: subTab === 'summary' ? 'var(--shadow-sm)' : 'none',
+            borderBottom: subTab === 'summary' ? '2px solid var(--primary)' : 'none'
+          }}
+        >
+          Bảng chi tiết
+        </button>
+        <button
+          onClick={() => setSubTab('dashboard')}
+          style={{
+            padding: '8px 16px',
+            borderRadius: '6px 6px 0 0',
+            fontSize: '13.5px',
+            fontWeight: subTab === 'dashboard' ? 700 : 500,
+            background: subTab === 'dashboard' ? 'var(--primary)' : 'transparent',
+            color: subTab === 'dashboard' ? '#ffffff' : 'var(--text-muted)',
+            border: 'none',
+            cursor: 'pointer',
+            transition: 'all 0.15s',
+            boxShadow: subTab === 'dashboard' ? 'var(--shadow-sm)' : 'none',
+            borderBottom: subTab === 'dashboard' ? '2px solid var(--primary)' : 'none'
+          }}
+        >
+          Dashboard báo cáo
+        </button>
       </div>
 
-      {subTab === 'summary' ? (
+      {subTab === 'dashboard' && (
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'auto', gap: 16, paddingBottom: 16 }}>
+          {/* Summary Cards Row */}
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
+            gap: 12,
+            flexShrink: 0
+          }}>
+            {/* Card 1: Grand Unused Value */}
+            <div style={{
+              background: '#ffffff',
+              borderRadius: 8,
+              border: '1px solid var(--border)',
+              padding: '16px 20px',
+              boxShadow: 'var(--shadow-sm)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 16
+            }}>
+              <div style={{
+                background: '#fee2e2',
+                color: '#ef4444',
+                padding: 12,
+                borderRadius: 8,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}>
+                <AlertCircle size={24} />
+              </div>
+              <div>
+                <div style={{ fontSize: 12.5, color: 'var(--text-muted)', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                  Tổng giá trị tồn chưa dùng
+                </div>
+                <div style={{ fontSize: 20, fontWeight: 800, color: '#ef4444', margin: '4px 0 2px 0' }}>
+                  {dashboardSummary.grandUnusedValue.toLocaleString('vi-VN')} đ
+                </div>
+                <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                  Tích lũy từ tất cả dự án BCH (> 30 ngày)
+                </div>
+              </div>
+            </div>
+
+            {/* Card 2: Total Warned Items */}
+            <div style={{
+              background: '#ffffff',
+              borderRadius: 8,
+              border: '1px solid var(--border)',
+              padding: '16px 20px',
+              boxShadow: 'var(--shadow-sm)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 16
+            }}>
+              <div style={{
+                background: '#fff9db',
+                color: '#f59e0b',
+                padding: 12,
+                borderRadius: 8,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}>
+                <AlertTriangle size={24} />
+              </div>
+              <div>
+                <div style={{ fontSize: 12.5, color: 'var(--text-muted)', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                  Số mặt hàng cảnh báo
+                </div>
+                <div style={{ fontSize: 20, fontWeight: 800, color: '#f59e0b', margin: '4px 0 2px 0' }}>
+                  {dashboardSummary.grandUnusedCount.toLocaleString()} / {dashboardSummary.grandTotalItems.toLocaleString()}
+                </div>
+                <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                  Tỷ lệ chậm sử dụng: <strong style={{ color: '#f59e0b' }}>{dashboardSummary.averageUnusedRatio.toFixed(1)}%</strong>
+                </div>
+              </div>
+            </div>
+
+            {/* Card 3: Highest Unused Warehouse */}
+            <div style={{
+              background: '#ffffff',
+              borderRadius: 8,
+              border: '1px solid var(--border)',
+              padding: '16px 20px',
+              boxShadow: 'var(--shadow-sm)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 16
+            }}>
+              <div style={{
+                background: '#eff6ff',
+                color: 'var(--primary)',
+                padding: 12,
+                borderRadius: 8,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}>
+                <Building2 size={24} />
+              </div>
+              <div style={{ minWidth: 0, flex: 1 }}>
+                <div style={{ fontSize: 12.5, color: 'var(--text-muted)', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                  Dự án tồn đọng cao nhất
+                </div>
+                <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)', margin: '4px 0 2px 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={dashboardSummary.highestUnusedWarehouse}>
+                  {dashboardSummary.highestUnusedWarehouse}
+                </div>
+                <div style={{ fontSize: 12, color: 'var(--text-muted)', display: 'flex', justifyContent: 'space-between' }}>
+                  <span>Giá trị tồn:</span>
+                  <strong style={{ color: '#ef4444' }}>{dashboardSummary.highestUnusedVal.toLocaleString('vi-VN')} đ</strong>
+                </div>
+              </div>
+            </div>
+
+            {/* Card 4: Monitoring projects */}
+            <div style={{
+              background: '#ffffff',
+              borderRadius: 8,
+              border: '1px solid var(--border)',
+              padding: '16px 20px',
+              boxShadow: 'var(--shadow-sm)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 16
+            }}>
+              <div style={{
+                background: '#ecfdf5',
+                color: '#10b981',
+                padding: 12,
+                borderRadius: 8,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}>
+                <Warehouse size={24} />
+              </div>
+              <div>
+                <div style={{ fontSize: 12.5, color: 'var(--text-muted)', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                  Kho dự án BCH theo dõi
+                </div>
+                <div style={{ fontSize: 20, fontWeight: 800, color: '#10b981', margin: '4px 0 2px 0' }}>
+                  {bchWarehouses.length} <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-muted)' }}>kho dự án</span>
+                </div>
+                <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                  Giám sát tự động tình trạng tồn đọng
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Biểu đồ so sánh giá trị tồn giữa các kho BCH */}
+          <div style={{
+            background: '#ffffff',
+            borderRadius: 8,
+            border: '1px solid var(--border)',
+            padding: '16px 20px',
+            boxShadow: 'var(--shadow-sm)',
+            flexShrink: 0
+          }}>
+            <h3 style={{ fontSize: 14.5, fontWeight: 700, color: 'var(--text)', margin: '0 0 12px 0', display: 'flex', alignItems: 'center', gap: 6 }}>
+              <BarChart3 size={16} style={{ color: 'var(--primary)' }} />
+              BIỂU ĐỒ SO SÁNH GIÁ TRỊ TỒN CHƯA SỬ DỤNG (> 30 NGÀY) GIỮA CÁC KHO DỰ ÁN BCH
+            </h3>
+            
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {dashboardStats.map((stat, index) => {
+                const maxVal = dashboardSummary.highestUnusedVal || 1
+                const percent = (stat.unusedValue / maxVal) * 100
+                const isSelected = selectedDashProject === stat.projectName || (!selectedDashProject && index === 0)
+                
+                return (
+                  <div 
+                    key={stat.projectName}
+                    onClick={() => setSelectedDashProject(stat.projectName)}
+                    style={{ 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      gap: 12, 
+                      cursor: 'pointer',
+                      padding: '6px 8px',
+                      borderRadius: 6,
+                      background: isSelected ? 'var(--primary-light)' : 'transparent',
+                      transition: 'all 0.15s'
+                    }}
+                  >
+                    <div style={{ width: 220, fontSize: 13, fontWeight: isSelected ? 700 : 500, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={stat.projectName}>
+                      {index + 1}. {stat.projectName}
+                    </div>
+                    
+                    <div style={{ flex: 1, height: 16, background: '#f1f5f9', borderRadius: 4, overflow: 'hidden', position: 'relative' }}>
+                      <div style={{ 
+                        width: `${Math.max(2, percent)}%`, 
+                        height: '100%', 
+                        background: stat.alarmColor === '#ef4444' ? 'linear-gradient(90deg, #fca5a5, #ef4444)' : (stat.alarmColor === '#f59e0b' ? 'linear-gradient(90deg, #fde68a, #f59e0b)' : 'linear-gradient(90deg, #cbd5e1, #94a3b8)'), 
+                        borderRadius: 4,
+                        transition: 'width 0.4s ease-out'
+                      }} />
+                    </div>
+                    
+                    <div style={{ width: 140, textAlign: 'right', fontSize: 13, fontWeight: 700, color: stat.unusedValue > 0 ? stat.alarmColor : 'var(--text-muted)' }}>
+                      {stat.unusedValue.toLocaleString('vi-VN')} đ
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+
+          {/* Interactive Split View: Left List vs Right Detail */}
+          <div style={{
+            display: 'flex',
+            flexDirection: 'row',
+            gap: 16,
+            flex: 1,
+            minHeight: 400
+          }}>
+            {/* Left Box: BCH Warehouses List */}
+            <div style={{
+              flex: '1 1 55%',
+              background: '#ffffff',
+              borderRadius: 8,
+              border: '1px solid var(--border)',
+              boxShadow: 'var(--shadow-sm)',
+              display: 'flex',
+              flexDirection: 'column',
+              overflow: 'hidden'
+            }}>
+              <div style={{
+                padding: '12px 16px',
+                borderBottom: '1px solid var(--border)',
+                background: '#f8fafc',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center'
+              }}>
+                <h3 style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text)', margin: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <ClipboardList size={15} style={{ color: 'var(--primary)' }} />
+                  DANH SÁCH XẾP HẠNG CẢNH BÁO KHO DỰ ÁN BCH
+                </h3>
+                <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                  Theo giá trị tồn đọng chưa dùng giảm dần
+                </span>
+              </div>
+
+              <div style={{ flex: 1, overflow: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', borderSpacing: 0 }}>
+                  <thead>
+                    <tr style={{ background: '#f1f5f9', borderBottom: '1px solid var(--border)', position: 'sticky', top: 0, zIndex: 1 }}>
+                      <th style={{ width: 50, textAlign: 'center', fontSize: 12, fontWeight: 700, color: '#475569', padding: '10px 8px' }}>STT</th>
+                      <th style={{ textAlign: 'left', fontSize: 12, fontWeight: 700, color: '#475569', padding: '10px 8px' }}>Tên kho dự án</th>
+                      <th style={{ width: 150, textAlign: 'center', fontSize: 12, fontWeight: 700, color: '#475569', padding: '10px 8px' }}>Mức độ cảnh báo</th>
+                      <th style={{ width: 140, textAlign: 'center', fontSize: 12, fontWeight: 700, color: '#475569', padding: '10px 8px' }}>Mặt hàng chưa dùng</th>
+                      <th style={{ width: 140, textAlign: 'right', fontSize: 12, fontWeight: 700, color: '#475569', padding: '10px 8px' }}>Khối lượng chưa dùng</th>
+                      <th style={{ width: 150, textAlign: 'right', fontSize: 12, fontWeight: 700, color: '#475569', padding: '10px 8px' }}>Thành tiền tồn đọng</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {dashboardStats.length === 0 ? (
+                      <tr>
+                        <td colSpan={6} style={{ padding: 30, textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>
+                          Không có dữ liệu kho dự án BCH nào
+                        </td>
+                      </tr>
+                    ) : (
+                      dashboardStats.map((stat, idx) => {
+                        const isSelected = selectedDashProject === stat.projectName || (!selectedDashProject && idx === 0)
+                        return (
+                          <tr 
+                            key={stat.projectName}
+                            onClick={() => setSelectedDashProject(stat.projectName)}
+                            style={{
+                              borderBottom: '1px solid #f1f5f9',
+                              cursor: 'pointer',
+                              background: isSelected ? 'var(--primary-light)' : (idx % 2 === 0 ? '#ffffff' : '#f8fafc'),
+                              fontWeight: isSelected ? 600 : 'normal',
+                              transition: 'all 0.15s'
+                            }}
+                          >
+                            <td style={{ textAlign: 'center', padding: '10px 8px', fontSize: 12.5, color: 'var(--text-muted)' }}>{idx + 1}</td>
+                            <td style={{ textAlign: 'left', padding: '10px 8px', fontSize: 12.5, color: 'var(--text)' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                {isSelected && <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--primary)' }} />}
+                                <span>{stat.projectName}</span>
+                              </div>
+                            </td>
+                            <td style={{ textAlign: 'center', padding: '10px 8px' }}>
+                              <span style={{
+                                background: stat.alarmBg,
+                                color: stat.alarmColor,
+                                border: `1px solid ${stat.alarmBorder}`,
+                                padding: '3px 8px',
+                                borderRadius: 4,
+                                fontSize: 11,
+                                fontWeight: 700,
+                                display: 'inline-block'
+                              }}>
+                                {stat.alarmLevel}
+                              </span>
+                            </td>
+                            <td style={{ textAlign: 'center', padding: '10px 8px', fontSize: 12.5, color: 'var(--text)' }}>
+                              <strong>{stat.unusedCount}</strong> / {stat.totalItemsInStock}
+                              <span style={{ fontSize: 11, color: 'var(--text-muted)', display: 'inline', marginLeft: 4 }}>
+                                ({stat.unusedRatio.toFixed(1)}%)
+                              </span>
+                            </td>
+                            <td style={{ textAlign: 'right', padding: '10px 8px', fontSize: 12.5, color: 'var(--text-muted)' }}>
+                              {stat.unusedQty.toLocaleString('vi-VN')}
+                            </td>
+                            <td style={{ textAlign: 'right', padding: '10px 8px', fontSize: 12.5, color: stat.unusedValue > 0 ? stat.alarmColor : 'var(--text)', fontWeight: 700 }}>
+                              {stat.unusedValue.toLocaleString('vi-VN')} đ
+                            </td>
+                          </tr>
+                        )
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Right Box: Selected Detail */}
+            <div style={{
+              flex: '1 1 45%',
+              background: '#ffffff',
+              borderRadius: 8,
+              border: '1px solid var(--border)',
+              boxShadow: 'var(--shadow-sm)',
+              display: 'flex',
+              flexDirection: 'column',
+              overflow: 'hidden'
+            }}>
+              {activeDashStat ? (
+                <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
+                  <div style={{
+                    padding: '12px 16px',
+                    borderBottom: '1px solid var(--border)',
+                    background: '#f8fafc',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 4
+                  }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--primary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                      CHI TIẾT KHO ĐANG THEO DÕI
+                    </div>
+                    <h3 style={{ fontSize: 14.5, fontWeight: 800, color: 'var(--text)', margin: 0, display: 'flex', alignItems: 'center', gap: 6, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={activeDashStat.projectName}>
+                      <Warehouse size={16} style={{ color: 'var(--primary)' }} />
+                      {activeDashStat.projectName}
+                    </h3>
+                  </div>
+
+                  <div style={{ flex: 1, overflow: 'auto', padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+                    {/* Progress Bar */}
+                    <div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12.5, color: 'var(--text)', marginBottom: 6 }}>
+                        <span style={{ fontWeight: 500 }}>Tỷ lệ mặt hàng chậm sử dụng:</span>
+                        <strong style={{ color: activeDashStat.alarmColor }}>{activeDashStat.unusedRatio.toFixed(1)}%</strong>
+                      </div>
+                      <div style={{ height: 12, background: '#f1f5f9', borderRadius: 6, overflow: 'hidden', display: 'flex' }}>
+                        <div style={{
+                          width: `${activeDashStat.unusedRatio}%`,
+                          background: activeDashStat.alarmColor,
+                          height: '100%',
+                          transition: 'width 0.3s'
+                        }} />
+                        <div style={{
+                          width: `${100 - activeDashStat.unusedRatio}%`,
+                          background: '#e2e8f0',
+                          height: '100%'
+                        }} />
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>
+                        <span>Chưa sử dụng (>30 ngày): <strong>{activeDashStat.unusedCount}</strong> mặt hàng</span>
+                        <span>Đang sử dụng: <strong>{activeDashStat.totalItemsInStock - activeDashStat.unusedCount}</strong> mặt hàng</span>
+                      </div>
+                    </div>
+
+                    {/* Summary box */}
+                    <div style={{
+                      display: 'grid',
+                      gridTemplateColumns: '1fr 1fr',
+                      gap: 10,
+                      background: '#f8fafc',
+                      padding: 12,
+                      borderRadius: 6,
+                      border: '1px solid var(--border)'
+                    }}>
+                      <div>
+                        <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 500 }}>TỔNG NHẬP (LŨY KẾ)</div>
+                        <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)', marginTop: 2 }}>{activeDashStat.totalReceived.toLocaleString('vi-VN')}</div>
+                      </div>
+                      <div>
+                        <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 500 }}>TỔNG XUẤT (LŨY KẾ)</div>
+                        <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)', marginTop: 2 }}>{activeDashStat.totalIssued.toLocaleString('vi-VN')}</div>
+                      </div>
+                      <div style={{ gridColumn: 'span 2', borderTop: '1px solid #e2e8f0', paddingTop: 8, marginTop: 4 }}>
+                        <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 500 }}>TỔNG THÀNH TIỀN TỒN ĐỌNG CHƯA DÙNG</div>
+                        <div style={{ fontSize: 16, fontWeight: 800, color: activeDashStat.alarmColor, marginTop: 2 }}>
+                          {activeDashStat.unusedValue.toLocaleString('vi-VN')} đ
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Top 10 Warned items list */}
+                    <div>
+                      <h4 style={{ fontSize: 12.5, fontWeight: 700, color: '#475569', margin: '0 0 8px 0', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                        TOP 10 VẬT TƯ TỒN ĐỌNG GIÁ TRỊ LỚN NHẤT KHO NÀY
+                      </h4>
+                      
+                      {activeDashStat.topStagnant.length === 0 ? (
+                        <div style={{ padding: 20, textAlign: 'center', background: '#f8fafc', borderRadius: 6, color: 'var(--text-muted)', fontSize: 12 }}>
+                          Không có vật tư nào bị cảnh báo chậm sử dụng ở kho này!
+                        </div>
+                      ) : (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                          {activeDashStat.topStagnant.map((item, idx) => (
+                            <div 
+                              key={item.maSAP + idx}
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                padding: '8px 10px',
+                                background: '#f8fafc',
+                                borderRadius: 6,
+                                borderLeft: `3px solid ${activeDashStat.alarmColor}`,
+                                gap: 12
+                              }}
+                            >
+                              <div style={{ minWidth: 0, flex: 1 }}>
+                                <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                                  <span style={{ color: 'var(--text-muted)', fontSize: 11 }}>{item.maSAP}</span>
+                                  <span style={{
+                                    background: '#e2e8f0',
+                                    color: '#475569',
+                                    padding: '1px 4px',
+                                    borderRadius: 3,
+                                    fontSize: 10,
+                                    fontWeight: 500
+                                  }}>
+                                    {item.dvt}
+                                  </span>
+                                </div>
+                                <div style={{ fontSize: 12, color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: 2 }} title={item.tenVatTu}>
+                                  {item.tenVatTu}
+                                </div>
+                              </div>
+                              <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                                <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--text)' }}>
+                                  {item.valueOver30Days.toLocaleString('vi-VN')} đ
+                                </div>
+                                <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 1 }}>
+                                  Tồn: <strong>{item.stock.toLocaleString('vi-VN', { maximumFractionDigits: 3 })}</strong>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Action button */}
+                    <button
+                      onClick={() => {
+                        setLocalProject(activeDashStat.projectName)
+                        setSubTab('summary')
+                        setCurrentPage(1)
+                      }}
+                      className="btn"
+                      style={{
+                        width: '100%',
+                        background: 'var(--primary)',
+                        color: '#ffffff',
+                        padding: '10px 14px',
+                        borderRadius: 6,
+                        fontSize: 13,
+                        fontWeight: 700,
+                        border: 'none',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: 6,
+                        marginTop: 'auto',
+                        boxShadow: 'var(--shadow-sm)',
+                        transition: 'opacity 0.15s'
+                      }}
+                    >
+                      <BarChart3 size={15} />
+                      <span>Xem chi tiết tất cả vật tư kho này tại Bảng chi tiết</span>
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)', fontSize: 13.5 }}>
+                  Hãy chọn một kho dự án để xem chi tiết
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {subTab === 'summary' && (
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: 0 }}>
           {/* Title Header Card */}
           <div style={{
@@ -6307,44 +7064,11 @@ CREATE POLICY "Allow public delete" ON public.don_gia_vat_tu FOR DELETE USING (t
                       </td>
 
                       {/* Đơn giá trung bình tạm tính */}
-                      <td style={{ width: 110, minWidth: 110, textAlign: 'right', padding: '6px 10px' }}>
-                        <input
-                          type="text"
-                          placeholder="Nhập..."
-                          value={materialPrices[item.maSAP] !== undefined && materialPrices[item.maSAP] !== 0 ? materialPrices[item.maSAP].toLocaleString('vi-VN') : ''}
-                          onChange={(e) => {
-                            const rawVal = e.target.value.replace(/[^\d]/g, '')
-                            const numVal = rawVal ? parseInt(rawVal, 10) : 0
-                            handlePriceChange(item.maSAP, numVal)
-                          }}
-                          style={{
-                            width: '100%',
-                            textAlign: 'right',
-                            fontSize: '13px',
-                            fontWeight: 600,
-                            color: 'var(--text)',
-                            padding: '4px 6px',
-                            borderRadius: '4px',
-                            border: '1px solid #cbd5e1',
-                            outline: 'none',
-                            background: '#f8fafc',
-                            transition: 'all 0.15s'
-                          }}
-                          onFocus={(e) => {
-                            e.target.style.background = '#ffffff'
-                            e.target.style.borderColor = 'var(--primary)'
-                            e.target.style.boxShadow = '0 0 0 2px var(--primary-light)'
-                            const val = materialPrices[item.maSAP]
-                            e.target.value = val !== undefined && val !== 0 ? String(val) : ''
-                          }}
-                          onBlur={(e) => {
-                            e.target.style.background = '#f8fafc'
-                            e.target.style.borderColor = '#cbd5e1'
-                            e.target.style.boxShadow = 'none'
-                            const val = materialPrices[item.maSAP]
-                            e.target.value = val !== undefined && val !== 0 ? val.toLocaleString('vi-VN') : ''
-                          }}
-                        />
+                      <td style={{ width: 110, minWidth: 110, textAlign: 'right', padding: '6px 10px', fontSize: '13px', fontWeight: 700, color: 'var(--primary)' }}>
+                        {(() => {
+                          const price = item.estimatedUnitPrice || 0;
+                          return price > 0 ? price.toLocaleString('vi-VN') : '—';
+                        })()}
                       </td>
 
                       {/* Thành tiền vật tư tồn >30 ngày */}
@@ -6359,35 +7083,64 @@ CREATE POLICY "Allow public delete" ON public.don_gia_vat_tu FOR DELETE USING (t
 
                       {/* Phân loại vật tư */}
                       <td style={{ width: 110, minWidth: 110, textAlign: 'center', padding: '6px 10px' }}>
-                        <input
-                          type="text"
-                          placeholder="Phân loại..."
-                          value={materialClassifications[item.maSAP] || ''}
-                          onChange={(e) => handleClassificationChange(item.maSAP, e.target.value)}
-                          style={{
-                            width: '100%',
-                            textAlign: 'center',
-                            fontSize: '12.5px',
-                            fontWeight: 500,
-                            color: 'var(--text)',
-                            padding: '4px 6px',
-                            borderRadius: '4px',
-                            border: '1px solid #cbd5e1',
-                            outline: 'none',
-                            background: '#f8fafc',
-                            transition: 'all 0.15s'
-                          }}
-                          onFocus={(e) => {
-                            e.target.style.background = '#ffffff'
-                            e.target.style.borderColor = 'var(--primary)'
-                            e.target.style.boxShadow = '0 0 0 2px var(--primary-light)'
-                          }}
-                          onBlur={(e) => {
-                            e.target.style.background = '#f8fafc'
-                            e.target.style.borderColor = '#cbd5e1'
-                            e.target.style.boxShadow = 'none'
-                          }}
-                        />
+                        {(() => {
+                          const val = materialClassifications[item.maSAP] || ''
+                          const text = val.trim().toLowerCase()
+                          
+                          let bg = '#f8fafc'
+                          let fg = '#64748b'
+                          let border = '#cbd5e1'
+                          
+                          if (text) {
+                            if (text.includes('tiêu hao')) {
+                              bg = '#ecfdf5' // Soft green
+                              fg = '#047857' // Deep green
+                              border = '#a7f3d0' // Light green border
+                            } else if (text.includes('khấu hao') || text.includes('tài sản')) {
+                              bg = '#fff7ed' // Soft orange
+                              fg = '#ea580c' // Deep orange
+                              border = '#fed7aa' // Light orange border
+                            } else {
+                              bg = '#eff6ff' // Soft blue
+                              fg = '#1d4ed8' // Deep blue
+                              border = '#bfdbfe'
+                            }
+                          }
+
+                          return (
+                            <input
+                              type="text"
+                              placeholder="Phân loại..."
+                              value={val}
+                              onChange={(e) => handleClassificationChange(item.maSAP, e.target.value)}
+                              style={{
+                                width: '100%',
+                                textAlign: 'center',
+                                fontSize: '12px',
+                                fontWeight: 700,
+                                color: fg,
+                                padding: '4px 6px',
+                                borderRadius: '4px',
+                                border: `1.5px solid ${border}`,
+                                outline: 'none',
+                                background: bg,
+                                transition: 'all 0.15s'
+                              }}
+                              onFocus={(e) => {
+                                e.target.style.background = '#ffffff'
+                                e.target.style.borderColor = 'var(--primary)'
+                                e.target.style.boxShadow = '0 0 0 2px var(--primary-light)'
+                                e.target.style.color = 'var(--text)'
+                              }}
+                              onBlur={(e) => {
+                                e.target.style.background = bg
+                                e.target.style.borderColor = border
+                                e.target.style.boxShadow = 'none'
+                                e.target.style.color = fg
+                              }}
+                            />
+                          )
+                        })()}
                       </td>
                     </tr>
                   )
@@ -6454,7 +7207,9 @@ CREATE POLICY "Allow public delete" ON public.don_gia_vat_tu FOR DELETE USING (t
         </div>
       )}
         </div>
-      ) : (
+      )}
+
+      {subTab === 'dongia' && (
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: 0 }}>
           {/* Title and Controls Card */}
           <div style={{
@@ -6582,11 +7337,13 @@ CREATE POLICY "Allow public delete" ON public.don_gia_vat_tu FOR DELETE USING (t
 
               {/* Table wrapper */}
               <div style={{ flex: 1, overflow: 'auto', minHeight: 0 }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', borderSpacing: 0, tableLayout: 'fixed' }}>
+                <table style={{ width: '100%', minWidth: 1220, borderCollapse: 'collapse', borderSpacing: 0, tableLayout: 'fixed' }}>
                   <thead>
                     <tr style={{ position: 'sticky', top: 0, background: '#f1f5f9', zIndex: 10, borderBottom: '2px solid var(--border)' }}>
                       <th style={{ width: 50, textAlign: 'center', fontSize: 12, fontWeight: 700, color: '#475569', padding: '10px' }}>STT</th>
                       <th style={{ width: 120, textAlign: 'left', fontSize: 12, fontWeight: 700, color: '#475569', padding: '10px' }}>Mã SAP</th>
+                      <th style={{ width: 220, textAlign: 'left', fontSize: 12, fontWeight: 700, color: '#475569', padding: '10px' }}>Tên vật tư</th>
+                      <th style={{ width: 80, textAlign: 'center', fontSize: 12, fontWeight: 700, color: '#475569', padding: '10px' }}>Đơn vị</th>
                       <th style={{ width: 140, textAlign: 'right', fontSize: 12, fontWeight: 700, color: '#475569', padding: '10px' }}>Khối lượng tổng</th>
                       <th style={{ width: 150, textAlign: 'right', fontSize: 12, fontWeight: 700, color: '#475569', padding: '10px' }}>Thành tiền</th>
                       <th style={{ width: 140, textAlign: 'right', fontSize: 12, fontWeight: 700, color: '#475569', padding: '10px' }}>Đơn giá trung bình</th>
@@ -6597,42 +7354,75 @@ CREATE POLICY "Allow public delete" ON public.don_gia_vat_tu FOR DELETE USING (t
                   <tbody>
                     {filteredPriceRows.length === 0 ? (
                       <tr>
-                        <td colSpan={7} style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '13.5px' }}>
+                        <td colSpan={9} style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '13.5px' }}>
                           Chưa có đơn giá nào được thiết lập. Hãy tải lên file Excel để xem dữ liệu.
                         </td>
                       </tr>
                     ) : (
-                      filteredPriceRows.map((row, idx) => (
-                        <tr key={row.maSAP + idx} style={{ borderBottom: '1px solid #f1f5f9', background: idx % 2 === 0 ? '#ffffff' : '#f8fafc' }}>
-                          <td style={{ textAlign: 'center', padding: '10px', fontSize: 13, color: 'var(--text-muted)' }}>{idx + 1}</td>
-                          <td style={{ fontWeight: 700, padding: '10px', fontSize: 13, color: 'var(--text)' }}>{row.maSAP}</td>
-                          <td style={{ textAlign: 'right', padding: '10px', fontSize: 13, color: 'var(--text)' }}>
-                            {row.khoiLuongTong ? row.khoiLuongTong.toLocaleString('vi-VN', { maximumFractionDigits: 3 }) : '0'}
-                          </td>
-                          <td style={{ textAlign: 'right', padding: '10px', fontSize: 13, color: 'var(--text)', fontWeight: 600 }}>
-                            {row.thanhTien ? row.thanhTien.toLocaleString('vi-VN') : '0'}
-                          </td>
-                          <td style={{ textAlign: 'right', padding: '10px', fontSize: 13, color: 'var(--primary)', fontWeight: 700 }}>
-                            {row.donGiaTrungBinh ? row.donGiaTrungBinh.toLocaleString('vi-VN') : '0'}
-                          </td>
-                          <td style={{ textAlign: 'right', padding: '10px', fontSize: 13, color: 'var(--text-muted)' }}>
-                            {row.donGiaTrungBinh1Ngay ? row.donGiaTrungBinh1Ngay.toLocaleString('vi-VN') : '0'}
-                          </td>
-                          <td style={{ textAlign: 'center', padding: '10px', fontSize: 13 }}>
-                            <span style={{
-                              background: '#f1f5f9',
-                              color: '#475569',
-                              padding: '2px 8px',
-                              borderRadius: 4,
-                              fontWeight: 600,
-                              fontSize: 11.5,
-                              display: 'inline-block'
-                            }}>
-                              {row.phanLoaiVatTu || 'Chưa phân loại'}
-                            </span>
-                          </td>
-                        </tr>
-                      ))
+                      filteredPriceRows.map((row, idx) => {
+                        const meta = materialMetadataMap.get(String(row.maSAP || '').trim().toLowerCase()) || { tenVatTu: '—', dvt: '—' }
+                        return (
+                          <tr key={row.maSAP + idx} style={{ borderBottom: '1px solid #f1f5f9', background: idx % 2 === 0 ? '#ffffff' : '#f8fafc' }}>
+                            <td style={{ textAlign: 'center', padding: '10px', fontSize: 13, color: 'var(--text-muted)' }}>{idx + 1}</td>
+                            <td style={{ fontWeight: 700, padding: '10px', fontSize: 13, color: 'var(--text)' }}>{row.maSAP}</td>
+                            <td style={{ textAlign: 'left', padding: '10px', fontSize: 13, color: 'var(--text)', whiteSpace: 'normal', wordBreak: 'break-word' }}>{meta.tenVatTu || '—'}</td>
+                            <td style={{ textAlign: 'center', padding: '10px', fontSize: 13, color: 'var(--text-muted)' }}>{meta.dvt || '—'}</td>
+                            <td style={{ textAlign: 'right', padding: '10px', fontSize: 13, color: 'var(--text)' }}>
+                              {row.khoiLuongTong ? row.khoiLuongTong.toLocaleString('vi-VN', { maximumFractionDigits: 3 }) : '0'}
+                            </td>
+                            <td style={{ textAlign: 'right', padding: '10px', fontSize: 13, color: 'var(--text)', fontWeight: 600 }}>
+                              {row.thanhTien ? row.thanhTien.toLocaleString('vi-VN') : '0'}
+                            </td>
+                            <td style={{ textAlign: 'right', padding: '10px', fontSize: 13, color: 'var(--primary)', fontWeight: 700 }}>
+                              {row.donGiaTrungBinh ? row.donGiaTrungBinh.toLocaleString('vi-VN') : '0'}
+                            </td>
+                            <td style={{ textAlign: 'right', padding: '10px', fontSize: 13, color: 'var(--text-muted)' }}>
+                              {row.donGiaTrungBinh1Ngay ? row.donGiaTrungBinh1Ngay.toLocaleString('vi-VN') : '0'}
+                            </td>
+                            <td style={{ textAlign: 'center', padding: '10px', fontSize: 13 }}>
+                              {(() => {
+                                const val = row.phanLoaiVatTu || ''
+                                const text = val.trim().toLowerCase()
+                                
+                                let bg = '#f1f5f9'
+                                let fg = '#475569'
+                                let border = '#cbd5e1'
+                                
+                                if (text) {
+                                  if (text.includes('tiêu hao')) {
+                                    bg = '#ecfdf5' // Soft green
+                                    fg = '#047857' // Deep green
+                                    border = '#a7f3d0'
+                                  } else if (text.includes('khấu hao') || text.includes('tài sản')) {
+                                    bg = '#fff7ed' // Soft orange
+                                    fg = '#ea580c' // Deep orange
+                                    border = '#fed7aa'
+                                  } else {
+                                    bg = '#eff6ff' // Soft blue
+                                    fg = '#1d4ed8' // Deep blue
+                                    border = '#bfdbfe'
+                                  }
+                                }
+
+                                return (
+                                  <span style={{
+                                    background: bg,
+                                    color: fg,
+                                    border: `1.5px solid ${border}`,
+                                    padding: '3px 8px',
+                                    borderRadius: 4,
+                                    fontWeight: 700,
+                                    fontSize: 11.5,
+                                    display: 'inline-block'
+                                  }}>
+                                    {val || 'Chưa phân loại'}
+                                  </span>
+                                )
+                              })()}
+                            </td>
+                          </tr>
+                        )
+                      })
                     )}
                   </tbody>
                 </table>
@@ -7113,7 +7903,7 @@ function SummaryCompilationTab({ giaoRows, nhanRows, configs = [], selectedProje
     XLSXStyle.utils.book_append_sheet(wb, wsSummary, "Tổng hợp")
     XLSXStyle.utils.book_append_sheet(wb, ws, "Tổng hợp thông tin")
 
-    const wbout = XLSXStyle.write(wb, { bookType: 'xlsx', type: 'binary' })
+    const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'binary', compression: true })
     const buf = new ArrayBuffer(wbout.length)
     const view = new Uint8Array(buf)
     for (let i = 0; i < wbout.length; i++) view[i] = wbout.charCodeAt(i) & 0xFF
@@ -9418,6 +10208,9 @@ export default function App() {
 
       // 0. Tự động phát hiện các cột thực tế đang tồn tại trong bảng (Chống lỗi 400 Bad Request triệt để)
       let tableColumnsStr = '*'
+      let hasUpdatedAt = false
+      let hasCreatedAt = false
+
       try {
         const { data: sampleRow, error: sampleErr } = await supabase
           .from(tableName)
@@ -9425,8 +10218,11 @@ export default function App() {
           .limit(1)
         
         if (!sampleErr && sampleRow && sampleRow.length > 0) {
+          const firstRow = sampleRow[0]
+          hasUpdatedAt = 'updated_at' in firstRow
+          hasCreatedAt = 'created_at' in firstRow
           const skipCols = ['created_at', 'updated_at']
-          const cols = Object.keys(sampleRow[0]).filter(k => !skipCols.includes(k))
+          const cols = Object.keys(firstRow).filter(k => !skipCols.includes(k))
           if (cols.length > 0) {
             tableColumnsStr = cols.join(',')
           }
@@ -9442,61 +10238,134 @@ export default function App() {
 
       if (countErr) throw countErr
 
-      // 2. Fetch highest record ID (uses almost zero bandwidth/egress)
-      const { data: maxIdData, error: maxIdErr } = await supabase
-        .from(tableName)
-        .select('id')
-        .order('id', { ascending: false })
-        .limit(1)
+      // 2. TỐI ƯU CỰC ĐẠI: Smart Incremental Sync dựa trên danh sách ID và Timestamps nhẹ
+      if (!forceBypassCache && serverCount !== null && cachedRows.length > 0) {
+        console.log(`[Smart Sync] Bắt đầu so sánh lightweight để đồng bộ tối ưu cho bảng "${tableName}"...`)
+        
+        // Chỉ select các trường siêu nhẹ (id, timestamps) nhằm giảm thiểu 99% egress
+        const selectFields = ['id']
+        if (hasUpdatedAt) selectFields.push('updated_at')
+        else if (hasCreatedAt) selectFields.push('created_at')
 
-      if (maxIdErr) throw maxIdErr
+        const { data: remoteLightData, error: lightErr } = await supabase
+          .from(tableName)
+          .select(selectFields.join(','))
 
-      const maxRemoteId = maxIdData && maxIdData.length > 0 ? Number(maxIdData[0].id) : 0
-      const maxLocalId = cachedRows.length > 0 ? Math.max(...cachedRows.map(r => Number(r.id) || 0)) : 0
+        if (!lightErr && remoteLightData) {
+          const remoteIdSet = new Set(remoteLightData.map(r => Number(r.id)))
+          const localMap = new Map(cachedRows.map(r => [Number(r.id), r]))
 
-      if (!forceBypassCache && serverCount !== null) {
-        // TRƯỜNG HỢP 1: Cache trùng khớp 100% -> Dùng luôn cache
-        if (serverCount === cachedRows.length && maxRemoteId === maxLocalId) {
-          console.log(`[Cache Tối Ưu] ${tableName} trùng khớp 100% dữ liệu. Bỏ qua tải dữ liệu.`)
-          setChungRows(cachedRows)
-          setChungFileName(cachedRows.length > 0 ? 'Report_Orders_Don_chung (Cached DB)' : '')
-          setIsInitialLoading(false)
-          return
-        }
+          const idsToFetch = []
+          const idsToDelete = new Set()
 
-        // TRƯỜNG HỢP 2: Cache cũ nhưng chỉ có dữ liệu mới được INSERT thêm (không bị xóa)
-        if (maxRemoteId > maxLocalId && serverCount >= cachedRows.length) {
-          console.log(`[Incremental Sync] Phát hiện ${serverCount - cachedRows.length} dòng mới. Đang tải các dòng có ID > ${maxLocalId}...`)
-          const { data: newDbRows, error: fetchNewErr } = await supabase
-            .from(tableName)
-            .select(tableColumnsStr)
-            .gt('id', maxLocalId)
-            .order('id', { ascending: true })
+          // Phát hiện dòng đã bị xóa trên server
+          for (const localRow of cachedRows) {
+            const lid = Number(localRow.id)
+            if (!remoteIdSet.has(lid)) {
+              idsToDelete.add(lid)
+            }
+          }
 
-          if (!fetchNewErr && newDbRows) {
-            const expectedCount = serverCount - cachedRows.length
-            if (newDbRows.length === 1000 && expectedCount > 1000) {
-              console.warn('[Incremental Sync] Số dòng mới nhận được bị giới hạn bởi PostgREST (1000 dòng). Chuyển sang tải đầy đủ...')
+          // Phát hiện dòng mới hoặc dòng đã thay đổi/cập nhật
+          for (const remoteRow of remoteLightData) {
+            const rid = Number(remoteRow.id)
+            const localRow = localMap.get(rid)
+
+            if (!localRow) {
+              idsToFetch.push(rid)
             } else {
-              console.log(`[Incremental Sync] Đã tải thêm ${newDbRows.length} dòng mới thành công.`)
-              const normalizedNewRows = newDbRows.map((item, idx) => {
-                const normalized = normalizeDbRow(item)
-                return { id: normalized.id || (maxLocalId + idx + 1), ...normalized }
-              })
+              if (hasUpdatedAt && remoteRow.updated_at) {
+                if (!localRow.updated_at || String(remoteRow.updated_at) !== String(localRow.updated_at)) {
+                  idsToFetch.push(rid)
+                }
+              } else if (hasCreatedAt && remoteRow.created_at) {
+                if (!localRow.created_at || String(remoteRow.created_at) !== String(localRow.created_at)) {
+                  idsToFetch.push(rid)
+                }
+              }
+            }
+          }
 
-              const updatedRows = [...cachedRows, ...normalizedNewRows].sort((a, b) => Number(a.id) - Number(b.id))
+          console.log(`[Smart Sync Kết Quả] Số dòng cần xóa: ${idsToDelete.size}, Số dòng cần tải mới/cập nhật: ${idsToFetch.length}`)
+
+          // Nếu trùng khớp hoàn hảo -> Tiết kiệm 100% việc tải dữ liệu chi tiết!
+          if (idsToFetch.length === 0 && idsToDelete.size === 0) {
+            console.log('[Smart Sync] Không có bất kỳ thay đổi nào từ Supabase! Tiết kiệm 100% Egress.')
+            setChungRows(cachedRows)
+            setChungFileName(cachedRows.length > 0 ? 'Report_Orders_Don_chung (Cached DB - Up to date)' : '')
+            setIsInitialLoading(false)
+            return
+          }
+
+          // Nếu số dòng thay đổi ở mức vừa phải (<= 5000 dòng), tải chính xác theo các ID đó
+          if (idsToFetch.length <= 5000) {
+            let updatedRows = cachedRows.filter(r => !idsToDelete.has(Number(r.id)))
+
+            if (idsToFetch.length > 0) {
+              console.log(`[Smart Sync] Đang tiến hành tải ${idsToFetch.length} dòng thay đổi...`)
+              const fetchedRows = []
+              let fetchErrObj = null
+
+              // Tải theo từng chunk tối đa 1000 ID để tránh tràn query limit hoặc URI limit
+              for (let i = 0; i < idsToFetch.length; i += 1000) {
+                const chunkIds = idsToFetch.slice(i, i + 1000)
+                const { data: chunkData, error: chunkErr } = await supabase
+                  .from(tableName)
+                  .select(tableColumnsStr)
+                  .in('id', chunkIds)
+
+                if (chunkErr) {
+                  fetchErrObj = chunkErr
+                  break
+                }
+                if (chunkData) {
+                  fetchedRows.push(...chunkData)
+                }
+              }
+
+              if (!fetchErrObj) {
+                const normalizedFetched = fetchedRows.map(row => normalizeDbRow(row))
+                const fetchedMap = new Map(normalizedFetched.map(r => [Number(r.id), r]))
+
+                // Trộn dữ liệu: ưu tiên dữ liệu mới tải về
+                const mergedRows = []
+                for (const r of updatedRows) {
+                  const lid = Number(r.id)
+                  if (!fetchedMap.has(lid)) {
+                    mergedRows.push(r)
+                  }
+                }
+                mergedRows.push(...normalizedFetched)
+                mergedRows.sort((a, b) => Number(a.id) - Number(b.id))
+
+                setChungRows(mergedRows)
+                setChungFileName(mergedRows.length > 0 ? 'Report_Orders_Don_chung (Supabase DB - Smart Synced)' : '')
+                await idbSet(cachedKey, mergedRows)
+                setIsInitialLoading(false)
+                console.log(`[Smart Sync Hoàn Tất] Đồng bộ thành công ${idsToFetch.length} dòng mới/cập nhật và xóa ${idsToDelete.size} dòng cũ.`)
+                return
+              } else {
+                console.warn('[Smart Sync] Lỗi tải chi tiết dòng thay đổi, chuyển sang tải lại đầy đủ...', fetchErrObj)
+              }
+            } else {
+              // Chỉ có xóa dòng
+              updatedRows.sort((a, b) => Number(a.id) - Number(b.id))
               setChungRows(updatedRows)
-              setChungFileName(updatedRows.length > 0 ? 'Report_Orders_Don_chung (Supabase DB - Incremental)' : '')
+              setChungFileName(updatedRows.length > 0 ? 'Report_Orders_Don_chung (Supabase DB - Smart Synced)' : '')
+              await idbSet(cachedKey, updatedRows)
               setIsInitialLoading(false)
+              console.log(`[Smart Sync Hoàn Tất] Đã dọn dẹp ${idsToDelete.size} dòng bị xóa thành công.`)
               return
             }
           } else {
-            console.warn('[Incremental Sync] Thất bại, chuyển sang tải đầy đủ...', fetchNewErr)
+            console.log(`[Smart Sync] Số lượng dòng thay đổi lớn (${idsToFetch.length} dòng), chuyển sang tải lại toàn bộ...`)
           }
+        } else {
+          console.warn('[Smart Sync] Lỗi khi lấy thông tin so sánh, chuyển sang tải lại đầy đủ...', lightErr)
         }
       }
 
-      // TRƯỜNG HỢP 3: Cache miss hoặc force reload hoặc có thay đổi phức tạp (sửa/xóa lệch số dòng)
+      // TRƯỜNG HỢP 3: Cache miss hoặc force reload hoặc có thay đổi phức tạp lượng lớn (> 5000 dòng)
       console.log(`[Tải DB] Bắt đầu tải mới toàn bộ từ Supabase cho bảng "${tableName}"...`)
       const PAGE_SIZE = 10000 // Tăng từ 1000 lên 10000/lần để tối ưu hóa tốc độ tải và số lượng request
       let allData = []
@@ -9553,6 +10422,7 @@ export default function App() {
 
       setChungRows(mapped)
       setChungFileName(mapped.length > 0 ? 'Report_Orders_Don_chung (Supabase DB)' : '')
+      await idbSet(cachedKey, mapped)
       setIsInitialLoading(false)
     } catch (e) {
       console.warn('[Tải DB] Có lỗi khi tải song song, chuyển sang chế độ tải tuần tự...', e)
@@ -9612,6 +10482,7 @@ export default function App() {
 
         setChungRows(mapped)
         setChungFileName(mapped.length > 0 ? 'Report_Orders_Don_chung (Supabase DB)' : '')
+        await idbSet(cachedKey, mapped)
         setIsInitialLoading(false)
       } catch (sequentialErr) {
         console.error(`Lỗi tải bảng ${tableName}:`, sequentialErr)
@@ -9675,9 +10546,19 @@ export default function App() {
 
     if (!isSupabaseConfigured) return
 
+    // Tự động đồng bộ ngầm siêu nhanh khi người dùng quay lại Tab/App (Focus-based Smart Sync)
+    // Giúp loại bỏ hoàn toàn việc lắng nghe Realtime liên tục trên hàng ngàn row gây ngốn Egress bandwidth.
+    const handleFocus = () => {
+      if (document.visibilityState === 'visible' && isSupabaseConfigured && !syncInProgressRef.current) {
+        console.log('[Focus Sync] Người dùng quay lại Tab. Đang kiểm tra cập nhật mới nhất từ Supabase ngầm...')
+        loadDataFromSupabase()
+      }
+    }
+    document.addEventListener('visibilitychange', handleFocus)
+    window.addEventListener('focus', handleFocus)
+
     // Realtime: CHỈ lắng nghe bảng du_an (rất nhẹ, vài row)
-    // KHÔNG lắng nghe don_giao/don_nhan — tránh fetch lại hàng nghìn row mỗi lần có thay đổi
-    // Dữ liệu don_giao/don_nhan được cập nhật qua local state ngay sau khi sync/xóa
+    // KHÔNG lắng nghe bảng don_chung để triệt tiêu việc websocket stream hàng vạn dòng khi Excel được import/delete
     const debouncedLoadProjects = () => {
       if (syncInProgressRef.current) return
       if (realtimeDebounceRef.current) clearTimeout(realtimeDebounceRef.current)
@@ -9693,55 +10574,13 @@ export default function App() {
         console.log('[Realtime] Cập nhật danh sách Dự Án...')
         debouncedLoadProjects()
       })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'don_chung' }, (payload) => {
-        console.log('[Realtime] Nhận sự kiện thay đổi trên don_chung:', payload.eventType, payload)
-        
-        // Nếu chính tab này đang thực hiện đồng bộ, bỏ qua sự kiện này để tránh lặp và xung đột
-        if (syncInProgressRef.current) {
-          console.log('[Realtime] Bỏ qua sự kiện vì tab này đang tự thực hiện đồng bộ.')
-          return
-        }
-
-        const eventType = payload.eventType
-
-        if (eventType === 'INSERT') {
-          const newRow = normalizeDbRow(payload.new)
-          setChungRows(prev => {
-            if (prev.some(r => Number(r.id) === Number(newRow.id))) return prev
-            const updated = [...prev, newRow].sort((a, b) => Number(a.id) - Number(b.id))
-            idbSet('sgc_chung_rows', updated)
-            return updated
-          })
-        } else if (eventType === 'UPDATE') {
-          const updatedRow = normalizeDbRow(payload.new)
-          setChungRows(prev => {
-            const index = prev.findIndex(r => Number(r.id) === Number(updatedRow.id))
-            if (index === -1) {
-              const updated = [...prev, updatedRow].sort((a, b) => Number(a.id) - Number(b.id))
-              idbSet('sgc_chung_rows', updated)
-              return updated
-            }
-            const updated = [...prev]
-            updated[index] = { ...updated[index], ...updatedRow }
-            idbSet('sgc_chung_rows', updated)
-            return updated
-          })
-        } else if (eventType === 'DELETE') {
-          const deletedId = payload.old?.id
-          if (deletedId) {
-            setChungRows(prev => {
-              const updated = prev.filter(r => Number(r.id) !== Number(deletedId))
-              idbSet('sgc_chung_rows', updated)
-              return updated
-            })
-          }
-        }
-      })
       .subscribe()
 
     return () => {
       isMounted = false
       if (realtimeDebounceRef.current) clearTimeout(realtimeDebounceRef.current)
+      document.removeEventListener('visibilitychange', handleFocus)
+      window.removeEventListener('focus', handleFocus)
       supabase.removeChannel(channel)
     }
   }, [isSupabaseConfigured, loadDataFromSupabase, loadProjectsFromSupabase])
@@ -10426,7 +11265,7 @@ export default function App() {
           position: 'fixed',
           inset: 0,
           zIndex: 9999,
-          background: '#f8fafc',
+          background: '#fff5f5',
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
@@ -10440,12 +11279,9 @@ export default function App() {
             <RefreshCw size={30} color="var(--primary)" style={{ animation: 'spin 1s linear infinite' }} />
           </div>
           <div style={{ textAlign: 'center' }}>
-            <h2 style={{ fontSize: 18, fontWeight: 800, color: 'var(--text)', margin: '0 0 6px' }}>
+            <h2 style={{ fontSize: 18, fontWeight: 800, color: 'var(--text)', margin: '0' }}>
               SGC | BÁO CÁO GIAO NHẬN
             </h2>
-            <p style={{ color: 'var(--text-muted)', fontSize: 14, margin: 0 }}>
-              Đang tải dữ liệu từ Supabase, vui lòng chờ trong giây lát...
-            </p>
           </div>
         </div>
       )}
