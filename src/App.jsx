@@ -14148,201 +14148,143 @@ export default function App() {
 
       if (countErr) throw countErr
 
+      const timestampField = hasUpdatedAt ? 'updated_at' : (hasCreatedAt ? 'created_at' : null)
+
       // 1.5. SIÊU TỐI ƯU (Pre-flight comparison of Max Timestamp + Row Count):
-      // Thay vì tải hàng chục nghìn ID/timestamp để so sánh (mất 15+ API requests và vài MB),
-      // chúng ta chỉ cần so sánh Số lượng dòng và Timestamp mới nhất (updated_at/created_at) trên server.
-      // Nếu khớp hoàn hảo với dữ liệu cache, thoát ngay lập tức! Giảm 1500 lần egress và 15 lần API requests khi không có thay đổi.
-      if (!forceBypassCache && serverCount !== null && cachedRows.length === serverCount && cachedRows.length > 0) {
-        let localMaxTimestamp = ''
-        const timestampField = hasUpdatedAt ? 'updated_at' : (hasCreatedAt ? 'created_at' : null)
-        
-        if (timestampField) {
-          // Tính max timestamp từ local cachedRows
-          cachedRows.forEach(r => {
-            const val = r[timestampField] || r.updated_at || r.created_at || ''
-            if (val && val > localMaxTimestamp) {
-              localMaxTimestamp = val
-            }
-          })
-
-          try {
-            // Query max timestamp trên server (chỉ trả về đúng 1 dòng siêu nhẹ)
-            const { data: serverMaxData, error: serverMaxErr } = await supabase
-              .from(tableName)
-              .select(timestampField)
-              .order(timestampField, { ascending: false })
-              .limit(1)
-
-            if (!serverMaxErr && serverMaxData && serverMaxData.length > 0) {
-              const serverMaxTimestamp = serverMaxData[0][timestampField]
-              if (serverMaxTimestamp && String(localMaxTimestamp) === String(serverMaxTimestamp)) {
-                console.log('[Ultra-Lightweight Precheck] Khớp số dòng và max timestamp hoàn hảo! Bỏ qua sync chi tiết. Tiết kiệm 100% Egress.')
-                setChungRows(cachedRows)
-                setChungFileName(cachedRows.length > 0 ? 'Report_Orders_Don_chung (Cached DB - Up to date)' : '')
-                setIsInitialLoading(false)
-                return
-              }
-            }
-          } catch (precheckErr) {
-            console.warn('[Ultra-Lightweight Precheck] Có lỗi khi chạy pre-check, dùng fallback so sánh chi tiết:', precheckErr)
+      // Tính localMaxTimestamp từ local cachedRows
+      let localMaxTimestamp = ''
+      if (timestampField && cachedRows.length > 0) {
+        cachedRows.forEach(r => {
+          const val = r[timestampField] || r.updated_at || r.created_at || ''
+          if (val && val > localMaxTimestamp) {
+            localMaxTimestamp = val
           }
-        }
+        })
       }
 
-      // 2. TỐI ƯU CỰC ĐẠI: Smart Incremental Sync dựa trên danh sách ID và Timestamps nhẹ
-      if (!forceBypassCache && serverCount !== null && cachedRows.length > 0) {
-        console.log(`[Smart Sync] Bắt đầu so sánh lightweight để đồng bộ tối ưu cho bảng "${tableName}"...`)
-        
-        // Chỉ select các trường siêu nhẹ (id, timestamps) nhằm giảm thiểu 99% egress
-        const selectFields = ['id']
-        if (hasUpdatedAt) selectFields.push('updated_at')
-        else if (hasCreatedAt) selectFields.push('created_at')
+      // 2. CHẠY ULTRA-LIGHTWEIGHT PRECHECK TRƯỚC:
+      // Nếu số dòng khớp nhau và có timestamp, kiểm tra xem max timestamp trên server có trùng khớp không.
+      if (!forceBypassCache && serverCount !== null && cachedRows.length === serverCount && cachedRows.length > 0 && timestampField) {
+        try {
+          // Query max timestamp trên server (chỉ trả về đúng 1 dòng siêu nhẹ)
+          const { data: serverMaxData, error: serverMaxErr } = await supabase
+            .from(tableName)
+            .select(timestampField)
+            .order(timestampField, { ascending: false })
+            .limit(1)
 
-        // QUAN TRỌNG: Supabase/PostgREST giới hạn cứng 1000 dòng/request. Phải phân trang
-        // để lấy ĐỦ toàn bộ id/timestamp, nếu không các dòng ngoài 1000 đầu tiên sẽ bị
-        // hiểu nhầm là "đã xoá trên server" và gây sai lệch dữ liệu.
-        const LIGHT_PAGE_SIZE = 1000
-        let remoteLightData = []
-        let lightErr = null
-        {
-          const lightPagesCount = Math.ceil((serverCount || 0) / LIGHT_PAGE_SIZE)
-          const lightFetchTasks = []
-          for (let i = 0; i < lightPagesCount; i++) {
-            const fromIdx = i * LIGHT_PAGE_SIZE
-            const toIdx = fromIdx + LIGHT_PAGE_SIZE - 1
-            lightFetchTasks.push(() =>
-              supabase
-                .from(tableName)
-                .select(selectFields.join(','))
-                .range(fromIdx, toIdx)
-            )
-          }
-          // Giới hạn tối đa 6 request chạy song song cùng lúc (thay vì bắn hết ~146 request 1 lần)
-          // để tránh vượt quá giới hạn connection/pooler của Supabase free tier gây lỗi 500 hàng loạt.
-          const lightResults = await runWithConcurrencyLimit(lightFetchTasks, 6)
-          for (const r of lightResults) {
-            if (r.error) { lightErr = r.error; break }
-            if (r.data) remoteLightData.push(...r.data)
-          }
-        }
-
-        if (!lightErr && remoteLightData) {
-          const remoteIdSet = new Set(remoteLightData.map(r => Number(r.id)))
-          const localMap = new Map(cachedRows.map(r => [Number(r.id), r]))
-
-          const idsToFetch = []
-          const idsToDelete = new Set()
-
-          // Phát hiện dòng đã bị xóa trên server
-          for (const localRow of cachedRows) {
-            const lid = Number(localRow.id)
-            if (!remoteIdSet.has(lid)) {
-              idsToDelete.add(lid)
-            }
-          }
-
-          // Phát hiện dòng mới hoặc dòng đã thay đổi/cập nhật
-          for (const remoteRow of remoteLightData) {
-            const rid = Number(remoteRow.id)
-            const localRow = localMap.get(rid)
-
-            if (!localRow) {
-              idsToFetch.push(rid)
-            } else {
-              if (hasUpdatedAt && remoteRow.updated_at) {
-                if (!localRow.updated_at || String(remoteRow.updated_at) !== String(localRow.updated_at)) {
-                  idsToFetch.push(rid)
-                }
-              } else if (hasCreatedAt && remoteRow.created_at) {
-                if (!localRow.created_at || String(remoteRow.created_at) !== String(localRow.created_at)) {
-                  idsToFetch.push(rid)
-                }
-              }
-            }
-          }
-
-          console.log(`[Smart Sync Kết Quả] Số dòng cần xóa: ${idsToDelete.size}, Số dòng cần tải mới/cập nhật: ${idsToFetch.length}`)
-
-          // Nếu trùng khớp hoàn hảo -> Tiết kiệm 100% việc tải dữ liệu chi tiết!
-          if (idsToFetch.length === 0 && idsToDelete.size === 0) {
-            console.log('[Smart Sync] Không có bất kỳ thay đổi nào từ Supabase! Tiết kiệm 100% Egress.')
-            setChungRows(cachedRows)
-            setChungFileName(cachedRows.length > 0 ? 'Report_Orders_Don_chung (Cached DB - Up to date)' : '')
-            setIsInitialLoading(false)
-            return
-          }
-
-          // TỐI ƯU EGRESS (02/07/2026): Trước đây nếu số dòng thay đổi > 5000 sẽ tự động chuyển
-          // sang tải lại TOÀN BỘ bảng (kể cả các dòng không hề thay đổi) → đây chính là nguyên nhân
-          // chính gây egress tăng vọt mỗi khi re-import 1 dự án lớn: mọi tab/thiết bị khác đang mở app
-          // sẽ tải lại toàn bộ bảng (>50.000 dòng) thay vì chỉ tải đúng phần đã đổi.
-          // Đã bỏ giới hạn "<= 5000" — LUÔN tải đúng các dòng đã thay đổi theo ID, bất kể số lượng
-          // bao nhiêu, chỉ khác là chạy song song có giới hạn (6 request cùng lúc) để không chậm khi
-          // số lượng dòng thay đổi lớn. Kết quả trả về giống hệt hành vi cũ, chỉ khác về lượng dữ liệu
-          // truyền tải (egress) và tốc độ.
-          {
-            let updatedRows = cachedRows.filter(r => !idsToDelete.has(Number(r.id)))
-
-            if (idsToFetch.length > 0) {
-              console.log(`[Smart Sync] Đang tiến hành tải ${idsToFetch.length} dòng thay đổi (chỉ đúng phần thay đổi, không tải lại toàn bộ bảng)...`)
-              const fetchedRows = []
-              let fetchErrObj = null
-
-              // Tải theo từng chunk tối đa 1000 ID để tránh tràn query limit hoặc URI limit,
-              // chạy song song tối đa 6 chunk cùng lúc (giữ đồng bộ với các đoạn code khác trong file)
-              const idChunkTasks = []
-              for (let i = 0; i < idsToFetch.length; i += 1000) {
-                const chunkIds = idsToFetch.slice(i, i + 1000)
-                idChunkTasks.push(() =>
-                  supabase
-                    .from(tableName)
-                    .select(tableColumnsStr)
-                    .in('id', chunkIds)
-                )
-              }
-              const idChunkResults = await runWithConcurrencyLimit(idChunkTasks, 6)
-              for (const r of idChunkResults) {
-                if (r.error) { fetchErrObj = r.error; break }
-                if (r.data) fetchedRows.push(...r.data)
-              }
-
-              if (!fetchErrObj) {
-                const normalizedFetched = fetchedRows.map(row => normalizeDbRow(row))
-                const fetchedMap = new Map(normalizedFetched.map(r => [Number(r.id), r]))
-
-                // Trộn dữ liệu: ưu tiên dữ liệu mới tải về
-                const mergedRows = []
-                for (const r of updatedRows) {
-                  const lid = Number(r.id)
-                  if (!fetchedMap.has(lid)) {
-                    mergedRows.push(r)
-                  }
-                }
-                mergedRows.push(...normalizedFetched)
-                mergedRows.sort((a, b) => Number(a.id) - Number(b.id))
-
-                setChungRows(mergedRows)
-                setChungFileName(mergedRows.length > 0 ? 'Report_Orders_Don_chung (Supabase DB - Smart Synced)' : '')
-                await idbSet(cachedKey, mergedRows)
-                setIsInitialLoading(false)
-                console.log(`[Smart Sync Hoàn Tất] Đồng bộ thành công ${idsToFetch.length} dòng mới/cập nhật và xóa ${idsToDelete.size} dòng cũ.`)
-                return
-              } else {
-                console.warn('[Smart Sync] Lỗi tải chi tiết dòng thay đổi, chuyển sang tải lại đầy đủ...', fetchErrObj)
-              }
-            } else {
-              // Chỉ có xóa dòng
-              updatedRows.sort((a, b) => Number(a.id) - Number(b.id))
-              setChungRows(updatedRows)
-              setChungFileName(updatedRows.length > 0 ? 'Report_Orders_Don_chung (Supabase DB - Smart Synced)' : '')
-              await idbSet(cachedKey, updatedRows)
+          if (!serverMaxErr && serverMaxData && serverMaxData.length > 0) {
+            const serverMaxTimestamp = serverMaxData[0][timestampField]
+            if (serverMaxTimestamp && String(localMaxTimestamp) === String(serverMaxTimestamp)) {
+              console.log('[Ultra-Lightweight Precheck] Khớp số dòng và max timestamp hoàn hảo! Bỏ qua sync chi tiết. Tiết kiệm 100% Egress.')
+              setChungRows(cachedRows)
+              setChungFileName(cachedRows.length > 0 ? 'Report_Orders_Don_chung (Cached DB - Up to date)' : '')
               setIsInitialLoading(false)
-              console.log(`[Smart Sync Hoàn Tất] Đã dọn dẹp ${idsToDelete.size} dòng bị xóa thành công.`)
               return
             }
           }
-        } else {
-          console.warn('[Smart Sync] Lỗi khi lấy thông tin so sánh, chuyển sang tải lại đầy đủ...', lightErr)
+        } catch (precheckErr) {
+          console.warn('[Ultra-Lightweight Precheck] Có lỗi khi chạy pre-check, dùng fallback:', precheckErr)
+        }
+      }
+
+      // 3. TỐI ƯU CỰC ĐẠI PHÁT HIỆN THAY ĐỔI THEO TIMESTAMP:
+      // Thay vì tải hàng chục ngàn dòng hoặc hàng chục ngàn ID để tìm thay đổi (tốn hàng MB Egress và hàng chục request),
+      // chỉ cần tải ĐÚNG các dòng đã cập nhật hoặc thêm mới sau localMaxTimestamp.
+      if (!forceBypassCache && serverCount !== null && cachedRows.length > 0 && timestampField && localMaxTimestamp) {
+        console.log(`[Incremental Sync] Đang tải các dòng mới hoặc thay đổi sau thời điểm: ${localMaxTimestamp}...`)
+        
+        try {
+          // Chỉ lấy các dòng có timestamp lớn hơn localMaxTimestamp
+          const { data: changedData, error: changedErr } = await supabase
+            .from(tableName)
+            .select(tableColumnsStr + (timestampField ? `,${timestampField}` : ''))
+            .gt(timestampField, localMaxTimestamp)
+
+          if (!changedErr && changedData) {
+            console.log(`[Incremental Sync] Đã tìm thấy ${changedData.length} dòng mới/thay đổi.`)
+            
+            // Normalize và map các dòng mới
+            const normalizedChanged = changedData.map(row => normalizeDbRow(row))
+            const changedMap = new Map(normalizedChanged.map(r => [Number(r.id), r]))
+
+            // Merge vào cachedRows (ưu tiên dòng mới/thay đổi)
+            let mergedRows = cachedRows.map(r => {
+              const rid = Number(r.id)
+              if (changedMap.has(rid)) {
+                const updated = changedMap.get(rid)
+                changedMap.delete(rid) // Xóa khỏi map để lát nữa chỉ append các dòng thực sự mới
+                return updated
+              }
+              return r
+            })
+
+            // Thêm các dòng thực sự mới tinh (append)
+            if (changedMap.size > 0) {
+              mergedRows.push(...Array.from(changedMap.values()))
+            }
+
+            // Sắp xếp lại
+            mergedRows.sort((a, b) => Number(a.id) - Number(b.id))
+
+            // Kiểm tra số lượng sau khi merge với serverCount để phát hiện nếu có dòng bị XÓA trên server
+            const localCountAfterMerge = mergedRows.length
+            if (localCountAfterMerge === serverCount) {
+              // Hoàn toàn khớp! Lưu cache và hiển thị luôn. Tiết kiệm tối đa egress và request!
+              console.log('[Incremental Sync Hoàn Tất] Số lượng dòng khớp hoàn hảo. Không phát hiện dòng bị xóa. Tiết kiệm 100% ID check.')
+              setChungRows(mergedRows)
+              setChungFileName(mergedRows.length > 0 ? 'Report_Orders_Don_chung (Supabase DB - Incremental Synced)' : '')
+              await idbSet(cachedKey, mergedRows)
+              setIsInitialLoading(false)
+              return
+            } else {
+              console.log(`[Incremental Sync] Số dòng sau merge (${localCountAfterMerge}) khác số dòng trên Server (${serverCount}). Tiến hành kiểm tra dọn dẹp các dòng bị xóa...`)
+              // Nếu số dòng khác nhau, chứng tỏ có dòng bị XÓA trên server.
+              // Lúc này ta mới cần tải danh sách ID siêu nhẹ của server để đối chiếu và xóa bớt dòng local.
+              const selectFields = ['id']
+              const LIGHT_PAGE_SIZE = 1000
+              let remoteLightData = []
+              let lightErr = null
+
+              const lightPagesCount = Math.ceil((serverCount || 0) / LIGHT_PAGE_SIZE)
+              const lightFetchTasks = []
+              for (let i = 0; i < lightPagesCount; i++) {
+                const fromIdx = i * LIGHT_PAGE_SIZE
+                const toIdx = fromIdx + LIGHT_PAGE_SIZE - 1
+                lightFetchTasks.push(() =>
+                  supabase
+                    .from(tableName)
+                    .select(selectFields.join(','))
+                    .range(fromIdx, toIdx)
+                )
+              }
+
+              const lightResults = await runWithConcurrencyLimit(lightFetchTasks, 6)
+              for (const r of lightResults) {
+                if (r.error) { lightErr = r.error; break }
+                if (r.data) remoteLightData.push(...r.data)
+              }
+
+              if (!lightErr && remoteLightData) {
+                const remoteIdSet = new Set(remoteLightData.map(r => Number(r.id)))
+                const cleanedRows = mergedRows.filter(r => remoteIdSet.has(Number(r.id)))
+                cleanedRows.sort((a, b) => Number(a.id) - Number(b.id))
+
+                console.log(`[Incremental Sync Hoàn Tất] Đã dọn dẹp ${mergedRows.length - cleanedRows.length} dòng bị xóa.`)
+                setChungRows(cleanedRows)
+                setChungFileName(cleanedRows.length > 0 ? 'Report_Orders_Don_chung (Supabase DB - Incremental Synced & Cleaned)' : '')
+                await idbSet(cachedKey, cleanedRows)
+                setIsInitialLoading(false)
+                return
+              } else {
+                console.warn('[Incremental Sync] Có lỗi khi đối chiếu ID dọn dẹp dòng xóa, fallback tải lại toàn bộ...', lightErr)
+              }
+            }
+          } else {
+            console.warn('[Incremental Sync] Có lỗi khi tải dòng mới/thay đổi, fallback tải lại toàn bộ...', changedErr)
+          }
+        } catch (incErr) {
+          console.warn('[Incremental Sync] Lỗi hệ thống khi chạy sync gia tăng, fallback tải lại toàn bộ:', incErr)
         }
       }
 
