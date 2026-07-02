@@ -2,6 +2,7 @@ import React, { useState, useRef, useCallback, useMemo } from 'react'
 import * as XLSX from 'xlsx'
 import * as XLSXStyleRaw from 'xlsx-js-style'
 const XLSXStyle = XLSXStyleRaw.default || XLSXStyleRaw
+import { exportConsolidatedExcel } from './excelExporter.js'
 import {
   Upload, FileSpreadsheet, Search, X, RefreshCw, Info,
   ChevronDown, ChevronRight, Download, Truck, PackageCheck, Settings, BarChart3,
@@ -922,8 +923,1198 @@ function RealReportSummaryTable({ summaryRows = [], customCategoryMap = {}, loca
   const [pageSize, setPageSize] = React.useState(100)
   const [currentPage, setCurrentPage] = React.useState(1)
   const [detailRow, setDetailRow] = React.useState(null)
+  const [selectedSaps, setSelectedSaps] = React.useState(new Set())
   const tableWrapRef = React.useRef(null)
   const mirrorRef = React.useRef(null)
+
+  const toggleSelectAll = () => {
+    if (selectedSaps.size === summaryRows.length) {
+      setSelectedSaps(new Set())
+    } else {
+      setSelectedSaps(new Set(summaryRows.map(r => r.maSAP)))
+    }
+  }
+
+  const toggleSelectRow = (maSAP) => {
+    const next = new Set(selectedSaps)
+    if (next.has(maSAP)) {
+      next.delete(maSAP)
+    } else {
+      next.add(maSAP)
+    }
+    setSelectedSaps(next)
+  }
+
+  const handleExportSelectedExcel = () => {
+    if (selectedSaps.size === 0) return
+    const selectedRows = summaryRows.filter(r => selectedSaps.has(r.maSAP))
+    exportConsolidatedExcel(selectedRows, localProject, customCategoryMap, getUnitCategory)
+  }
+
+  // eslint-disable-next-line no-unused-vars
+  const old_handleExportSelectedExcel = () => {
+    if (selectedSaps.size === 0) return
+
+    const wb = XLSXStyle.utils.book_new()
+    const selectedRows = summaryRows.filter(r => selectedSaps.has(r.maSAP))
+
+    const titleStyle = {
+      font: { name: 'Segoe UI', sz: 16, bold: true, color: { rgb: '1E3A8A' } },
+      alignment: { horizontal: 'left', vertical: 'center' }
+    }
+    const subtitleStyle = {
+      font: { name: 'Segoe UI', sz: 11, italic: true, color: { rgb: '475569' } },
+      alignment: { horizontal: 'left', vertical: 'center' }
+    }
+    
+    const tblHeaderStyle1 = {
+      fill: { patternType: 'solid', fgColor: { rgb: '0F766E' } },
+      font: { name: 'Segoe UI', sz: 11, bold: true, color: { rgb: 'FFFFFF' } },
+      alignment: { horizontal: 'center', vertical: 'center' }
+    }
+    const tblHeaderStyle2 = {
+      fill: { patternType: 'solid', fgColor: { rgb: 'C2410C' } },
+      font: { name: 'Segoe UI', sz: 11, bold: true, color: { rgb: 'FFFFFF' } },
+      alignment: { horizontal: 'center', vertical: 'center' }
+    }
+    
+    const thStyle1 = {
+      fill: { patternType: 'solid', fgColor: { rgb: 'F0FDF4' } },
+      font: { name: 'Segoe UI', sz: 9.5, bold: true, color: { rgb: '0F766E' } },
+      alignment: { horizontal: 'center', vertical: 'center', wrapText: true },
+      border: {
+        top: { style: 'thin', color: { rgb: 'CCFBF1' } },
+        bottom: { style: 'thin', color: { rgb: 'CCFBF1' } },
+        left: { style: 'thin', color: { rgb: 'CCFBF1' } },
+        right: { style: 'thin', color: { rgb: 'CCFBF1' } }
+      }
+    }
+    const thStyle2 = {
+      fill: { patternType: 'solid', fgColor: { rgb: 'FFF7ED' } },
+      font: { name: 'Segoe UI', sz: 9.5, bold: true, color: { rgb: 'C2410C' } },
+      alignment: { horizontal: 'center', vertical: 'center', wrapText: true },
+      border: {
+        top: { style: 'thin', color: { rgb: 'FFEDD5' } },
+        bottom: { style: 'thin', color: { rgb: 'FFEDD5' } },
+        left: { style: 'thin', color: { rgb: 'FFEDD5' } },
+        right: { style: 'thin', color: { rgb: 'FFEDD5' } }
+      }
+    }
+
+    const dataCellStyle = {
+      font: { name: 'Segoe UI', sz: 9.5, color: { rgb: '1E293B' } },
+      border: {
+        top: { style: 'thin', color: { rgb: 'E2E8F0' } },
+        bottom: { style: 'thin', color: { rgb: 'E2E8F0' } },
+        left: { style: 'thin', color: { rgb: 'E2E8F0' } },
+        right: { style: 'thin', color: { rgb: 'E2E8F0' } }
+      },
+      alignment: { vertical: 'center', wrapText: true }
+    }
+
+    const legendLabelStyle = {
+      font: { name: 'Segoe UI', sz: 9.5, bold: true, color: { rgb: '475569' } },
+      alignment: { vertical: 'center' }
+    }
+    const legendNccStyle = {
+      fill: { patternType: 'solid', fgColor: { rgb: 'FFFBEB' } },
+      font: { name: 'Segoe UI', sz: 9, bold: true, color: { rgb: '78350F' } },
+      alignment: { horizontal: 'center', vertical: 'center' },
+      border: {
+        top: { style: 'thin', color: { rgb: 'FDE68A' } },
+        bottom: { style: 'thin', color: { rgb: 'FDE68A' } },
+        left: { style: 'thin', color: { rgb: 'FDE68A' } },
+        right: { style: 'thin', color: { rgb: 'FDE68A' } }
+      }
+    }
+    const legendKhoStyle = {
+      fill: { patternType: 'solid', fgColor: { rgb: 'EFF6FF' } },
+      font: { name: 'Segoe UI', sz: 9, bold: true, color: { rgb: '1E3A8A' } },
+      alignment: { horizontal: 'center', vertical: 'center' },
+      border: {
+        top: { style: 'thin', color: { rgb: 'BFDBFE' } },
+        bottom: { style: 'thin', color: { rgb: 'BFDBFE' } },
+        left: { style: 'thin', color: { rgb: 'BFDBFE' } },
+        right: { style: 'thin', color: { rgb: 'BFDBFE' } }
+      }
+    }
+    const legendToDoiStyle = {
+      fill: { patternType: 'solid', fgColor: { rgb: 'F0FDF4' } },
+      font: { name: 'Segoe UI', sz: 9, bold: true, color: { rgb: '065F46' } },
+      alignment: { horizontal: 'center', vertical: 'center' },
+      border: {
+        top: { style: 'thin', color: { rgb: 'BBF7D0' } },
+        bottom: { style: 'thin', color: { rgb: 'BBF7D0' } },
+        left: { style: 'thin', color: { rgb: 'BBF7D0' } },
+        right: { style: 'thin', color: { rgb: 'BBF7D0' } }
+      }
+    }
+
+    const subheaders1 = ['STT', 'Phân loại đơn vị', 'Kho chọn', 'Vai trò Kho chọn', 'Tên NCC/ Kho khác / Tổ đội', 'Vai trò NCC/ Kho khác/ Tổ đội', 'Tổng KL Chứng từ', 'Hệ số logic', 'Thực nhập', 'Ghi chú']
+    const subheaders2 = ['STT', 'Phân loại đơn vị', 'Kho chọn', 'Vai trò Kho chọn', 'Tên NCC/ Kho khác / Tổ đội', 'Vai trò NCC/ Kho khác/ Tổ đội', 'Tổng KL Chứng từ', 'Hệ số logic', 'Thực xuất', 'Ghi chú']
+
+    const footerStyle = {
+      font: { name: 'Segoe UI', sz: 9.5, bold: true, color: { rgb: '1E293B' } },
+      fill: { patternType: 'solid', fgColor: { rgb: 'F8FAFC' } },
+      border: {
+        top: { style: 'thin', color: { rgb: '94A3B8' } },
+        bottom: { style: 'double', color: { rgb: '94A3B8' } },
+        left: { style: 'thin', color: { rgb: 'E2E8F0' } },
+        right: { style: 'thin', color: { rgb: 'E2E8F0' } }
+      },
+      alignment: { vertical: 'center', wrapText: true }
+    }
+
+    const totalYellowStyle = {
+      ...footerStyle,
+      fill: { patternType: 'solid', fgColor: { rgb: 'FFFF00' } },
+      alignment: { horizontal: 'right', vertical: 'center', wrapText: true }
+    }
+
+    selectedRows.forEach(itemRow => {
+      const maSAP = itemRow.maSAP
+      const bcSheetName = `BC_${maSAP}`.slice(0, 31)
+      const thSheetName = `TH_${maSAP}`.slice(0, 31)
+      const nhapSheetName = `Nhap_${maSAP}`.slice(0, 31)
+      const xuatSheetName = `Xuat_${maSAP}`.slice(0, 31)
+
+      const txs = itemRow.transactions || []
+      const nhapSummaryByUnit = {}
+      const xuatSummaryByUnit = {}
+
+      txs.forEach(tx => {
+        const normProject = String(localProject || '').trim().toLowerCase()
+        const isGiaoProject = String(tx.donViGiao || '').trim().toLowerCase() === normProject
+        const isNhanProject = String(tx.donViNhan || '').trim().toLowerCase() === normProject
+
+        if (tx.nhapVal > 0) {
+          let role = 'Đơn vị nhận'
+          let partner = tx.donViGiao || 'Chưa xác định'
+          if (isGiaoProject) {
+            role = 'Đơn vị giao'
+            partner = tx.donViNhan || 'Chưa xác định'
+          }
+
+          const key = `${partner}||${tx.detailTypeNhap}||${role}`
+          if (!nhapSummaryByUnit[key]) {
+            nhapSummaryByUnit[key] = {
+              partner,
+              role,
+              detailType: tx.detailTypeNhap,
+              logicVal: tx.logicNhapVal,
+              explain: tx.explainNhap,
+              totalQty: 0,
+              totalContribution: 0
+            }
+          }
+          nhapSummaryByUnit[key].totalQty += tx.nhapVal
+          nhapSummaryByUnit[key].totalContribution += tx.nhapVal * tx.logicNhapVal
+        }
+        if (tx.xuatVal > 0) {
+          let role = 'Đơn vị giao'
+          let partner = tx.donViNhan || 'Chưa xác định'
+          if (isNhanProject) {
+            role = 'Đơn vị nhận'
+            partner = tx.donViGiao || 'Chưa xác định'
+          }
+
+          const key = `${partner}||${tx.detailTypeXuat}||${role}`
+          if (!xuatSummaryByUnit[key]) {
+            xuatSummaryByUnit[key] = {
+              partner,
+              role,
+              detailType: tx.detailTypeXuat,
+              logicVal: tx.logicXuatVal,
+              explain: tx.explainXuat,
+              totalQty: 0,
+              totalContribution: 0
+            }
+          }
+          xuatSummaryByUnit[key].totalQty += tx.xuatVal
+          xuatSummaryByUnit[key].totalContribution += tx.xuatVal * tx.logicXuatVal
+        }
+      })
+
+      const sortNhapSummaryList = (list) => {
+        return [...list].sort((a, b) => {
+          const rolePriorityA = a.role === 'Đơn vị nhận' ? 1 : a.role === 'Đơn vị giao' ? 2 : 3
+          const rolePriorityB = b.role === 'Đơn vị nhận' ? 1 : b.role === 'Đơn vị giao' ? 2 : 3
+          if (rolePriorityA !== rolePriorityB) return rolePriorityA - rolePriorityB
+
+          const normA = (a.partner || '').trim().replace(/\s+/g, ' ')
+          const catA = (customCategoryMap && customCategoryMap[normA]) || getUnitCategory(normA)
+          const catPriorityA = catA === 'ncc' ? 1 : catA === 'kho' ? 2 : catA === 'todoi' ? 3 : 4
+
+          const normB = (b.partner || '').trim().replace(/\s+/g, ' ')
+          const catB = (customCategoryMap && customCategoryMap[normB]) || getUnitCategory(normB)
+          const catPriorityB = catB === 'ncc' ? 1 : catB === 'kho' ? 2 : catB === 'todoi' ? 3 : 4
+
+          if (catPriorityA !== catPriorityB) return catPriorityA - catPriorityB
+
+          const valA = Math.abs(a.totalContribution || 0)
+          const valB = Math.abs(b.totalContribution || 0)
+          if (valB !== valA) return valB - valA
+
+          return (a.partner || '').localeCompare(b.partner || '', 'vi')
+        })
+      }
+
+      const sortXuatSummaryList = (list) => {
+        return [...list].sort((a, b) => {
+          const rolePriorityA = a.role === 'Đơn vị giao' ? 1 : a.role === 'Đơn vị nhận' ? 2 : 3
+          const rolePriorityB = b.role === 'Đơn vị giao' ? 1 : b.role === 'Đơn vị nhận' ? 2 : 3
+          if (rolePriorityA !== rolePriorityB) return rolePriorityA - rolePriorityB
+
+          const normA = (a.partner || '').trim().replace(/\s+/g, ' ')
+          const catA = (customCategoryMap && customCategoryMap[normA]) || getUnitCategory(normA)
+          const catPriorityA = catA === 'todoi' ? 1 : catA === 'kho' ? 2 : catA === 'ncc' ? 3 : 4
+
+          const normB = (b.partner || '').trim().replace(/\s+/g, ' ')
+          const catB = (customCategoryMap && customCategoryMap[normB]) || getUnitCategory(normB)
+          const catPriorityB = catB === 'todoi' ? 1 : catB === 'kho' ? 2 : catB === 'ncc' ? 3 : 4
+
+          if (catPriorityA !== catPriorityB) return catPriorityA - catPriorityB
+
+          const valA = Math.abs(a.totalContribution || 0)
+          const valB = Math.abs(b.totalContribution || 0)
+          if (valB !== valA) return valB - valA
+
+          return (a.partner || '').localeCompare(b.partner || '', 'vi')
+        })
+      }
+
+      const nhapSummaryList = sortNhapSummaryList(Object.values(nhapSummaryByUnit))
+      const xuatSummaryList = sortXuatSummaryList(Object.values(xuatSummaryByUnit))
+
+      const buildSheetDataForMulti = (listNhap, listXuat, isBaoCao = false) => {
+        const ws = {}
+        
+        const sub1 = isBaoCao 
+          ? ['STT', 'Phân loại đơn vị', 'Kho chọn', 'Vai trò Kho chọn', 'Tên NCC/ Kho khác / Tổ đội', 'Vai trò NCC/ Kho khác/ Tổ đội', 'Thực nhập', 'Ghi chú']
+          : ['STT', 'Phân loại đơn vị', 'Kho chọn', 'Vai trò Kho chọn', 'Tên NCC/ Kho khác / Tổ đội', 'Vai trò NCC/ Kho khác/ Tổ đội', 'Tổng KL Chứng từ', 'Hệ số logic', 'Thực nhập', 'Ghi chú']
+
+        const sub2 = isBaoCao 
+          ? ['STT', 'Phân loại đơn vị', 'Kho chọn', 'Vai trò Kho chọn', 'Tên NCC/ Kho khác / Tổ đội', 'Vai trò NCC/ Kho khác/ Tổ đội', 'Thực xuất', 'Ghi chú']
+          : ['STT', 'Phân loại đơn vị', 'Kho chọn', 'Vai trò Kho chọn', 'Tên NCC/ Kho khác / Tổ đội', 'Vai trò NCC/ Kho khác/ Tổ đội', 'Tổng KL Chứng từ', 'Hệ số logic', 'Thực xuất', 'Ghi chú']
+
+        if (isBaoCao) {
+          ws['!cols'] = [
+            { wpx: 40 }, { wpx: 130 }, { wpx: 180 }, { wch: 16 }, { wpx: 250 }, { wch: 16 }, { wch: 16 }, { wpx: 200 },
+            { wpx: 40 },
+            { wpx: 40 }, { wpx: 130 }, { wpx: 180 }, { wch: 16 }, { wpx: 250 }, { wch: 16 }, { wch: 16 }, { wpx: 200 }
+          ]
+        } else {
+          ws['!cols'] = [
+            { wpx: 40 }, { wpx: 130 }, { wpx: 180 }, { wch: 16 }, { wpx: 250 }, { wch: 16 }, { wch: 16 }, { wch: 6 }, { wch: 16 }, { wpx: 200 },
+            { wpx: 40 },
+            { wpx: 40 }, { wpx: 130 }, { wpx: 180 }, { wch: 16 }, { wpx: 250 }, { wch: 16 }, { wch: 16 }, { wch: 6 }, { wch: 16 }, { wpx: 200 }
+          ]
+        }
+
+        ws['A2'] = { v: 'BẢNG GIẢI TRÌNH CẤU THÀNH SỐ LIỆU CHI TIẾT', t: 's', s: titleStyle }
+        ws['A3'] = { v: `Kho chọn: ${localProject || 'Tất cả'} | Vật tư: ${itemRow.tenVatTu} (${itemRow.maSAP}) | ĐVT: ${itemRow.dvt}`, t: 's', s: subtitleStyle }
+
+        ws['A4'] = { v: 'Màu sắc đối tác:', t: 's', s: legendLabelStyle }
+        ws['C4'] = { v: '■ Nhà cung cấp (NCC)', t: 's', s: legendNccStyle }
+        ws['E4'] = { v: '■ Kho khác', t: 's', s: legendKhoStyle }
+        ws['G4'] = { v: '■ Tổ đội', t: 's', s: legendToDoiStyle }
+
+        ws['A6'] = { v: 'BẢNG TỔNG HỢP DIỄN GIẢI THỰC NHẬP (SUMIFS THEO ĐƠN VỊ)', t: 's', s: tblHeaderStyle1 }
+        ws[isBaoCao ? 'J6' : 'L6'] = { v: 'BẢNG TỔNG HỢP DIỄN GIẢI THỰC XUẤT (SUMIFS THEO ĐƠN VỊ)', t: 's', s: tblHeaderStyle2 }
+
+        sub1.forEach((label, i) => {
+          const colChar = String.fromCharCode(65 + i)
+          ws[`${colChar}7`] = { v: label, t: 's', s: thStyle1 }
+        })
+
+        sub2.forEach((label, i) => {
+          const startCharCode = isBaoCao ? 74 : 76
+          const colChar = String.fromCharCode(startCharCode + i)
+          ws[`${colChar}7`] = { v: label, t: 's', s: thStyle2 }
+        })
+
+        const sheetMaxRows = Math.max(listNhap.length, listXuat.length)
+
+        if (isBaoCao) {
+          ws[`A8`] = { v: '', t: 's', s: footerStyle }
+          ws[`B8`] = { v: '', t: 's', s: footerStyle }
+          ws[`C8`] = { v: '', t: 's', s: footerStyle }
+          ws[`D8`] = { v: '', t: 's', s: footerStyle }
+          ws[`E8`] = { v: 'Tổng cộng', t: 's', s: { ...footerStyle, alignment: { horizontal: 'right', vertical: 'center', wrapText: true } } }
+          ws[`F8`] = { v: '', t: 's', s: footerStyle }
+          ws[`G8`] = { f: sheetMaxRows > 0 ? `SUM(G9:G${8 + sheetMaxRows})` : '', t: 'n', z: '#,##0.000;[Red](#,##0.000);"-"', s: totalYellowStyle }
+          ws[`H8`] = { v: '', t: 's', s: footerStyle }
+
+          ws[`I8`] = { v: '', t: 's', s: { font: { name: 'Segoe UI', sz: 9.5 } } }
+
+          ws[`J8`] = { v: '', t: 's', s: footerStyle }
+          ws[`K8`] = { v: '', t: 's', s: footerStyle }
+          ws[`L8`] = { v: '', t: 's', s: footerStyle }
+          ws[`M8`] = { v: '', t: 's', s: footerStyle }
+          ws[`N8`] = { v: 'Tổng cộng', t: 's', s: { ...footerStyle, alignment: { horizontal: 'right', vertical: 'center', wrapText: true } } }
+          ws[`O8`] = { v: '', t: 's', s: footerStyle }
+          ws[`P8`] = { f: sheetMaxRows > 0 ? `SUM(P9:P${8 + sheetMaxRows})` : '', t: 'n', z: '#,##0.000;[Red](#,##0.000);"-"', s: totalYellowStyle }
+          ws[`Q8`] = { v: '', t: 's', s: footerStyle }
+        } else {
+          ws[`A8`] = { v: '', t: 's', s: footerStyle }
+          ws[`B8`] = { v: '', t: 's', s: footerStyle }
+          ws[`C8`] = { v: '', t: 's', s: footerStyle }
+          ws[`D8`] = { v: '', t: 's', s: footerStyle }
+          ws[`E8`] = { v: 'Tổng cộng', t: 's', s: { ...footerStyle, alignment: { horizontal: 'right', vertical: 'center', wrapText: true } } }
+          ws[`F8`] = { v: '', t: 's', s: footerStyle }
+          ws[`G8`] = { f: sheetMaxRows > 0 ? `SUM(G9:G${8 + sheetMaxRows})` : '', t: 'n', z: '#,##0.000;[Red](#,##0.000);"-"', s: { ...footerStyle, alignment: { horizontal: 'right', vertical: 'center', wrapText: true } } }
+          ws[`H8`] = { v: '', t: 's', s: footerStyle }
+          ws[`I8`] = { f: sheetMaxRows > 0 ? `SUM(I9:I${8 + sheetMaxRows})` : '', t: 'n', z: '#,##0.000;[Red](#,##0.000);"-"', s: totalYellowStyle }
+          ws[`J8`] = { v: '', t: 's', s: footerStyle }
+
+          ws[`K8`] = { v: '', t: 's', s: { font: { name: 'Segoe UI', sz: 9.5 } } }
+
+          ws[`L8`] = { v: '', t: 's', s: footerStyle }
+          ws[`M8`] = { v: '', t: 's', s: footerStyle }
+          ws[`N8`] = { v: '', t: 's', s: footerStyle }
+          ws[`O8`] = { v: '', t: 's', s: footerStyle }
+          ws[`P8`] = { v: 'Tổng cộng', t: 's', s: { ...footerStyle, alignment: { horizontal: 'right', vertical: 'center', wrapText: true } } }
+          ws[`Q8`] = { v: '', t: 's', s: footerStyle }
+          ws[`R8`] = { f: sheetMaxRows > 0 ? `SUM(R9:R${8 + sheetMaxRows})` : '', t: 'n', z: '#,##0.000;[Red](#,##0.000);"-"', s: { ...footerStyle, alignment: { horizontal: 'right', vertical: 'center', wrapText: true } } }
+          ws[`S8`] = { v: '', t: 's', s: footerStyle }
+          ws[`T8`] = { f: sheetMaxRows > 0 ? `SUM(T9:T${8 + sheetMaxRows})` : '', t: 'n', z: '#,##0.000;[Red](#,##0.000);"-"', s: totalYellowStyle }
+          ws[`U8`] = { v: '', t: 's', s: footerStyle }
+        }
+
+        for (let i = 0; i < sheetMaxRows; i++) {
+          const rowNum = 9 + i
+          
+          if (i < listNhap.length) {
+            const item = listNhap[i]
+            const labelType = item.detailType === 'nhan_ncc' ? 'Nhận từ NCC'
+                            : item.detailType === 'nhan_kho' ? 'Nhận từ Kho gửi'
+                            : item.detailType === 'tra_ncc' ? 'Trả lại NCC'
+                            : item.detailType === 'dieu_chuyen_di' ? 'Điều chuyển đi (Không tính)'
+                            : item.detailType === 'nhan_khac' ? 'Nhận nguồn khác (Không tính)'
+                            : 'Không tính'
+            
+            const norm = (item.partner || '').trim().replace(/\s+/g, ' ')
+            const cat = (customCategoryMap && customCategoryMap[norm]) || getUnitCategory(norm)
+            
+            let partnerStyle = { ...dataCellStyle, font: { name: 'Segoe UI', sz: 9.5, bold: true, color: { rgb: '334155' } }, alignment: { horizontal: 'left', vertical: 'center', wrapText: true } }
+            if (cat === 'kho') {
+              partnerStyle = {
+                ...dataCellStyle,
+                font: { name: 'Segoe UI', sz: 9.5, bold: true, color: { rgb: '1E3A8A' } },
+                fill: { patternType: 'solid', fgColor: { rgb: 'EFF6FF' } },
+                alignment: { horizontal: 'left', vertical: 'center', wrapText: true }
+              }
+            } else if (cat === 'ncc') {
+              partnerStyle = {
+                ...dataCellStyle,
+                font: { name: 'Segoe UI', sz: 9.5, bold: true, color: { rgb: '78350F' } },
+                fill: { patternType: 'solid', fgColor: { rgb: 'FFFBEB' } },
+                alignment: { horizontal: 'left', vertical: 'center', wrapText: true }
+              }
+            } else if (cat === 'todoi') {
+              partnerStyle = {
+                ...dataCellStyle,
+                font: { name: 'Segoe UI', sz: 9.5, bold: true, color: { rgb: '065F46' } },
+                fill: { patternType: 'solid', fgColor: { rgb: 'F0FDF4' } },
+                alignment: { horizontal: 'left', vertical: 'center', wrapText: true }
+              }
+            }
+
+            const isZero = item.logicVal === 0
+            const isNegative = item.logicVal < 0
+            let labelStyle = { ...dataCellStyle }
+            if (isZero) {
+              labelStyle = {
+                ...dataCellStyle,
+                font: { name: 'Segoe UI', sz: 9.5, bold: true, color: { rgb: '475569' } },
+                fill: { patternType: 'solid', fgColor: { rgb: 'F1F5F9' } },
+                alignment: { horizontal: 'left', vertical: 'center', wrapText: true },
+                border: {
+                  top: { style: 'thin', color: { rgb: 'CBD5E1' } },
+                  bottom: { style: 'thin', color: { rgb: 'CBD5E1' } },
+                  left: { style: 'thin', color: { rgb: 'CBD5E1' } },
+                  right: { style: 'thin', color: { rgb: 'CBD5E1' } }
+                }
+              }
+            } else if (isNegative) {
+              labelStyle = {
+                ...dataCellStyle,
+                font: { name: 'Segoe UI', sz: 9.5, bold: true, color: { rgb: '991B1B' } },
+                fill: { patternType: 'solid', fgColor: { rgb: 'FEE2E2' } },
+                alignment: { horizontal: 'left', vertical: 'center', wrapText: true },
+                border: {
+                  top: { style: 'thin', color: { rgb: 'FCA5A5' } },
+                  bottom: { style: 'thin', color: { rgb: 'FCA5A5' } },
+                  left: { style: 'thin', color: { rgb: 'FCA5A5' } },
+                  right: { style: 'thin', color: { rgb: 'FCA5A5' } }
+                }
+              }
+            } else {
+              labelStyle = {
+                ...dataCellStyle,
+                font: { name: 'Segoe UI', sz: 9.5, bold: true, color: { rgb: '047857' } },
+                fill: { patternType: 'solid', fgColor: { rgb: 'ECFDF5' } },
+                alignment: { horizontal: 'left', vertical: 'center', wrapText: true },
+                border: {
+                  top: { style: 'thin', color: { rgb: 'A7F3D0' } },
+                  bottom: { style: 'thin', color: { rgb: 'A7F3D0' } },
+                  left: { style: 'thin', color: { rgb: 'A7F3D0' } },
+                  right: { style: 'thin', color: { rgb: 'A7F3D0' } }
+                }
+              }
+            }
+
+            let roleStyle = { ...dataCellStyle }
+            if (item.role === 'Đơn vị nhận') {
+              roleStyle = {
+                ...dataCellStyle,
+                font: { name: 'Segoe UI', sz: 9.5, bold: true, color: { rgb: '6D28D9' } },
+                fill: { patternType: 'solid', fgColor: { rgb: 'F5F3FF' } },
+                alignment: { horizontal: 'center', vertical: 'center', wrapText: true },
+                border: {
+                  top: { style: 'thin', color: { rgb: 'DDD6FE' } },
+                  bottom: { style: 'thin', color: { rgb: 'DDD6FE' } },
+                  left: { style: 'thin', color: { rgb: 'DDD6FE' } },
+                  right: { style: 'thin', color: { rgb: 'DDD6FE' } }
+                }
+              }
+            } else {
+              roleStyle = {
+                ...dataCellStyle,
+                font: { name: 'Segoe UI', sz: 9.5, bold: true, color: { rgb: 'EA580C' } },
+                fill: { patternType: 'solid', fgColor: { rgb: 'FFF7ED' } },
+                alignment: { horizontal: 'center', vertical: 'center', wrapText: true },
+                border: {
+                  top: { style: 'thin', color: { rgb: 'FED7AA' } },
+                  bottom: { style: 'thin', color: { rgb: 'FED7AA' } },
+                  left: { style: 'thin', color: { rgb: 'FED7AA' } },
+                  right: { style: 'thin', color: { rgb: 'FED7AA' } }
+                }
+              }
+            }
+
+            const khoStyle = {
+              ...dataCellStyle,
+              font: { name: 'Segoe UI', sz: 9.5, bold: true, color: roleStyle.font.color },
+              fill: roleStyle.fill,
+              alignment: { horizontal: 'left', vertical: 'center', wrapText: true },
+              border: roleStyle.border
+            }
+
+            const catLabel = cat === 'ncc' ? 'Nhà cung cấp (NCC)'
+                           : cat === 'kho' ? 'Kho khác'
+                           : cat === 'todoi' ? 'Tổ đội'
+                           : ''
+            let partnerRoleStyle = { ...dataCellStyle }
+            if (cat === 'ncc') {
+              partnerRoleStyle = {
+                ...dataCellStyle,
+                font: { name: 'Segoe UI', sz: 9.5, bold: true, color: { rgb: '78350F' } },
+                fill: { patternType: 'solid', fgColor: { rgb: 'FFFBEB' } },
+                alignment: { horizontal: 'center', vertical: 'center', wrapText: true },
+                border: {
+                  top: { style: 'thin', color: { rgb: 'FDE68A' } },
+                  bottom: { style: 'thin', color: { rgb: 'FDE68A' } },
+                  left: { style: 'thin', color: { rgb: 'FDE68A' } },
+                  right: { style: 'thin', color: { rgb: 'FDE68A' } }
+                }
+              }
+            } else if (cat === 'kho') {
+              partnerRoleStyle = {
+                ...dataCellStyle,
+                font: { name: 'Segoe UI', sz: 9.5, bold: true, color: { rgb: '1E3A8A' } },
+                fill: { patternType: 'solid', fgColor: { rgb: 'EFF6FF' } },
+                alignment: { horizontal: 'center', vertical: 'center', wrapText: true },
+                border: {
+                  top: { style: 'thin', color: { rgb: 'BFDBFE' } },
+                  bottom: { style: 'thin', color: { rgb: 'BFDBFE' } },
+                  left: { style: 'thin', color: { rgb: 'BFDBFE' } },
+                  right: { style: 'thin', color: { rgb: 'BFDBFE' } }
+                }
+              }
+            } else if (cat === 'todoi') {
+              partnerRoleStyle = {
+                ...dataCellStyle,
+                font: { name: 'Segoe UI', sz: 9.5, bold: true, color: { rgb: '065F46' } },
+                fill: { patternType: 'solid', fgColor: { rgb: 'F0FDF4' } },
+                alignment: { horizontal: 'center', vertical: 'center', wrapText: true },
+                border: {
+                  top: { style: 'thin', color: { rgb: 'BBF7D0' } },
+                  bottom: { style: 'thin', color: { rgb: 'BBF7D0' } },
+                  left: { style: 'thin', color: { rgb: 'BBF7D0' } },
+                  right: { style: 'thin', color: { rgb: 'BBF7D0' } }
+                }
+              }
+            }
+
+            ws[`A${rowNum}`] = { v: i + 1, t: 'n', s: { ...dataCellStyle, alignment: { horizontal: 'center', vertical: 'center', wrapText: true } } }
+            ws[`B${rowNum}`] = { v: labelType, t: 's', s: labelStyle }
+            ws[`C${rowNum}`] = { v: localProject || 'Tất cả', t: 's', s: khoStyle }
+            ws[`D${rowNum}`] = { v: item.role || 'Đơn vị nhận', t: 's', s: roleStyle }
+            ws[`E${rowNum}`] = { v: item.partner, t: 's', s: partnerStyle }
+            ws[`F${rowNum}`] = { v: catLabel, t: 's', s: partnerRoleStyle }
+            
+            const partnerCol = item.role === 'Đơn vị giao' ? 'E' : 'D'
+            if (isBaoCao) {
+              ws[`G${rowNum}`] = { 
+                f: `SUMIFS('${nhapSheetName}'!J:J, '${nhapSheetName}'!${partnerCol}:${partnerCol}, E${rowNum})`, 
+                t: 'n', 
+                z: '#,##0.000;[Red](#,##0.000);"-"',
+                s: { ...dataCellStyle, alignment: { horizontal: 'right', vertical: 'center', wrapText: true }, font: { name: 'Segoe UI', sz: 9.5, bold: true, color: { rgb: '0F766E' } } } 
+              }
+              ws[`H${rowNum}`] = { v: item.explain || '', t: 's', s: { ...dataCellStyle, font: { name: 'Segoe UI', sz: 9.5, italic: true, color: { rgb: '475569' } }, alignment: { horizontal: 'left', vertical: 'center', wrapText: true } } }
+            } else {
+              ws[`G${rowNum}`] = { 
+                f: `SUMIFS('${nhapSheetName}'!F:F, '${nhapSheetName}'!${partnerCol}:${partnerCol}, E${rowNum}, '${nhapSheetName}'!G:G, B${rowNum})`, 
+                t: 'n', 
+                z: '#,##0.000;[Red](#,##0.000);"-"',
+                s: { ...dataCellStyle, alignment: { horizontal: 'right', vertical: 'center', wrapText: true } } 
+              }
+              
+              ws[`H${rowNum}`] = { 
+                v: item.logicVal, 
+                t: 'n', 
+                z: '#,##0;(#,##0);"-"', 
+                s: { 
+                  ...dataCellStyle, 
+                  alignment: { horizontal: 'center', vertical: 'center', wrapText: true }, 
+                  font: { 
+                    name: 'Segoe UI', 
+                    sz: 9.5, 
+                    bold: true,
+                    color: item.logicVal === -1 ? { rgb: 'FF0000' } : undefined
+                  } 
+                } 
+              }
+              
+              ws[`I${rowNum}`] = { 
+                f: `G${rowNum} * H${rowNum}`, 
+                t: 'n', 
+                z: '#,##0.000;[Red](#,##0.000);"-"',
+                s: { ...dataCellStyle, alignment: { horizontal: 'right', vertical: 'center', wrapText: true }, font: { name: 'Segoe UI', sz: 9.5, bold: true, color: { rgb: '0F766E' } } } 
+              }
+              ws[`J${rowNum}`] = { v: item.explain || '', t: 's', s: { ...dataCellStyle, font: { name: 'Segoe UI', sz: 9.5, italic: true, color: { rgb: '475569' } }, alignment: { horizontal: 'left', vertical: 'center', wrapText: true } } }
+            }
+          } else {
+            const emptyCols = isBaoCao ? ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'] : ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J']
+            emptyCols.forEach(col => {
+              ws[`${col}${rowNum}`] = { v: '', t: 's', s: { ...dataCellStyle, border: {} } }
+            })
+          }
+
+          ws[isBaoCao ? `I${rowNum}` : `K${rowNum}`] = { v: '', t: 's', s: { font: { name: 'Segoe UI', sz: 9.5 } } }
+
+          if (i < listXuat.length) {
+            const item = listXuat[i]
+            const labelType = item.detailType === 'xuat_todoi' ? 'Xuất cho Tổ đội'
+                            : item.detailType === 'xuat_kho' ? 'Xuất đi Kho nhận'
+                            : item.detailType === 'todoi_tra' ? 'Tổ đội trả hàng'
+                            : item.detailType === 'xuat_khac' ? 'Xuất khác (Không tính)'
+                            : item.detailType === 'nhan_lai_khac' ? 'Nhận lại khác (Không tính)'
+                            : 'Không tính'
+            
+            const norm = (item.partner || '').trim().replace(/\s+/g, ' ')
+            const cat = (customCategoryMap && customCategoryMap[norm]) || getUnitCategory(norm)
+            
+            let partnerStyle = { ...dataCellStyle, font: { name: 'Segoe UI', sz: 9.5, bold: true, color: { rgb: '334155' } }, alignment: { horizontal: 'left', vertical: 'center', wrapText: true } }
+            if (cat === 'kho') {
+              partnerStyle = {
+                ...dataCellStyle,
+                font: { name: 'Segoe UI', sz: 9.5, bold: true, color: { rgb: '1E3A8A' } },
+                fill: { patternType: 'solid', fgColor: { rgb: 'EFF6FF' } },
+                alignment: { horizontal: 'left', vertical: 'center', wrapText: true }
+              }
+            } else if (cat === 'ncc') {
+              partnerStyle = {
+                ...dataCellStyle,
+                font: { name: 'Segoe UI', sz: 9.5, bold: true, color: { rgb: '78350F' } },
+                fill: { patternType: 'solid', fgColor: { rgb: 'FFFBEB' } },
+                alignment: { horizontal: 'left', vertical: 'center', wrapText: true }
+              }
+            } else if (cat === 'todoi') {
+              partnerStyle = {
+                ...dataCellStyle,
+                font: { name: 'Segoe UI', sz: 9.5, bold: true, color: { rgb: '065F46' } },
+                fill: { patternType: 'solid', fgColor: { rgb: 'F0FDF4' } },
+                alignment: { horizontal: 'left', vertical: 'center', wrapText: true }
+              }
+            }
+
+            const isZero = item.logicVal === 0
+            const isNegative = item.logicVal < 0
+            let labelStyle = { ...dataCellStyle }
+            if (isZero) {
+              labelStyle = {
+                ...dataCellStyle,
+                font: { name: 'Segoe UI', sz: 9.5, bold: true, color: { rgb: '475569' } },
+                fill: { patternType: 'solid', fgColor: { rgb: 'F1F5F9' } },
+                alignment: { horizontal: 'left', vertical: 'center', wrapText: true },
+                border: {
+                  top: { style: 'thin', color: { rgb: 'CBD5E1' } },
+                  bottom: { style: 'thin', color: { rgb: 'CBD5E1' } },
+                  left: { style: 'thin', color: { rgb: 'CBD5E1' } },
+                  right: { style: 'thin', color: { rgb: 'CBD5E1' } }
+                }
+              }
+            } else if (isNegative) {
+              labelStyle = {
+                ...dataCellStyle,
+                font: { name: 'Segoe UI', sz: 9.5, bold: true, color: { rgb: '991B1B' } },
+                fill: { patternType: 'solid', fgColor: { rgb: 'FEE2E2' } },
+                alignment: { horizontal: 'left', vertical: 'center', wrapText: true },
+                border: {
+                  top: { style: 'thin', color: { rgb: 'FCA5A5' } },
+                  bottom: { style: 'thin', color: { rgb: 'FCA5A5' } },
+                  left: { style: 'thin', color: { rgb: 'FCA5A5' } },
+                  right: { style: 'thin', color: { rgb: 'FCA5A5' } }
+                }
+              }
+            } else {
+              labelStyle = {
+                ...dataCellStyle,
+                font: { name: 'Segoe UI', sz: 9.5, bold: true, color: { rgb: '047857' } },
+                fill: { patternType: 'solid', fgColor: { rgb: 'ECFDF5' } },
+                alignment: { horizontal: 'left', vertical: 'center', wrapText: true },
+                border: {
+                  top: { style: 'thin', color: { rgb: 'A7F3D0' } },
+                  bottom: { style: 'thin', color: { rgb: 'A7F3D0' } },
+                  left: { style: 'thin', color: { rgb: 'A7F3D0' } },
+                  right: { style: 'thin', color: { rgb: 'A7F3D0' } }
+                }
+              }
+            }
+
+            let roleStyle = { ...dataCellStyle }
+            if (item.role === 'Đơn vị nhận') {
+              roleStyle = {
+                ...dataCellStyle,
+                font: { name: 'Segoe UI', sz: 9.5, bold: true, color: { rgb: '6D28D9' } },
+                fill: { patternType: 'solid', fgColor: { rgb: 'F5F3FF' } },
+                alignment: { horizontal: 'center', vertical: 'center', wrapText: true },
+                border: {
+                  top: { style: 'thin', color: { rgb: 'DDD6FE' } },
+                  bottom: { style: 'thin', color: { rgb: 'DDD6FE' } },
+                  left: { style: 'thin', color: { rgb: 'DDD6FE' } },
+                  right: { style: 'thin', color: { rgb: 'DDD6FE' } }
+                }
+              }
+            } else {
+              roleStyle = {
+                ...dataCellStyle,
+                font: { name: 'Segoe UI', sz: 9.5, bold: true, color: { rgb: 'EA580C' } },
+                fill: { patternType: 'solid', fgColor: { rgb: 'FFF7ED' } },
+                alignment: { horizontal: 'center', vertical: 'center', wrapText: true },
+                border: {
+                  top: { style: 'thin', color: { rgb: 'FED7AA' } },
+                  bottom: { style: 'thin', color: { rgb: 'FED7AA' } },
+                  left: { style: 'thin', color: { rgb: 'FED7AA' } },
+                  right: { style: 'thin', color: { rgb: 'FED7AA' } }
+                }
+              }
+            }
+
+            const khoStyle = {
+              ...dataCellStyle,
+              font: { name: 'Segoe UI', sz: 9.5, bold: true, color: roleStyle.font.color },
+              fill: roleStyle.fill,
+              alignment: { horizontal: 'left', vertical: 'center', wrapText: true },
+              border: roleStyle.border
+            }
+
+            const catLabel = cat === 'ncc' ? 'Nhà cung cấp (NCC)'
+                           : cat === 'kho' ? 'Kho khác'
+                           : cat === 'todoi' ? 'Tổ đội'
+                           : ''
+            let partnerRoleStyle = { ...dataCellStyle }
+            if (cat === 'ncc') {
+              partnerRoleStyle = {
+                ...dataCellStyle,
+                font: { name: 'Segoe UI', sz: 9.5, bold: true, color: { rgb: '78350F' } },
+                fill: { patternType: 'solid', fgColor: { rgb: 'FFFBEB' } },
+                alignment: { horizontal: 'center', vertical: 'center', wrapText: true },
+                border: {
+                  top: { style: 'thin', color: { rgb: 'FDE68A' } },
+                  bottom: { style: 'thin', color: { rgb: 'FDE68A' } },
+                  left: { style: 'thin', color: { rgb: 'FDE68A' } },
+                  right: { style: 'thin', color: { rgb: 'FDE68A' } }
+                }
+              }
+            } else if (cat === 'kho') {
+              partnerRoleStyle = {
+                ...dataCellStyle,
+                font: { name: 'Segoe UI', sz: 9.5, bold: true, color: { rgb: '1E3A8A' } },
+                fill: { patternType: 'solid', fgColor: { rgb: 'EFF6FF' } },
+                alignment: { horizontal: 'center', vertical: 'center', wrapText: true },
+                border: {
+                  top: { style: 'thin', color: { rgb: 'BFDBFE' } },
+                  bottom: { style: 'thin', color: { rgb: 'BFDBFE' } },
+                  left: { style: 'thin', color: { rgb: 'BFDBFE' } },
+                  right: { style: 'thin', color: { rgb: 'BFDBFE' } }
+                }
+              }
+            } else if (cat === 'todoi') {
+              partnerRoleStyle = {
+                ...dataCellStyle,
+                font: { name: 'Segoe UI', sz: 9.5, bold: true, color: { rgb: '065F46' } },
+                fill: { patternType: 'solid', fgColor: { rgb: 'F0FDF4' } },
+                alignment: { horizontal: 'center', vertical: 'center', wrapText: true },
+                border: {
+                  top: { style: 'thin', color: { rgb: 'BBF7D0' } },
+                  bottom: { style: 'thin', color: { rgb: 'BBF7D0' } },
+                  left: { style: 'thin', color: { rgb: 'BBF7D0' } },
+                  right: { style: 'thin', color: { rgb: 'BBF7D0' } }
+                }
+              }
+            }
+
+            const partnerCol = item.role === 'Đơn vị giao' ? 'E' : 'D'
+            if (isBaoCao) {
+              ws[`J${rowNum}`] = { v: i + 1, t: 'n', s: { ...dataCellStyle, alignment: { horizontal: 'center', vertical: 'center', wrapText: true } } }
+              ws[`K${rowNum}`] = { v: labelType, t: 's', s: labelStyle }
+              ws[`L${rowNum}`] = { v: localProject || 'Tất cả', t: 's', s: khoStyle }
+              ws[`M${rowNum}`] = { v: item.role || 'Đơn vị giao', t: 's', s: roleStyle }
+              ws[`N${rowNum}`] = { v: item.partner, t: 's', s: partnerStyle }
+              ws[`O${rowNum}`] = { v: catLabel, t: 's', s: partnerRoleStyle }
+              ws[`P${rowNum}`] = { 
+                f: `SUMIFS('${xuatSheetName}'!J:J, '${xuatSheetName}'!${partnerCol}:${partnerCol}, N${rowNum})`, 
+                t: 'n', 
+                z: '#,##0.000;[Red](#,##0.000);"-"',
+                s: { ...dataCellStyle, alignment: { horizontal: 'right', vertical: 'center', wrapText: true }, font: { name: 'Segoe UI', sz: 9.5, bold: true, color: { rgb: 'C2410C' } } } 
+              }
+              ws[`Q${rowNum}`] = { v: item.explain || '', t: 's', s: { ...dataCellStyle, font: { name: 'Segoe UI', sz: 9.5, italic: true, color: { rgb: '475569' } }, alignment: { horizontal: 'left', vertical: 'center', wrapText: true } } }
+            } else {
+              ws[`L${rowNum}`] = { v: i + 1, t: 'n', s: { ...dataCellStyle, alignment: { horizontal: 'center', vertical: 'center', wrapText: true } } }
+              ws[`M${rowNum}`] = { v: labelType, t: 's', s: labelStyle }
+              ws[`N${rowNum}`] = { v: localProject || 'Tất cả', t: 's', s: khoStyle }
+              ws[`O${rowNum}`] = { v: item.role || 'Đơn vị giao', t: 's', s: roleStyle }
+              ws[`P${rowNum}`] = { v: item.partner, t: 's', s: partnerStyle }
+              ws[`Q${rowNum}`] = { v: catLabel, t: 's', s: partnerRoleStyle }
+              ws[`R${rowNum}`] = { 
+                f: `SUMIFS('${xuatSheetName}'!F:F, '${xuatSheetName}'!${partnerCol}:${partnerCol}, P${rowNum}, '${xuatSheetName}'!G:G, M${rowNum})`, 
+                t: 'n', 
+                z: '#,##0.000;[Red](#,##0.000);"-"',
+                s: { ...dataCellStyle, alignment: { horizontal: 'right', vertical: 'center', wrapText: true } } 
+              }
+              
+              ws[`S${rowNum}`] = { 
+                v: item.logicVal, 
+                t: 'n', 
+                z: '#,##0;(#,##0);"-"', 
+                s: { 
+                  ...dataCellStyle, 
+                  alignment: { horizontal: 'center', vertical: 'center', wrapText: true }, 
+                  font: { 
+                    name: 'Segoe UI', 
+                    sz: 9.5, 
+                    bold: true,
+                    color: item.logicVal === -1 ? { rgb: 'FF0000' } : undefined
+                  } 
+                } 
+              }
+              
+              ws[`T${rowNum}`] = { 
+                f: `R${rowNum} * S${rowNum}`, 
+                t: 'n', 
+                z: '#,##0.000;[Red](#,##0.000);"-"',
+                s: { ...dataCellStyle, alignment: { horizontal: 'right', vertical: 'center', wrapText: true }, font: { name: 'Segoe UI', sz: 9.5, bold: true, color: { rgb: 'C2410C' } } } 
+              }
+              ws[`U${rowNum}`] = { v: item.explain || '', t: 's', s: { ...dataCellStyle, font: { name: 'Segoe UI', sz: 9.5, italic: true, color: { rgb: '475569' } }, alignment: { horizontal: 'left', vertical: 'center', wrapText: true } } }
+            }
+          } else {
+            const emptyCols = isBaoCao ? ['J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q'] : ['L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U']
+            emptyCols.forEach(col => {
+              ws[`${col}${rowNum}`] = { v: '', t: 's', s: { ...dataCellStyle, border: {} } }
+            })
+          }
+        }
+
+        if (isBaoCao) {
+          ws['!ref'] = `A1:Q${8 + sheetMaxRows}`
+          ws['!merges'] = [
+            { s: { r: 1, c: 0 }, e: { r: 1, c: 16 } },
+            { s: { r: 5, c: 0 }, e: { r: 5, c: 7 } },
+            { s: { r: 5, c: 9 }, e: { r: 5, c: 16 } }
+          ]
+          ws['!autofilter'] = { ref: `A7:Q${8 + sheetMaxRows}` }
+        } else {
+          ws['!ref'] = `A1:U${8 + sheetMaxRows}`
+          ws['!merges'] = [
+            { s: { r: 1, c: 0 }, e: { r: 1, c: 20 } },
+            { s: { r: 5, c: 0 }, e: { r: 5, c: 9 } },
+            { s: { r: 5, c: 11 }, e: { r: 5, c: 20 } }
+          ]
+          ws['!autofilter'] = { ref: `A7:U${8 + sheetMaxRows}` }
+        }
+
+        return ws
+      }
+
+      const groupAndSortByPartnerForMulti = (list) => {
+        const grouped = {}
+        list.forEach(item => {
+          const normPartner = (item.partner || '').trim()
+          if (!grouped[normPartner]) {
+            grouped[normPartner] = {
+              partner: normPartner,
+              role: item.role,
+              detailType: item.detailType,
+              logicVal: item.logicVal,
+              explain: item.explain,
+              totalQty: 0,
+              totalContribution: 0,
+              items: []
+            }
+          }
+          grouped[normPartner].totalQty += item.totalQty
+          grouped[normPartner].totalContribution += item.totalQty * item.logicVal
+          grouped[normPartner].items.push(item)
+        })
+
+        const groupedList = Object.values(grouped).map(group => {
+          group.items.sort((a, b) => b.totalQty - a.totalQty)
+          const dominant = group.items[0]
+          return {
+            partner: group.partner,
+            role: dominant.role,
+            detailType: dominant.detailType,
+            logicVal: dominant.logicVal,
+            explain: dominant.explain || '',
+            totalQty: group.totalQty,
+            totalContribution: group.totalContribution
+          }
+        })
+
+        groupedList.sort((a, b) => b.totalContribution - a.totalContribution)
+        return groupedList
+      }
+
+      const nhapListBaoCao = nhapSummaryList.filter(item => item.logicVal !== 0)
+      const xuatListBaoCao = xuatSummaryList.filter(item => item.logicVal !== 0)
+
+      const groupedNhapBaoCao = groupAndSortByPartnerForMulti(nhapListBaoCao)
+      groupedNhapBaoCao.sort((a, b) => {
+        const rolePriorityA = a.role === 'Đơn vị nhận' ? 1 : a.role === 'Đơn vị giao' ? 2 : 3
+        const rolePriorityB = b.role === 'Đơn vị nhận' ? 1 : b.role === 'Đơn vị giao' ? 2 : 3
+        if (rolePriorityA !== rolePriorityB) return rolePriorityA - rolePriorityB
+
+        const normA = (a.partner || '').trim().replace(/\s+/g, ' ')
+        const catA = (customCategoryMap && customCategoryMap[normA]) || getUnitCategory(normA)
+        const catPriorityA = catA === 'ncc' ? 1 : catA === 'kho' ? 2 : catA === 'todoi' ? 3 : 4
+
+        const normB = (b.partner || '').trim().replace(/\s+/g, ' ')
+        const catB = (customCategoryMap && customCategoryMap[normB]) || getUnitCategory(normB)
+        const catPriorityB = catB === 'ncc' ? 1 : catB === 'kho' ? 2 : catB === 'todoi' ? 3 : 4
+
+        if (catPriorityA !== catPriorityB) return catPriorityA - catPriorityB
+
+        const valA = Math.abs(a.totalContribution || 0)
+        const valB = Math.abs(b.totalContribution || 0)
+        if (valB !== valA) return valB - valA
+
+        return (a.partner || '').localeCompare(b.partner || '', 'vi')
+      })
+
+      const groupedXuatBaoCao = groupAndSortByPartnerForMulti(xuatListBaoCao)
+      groupedXuatBaoCao.sort((a, b) => {
+        const rolePriorityA = a.role === 'Đơn vị giao' ? 1 : a.role === 'Đơn vị nhận' ? 2 : 3
+        const rolePriorityB = b.role === 'Đơn vị giao' ? 1 : b.role === 'Đơn vị nhận' ? 2 : 3
+        if (rolePriorityA !== rolePriorityB) return rolePriorityA - rolePriorityB
+
+        const normA = (a.partner || '').trim().replace(/\s+/g, ' ')
+        const catA = (customCategoryMap && customCategoryMap[normA]) || getUnitCategory(normA)
+        const catPriorityA = catA === 'todoi' ? 1 : catA === 'kho' ? 2 : catA === 'ncc' ? 3 : 4
+
+        const normB = (b.partner || '').trim().replace(/\s+/g, ' ')
+        const catB = (customCategoryMap && customCategoryMap[normB]) || getUnitCategory(normB)
+        const catPriorityB = catB === 'todoi' ? 1 : catB === 'kho' ? 2 : catB === 'ncc' ? 3 : 4
+
+        if (catPriorityA !== catPriorityB) return catPriorityA - catPriorityB
+
+        const valA = Math.abs(a.totalContribution || 0)
+        const valB = Math.abs(b.totalContribution || 0)
+        if (valB !== valA) return valB - valA
+
+        return (a.partner || '').localeCompare(b.partner || '', 'vi')
+      })
+
+      const wsBaoCao = buildSheetDataForMulti(groupedNhapBaoCao, groupedXuatBaoCao, true)
+      const wsSummary = buildSheetDataForMulti(nhapSummaryList, xuatSummaryList, false)
+
+      const wsThucNhap = {}
+      wsThucNhap['!cols'] = [
+        { wpx: 50 }, { wpx: 100 }, { wpx: 130 }, { wpx: 240 }, { wpx: 240 },
+        { wpx: 120 }, { wpx: 150 }, { wpx: 80 }, { wpx: 250 }, { wpx: 120 }
+      ]
+
+      const sheet2TitleStyle = {
+        font: { name: 'Segoe UI', sz: 14, bold: true, color: { rgb: '0F766E' } },
+        alignment: { horizontal: 'left', vertical: 'center' }
+      }
+
+      wsThucNhap['A2'] = { v: 'BẢNG CHI TIẾT CHỨNG TỪ THỰC NHẬP (CẤU THÀNH SỐ LIỆU)', t: 's', s: sheet2TitleStyle }
+      wsThucNhap['A3'] = { v: `Mặt hàng: ${itemRow.tenVatTu} (${itemRow.maSAP}) | ĐVT: ${itemRow.dvt}`, t: 's', s: subtitleStyle }
+
+      const s2Headers = ['STT', 'Ngày', 'Mã chứng từ', 'Đơn vị giao (NCC/Kho)', 'Đơn vị nhận (Kho nhận)', 'KL Chứng từ', 'Phân loại đơn vị', 'Hệ số logic', 'Quy tắc & Diễn giải logic', 'Đóng góp thực']
+      s2Headers.forEach((label, i) => {
+        const colChar = String.fromCharCode(65 + i)
+        wsThucNhap[`${colChar}5`] = { v: label, t: 's', s: thStyle1 }
+      })
+
+      const nhapTxList = txs.filter(tx => tx.nhapVal > 0)
+      const footerStyle1 = { ...footerStyle, fill: { patternType: 'solid', fgColor: { rgb: 'F0FDF4' } } }
+      
+      wsThucNhap[`A6`] = { v: '', t: 's', s: footerStyle1 }
+      wsThucNhap[`B6`] = { v: '', t: 's', s: footerStyle1 }
+      wsThucNhap[`C6`] = { v: '', t: 's', s: footerStyle1 }
+      wsThucNhap[`D6`] = { v: '', t: 's', s: footerStyle1 }
+      wsThucNhap[`E6`] = { v: 'Tổng cộng', t: 's', s: { ...footerStyle1, alignment: { horizontal: 'right', vertical: 'center', wrapText: true } } }
+      wsThucNhap[`F6`] = { f: nhapTxList.length > 0 ? `SUM(F7:F${6 + nhapTxList.length})` : '', t: 'n', z: '#,##0.000;[Red](#,##0.000);"-"', s: { ...footerStyle1, alignment: { horizontal: 'right', vertical: 'center', wrapText: true } } }
+      wsThucNhap[`G6`] = { v: '', t: 's', s: footerStyle1 }
+      wsThucNhap[`H6`] = { v: '', t: 's', s: footerStyle1 }
+      wsThucNhap[`I6`] = { v: '', t: 's', s: footerStyle1 }
+      wsThucNhap[`J6`] = { f: nhapTxList.length > 0 ? `SUM(J7:J${6 + nhapTxList.length})` : '', t: 'n', z: '#,##0.000;[Red](#,##0.000);"-"', s: { ...footerStyle1, alignment: { horizontal: 'right', vertical: 'center', wrapText: true } } }
+
+      nhapTxList.forEach((tx, idx) => {
+        const rowNum = 7 + idx
+        const typeLabel = tx.detailTypeNhap === 'nhan_ncc' ? 'Nhận từ NCC'
+                        : tx.detailTypeNhap === 'nhan_kho' ? 'Nhận từ Kho gửi'
+                        : tx.detailTypeNhap === 'tra_ncc' ? 'Trả lại NCC'
+                        : tx.detailTypeNhap === 'dieu_chuyen_di' ? 'Điều chuyển đi (Không tính)'
+                        : tx.detailTypeNhap === 'nhan_khac' ? 'Nhận nguồn khác (Không tính)'
+                        : 'Không tính'
+
+        const isZero = tx.logicNhapVal === 0
+        const isNegative = tx.logicNhapVal < 0
+        let typeStyle = { ...dataCellStyle }
+        if (isZero) {
+          typeStyle = {
+            ...dataCellStyle,
+            font: { name: 'Segoe UI', sz: 9.5, bold: true, color: { rgb: '475569' } },
+            fill: { patternType: 'solid', fgColor: { rgb: 'F1F5F9' } },
+            alignment: { horizontal: 'left', vertical: 'center', wrapText: true },
+            border: {
+              top: { style: 'thin', color: { rgb: 'CBD5E1' } },
+              bottom: { style: 'thin', color: { rgb: 'CBD5E1' } },
+              left: { style: 'thin', color: { rgb: 'CBD5E1' } },
+              right: { style: 'thin', color: { rgb: 'CBD5E1' } }
+            }
+          }
+        } else if (isNegative) {
+          typeStyle = {
+            ...dataCellStyle,
+            font: { name: 'Segoe UI', sz: 9.5, bold: true, color: { rgb: '991B1B' } },
+            fill: { patternType: 'solid', fgColor: { rgb: 'FEE2E2' } },
+            alignment: { horizontal: 'left', vertical: 'center', wrapText: true },
+            border: {
+              top: { style: 'thin', color: { rgb: 'FCA5A5' } },
+              bottom: { style: 'thin', color: { rgb: 'FCA5A5' } },
+              left: { style: 'thin', color: { rgb: 'FCA5A5' } },
+              right: { style: 'thin', color: { rgb: 'FCA5A5' } }
+            }
+          }
+        } else {
+          typeStyle = {
+            ...dataCellStyle,
+            font: { name: 'Segoe UI', sz: 9.5, bold: true, color: { rgb: '047857' } },
+            fill: { patternType: 'solid', fgColor: { rgb: 'ECFDF5' } },
+            alignment: { horizontal: 'left', vertical: 'center', wrapText: true },
+            border: {
+              top: { style: 'thin', color: { rgb: 'A7F3D0' } },
+              bottom: { style: 'thin', color: { rgb: 'A7F3D0' } },
+              left: { style: 'thin', color: { rgb: 'A7F3D0' } },
+              right: { style: 'thin', color: { rgb: 'A7F3D0' } }
+            }
+          }
+        }
+
+        wsThucNhap[`A${rowNum}`] = { v: idx + 1, t: 'n', s: { ...dataCellStyle, alignment: { horizontal: 'center', vertical: 'center', wrapText: true } } }
+        wsThucNhap[`B${rowNum}`] = { v: tx.ngayXuatNhap || '', t: 's', s: { ...dataCellStyle, alignment: { horizontal: 'center', vertical: 'center', wrapText: true } } }
+        wsThucNhap[`C${rowNum}`] = { v: tx.maDonNhapKho || tx.maDonXuatKho || '', t: 's', s: { ...dataCellStyle, font: { name: 'Segoe UI', sz: 9.5, bold: true }, alignment: { vertical: 'center', wrapText: true } } }
+        wsThucNhap[`D${rowNum}`] = { v: tx.donViGiao || '', t: 's', s: { ...dataCellStyle, alignment: { vertical: 'center', wrapText: true } } }
+        wsThucNhap[`E${rowNum}`] = { v: tx.donViNhan || '', t: 's', s: { ...dataCellStyle, alignment: { vertical: 'center', wrapText: true } } }
+        wsThucNhap[`F${rowNum}`] = { v: tx.nhapVal, t: 'n', z: '#,##0.000;[Red](#,##0.000);"-"', s: { ...dataCellStyle, alignment: { horizontal: 'right', vertical: 'center', wrapText: true } } }
+        wsThucNhap[`G${rowNum}`] = { v: typeLabel, t: 's', s: typeStyle }
+        wsThucNhap[`H${rowNum}`] = { 
+          v: tx.logicNhapVal, 
+          t: 'n', 
+          z: '#,##0;(#,##0);"-"', 
+          s: { 
+            ...dataCellStyle, 
+            alignment: { horizontal: 'center', vertical: 'center', wrapText: true }, 
+            font: { 
+              name: 'Segoe UI', 
+              sz: 9.5, 
+              bold: true,
+              color: tx.logicNhapVal === -1 ? { rgb: 'FF0000' } : undefined
+            } 
+          } 
+        }
+        wsThucNhap[`I${rowNum}`] = { v: tx.explainNhap || '', t: 's', s: { ...dataCellStyle, alignment: { vertical: 'center', wrapText: true } } }
+        
+        wsThucNhap[`J${rowNum}`] = { 
+          f: `F${rowNum} * H${rowNum}`, 
+          t: 'n', 
+          z: '#,##0.000;[Red](#,##0.000);"-"',
+          s: { ...dataCellStyle, alignment: { horizontal: 'right', vertical: 'center', wrapText: true }, font: { name: 'Segoe UI', sz: 9.5, bold: true, color: { rgb: '0F766E' } } } 
+        }
+      })
+
+      wsThucNhap['!ref'] = `A1:J${6 + nhapTxList.length}`
+      wsThucNhap['!merges'] = [
+        { s: { r: 1, c: 0 }, e: { r: 1, c: 9 } }
+      ]
+      wsThucNhap['!autofilter'] = { ref: `A5:J${6 + nhapTxList.length}` }
+
+      const wsThucXuat = {}
+      wsThucXuat['!cols'] = [
+        { wpx: 50 }, { wpx: 100 }, { wpx: 130 }, { wpx: 240 }, { wpx: 240 },
+        { wpx: 120 }, { wpx: 150 }, { wpx: 80 }, { wpx: 250 }, { wpx: 120 }
+      ]
+
+      const sheet3TitleStyle = {
+        font: { name: 'Segoe UI', sz: 14, bold: true, color: { rgb: 'C2410C' } },
+        alignment: { horizontal: 'left', vertical: 'center' }
+      }
+
+      wsThucXuat['A2'] = { v: 'BẢNG CHI TIẾT CHỨNG TỪ THỰC XUẤT (CẤU THÀNH SỐ LIỆU)', t: 's', s: sheet3TitleStyle }
+      wsThucXuat['A3'] = { v: `Mặt hàng: ${itemRow.tenVatTu} (${itemRow.maSAP}) | ĐVT: ${itemRow.dvt}`, t: 's', s: subtitleStyle }
+
+      const s3Headers = ['STT', 'Ngày', 'Mã chứng từ', 'Đơn vị giao (Kho gửi)', 'Đơn vị nhận (Tổ đội/Kho nhận)', 'KL Chứng từ', 'Phân loại đơn vị', 'Hệ số logic', 'Quy tắc & Diễn giải logic', 'Đóng góp thực']
+      s3Headers.forEach((label, i) => {
+        const colChar = String.fromCharCode(65 + i)
+        wsThucXuat[`${colChar}5`] = { v: label, t: 's', s: thStyle2 }
+      })
+
+      const xuatTxList = txs.filter(tx => tx.xuatVal > 0)
+      const footerStyle2 = { ...footerStyle, fill: { patternType: 'solid', fgColor: { rgb: 'FFF7ED' } } }
+      
+      wsThucXuat[`A6`] = { v: '', t: 's', s: footerStyle2 }
+      wsThucXuat[`B6`] = { v: '', t: 's', s: footerStyle2 }
+      wsThucXuat[`C6`] = { v: '', t: 's', s: footerStyle2 }
+      wsThucXuat[`D6`] = { v: '', t: 's', s: footerStyle2 }
+      wsThucXuat[`E6`] = { v: 'Tổng cộng', t: 's', s: { ...footerStyle2, alignment: { horizontal: 'right', vertical: 'center', wrapText: true } } }
+      wsThucXuat[`F6`] = { f: xuatTxList.length > 0 ? `SUM(F7:F${6 + xuatTxList.length})` : '', t: 'n', z: '#,##0.000;[Red](#,##0.000);"-"', s: { ...footerStyle2, alignment: { horizontal: 'right', vertical: 'center', wrapText: true } } }
+      wsThucXuat[`G6`] = { v: '', t: 's', s: footerStyle2 }
+      wsThucXuat[`H6`] = { v: '', t: 's', s: footerStyle2 }
+      wsThucXuat[`I6`] = { v: '', t: 's', s: footerStyle2 }
+      wsThucXuat[`J6`] = { f: xuatTxList.length > 0 ? `SUM(J7:J${6 + xuatTxList.length})` : '', t: 'n', z: '#,##0.000;[Red](#,##0.000);"-"', s: { ...footerStyle2, alignment: { horizontal: 'right', vertical: 'center', wrapText: true } } }
+
+      xuatTxList.forEach((tx, idx) => {
+        const rowNum = 7 + idx
+        const typeLabel = tx.detailTypeXuat === 'xuat_todoi' ? 'Xuất cho Tổ đội'
+                        : tx.detailTypeXuat === 'xuat_kho' ? 'Xuất đi Kho nhận'
+                        : tx.detailTypeXuat === 'todoi_tra' ? 'Tổ đội trả hàng'
+                        : tx.detailTypeXuat === 'xuat_khac' ? 'Xuất khác (Không tính)'
+                        : tx.detailTypeXuat === 'nhan_lai_khac' ? 'Nhận lại khác (Không tính)'
+                        : 'Không tính'
+
+        const isZero = tx.logicXuatVal === 0
+        const isNegative = tx.logicXuatVal < 0
+        let typeStyle = { ...dataCellStyle }
+        if (isZero) {
+          typeStyle = {
+            ...dataCellStyle,
+            font: { name: 'Segoe UI', sz: 9.5, bold: true, color: { rgb: '475569' } },
+            fill: { patternType: 'solid', fgColor: { rgb: 'F1F5F9' } },
+            alignment: { horizontal: 'left', vertical: 'center', wrapText: true },
+            border: {
+              top: { style: 'thin', color: { rgb: 'CBD5E1' } },
+              bottom: { style: 'thin', color: { rgb: 'CBD5E1' } },
+              left: { style: 'thin', color: { rgb: 'CBD5E1' } },
+              right: { style: 'thin', color: { rgb: 'CBD5E1' } }
+            }
+          }
+        } else if (isNegative) {
+          typeStyle = {
+            ...dataCellStyle,
+            font: { name: 'Segoe UI', sz: 9.5, bold: true, color: { rgb: '991B1B' } },
+            fill: { patternType: 'solid', fgColor: { rgb: 'FEE2E2' } },
+            alignment: { horizontal: 'left', vertical: 'center', wrapText: true },
+            border: {
+              top: { style: 'thin', color: { rgb: 'FCA5A5' } },
+              bottom: { style: 'thin', color: { rgb: 'FCA5A5' } },
+              left: { style: 'thin', color: { rgb: 'FCA5A5' } },
+              right: { style: 'thin', color: { rgb: 'FCA5A5' } }
+            }
+          }
+        } else {
+          typeStyle = {
+            ...dataCellStyle,
+            font: { name: 'Segoe UI', sz: 9.5, bold: true, color: { rgb: '047857' } },
+            fill: { patternType: 'solid', fgColor: { rgb: 'ECFDF5' } },
+            alignment: { horizontal: 'left', vertical: 'center', wrapText: true },
+            border: {
+              top: { style: 'thin', color: { rgb: 'A7F3D0' } },
+              bottom: { style: 'thin', color: { rgb: 'A7F3D0' } },
+              left: { style: 'thin', color: { rgb: 'A7F3D0' } },
+              right: { style: 'thin', color: { rgb: 'A7F3D0' } }
+            }
+          }
+        }
+
+        wsThucXuat[`A${rowNum}`] = { v: idx + 1, t: 'n', s: { ...dataCellStyle, alignment: { horizontal: 'center', vertical: 'center', wrapText: true } } }
+        wsThucXuat[`B${rowNum}`] = { v: tx.ngayXuatNhap || '', t: 's', s: { ...dataCellStyle, alignment: { horizontal: 'center', vertical: 'center', wrapText: true } } }
+        wsThucXuat[`C${rowNum}`] = { v: tx.maDonNhapKho || tx.maDonXuatKho || '', t: 's', s: { ...dataCellStyle, font: { name: 'Segoe UI', sz: 9.5, bold: true }, alignment: { vertical: 'center', wrapText: true } } }
+        wsThucXuat[`D${rowNum}`] = { v: tx.donViGiao || '', t: 's', s: { ...dataCellStyle, alignment: { vertical: 'center', wrapText: true } } }
+        wsThucXuat[`E${rowNum}`] = { v: tx.donViNhan || '', t: 's', s: { ...dataCellStyle, alignment: { vertical: 'center', wrapText: true } } }
+        wsThucXuat[`F${rowNum}`] = { v: tx.xuatVal, t: 'n', z: '#,##0.000;[Red](#,##0.000);"-"', s: { ...dataCellStyle, alignment: { horizontal: 'right', vertical: 'center', wrapText: true } } }
+        wsThucXuat[`G${rowNum}`] = { v: typeLabel, t: 's', s: typeStyle }
+        wsThucXuat[`H${rowNum}`] = { 
+          v: tx.logicXuatVal, 
+          t: 'n', 
+          z: '#,##0;(#,##0);"-"', 
+          s: { 
+            ...dataCellStyle, 
+            alignment: { horizontal: 'center', vertical: 'center', wrapText: true }, 
+            font: { 
+              name: 'Segoe UI', 
+              sz: 9.5, 
+              bold: true,
+              color: tx.logicXuatVal === -1 ? { rgb: 'FF0000' } : undefined
+            } 
+          } 
+        }
+        wsThucXuat[`I${rowNum}`] = { v: tx.explainXuat || '', t: 's', s: { ...dataCellStyle, alignment: { vertical: 'center', wrapText: true } } }
+        
+        wsThucXuat[`J${rowNum}`] = { 
+          f: `F${rowNum} * H${rowNum}`, 
+          t: 'n', 
+          z: '#,##0.000;[Red](#,##0.000);"-"',
+          s: { ...dataCellStyle, alignment: { horizontal: 'right', vertical: 'center', wrapText: true }, font: { name: 'Segoe UI', sz: 9.5, bold: true, color: { rgb: 'C2410C' } } } 
+        }
+      })
+
+      wsThucXuat['!ref'] = `A1:J${6 + xuatTxList.length}`
+      wsThucXuat['!merges'] = [
+        { s: { r: 1, c: 0 }, e: { r: 1, c: 9 } }
+      ]
+      wsThucXuat['!autofilter'] = { ref: `A5:J${6 + xuatTxList.length}` }
+
+      XLSXStyle.utils.book_append_sheet(wb, wsBaoCao, bcSheetName)
+      XLSXStyle.utils.book_append_sheet(wb, wsSummary, thSheetName)
+      XLSXStyle.utils.book_append_sheet(wb, wsThucNhap, nhapSheetName)
+      XLSXStyle.utils.book_append_sheet(wb, wsThucXuat, xuatSheetName)
+    })
+
+    const wbout = XLSXStyle.write(wb, { bookType: 'xlsx', type: 'binary', compression: true })
+    const s2ab = (s) => {
+      const buf = new ArrayBuffer(s.length)
+      const view = new Uint8Array(buf)
+      for (let j = 0; j < s.length; j++) view[j] = s.charCodeAt(j) & 0xFF
+      return buf
+    }
+
+    const blob = new Blob([s2ab(wbout)], { type: 'application/octet-stream' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `Giai_Trinh_Gop_${selectedRows.length}_Vat_Tu_${new Date().toISOString().slice(0, 10)}.xlsx`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+  }
+
 
   const handleExportDetailExcel = (itemRow, nhapList, xuatList) => {
     const wb = XLSXStyle.utils.book_new()
@@ -1350,7 +2541,7 @@ function RealReportSummaryTable({ summaryRows = [], customCategoryMap = {}, loca
           const partnerCol = item.role === 'Đơn vị giao' ? 'E' : 'D'
           if (isBaoCao) {
             ws[`G${rowNum}`] = { 
-              f: `SUMIFS('Chi tiết Thực nhập'!J:J, 'Chi tiết Thực nhập'!${partnerCol}:${partnerCol}, E${rowNum})`, 
+              f: `SUMIFS('Tổng hợp'!I:I, 'Tổng hợp'!E:E, E${rowNum})`, 
               t: 'n', 
               z: '#,##0.000;[Red](#,##0.000);"-"',
               s: { ...dataCellStyle, alignment: { horizontal: 'right', vertical: 'center', wrapText: true }, font: { name: 'Segoe UI', sz: 9.5, bold: true, color: { rgb: '0F766E' } } } 
@@ -1570,7 +2761,7 @@ function RealReportSummaryTable({ summaryRows = [], customCategoryMap = {}, loca
             ws[`N${rowNum}`] = { v: item.partner, t: 's', s: partnerStyle }
             ws[`O${rowNum}`] = { v: catLabel, t: 's', s: partnerRoleStyle }
             ws[`P${rowNum}`] = { 
-              f: `SUMIFS('Chi tiết Thực xuất'!J:J, 'Chi tiết Thực xuất'!${partnerCol}:${partnerCol}, N${rowNum})`, 
+              f: `SUMIFS('Tổng hợp'!T:T, 'Tổng hợp'!P:P, N${rowNum})`, 
               t: 'n', 
               z: '#,##0.000;[Red](#,##0.000);"-"',
               s: { ...dataCellStyle, alignment: { horizontal: 'right', vertical: 'center', wrapText: true }, font: { name: 'Segoe UI', sz: 9.5, bold: true, color: { rgb: 'C2410C' } } } 
@@ -2036,6 +3227,7 @@ function RealReportSummaryTable({ summaryRows = [], customCategoryMap = {}, loca
   React.useEffect(() => {
     setCurrentPage(1)
     setDetailRow(null)
+    setSelectedSaps(new Set())
   }, [summaryRows])
 
   React.useEffect(() => {
@@ -2114,8 +3306,47 @@ function RealReportSummaryTable({ summaryRows = [], customCategoryMap = {}, loca
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 14px', background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '6px', marginBottom: '10px', fontSize: '12.5px', color: '#1e40af' }}>
         <Info size={16} className="text-blue-600" style={{ flexShrink: 0 }} />
         <span>
-          <strong>Hướng dẫn:</strong> Nhấp đúp (double-click) vào bất kỳ dòng vật tư nào dưới đây để xem <strong>Bảng giải trình cấu thành số liệu chi tiết</strong> (Thực nhập và Thực xuất được tổng hợp từ nhà cung cấp nào, tổ đội nào bị trừ hoặc không tính, v.v.).
+          <strong>Hướng dẫn:</strong> Có thể tích chọn các dòng vật tư bằng ô checkbox để xuất gộp hàng loạt bằng nút phía dưới, hoặc Nhấp đúp (double-click) vào bất kỳ dòng vật tư nào để xem <strong>Bảng giải trình cấu thành số liệu chi tiết</strong>.
         </span>
+      </div>
+
+      {/* Selection Control Bar */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '6px', marginBottom: '10px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', fontSize: '13px', color: '#334155', fontWeight: 500 }}>
+          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-teal-100 text-teal-800">
+            Đã chọn {selectedSaps.size} / {summaryRows.length} vật tư
+          </span>
+          {selectedSaps.size > 0 && (
+            <button
+              onClick={() => setSelectedSaps(new Set())}
+              style={{ fontSize: '12.5px', color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer', padding: 0, textDecoration: 'underline' }}
+            >
+              Bỏ chọn tất cả
+            </button>
+          )}
+        </div>
+        <button
+          onClick={handleExportSelectedExcel}
+          disabled={selectedSaps.size === 0}
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '6px',
+            backgroundColor: selectedSaps.size === 0 ? '#cbd5e1' : '#0f766e',
+            color: '#ffffff',
+            padding: '8px 16px',
+            fontSize: '13px',
+            fontWeight: '600',
+            borderRadius: '6px',
+            border: 'none',
+            cursor: selectedSaps.size === 0 ? 'not-allowed' : 'pointer',
+            boxShadow: selectedSaps.size === 0 ? 'none' : '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
+            transition: 'background-color 0.15s'
+          }}
+        >
+          <Download size={15} />
+          Xuất Báo cáo Giải trình gộp {selectedSaps.size > 0 ? `(${selectedSaps.size} vật tư)` : ''}
+        </button>
       </div>
 
       {/* Table wrapper */}
@@ -2123,6 +3354,14 @@ function RealReportSummaryTable({ summaryRows = [], customCategoryMap = {}, loca
         <table>
           <thead>
             <tr>
+              <th style={{ width: 40, minWidth: 40, maxWidth: 40, textAlign: 'center', verticalAlign: 'middle', fontSize: '12px', padding: '8px' }}>
+                <input
+                  type="checkbox"
+                  className="cursor-pointer rounded border-slate-300 text-teal-600 focus:ring-teal-500 w-4 h-4"
+                  checked={selectedSaps.size === summaryRows.length && summaryRows.length > 0}
+                  onChange={toggleSelectAll}
+                />
+              </th>
               <th style={{ width: 50, minWidth: 50, maxWidth: 50, textAlign: 'center', verticalAlign: 'middle', fontSize: '12px', padding: '8px 10px' }}>
                 STT
               </th>
@@ -2164,6 +3403,14 @@ function RealReportSummaryTable({ summaryRows = [], customCategoryMap = {}, loca
                   title="Nhấp đúp để xem bảng giải trình chi tiết"
                   className="hover:bg-sky-50"
                 >
+                  <td style={{ width: 40, minWidth: 40, maxWidth: 40, textAlign: 'center', padding: '6px' }} onClick={(e) => e.stopPropagation()}>
+                    <input
+                      type="checkbox"
+                      className="cursor-pointer rounded border-slate-300 text-teal-600 focus:ring-teal-500 w-4 h-4"
+                      checked={selectedSaps.has(row.maSAP)}
+                      onChange={() => toggleSelectRow(row.maSAP)}
+                    />
+                  </td>
                   <td style={{ width: 50, minWidth: 50, maxWidth: 50, textAlign: 'center', fontSize: '12px', color: '#1b1919', padding: '6px 10px', fontWeight: 500 }}>
                     {startIdx + i + 1}
                   </td>
