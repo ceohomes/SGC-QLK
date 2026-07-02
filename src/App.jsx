@@ -1045,31 +1045,62 @@ function RealReportSummaryTable({ summaryRows = [], customCategoryMap = {}, loca
     }
 
     // Helper function to build summary or report sheet data
-    const buildSheetData = (listNhap, listXuat) => {
+    const buildSheetData = (listNhap, listXuat, isBaoCao = false) => {
       const ws = {}
-      ws['!cols'] = [
-        { wpx: 40 },  // A: STT
-        { wpx: 130 }, // B: Phân loại đơn vị
-        { wpx: 180 }, // C: Kho chọn
-        { wpx: 16 },  // D: Vai trò Kho chọn
-        { wpx: 250 }, // E: Tên NCC/ Kho khác / Tổ đội
-        { wpx: 16 },  // F: Vai trò NCC/ Kho khác/ Tổ đội
-        { wpx: 130 }, // G: Tổng KL Chứng từ
-        { wpx: 16 },  // H: Hệ số logic
-        { wpx: 130 }, // I: Thực nhập
-        { wpx: 200 }, // J: Ghi chú
-        { wpx: 40 },  // K: Spacer
-        { wpx: 40 },  // L: STT
-        { wpx: 130 }, // M: Phân loại đơn vị
-        { wpx: 180 }, // N: Kho chọn
-        { wpx: 16 },  // O: Vai trò Kho chọn
-        { wpx: 250 }, // P: Tên NCC/ Kho khác / Tổ đội
-        { wpx: 16 },  // Q: Vai trò NCC/ Kho khác/ Tổ đội
-        { wpx: 130 }, // R: Tổng KL Chứng từ
-        { wpx: 16 },  // S: Hệ số logic
-        { wpx: 130 }, // T: Thực xuất
-        { wpx: 200 }  // U: Ghi chú
-      ]
+      
+      const sub1 = isBaoCao 
+        ? ['STT', 'Phân loại đơn vị', 'Kho chọn', 'Vai trò Kho chọn', 'Tên NCC/ Kho khác / Tổ đội', 'Vai trò NCC/ Kho khác/ Tổ đội', 'Thực nhập', 'Ghi chú']
+        : ['STT', 'Phân loại đơn vị', 'Kho chọn', 'Vai trò Kho chọn', 'Tên NCC/ Kho khác / Tổ đội', 'Vai trò NCC/ Kho khác/ Tổ đội', 'Tổng KL Chứng từ', 'Hệ số logic', 'Thực nhập', 'Ghi chú']
+
+      const sub2 = isBaoCao 
+        ? ['STT', 'Phân loại đơn vị', 'Kho chọn', 'Vai trò Kho chọn', 'Tên NCC/ Kho khác / Tổ đội', 'Vai trò NCC/ Kho khác/ Tổ đội', 'Thực xuất', 'Ghi chú']
+        : ['STT', 'Phân loại đơn vị', 'Kho chọn', 'Vai trò Kho chọn', 'Tên NCC/ Kho khác / Tổ đội', 'Vai trò NCC/ Kho khác/ Tổ đội', 'Tổng KL Chứng từ', 'Hệ số logic', 'Thực xuất', 'Ghi chú']
+
+      if (isBaoCao) {
+        ws['!cols'] = [
+          { wpx: 40 },  // A: STT
+          { wpx: 130 }, // B: Phân loại đơn vị
+          { wpx: 180 }, // C: Kho chọn
+          { wch: 16 },  // D: Vai trò Kho chọn
+          { wpx: 250 }, // E: Tên NCC/ Kho khác / Tổ đội
+          { wch: 16 },  // F: Vai trò NCC/ Kho khác/ Tổ đội
+          { wch: 16 },  // G: Thực nhập
+          { wpx: 200 }, // H: Ghi chú
+          { wpx: 40 },  // I: Spacer
+          { wpx: 40 },  // J: STT
+          { wpx: 130 }, // K: Phân loại đơn vị
+          { wpx: 180 }, // L: Kho chọn
+          { wch: 16 },  // M: Vai trò Kho chọn
+          { wpx: 250 }, // N: Tên NCC/ Kho khác / Tổ đội
+          { wch: 16 },  // O: Vai trò NCC/ Kho khác/ Tổ đội
+          { wch: 16 },  // P: Thực xuất
+          { wpx: 200 }  // Q: Ghi chú
+        ]
+      } else {
+        ws['!cols'] = [
+          { wpx: 40 },  // A: STT
+          { wpx: 130 }, // B: Phân loại đơn vị
+          { wpx: 180 }, // C: Kho chọn
+          { wch: 16 },  // D: Vai trò Kho chọn
+          { wpx: 250 }, // E: Tên NCC/ Kho khác / Tổ đội
+          { wch: 16 },  // F: Vai trò NCC/ Kho khác/ Tổ đội
+          { wch: 16 },  // G: Tổng KL Chứng từ
+          { wch: 6 },   // H: Hệ số logic
+          { wch: 16 },  // I: Thực nhập
+          { wpx: 200 }, // J: Ghi chú
+          { wpx: 40 },  // K: Spacer
+          { wpx: 40 },  // L: STT
+          { wpx: 130 }, // M: Phân loại đơn vị
+          { wpx: 180 }, // N: Kho chọn
+          { wch: 16 },  // O: Vai trò Kho chọn
+          { wpx: 250 }, // P: Tên NCC/ Kho khác / Tổ đội
+          { wch: 16 },  // Q: Vai trò NCC/ Kho khác/ Tổ đội
+          { wch: 16 },  // R: Tổng KL Chứng từ
+          { wch: 6 },   // S: Hệ số logic
+          { wch: 16 },  // T: Thực xuất
+          { wpx: 200 }  // U: Ghi chú
+        ]
+      }
 
       ws['A2'] = { v: 'BẢNG GIẢI TRÌNH CẤU THÀNH SỐ LIỆU CHI TIẾT', t: 's', s: titleStyle }
       ws['A3'] = { v: `Kho chọn: ${localProject || 'Tất cả'} | Vật tư: ${itemRow.tenVatTu} (${itemRow.maSAP}) | ĐVT: ${itemRow.dvt}`, t: 's', s: subtitleStyle }
@@ -1080,44 +1111,67 @@ function RealReportSummaryTable({ summaryRows = [], customCategoryMap = {}, loca
       ws['G4'] = { v: '■ Tổ đội', t: 's', s: legendToDoiStyle }
 
       ws['A6'] = { v: 'BẢNG TỔNG HỢP DIỄN GIẢI THỰC NHẬP (SUMIFS THEO ĐƠN VỊ)', t: 's', s: tblHeaderStyle1 }
-      ws['L6'] = { v: 'BẢNG TỔNG HỢP DIỄN GIẢI THỰC XUẤT (SUMIFS THEO ĐƠN VỊ)', t: 's', s: tblHeaderStyle2 }
+      ws[isBaoCao ? 'J6' : 'L6'] = { v: 'BẢNG TỔNG HỢP DIỄN GIẢI THỰC XUẤT (SUMIFS THEO ĐƠN VỊ)', t: 's', s: tblHeaderStyle2 }
 
-      subheaders1.forEach((label, i) => {
+      sub1.forEach((label, i) => {
         const colChar = String.fromCharCode(65 + i)
         ws[`${colChar}7`] = { v: label, t: 's', s: thStyle1 }
       })
 
-      subheaders2.forEach((label, i) => {
-        const colChar = String.fromCharCode(76 + i)
+      sub2.forEach((label, i) => {
+        const startCharCode = isBaoCao ? 74 : 76 // 74 is 'J', 76 is 'L'
+        const colChar = String.fromCharCode(startCharCode + i)
         ws[`${colChar}7`] = { v: label, t: 's', s: thStyle2 }
       })
 
       const sheetMaxRows = Math.max(listNhap.length, listXuat.length)
 
       // Totals
-      ws[`A8`] = { v: '', t: 's', s: footerStyle }
-      ws[`B8`] = { v: '', t: 's', s: footerStyle }
-      ws[`C8`] = { v: '', t: 's', s: footerStyle }
-      ws[`D8`] = { v: '', t: 's', s: footerStyle }
-      ws[`E8`] = { v: 'Tổng cộng', t: 's', s: { ...footerStyle, alignment: { horizontal: 'right', vertical: 'center', wrapText: true } } }
-      ws[`F8`] = { v: '', t: 's', s: footerStyle }
-      ws[`G8`] = { f: sheetMaxRows > 0 ? `SUM(G9:G${8 + sheetMaxRows})` : '', t: 'n', z: '#,##0.000;[Red](#,##0.000);"-"', s: { ...footerStyle, alignment: { horizontal: 'right', vertical: 'center', wrapText: true } } }
-      ws[`H8`] = { v: '', t: 's', s: footerStyle }
-      ws[`I8`] = { f: sheetMaxRows > 0 ? `SUM(I9:I${8 + sheetMaxRows})` : '', t: 'n', z: '#,##0.000;[Red](#,##0.000);"-"', s: totalYellowStyle }
-      ws[`J8`] = { v: '', t: 's', s: footerStyle }
+      if (isBaoCao) {
+        ws[`A8`] = { v: '', t: 's', s: footerStyle }
+        ws[`B8`] = { v: '', t: 's', s: footerStyle }
+        ws[`C8`] = { v: '', t: 's', s: footerStyle }
+        ws[`D8`] = { v: '', t: 's', s: footerStyle }
+        ws[`E8`] = { v: 'Tổng cộng', t: 's', s: { ...footerStyle, alignment: { horizontal: 'right', vertical: 'center', wrapText: true } } }
+        ws[`F8`] = { v: '', t: 's', s: footerStyle }
+        ws[`G8`] = { f: sheetMaxRows > 0 ? `SUM(G9:G${8 + sheetMaxRows})` : '', t: 'n', z: '#,##0.000;[Red](#,##0.000);"-"', s: totalYellowStyle }
+        ws[`H8`] = { v: '', t: 's', s: footerStyle }
 
-      ws[`K8`] = { v: '', t: 's', s: { font: { name: 'Segoe UI', sz: 9.5 } } }
+        ws[`I8`] = { v: '', t: 's', s: { font: { name: 'Segoe UI', sz: 9.5 } } }
 
-      ws[`L8`] = { v: '', t: 's', s: footerStyle }
-      ws[`M8`] = { v: '', t: 's', s: footerStyle }
-      ws[`N8`] = { v: '', t: 's', s: footerStyle }
-      ws[`O8`] = { v: '', t: 's', s: footerStyle }
-      ws[`P8`] = { v: 'Tổng cộng', t: 's', s: { ...footerStyle, alignment: { horizontal: 'right', vertical: 'center', wrapText: true } } }
-      ws[`Q8`] = { v: '', t: 's', s: footerStyle }
-      ws[`R8`] = { f: sheetMaxRows > 0 ? `SUM(R9:R${8 + sheetMaxRows})` : '', t: 'n', z: '#,##0.000;[Red](#,##0.000);"-"', s: { ...footerStyle, alignment: { horizontal: 'right', vertical: 'center', wrapText: true } } }
-      ws[`S8`] = { v: '', t: 's', s: footerStyle }
-      ws[`T8`] = { f: sheetMaxRows > 0 ? `SUM(T9:T${8 + sheetMaxRows})` : '', t: 'n', z: '#,##0.000;[Red](#,##0.000);"-"', s: totalYellowStyle }
-      ws[`U8`] = { v: '', t: 's', s: footerStyle }
+        ws[`J8`] = { v: '', t: 's', s: footerStyle }
+        ws[`K8`] = { v: '', t: 's', s: footerStyle }
+        ws[`L8`] = { v: '', t: 's', s: footerStyle }
+        ws[`M8`] = { v: '', t: 's', s: footerStyle }
+        ws[`N8`] = { v: 'Tổng cộng', t: 's', s: { ...footerStyle, alignment: { horizontal: 'right', vertical: 'center', wrapText: true } } }
+        ws[`O8`] = { v: '', t: 's', s: footerStyle }
+        ws[`P8`] = { f: sheetMaxRows > 0 ? `SUM(P9:P${8 + sheetMaxRows})` : '', t: 'n', z: '#,##0.000;[Red](#,##0.000);"-"', s: totalYellowStyle }
+        ws[`Q8`] = { v: '', t: 's', s: footerStyle }
+      } else {
+        ws[`A8`] = { v: '', t: 's', s: footerStyle }
+        ws[`B8`] = { v: '', t: 's', s: footerStyle }
+        ws[`C8`] = { v: '', t: 's', s: footerStyle }
+        ws[`D8`] = { v: '', t: 's', s: footerStyle }
+        ws[`E8`] = { v: 'Tổng cộng', t: 's', s: { ...footerStyle, alignment: { horizontal: 'right', vertical: 'center', wrapText: true } } }
+        ws[`F8`] = { v: '', t: 's', s: footerStyle }
+        ws[`G8`] = { f: sheetMaxRows > 0 ? `SUM(G9:G${8 + sheetMaxRows})` : '', t: 'n', z: '#,##0.000;[Red](#,##0.000);"-"', s: { ...footerStyle, alignment: { horizontal: 'right', vertical: 'center', wrapText: true } } }
+        ws[`H8`] = { v: '', t: 's', s: footerStyle }
+        ws[`I8`] = { f: sheetMaxRows > 0 ? `SUM(I9:I${8 + sheetMaxRows})` : '', t: 'n', z: '#,##0.000;[Red](#,##0.000);"-"', s: totalYellowStyle }
+        ws[`J8`] = { v: '', t: 's', s: footerStyle }
+
+        ws[`K8`] = { v: '', t: 's', s: { font: { name: 'Segoe UI', sz: 9.5 } } }
+
+        ws[`L8`] = { v: '', t: 's', s: footerStyle }
+        ws[`M8`] = { v: '', t: 's', s: footerStyle }
+        ws[`N8`] = { v: '', t: 's', s: footerStyle }
+        ws[`O8`] = { v: '', t: 's', s: footerStyle }
+        ws[`P8`] = { v: 'Tổng cộng', t: 's', s: { ...footerStyle, alignment: { horizontal: 'right', vertical: 'center', wrapText: true } } }
+        ws[`Q8`] = { v: '', t: 's', s: footerStyle }
+        ws[`R8`] = { f: sheetMaxRows > 0 ? `SUM(R9:R${8 + sheetMaxRows})` : '', t: 'n', z: '#,##0.000;[Red](#,##0.000);"-"', s: { ...footerStyle, alignment: { horizontal: 'right', vertical: 'center', wrapText: true } } }
+        ws[`S8`] = { v: '', t: 's', s: footerStyle }
+        ws[`T8`] = { f: sheetMaxRows > 0 ? `SUM(T9:T${8 + sheetMaxRows})` : '', t: 'n', z: '#,##0.000;[Red](#,##0.000);"-"', s: totalYellowStyle }
+        ws[`U8`] = { v: '', t: 's', s: footerStyle }
+      }
 
       for (let i = 0; i < sheetMaxRows; i++) {
         const rowNum = 9 + i
@@ -1207,20 +1261,20 @@ function RealReportSummaryTable({ summaryRows = [], customCategoryMap = {}, loca
           if (item.role === 'Đơn vị nhận') {
             roleStyle = {
               ...dataCellStyle,
-              font: { name: 'Segoe UI', sz: 9.5, bold: true, color: { rgb: '1E40AF' } },
-              fill: { patternType: 'solid', fgColor: { rgb: 'EFF6FF' } },
+              font: { name: 'Segoe UI', sz: 9.5, bold: true, color: { rgb: '6D28D9' } },
+              fill: { patternType: 'solid', fgColor: { rgb: 'F5F3FF' } },
               alignment: { horizontal: 'center', vertical: 'center', wrapText: true },
               border: {
-                top: { style: 'thin', color: { rgb: 'BFDBFE' } },
-                bottom: { style: 'thin', color: { rgb: 'BFDBFE' } },
-                left: { style: 'thin', color: { rgb: 'BFDBFE' } },
-                right: { style: 'thin', color: { rgb: 'BFDBFE' } }
+                top: { style: 'thin', color: { rgb: 'DDD6FE' } },
+                bottom: { style: 'thin', color: { rgb: 'DDD6FE' } },
+                left: { style: 'thin', color: { rgb: 'DDD6FE' } },
+                right: { style: 'thin', color: { rgb: 'DDD6FE' } }
               }
             }
           } else {
             roleStyle = {
               ...dataCellStyle,
-              font: { name: 'Segoe UI', sz: 9.5, bold: true, color: { rgb: 'C2410C' } },
+              font: { name: 'Segoe UI', sz: 9.5, bold: true, color: { rgb: 'EA580C' } },
               fill: { patternType: 'solid', fgColor: { rgb: 'FFF7ED' } },
               alignment: { horizontal: 'center', vertical: 'center', wrapText: true },
               border: {
@@ -1230,6 +1284,14 @@ function RealReportSummaryTable({ summaryRows = [], customCategoryMap = {}, loca
                 right: { style: 'thin', color: { rgb: 'FED7AA' } }
               }
             }
+          }
+
+          const khoStyle = {
+            ...dataCellStyle,
+            font: { name: 'Segoe UI', sz: 9.5, bold: true, color: roleStyle.font.color },
+            fill: roleStyle.fill,
+            alignment: { horizontal: 'left', vertical: 'center', wrapText: true },
+            border: roleStyle.border
           }
 
           const catLabel = cat === 'ncc' ? 'Nhà cung cấp (NCC)'
@@ -1280,49 +1342,60 @@ function RealReportSummaryTable({ summaryRows = [], customCategoryMap = {}, loca
 
           ws[`A${rowNum}`] = { v: i + 1, t: 'n', s: { ...dataCellStyle, alignment: { horizontal: 'center', vertical: 'center', wrapText: true } } }
           ws[`B${rowNum}`] = { v: labelType, t: 's', s: labelStyle }
-          ws[`C${rowNum}`] = { v: localProject || 'Tất cả', t: 's', s: { ...dataCellStyle, font: { name: 'Segoe UI', sz: 9.5, bold: true }, alignment: { vertical: 'center', wrapText: true } } }
+          ws[`C${rowNum}`] = { v: localProject || 'Tất cả', t: 's', s: khoStyle }
           ws[`D${rowNum}`] = { v: item.role || 'Đơn vị nhận', t: 's', s: roleStyle }
           ws[`E${rowNum}`] = { v: item.partner, t: 's', s: partnerStyle }
           ws[`F${rowNum}`] = { v: catLabel, t: 's', s: partnerRoleStyle }
           
           const partnerCol = item.role === 'Đơn vị giao' ? 'E' : 'D'
-          ws[`G${rowNum}`] = { 
-            f: `SUMIFS('Chi tiết Thực nhập'!F:F, 'Chi tiết Thực nhập'!${partnerCol}:${partnerCol}, E${rowNum}, 'Chi tiết Thực nhập'!G:G, B${rowNum})`, 
-            t: 'n', 
-            z: '#,##0.000;[Red](#,##0.000);"-"',
-            s: { ...dataCellStyle, alignment: { horizontal: 'right', vertical: 'center', wrapText: true } } 
-          }
-          
-          ws[`H${rowNum}`] = { 
-            v: item.logicVal, 
-            t: 'n', 
-            z: '#,##0;(#,##0);"-"', 
-            s: { 
-              ...dataCellStyle, 
-              alignment: { horizontal: 'center', vertical: 'center', wrapText: true }, 
-              font: { 
-                name: 'Segoe UI', 
-                sz: 9.5, 
-                bold: true,
-                color: item.logicVal === -1 ? { rgb: 'FF0000' } : undefined
+          if (isBaoCao) {
+            ws[`G${rowNum}`] = { 
+              f: `SUMIFS('Chi tiết Thực nhập'!J:J, 'Chi tiết Thực nhập'!${partnerCol}:${partnerCol}, E${rowNum})`, 
+              t: 'n', 
+              z: '#,##0.000;[Red](#,##0.000);"-"',
+              s: { ...dataCellStyle, alignment: { horizontal: 'right', vertical: 'center', wrapText: true }, font: { name: 'Segoe UI', sz: 9.5, bold: true, color: { rgb: '0F766E' } } } 
+            }
+            ws[`H${rowNum}`] = { v: item.explain || '', t: 's', s: { ...dataCellStyle, font: { name: 'Segoe UI', sz: 9.5, italic: true, color: { rgb: '475569' } }, alignment: { horizontal: 'left', vertical: 'center', wrapText: true } } }
+          } else {
+            ws[`G${rowNum}`] = { 
+              f: `SUMIFS('Chi tiết Thực nhập'!F:F, 'Chi tiết Thực nhập'!${partnerCol}:${partnerCol}, E${rowNum}, 'Chi tiết Thực nhập'!G:G, B${rowNum})`, 
+              t: 'n', 
+              z: '#,##0.000;[Red](#,##0.000);"-"',
+              s: { ...dataCellStyle, alignment: { horizontal: 'right', vertical: 'center', wrapText: true } } 
+            }
+            
+            ws[`H${rowNum}`] = { 
+              v: item.logicVal, 
+              t: 'n', 
+              z: '#,##0;(#,##0);"-"', 
+              s: { 
+                ...dataCellStyle, 
+                alignment: { horizontal: 'center', vertical: 'center', wrapText: true }, 
+                font: { 
+                  name: 'Segoe UI', 
+                  sz: 9.5, 
+                  bold: true,
+                  color: item.logicVal === -1 ? { rgb: 'FF0000' } : undefined
+                } 
               } 
-            } 
+            }
+            
+            ws[`I${rowNum}`] = { 
+              f: `G${rowNum} * H${rowNum}`, 
+              t: 'n', 
+              z: '#,##0.000;[Red](#,##0.000);"-"',
+              s: { ...dataCellStyle, alignment: { horizontal: 'right', vertical: 'center', wrapText: true }, font: { name: 'Segoe UI', sz: 9.5, bold: true, color: { rgb: '0F766E' } } } 
+            }
+            ws[`J${rowNum}`] = { v: item.explain || '', t: 's', s: { ...dataCellStyle, font: { name: 'Segoe UI', sz: 9.5, italic: true, color: { rgb: '475569' } }, alignment: { horizontal: 'left', vertical: 'center', wrapText: true } } }
           }
-          
-          ws[`I${rowNum}`] = { 
-            f: `G${rowNum} * H${rowNum}`, 
-            t: 'n', 
-            z: '#,##0.000;[Red](#,##0.000);"-"',
-            s: { ...dataCellStyle, alignment: { horizontal: 'right', vertical: 'center', wrapText: true }, font: { name: 'Segoe UI', sz: 9.5, bold: true, color: { rgb: '0F766E' } } } 
-          }
-          ws[`J${rowNum}`] = { v: item.explain || '', t: 's', s: { ...dataCellStyle, font: { name: 'Segoe UI', sz: 9.5, italic: true, color: { rgb: '475569' } }, alignment: { horizontal: 'left', vertical: 'center', wrapText: true } } }
         } else {
-          ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J'].forEach(col => {
+          const emptyCols = isBaoCao ? ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'] : ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J']
+          emptyCols.forEach(col => {
             ws[`${col}${rowNum}`] = { v: '', t: 's', s: { ...dataCellStyle, border: {} } }
           })
         }
 
-        ws[`K${rowNum}`] = { v: '', t: 's', s: { font: { name: 'Segoe UI', sz: 9.5 } } }
+        ws[isBaoCao ? `I${rowNum}` : `K${rowNum}`] = { v: '', t: 's', s: { font: { name: 'Segoe UI', sz: 9.5 } } }
 
         // Issues Table
         if (i < listXuat.length) {
@@ -1409,20 +1482,20 @@ function RealReportSummaryTable({ summaryRows = [], customCategoryMap = {}, loca
           if (item.role === 'Đơn vị nhận') {
             roleStyle = {
               ...dataCellStyle,
-              font: { name: 'Segoe UI', sz: 9.5, bold: true, color: { rgb: '1E40AF' } },
-              fill: { patternType: 'solid', fgColor: { rgb: 'EFF6FF' } },
+              font: { name: 'Segoe UI', sz: 9.5, bold: true, color: { rgb: '6D28D9' } },
+              fill: { patternType: 'solid', fgColor: { rgb: 'F5F3FF' } },
               alignment: { horizontal: 'center', vertical: 'center', wrapText: true },
               border: {
-                top: { style: 'thin', color: { rgb: 'BFDBFE' } },
-                bottom: { style: 'thin', color: { rgb: 'BFDBFE' } },
-                left: { style: 'thin', color: { rgb: 'BFDBFE' } },
-                right: { style: 'thin', color: { rgb: 'BFDBFE' } }
+                top: { style: 'thin', color: { rgb: 'DDD6FE' } },
+                bottom: { style: 'thin', color: { rgb: 'DDD6FE' } },
+                left: { style: 'thin', color: { rgb: 'DDD6FE' } },
+                right: { style: 'thin', color: { rgb: 'DDD6FE' } }
               }
             }
           } else {
             roleStyle = {
               ...dataCellStyle,
-              font: { name: 'Segoe UI', sz: 9.5, bold: true, color: { rgb: 'C2410C' } },
+              font: { name: 'Segoe UI', sz: 9.5, bold: true, color: { rgb: 'EA580C' } },
               fill: { patternType: 'solid', fgColor: { rgb: 'FFF7ED' } },
               alignment: { horizontal: 'center', vertical: 'center', wrapText: true },
               border: {
@@ -1432,6 +1505,14 @@ function RealReportSummaryTable({ summaryRows = [], customCategoryMap = {}, loca
                 right: { style: 'thin', color: { rgb: 'FED7AA' } }
               }
             }
+          }
+
+          const khoStyle = {
+            ...dataCellStyle,
+            font: { name: 'Segoe UI', sz: 9.5, bold: true, color: roleStyle.font.color },
+            fill: roleStyle.fill,
+            alignment: { horizontal: 'left', vertical: 'center', wrapText: true },
+            border: roleStyle.border
           }
 
           const catLabel = cat === 'ncc' ? 'Nhà cung cấp (NCC)'
@@ -1480,68 +1561,189 @@ function RealReportSummaryTable({ summaryRows = [], customCategoryMap = {}, loca
             }
           }
 
-          ws[`L${rowNum}`] = { v: i + 1, t: 'n', s: { ...dataCellStyle, alignment: { horizontal: 'center', vertical: 'center', wrapText: true } } }
-          ws[`M${rowNum}`] = { v: labelType, t: 's', s: labelStyle }
-          ws[`N${rowNum}`] = { v: localProject || 'Tất cả', t: 's', s: { ...dataCellStyle, font: { name: 'Segoe UI', sz: 9.5, bold: true }, alignment: { vertical: 'center', wrapText: true } } }
-          ws[`O${rowNum}`] = { v: item.role || 'Đơn vị giao', t: 's', s: roleStyle }
-          ws[`P${rowNum}`] = { v: item.partner, t: 's', s: partnerStyle }
-          ws[`Q${rowNum}`] = { v: catLabel, t: 's', s: partnerRoleStyle }
-          
           const partnerCol = item.role === 'Đơn vị giao' ? 'E' : 'D'
-          ws[`R${rowNum}`] = { 
-            f: `SUMIFS('Chi tiết Thực xuất'!F:F, 'Chi tiết Thực xuất'!${partnerCol}:${partnerCol}, P${rowNum}, 'Chi tiết Thực xuất'!G:G, M${rowNum})`, 
-            t: 'n', 
-            z: '#,##0.000;[Red](#,##0.000);"-"',
-            s: { ...dataCellStyle, alignment: { horizontal: 'right', vertical: 'center', wrapText: true } } 
-          }
-          
-          ws[`S${rowNum}`] = { 
-            v: item.logicVal, 
-            t: 'n', 
-            z: '#,##0;(#,##0);"-"', 
-            s: { 
-              ...dataCellStyle, 
-              alignment: { horizontal: 'center', vertical: 'center', wrapText: true }, 
-              font: { 
-                name: 'Segoe UI', 
-                sz: 9.5, 
-                bold: true,
-                color: item.logicVal === -1 ? { rgb: 'FF0000' } : undefined
+          if (isBaoCao) {
+            ws[`J${rowNum}`] = { v: i + 1, t: 'n', s: { ...dataCellStyle, alignment: { horizontal: 'center', vertical: 'center', wrapText: true } } }
+            ws[`K${rowNum}`] = { v: labelType, t: 's', s: labelStyle }
+            ws[`L${rowNum}`] = { v: localProject || 'Tất cả', t: 's', s: khoStyle }
+            ws[`M${rowNum}`] = { v: item.role || 'Đơn vị giao', t: 's', s: roleStyle }
+            ws[`N${rowNum}`] = { v: item.partner, t: 's', s: partnerStyle }
+            ws[`O${rowNum}`] = { v: catLabel, t: 's', s: partnerRoleStyle }
+            ws[`P${rowNum}`] = { 
+              f: `SUMIFS('Chi tiết Thực xuất'!J:J, 'Chi tiết Thực xuất'!${partnerCol}:${partnerCol}, N${rowNum})`, 
+              t: 'n', 
+              z: '#,##0.000;[Red](#,##0.000);"-"',
+              s: { ...dataCellStyle, alignment: { horizontal: 'right', vertical: 'center', wrapText: true }, font: { name: 'Segoe UI', sz: 9.5, bold: true, color: { rgb: 'C2410C' } } } 
+            }
+            ws[`Q${rowNum}`] = { v: item.explain || '', t: 's', s: { ...dataCellStyle, font: { name: 'Segoe UI', sz: 9.5, italic: true, color: { rgb: '475569' } }, alignment: { horizontal: 'left', vertical: 'center', wrapText: true } } }
+          } else {
+            ws[`L${rowNum}`] = { v: i + 1, t: 'n', s: { ...dataCellStyle, alignment: { horizontal: 'center', vertical: 'center', wrapText: true } } }
+            ws[`M${rowNum}`] = { v: labelType, t: 's', s: labelStyle }
+            ws[`N${rowNum}`] = { v: localProject || 'Tất cả', t: 's', s: khoStyle }
+            ws[`O${rowNum}`] = { v: item.role || 'Đơn vị giao', t: 's', s: roleStyle }
+            ws[`P${rowNum}`] = { v: item.partner, t: 's', s: partnerStyle }
+            ws[`Q${rowNum}`] = { v: catLabel, t: 's', s: partnerRoleStyle }
+            ws[`R${rowNum}`] = { 
+              f: `SUMIFS('Chi tiết Thực xuất'!F:F, 'Chi tiết Thực xuất'!${partnerCol}:${partnerCol}, P${rowNum}, 'Chi tiết Thực xuất'!G:G, M${rowNum})`, 
+              t: 'n', 
+              z: '#,##0.000;[Red](#,##0.000);"-"',
+              s: { ...dataCellStyle, alignment: { horizontal: 'right', vertical: 'center', wrapText: true } } 
+            }
+            
+            ws[`S${rowNum}`] = { 
+              v: item.logicVal, 
+              t: 'n', 
+              z: '#,##0;(#,##0);"-"', 
+              s: { 
+                ...dataCellStyle, 
+                alignment: { horizontal: 'center', vertical: 'center', wrapText: true }, 
+                font: { 
+                  name: 'Segoe UI', 
+                  sz: 9.5, 
+                  bold: true,
+                  color: item.logicVal === -1 ? { rgb: 'FF0000' } : undefined
+                } 
               } 
-            } 
+            }
+            
+            ws[`T${rowNum}`] = { 
+              f: `R${rowNum} * S${rowNum}`, 
+              t: 'n', 
+              z: '#,##0.000;[Red](#,##0.000);"-"',
+              s: { ...dataCellStyle, alignment: { horizontal: 'right', vertical: 'center', wrapText: true }, font: { name: 'Segoe UI', sz: 9.5, bold: true, color: { rgb: 'C2410C' } } } 
+            }
+            ws[`U${rowNum}`] = { v: item.explain || '', t: 's', s: { ...dataCellStyle, font: { name: 'Segoe UI', sz: 9.5, italic: true, color: { rgb: '475569' } }, alignment: { horizontal: 'left', vertical: 'center', wrapText: true } } }
           }
-          
-          ws[`T${rowNum}`] = { 
-            f: `R${rowNum} * S${rowNum}`, 
-            t: 'n', 
-            z: '#,##0.000;[Red](#,##0.000);"-"',
-            s: { ...dataCellStyle, alignment: { horizontal: 'right', vertical: 'center', wrapText: true }, font: { name: 'Segoe UI', sz: 9.5, bold: true, color: { rgb: 'C2410C' } } } 
-          }
-          ws[`U${rowNum}`] = { v: item.explain || '', t: 's', s: { ...dataCellStyle, font: { name: 'Segoe UI', sz: 9.5, italic: true, color: { rgb: '475569' } }, alignment: { horizontal: 'left', vertical: 'center', wrapText: true } } }
         } else {
-          ['L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U'].forEach(col => {
+          const emptyCols = isBaoCao ? ['J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q'] : ['L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U']
+          emptyCols.forEach(col => {
             ws[`${col}${rowNum}`] = { v: '', t: 's', s: { ...dataCellStyle, border: {} } }
           })
         }
       }
 
-      ws['!ref'] = `A1:U${8 + sheetMaxRows}`
-      ws['!merges'] = [
-        { s: { r: 1, c: 0 }, e: { r: 1, c: 20 } }, // Main Title
-        { s: { r: 5, c: 0 }, e: { r: 5, c: 9 } },  // Receipts Title
-        { s: { r: 5, c: 11 }, e: { r: 5, c: 20 } }  // Issues Title
-      ]
-      ws['!autofilter'] = { ref: `A7:U${8 + sheetMaxRows}` }
+      if (isBaoCao) {
+        ws['!ref'] = `A1:Q${8 + sheetMaxRows}`
+        ws['!merges'] = [
+          { s: { r: 1, c: 0 }, e: { r: 1, c: 16 } }, // Main Title
+          { s: { r: 5, c: 0 }, e: { r: 5, c: 7 } },  // Receipts Title
+          { s: { r: 5, c: 9 }, e: { r: 5, c: 16 } }  // Issues Title
+        ]
+        ws['!autofilter'] = { ref: `A7:Q${8 + sheetMaxRows}` }
+      } else {
+        ws['!ref'] = `A1:U${8 + sheetMaxRows}`
+        ws['!merges'] = [
+          { s: { r: 1, c: 0 }, e: { r: 1, c: 20 } }, // Main Title
+          { s: { r: 5, c: 0 }, e: { r: 5, c: 9 } },  // Receipts Title
+          { s: { r: 5, c: 11 }, e: { r: 5, c: 20 } }  // Issues Title
+        ]
+        ws['!autofilter'] = { ref: `A7:U${8 + sheetMaxRows}` }
+      }
 
       return ws
+    }
+
+    // Group and sort by Partner Name for Báo cáo sheet
+    const groupAndSortByPartner = (list) => {
+      const grouped = {}
+      list.forEach(item => {
+        const normPartner = (item.partner || '').trim()
+        if (!grouped[normPartner]) {
+          grouped[normPartner] = {
+            partner: normPartner,
+            role: item.role,
+            detailType: item.detailType,
+            logicVal: item.logicVal,
+            explain: item.explain,
+            totalQty: 0,
+            totalContribution: 0,
+            items: []
+          }
+        }
+        grouped[normPartner].totalQty += item.totalQty
+        grouped[normPartner].totalContribution += item.totalQty * item.logicVal
+        grouped[normPartner].items.push(item)
+      })
+
+      const groupedList = Object.values(grouped).map(group => {
+        // Find dominant item for styling details
+        group.items.sort((a, b) => b.totalQty - a.totalQty)
+        const dominant = group.items[0]
+        return {
+          partner: group.partner,
+          role: dominant.role,
+          detailType: dominant.detailType,
+          logicVal: dominant.logicVal,
+          explain: dominant.explain || '',
+          totalQty: group.totalQty,
+          totalContribution: group.totalContribution
+        }
+      })
+
+      // Sort descending by totalContribution (Khối lượng Thực) from largest to smallest
+      groupedList.sort((a, b) => b.totalContribution - a.totalContribution)
+
+      return groupedList
     }
 
     // Filter out "Không tính" rows (where logicVal is 0) to build the Báo cáo sheet
     const nhapListBaoCao = nhapList.filter(item => item.logicVal !== 0)
     const xuatListBaoCao = xuatList.filter(item => item.logicVal !== 0)
 
-    const wsBaoCao = buildSheetData(nhapListBaoCao, xuatListBaoCao)
-    const wsSummary = buildSheetData(nhapList, xuatList)
+    const groupedNhapBaoCao = groupAndSortByPartner(nhapListBaoCao)
+    groupedNhapBaoCao.sort((a, b) => {
+      // Cấp 1 - Vai trò Kho chọn: Đơn vị nhận trước, Đơn vị giao sau
+      const rolePriorityA = a.role === 'Đơn vị nhận' ? 1 : a.role === 'Đơn vị giao' ? 2 : 3
+      const rolePriorityB = b.role === 'Đơn vị nhận' ? 1 : b.role === 'Đơn vị giao' ? 2 : 3
+      if (rolePriorityA !== rolePriorityB) return rolePriorityA - rolePriorityB
+
+      // Cấp 2 - Phân loại đơn vị: Nhà cung cấp -> Kho khác -> Tổ đội
+      const normA = (a.partner || '').trim().replace(/\s+/g, ' ')
+      const catA = (customCategoryMap && customCategoryMap[normA]) || getUnitCategory(normA)
+      const catPriorityA = catA === 'ncc' ? 1 : catA === 'kho' ? 2 : catA === 'todoi' ? 3 : 4
+
+      const normB = (b.partner || '').trim().replace(/\s+/g, ' ')
+      const catB = (customCategoryMap && customCategoryMap[normB]) || getUnitCategory(normB)
+      const catPriorityB = catB === 'ncc' ? 1 : catB === 'kho' ? 2 : catB === 'todoi' ? 3 : 4
+
+      if (catPriorityA !== catPriorityB) return catPriorityA - catPriorityB
+
+      // Cấp 3 - Giá trị (Khối lượng) giảm dần trị tuyệt đối
+      const valA = Math.abs(a.totalContribution || 0)
+      const valB = Math.abs(b.totalContribution || 0)
+      if (valB !== valA) return valB - valA
+
+      return (a.partner || '').localeCompare(b.partner || '', 'vi')
+    })
+
+    const groupedXuatBaoCao = groupAndSortByPartner(xuatListBaoCao)
+    groupedXuatBaoCao.sort((a, b) => {
+      // Cấp 1 - Vai trò Kho chọn: Đơn vị giao trước, Đơn vị nhận sau
+      const rolePriorityA = a.role === 'Đơn vị giao' ? 1 : a.role === 'Đơn vị nhận' ? 2 : 3
+      const rolePriorityB = b.role === 'Đơn vị giao' ? 1 : b.role === 'Đơn vị nhận' ? 2 : 3
+      if (rolePriorityA !== rolePriorityB) return rolePriorityA - rolePriorityB
+
+      // Cấp 2 - Phân loại đơn vị: Tổ đội -> Kho khác -> Nhà cung cấp
+      const normA = (a.partner || '').trim().replace(/\s+/g, ' ')
+      const catA = (customCategoryMap && customCategoryMap[normA]) || getUnitCategory(normA)
+      const catPriorityA = catA === 'todoi' ? 1 : catA === 'kho' ? 2 : catA === 'ncc' ? 3 : 4
+
+      const normB = (b.partner || '').trim().replace(/\s+/g, ' ')
+      const catB = (customCategoryMap && customCategoryMap[normB]) || getUnitCategory(normB)
+      const catPriorityB = catB === 'todoi' ? 1 : catB === 'kho' ? 2 : catB === 'ncc' ? 3 : 4
+
+      if (catPriorityA !== catPriorityB) return catPriorityA - catPriorityB
+
+      // Cấp 3 - Giá trị (Khối lượng) giảm dần trị tuyệt đối
+      const valA = Math.abs(a.totalContribution || 0)
+      const valB = Math.abs(b.totalContribution || 0)
+      if (valB !== valA) return valB - valA
+
+      return (a.partner || '').localeCompare(b.partner || '', 'vi')
+    })
+
+    const wsBaoCao = buildSheetData(groupedNhapBaoCao, groupedXuatBaoCao, true)
+    const wsSummary = buildSheetData(nhapList, xuatList, false)
 
     // --- SHEET 2: CHI TIẾT THỰC NHẬP ---
     const wsThucNhap = {}
@@ -2085,19 +2287,14 @@ function RealReportSummaryTable({ summaryRows = [], customCategoryMap = {}, loca
           }
         })
 
-        const sortSummaryList = (list) => {
+        const sortNhapSummaryList = (list) => {
           return [...list].sort((a, b) => {
-            // Rule 1: Từ Vai trò đơn vị nhận rồi đến đơn vị giao
-            const roleA = a.role === 'Đơn vị nhận' ? 1 : 2
-            const roleB = b.role === 'Đơn vị nhận' ? 1 : 2
-            if (roleA !== roleB) return roleA - roleB
+            // Cấp 1 - Vai trò Kho chọn: Đơn vị nhận trước, Đơn vị giao sau
+            const rolePriorityA = a.role === 'Đơn vị nhận' ? 1 : a.role === 'Đơn vị giao' ? 2 : 3
+            const rolePriorityB = b.role === 'Đơn vị nhận' ? 1 : b.role === 'Đơn vị giao' ? 2 : 3
+            if (rolePriorityA !== rolePriorityB) return rolePriorityA - rolePriorityB
 
-            // Rule 2: Từ hệ số logic +1 đến -1 đến 0
-            const logA = a.logicVal === 1 ? 1 : a.logicVal === -1 ? 2 : 3
-            const logB = b.logicVal === 1 ? 1 : b.logicVal === -1 ? 2 : 3
-            if (logA !== logB) return logA - logB
-
-            // Rule 3: Từ Nhà cung cấp đến Kho khác đến Tổ đội
+            // Cấp 2 - Phân loại đơn vị: Nhà cung cấp đến Kho khác đến Tổ đội
             const normA = (a.partner || '').trim().replace(/\s+/g, ' ')
             const catA = (customCategoryMap && customCategoryMap[normA]) || getUnitCategory(normA)
             const catPriorityA = catA === 'ncc' ? 1 : catA === 'kho' ? 2 : catA === 'todoi' ? 3 : 4
@@ -2108,13 +2305,46 @@ function RealReportSummaryTable({ summaryRows = [], customCategoryMap = {}, loca
 
             if (catPriorityA !== catPriorityB) return catPriorityA - catPriorityB
 
-            // Fallback fallback: Alphabetical
+            // Cấp 3 - Giá trị (Khối lượng) giảm dần trị tuyệt đối
+            const valA = Math.abs(a.totalContribution || 0)
+            const valB = Math.abs(b.totalContribution || 0)
+            if (valB !== valA) return valB - valA
+
+            // Fallback: Alphabetical
             return (a.partner || '').localeCompare(b.partner || '', 'vi')
           })
         }
 
-        const nhapSummaryList = sortSummaryList(Object.values(nhapSummaryByUnit))
-        const xuatSummaryList = sortSummaryList(Object.values(xuatSummaryByUnit))
+        const sortXuatSummaryList = (list) => {
+          return [...list].sort((a, b) => {
+            // Cấp 1 - Vai trò Kho chọn: Đơn vị giao trước, Đơn vị nhận sau
+            const rolePriorityA = a.role === 'Đơn vị giao' ? 1 : a.role === 'Đơn vị nhận' ? 2 : 3
+            const rolePriorityB = b.role === 'Đơn vị giao' ? 1 : b.role === 'Đơn vị nhận' ? 2 : 3
+            if (rolePriorityA !== rolePriorityB) return rolePriorityA - rolePriorityB
+
+            // Cấp 2 - Phân loại đơn vị: Từ Tổ đội đến Kho khác đến Nhà cung cấp
+            const normA = (a.partner || '').trim().replace(/\s+/g, ' ')
+            const catA = (customCategoryMap && customCategoryMap[normA]) || getUnitCategory(normA)
+            const catPriorityA = catA === 'todoi' ? 1 : catA === 'kho' ? 2 : catA === 'ncc' ? 3 : 4
+
+            const normB = (b.partner || '').trim().replace(/\s+/g, ' ')
+            const catB = (customCategoryMap && customCategoryMap[normB]) || getUnitCategory(normB)
+            const catPriorityB = catB === 'todoi' ? 1 : catB === 'kho' ? 2 : catB === 'ncc' ? 3 : 4
+
+            if (catPriorityA !== catPriorityB) return catPriorityA - catPriorityB
+
+            // Cấp 3 - Giá trị (Khối lượng) giảm dần trị tuyệt đối
+            const valA = Math.abs(a.totalContribution || 0)
+            const valB = Math.abs(b.totalContribution || 0)
+            if (valB !== valA) return valB - valA
+
+            // Fallback: Alphabetical
+            return (a.partner || '').localeCompare(b.partner || '', 'vi')
+          })
+        }
+
+        const nhapSummaryList = sortNhapSummaryList(Object.values(nhapSummaryByUnit))
+        const xuatSummaryList = sortXuatSummaryList(Object.values(xuatSummaryByUnit))
 
         return (
           <div style={{
@@ -2292,7 +2522,12 @@ function RealReportSummaryTable({ summaryRows = [], customCategoryMap = {}, loca
                                   </td>
                                   
                                   {/* 3. Kho chọn */}
-                                  <td style={{ padding: '8px 10px', fontWeight: 700, color: '#1e3a8a' }}>
+                                  <td style={{ 
+                                    padding: '8px 10px', 
+                                    fontWeight: 700, 
+                                    background: sumItem.role === 'Đơn vị nhận' ? '#f5f3ff' : '#fff7ed',
+                                    color: sumItem.role === 'Đơn vị nhận' ? '#6d28d9' : '#ea580c'
+                                  }}>
                                     {localProject || 'Tất cả'}
                                   </td>
 
@@ -2300,9 +2535,9 @@ function RealReportSummaryTable({ summaryRows = [], customCategoryMap = {}, loca
                                   <td style={{ padding: '8px 10px', textAlign: 'center', fontWeight: 600 }}>
                                     <span style={{
                                       padding: '2px 6px', borderRadius: 4, fontSize: '10px',
-                                      background: sumItem.role === 'Đơn vị nhận' ? '#eff6ff' : '#fff7ed',
-                                      color: sumItem.role === 'Đơn vị nhận' ? '#1e40af' : '#c2410c',
-                                      border: sumItem.role === 'Đơn vị nhận' ? '1px solid #bfdbfe' : '1px solid #fed7aa'
+                                      background: sumItem.role === 'Đơn vị nhận' ? '#f5f3ff' : '#fff7ed',
+                                      color: sumItem.role === 'Đơn vị nhận' ? '#6d28d9' : '#ea580c',
+                                      border: sumItem.role === 'Đơn vị nhận' ? '1px solid #ddd6fe' : '1px solid #fed7aa'
                                     }}>
                                       {sumItem.role}
                                     </span>
@@ -2439,7 +2674,12 @@ function RealReportSummaryTable({ summaryRows = [], customCategoryMap = {}, loca
                                   </td>
                                   
                                   {/* 3. Kho chọn */}
-                                  <td style={{ padding: '8px 10px', fontWeight: 700, color: '#1e3a8a' }}>
+                                  <td style={{ 
+                                    padding: '8px 10px', 
+                                    fontWeight: 700, 
+                                    background: sumItem.role === 'Đơn vị nhận' ? '#f5f3ff' : '#fff7ed',
+                                    color: sumItem.role === 'Đơn vị nhận' ? '#6d28d9' : '#ea580c'
+                                  }}>
                                     {localProject || 'Tất cả'}
                                   </td>
 
@@ -2447,9 +2687,9 @@ function RealReportSummaryTable({ summaryRows = [], customCategoryMap = {}, loca
                                   <td style={{ padding: '8px 10px', textAlign: 'center', fontWeight: 600 }}>
                                     <span style={{
                                       padding: '2px 6px', borderRadius: 4, fontSize: '10px',
-                                      background: sumItem.role === 'Đơn vị nhận' ? '#eff6ff' : '#fff7ed',
-                                      color: sumItem.role === 'Đơn vị nhận' ? '#1e40af' : '#c2410c',
-                                      border: sumItem.role === 'Đơn vị nhận' ? '1px solid #bfdbfe' : '1px solid #fed7aa'
+                                      background: sumItem.role === 'Đơn vị nhận' ? '#f5f3ff' : '#fff7ed',
+                                      color: sumItem.role === 'Đơn vị nhận' ? '#6d28d9' : '#ea580c',
+                                      border: sumItem.role === 'Đơn vị nhận' ? '1px solid #ddd6fe' : '1px solid #fed7aa'
                                     }}>
                                       {sumItem.role}
                                     </span>
