@@ -1151,70 +1151,207 @@ function RealReportSummaryTable({ summaryRows = [] }) {
                             </div>
                           </div>
 
-                          {/* Summary of calculation formulas */}
-                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
-                            
-                            {/* NHẬP Column */}
-                            <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 6, padding: 12 }}>
-                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px dashed #bbf7d0', paddingBottom: 6, marginBottom: 8 }}>
-                                <span style={{ fontWeight: 700, fontSize: 12, color: '#166534' }}>Cấu thành THỰC NHẬP</span>
-                                <span style={{ fontWeight: 800, fontSize: 13, color: '#15803d' }}>
-                                  {row.thucNhap.toLocaleString('vi-VN', { minimumFractionDigits: 3, maximumFractionDigits: 3 })} {row.dvt}
-                                </span>
-                              </div>
-                              <div style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 11.5, color: '#374151' }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                  <span>(+) Nhận từ Nhà cung cấp (NCC):</span>
-                                  <span style={{ fontWeight: 600 }}>{sumNccRecv.toLocaleString('vi-VN', { maximumFractionDigits: 3 })}</span>
-                                </div>
-                                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                  <span>(+) Nhận điều chuyển từ Kho cấp trên/khác:</span>
-                                  <span style={{ fontWeight: 600 }}>{sumKhoRecv.toLocaleString('vi-VN', { maximumFractionDigits: 3 })}</span>
-                                </div>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', color: '#b91c1c' }}>
-                                  <span>(-) Trả hàng lại cho NCC:</span>
-                                  <span style={{ fontWeight: 600 }}>-{sumTraNcc.toLocaleString('vi-VN', { maximumFractionDigits: 3 })}</span>
-                                </div>
-                                <div style={{ borderTop: '1px solid #dcfce7', marginTop: 4, paddingTop: 4, display: 'flex', justifyContent: 'space-between', fontWeight: 700, fontSize: 12, color: '#14532d' }}>
-                                  <span>Thực nhập = (NCC + Kho khác) - Trả NCC:</span>
-                                  <span>
-                                    {Math.max(0, sumNccRecv + sumKhoRecv - sumTraNcc).toLocaleString('vi-VN', { minimumFractionDigits: 3, maximumFractionDigits: 3 })}
-                                  </span>
-                                </div>
-                              </div>
-                            </div>
+                          {/* Summary of calculation formulas - converted to structured table format */}
+                          {(() => {
+                            const nhapSummaryByUnit = {}
+                            const xuatSummaryByUnit = {}
 
-                            {/* XUẤT Column */}
-                            <div style={{ background: '#fff7ed', border: '1px solid #fed7aa', borderRadius: 6, padding: 12 }}>
-                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px dashed #fed7aa', paddingBottom: 6, marginBottom: 8 }}>
-                                <span style={{ fontWeight: 700, fontSize: 12, color: '#9a3412' }}>Cấu thành THỰC XUẤT</span>
-                                <span style={{ fontWeight: 800, fontSize: 13, color: '#c2410c' }}>
-                                  {row.thucXuat.toLocaleString('vi-VN', { minimumFractionDigits: 3, maximumFractionDigits: 3 })} {row.dvt}
-                                </span>
-                              </div>
-                              <div style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 11.5, color: '#374151' }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                  <span>(+) Xuất cho Tổ đội / Nhà thầu phụ (NTP):</span>
-                                  <span style={{ fontWeight: 600 }}>{sumToDoiIssue.toLocaleString('vi-VN', { maximumFractionDigits: 3 })}</span>
-                                </div>
-                                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                  <span>(+) Xuất điều chuyển đi các Kho khác:</span>
-                                  <span style={{ fontWeight: 600 }}>{sumKhoIssue.toLocaleString('vi-VN', { maximumFractionDigits: 3 })}</span>
-                                </div>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', color: '#b91c1c' }}>
-                                  <span>(-) Tổ đội/NTP trả lại hàng thừa:</span>
-                                  <span style={{ fontWeight: 600 }}>-{sumTraToDoi.toLocaleString('vi-VN', { maximumFractionDigits: 3 })}</span>
-                                </div>
-                                <div style={{ borderTop: '1px solid #ffedd5', marginTop: 4, paddingTop: 4, display: 'flex', justifyContent: 'space-between', fontWeight: 700, fontSize: 12, color: '#7c2d12' }}>
-                                  <span>Thực xuất = (Tổ đội + Kho khác) - Trả thừa:</span>
-                                  <span>
-                                    {Math.max(0, sumToDoiIssue + sumKhoIssue - sumTraToDoi).toLocaleString('vi-VN', { minimumFractionDigits: 3, maximumFractionDigits: 3 })}
-                                  </span>
-                                </div>
-                              </div>
-                            </div>
+                            txs.forEach(tx => {
+                              if (tx.nhapVal > 0) {
+                                const key = `${tx.donViGiao || 'Chưa xác định'}||${tx.detailTypeNhap}`
+                                if (!nhapSummaryByUnit[key]) {
+                                  nhapSummaryByUnit[key] = {
+                                    partner: tx.donViGiao || 'Chưa xác định',
+                                    detailType: tx.detailTypeNhap,
+                                    logicVal: tx.logicNhapVal,
+                                    explain: tx.explainNhap,
+                                    totalQty: 0,
+                                    totalContribution: 0
+                                  }
+                                }
+                                nhapSummaryByUnit[key].totalQty += tx.nhapVal
+                                nhapSummaryByUnit[key].totalContribution += tx.nhapVal * tx.logicNhapVal
+                              }
+                              if (tx.xuatVal > 0) {
+                                const key = `${tx.donViNhan || 'Chưa xác định'}||${tx.detailTypeXuat}`
+                                if (!xuatSummaryByUnit[key]) {
+                                  xuatSummaryByUnit[key] = {
+                                    partner: tx.donViNhan || 'Chưa xác định',
+                                    detailType: tx.detailTypeXuat,
+                                    logicVal: tx.logicXuatVal,
+                                    explain: tx.explainXuat,
+                                    totalQty: 0,
+                                    totalContribution: 0
+                                  }
+                                }
+                                xuatSummaryByUnit[key].totalQty += tx.xuatVal
+                                xuatSummaryByUnit[key].totalContribution += tx.xuatVal * tx.logicXuatVal
+                              }
+                            })
 
-                          </div>
+                            const nhapSummaryList = Object.values(nhapSummaryByUnit)
+                            const xuatSummaryList = Object.values(xuatSummaryByUnit)
+
+                            return (
+                              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(440px, 1fr))', gap: 16, marginBottom: 16 }}>
+                                
+                                {/* Table 1: DIỄN GIẢI THỰC NHẬP */}
+                                <div style={{ background: '#fcfdfd', border: '1px solid #0f766e', borderRadius: 8, overflow: 'hidden', boxShadow: '0 2px 4px rgba(15,23,42,0.05)' }}>
+                                  <div style={{ background: 'linear-gradient(135deg, #0f766e 0%, #115e59 100%)', color: '#ffffff', padding: '10px 14px', fontWeight: 700, fontSize: '13px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                      <Warehouse size={14} /> BẢNG TỔNG HỢP DIỄN GIẢI THỰC NHẬP (SUMIFS THEO ĐƠN VỊ)
+                                    </span>
+                                    <span style={{ background: 'rgba(255,255,255,0.18)', padding: '2px 8px', borderRadius: 4, fontSize: '11.5px', fontWeight: 800 }}>
+                                      Tổng: {row.thucNhap.toLocaleString('vi-VN', { minimumFractionDigits: 3, maximumFractionDigits: 3 })} {row.dvt}
+                                    </span>
+                                  </div>
+                                  <div style={{ overflowX: 'auto' }}>
+                                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '11.5px' }}>
+                                      <thead>
+                                        <tr style={{ background: '#f0fdf4', borderBottom: '1px solid #ccfbf1', color: '#0f766e', fontWeight: 700 }}>
+                                          <th style={{ padding: '8px 10px', textAlign: 'center', width: 40, borderBottom: '1px solid #ccfbf1' }}>STT</th>
+                                          <th style={{ padding: '8px 10px', textAlign: 'left', width: 130, borderBottom: '1px solid #ccfbf1' }}>Phân loại đơn vị</th>
+                                          <th style={{ padding: '8px 10px', textAlign: 'left', borderBottom: '1px solid #ccfbf1' }}>Tên NCC / Kho gửi hàng</th>
+                                          <th style={{ padding: '8px 10px', textAlign: 'right', width: 100, borderBottom: '1px solid #ccfbf1' }}>Tổng KL Chứng từ</th>
+                                          <th style={{ padding: '8px 10px', textAlign: 'center', width: 80, borderBottom: '1px solid #ccfbf1' }}>Hệ số logic</th>
+                                          <th style={{ padding: '8px 10px', textAlign: 'right', width: 110, borderBottom: '1px solid #ccfbf1' }}>Đóng góp thực</th>
+                                        </tr>
+                                      </thead>
+                                      <tbody>
+                                        {nhapSummaryList.length === 0 ? (
+                                          <tr>
+                                            <td colSpan={6} style={{ padding: '16px', textAlign: 'center', color: '#64748b', fontStyle: 'italic' }}>
+                                              Không có dữ liệu thực nhập phát sinh
+                                            </td>
+                                          </tr>
+                                        ) : (
+                                          nhapSummaryList.map((sumItem, idx) => {
+                                            const isNegative = sumItem.logicVal < 0
+                                            const labelType = sumItem.detailType === 'nhan_ncc' ? 'Nhận từ NCC'
+                                                            : sumItem.detailType === 'nhan_kho' ? 'Nhận từ Kho gửi'
+                                                            : sumItem.detailType === 'tra_ncc' ? 'Trả lại NCC'
+                                                            : 'Khác'
+                                            return (
+                                              <tr key={idx} style={{ borderBottom: '1px solid #f1f5f9', background: idx % 2 === 1 ? '#fcfdfd' : '#ffffff' }}>
+                                                <td style={{ padding: '8px 10px', textAlign: 'center', color: '#64748b' }}>{idx + 1}</td>
+                                                <td style={{ padding: '8px 10px', fontWeight: 600 }}>
+                                                  <span style={{
+                                                    padding: '2px 6px', borderRadius: 4, fontSize: '10px',
+                                                    background: isNegative ? '#fee2e2' : '#ecfdf5',
+                                                    color: isNegative ? '#991b1b' : '#047857',
+                                                    border: isNegative ? '1px solid #fca5a5' : '1px solid #a7f3d0'
+                                                  }}>
+                                                    {labelType}
+                                                  </span>
+                                                </td>
+                                                <td style={{ padding: '8px 10px', fontWeight: 600, color: '#334155' }}>{sumItem.partner}</td>
+                                                <td style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 600, color: '#0f172a' }}>
+                                                  {sumItem.totalQty.toLocaleString('vi-VN', { minimumFractionDigits: 3, maximumFractionDigits: 3 })}
+                                                </td>
+                                                <td style={{ padding: '8px 10px', textAlign: 'center' }}>
+                                                  <span style={{
+                                                    fontWeight: 700, padding: '2px 6px', borderRadius: 4, fontSize: '10px',
+                                                    background: sumItem.logicVal > 0 ? '#dcfce7' : sumItem.logicVal < 0 ? '#fee2e2' : '#f1f5f9',
+                                                    color: sumItem.logicVal > 0 ? '#15803d' : sumItem.logicVal < 0 ? '#b91c1c' : '#475569'
+                                                  }}>
+                                                    {sumItem.logicVal > 0 ? `+${sumItem.logicVal}` : sumItem.logicVal}
+                                                  </span>
+                                                </td>
+                                                <td style={{
+                                                  padding: '8px 10px', textAlign: 'right', fontWeight: 700,
+                                                  color: sumItem.totalContribution > 0 ? '#0f766e' : sumItem.totalContribution < 0 ? '#b91c1c' : '#64748b'
+                                                }}>
+                                                  {sumItem.totalContribution === 0 ? '-' : (sumItem.totalContribution > 0 ? '+' : '') + sumItem.totalContribution.toLocaleString('vi-VN', { minimumFractionDigits: 3, maximumFractionDigits: 3 })}
+                                                </td>
+                                              </tr>
+                                            )
+                                          })
+                                        )}
+                                      </tbody>
+                                    </table>
+                                  </div>
+                                </div>
+
+                                {/* Table 2: DIỄN GIẢI THỰC XUẤT */}
+                                <div style={{ background: '#fcfdfd', border: '1px solid #c2410c', borderRadius: 8, overflow: 'hidden', boxShadow: '0 2px 4px rgba(15,23,42,0.05)' }}>
+                                  <div style={{ background: 'linear-gradient(135deg, #ea580c 0%, #c2410c 100%)', color: '#ffffff', padding: '10px 14px', fontWeight: 700, fontSize: '13px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                      <Users size={14} /> BẢNG TỔNG HỢP DIỄI GIẢI THỰC XUẤT (SUMIFS THEO ĐƠN VỊ)
+                                    </span>
+                                    <span style={{ background: 'rgba(255,255,255,0.18)', padding: '2px 8px', borderRadius: 4, fontSize: '11.5px', fontWeight: 800 }}>
+                                      Tổng: {row.thucXuat.toLocaleString('vi-VN', { minimumFractionDigits: 3, maximumFractionDigits: 3 })} {row.dvt}
+                                    </span>
+                                  </div>
+                                  <div style={{ overflowX: 'auto' }}>
+                                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '11.5px' }}>
+                                      <thead>
+                                        <tr style={{ background: '#fff7ed', borderBottom: '1px solid #ffedd5', color: '#c2410c', fontWeight: 700 }}>
+                                          <th style={{ padding: '8px 10px', textAlign: 'center', width: 40, borderBottom: '1px solid #ffedd5' }}>STT</th>
+                                          <th style={{ padding: '8px 10px', textAlign: 'left', width: 130, borderBottom: '1px solid #ffedd5' }}>Phân loại đơn vị</th>
+                                          <th style={{ padding: '8px 10px', textAlign: 'left', borderBottom: '1px solid #ffedd5' }}>Tên Tổ đội / Kho nhận hàng</th>
+                                          <th style={{ padding: '8px 10px', textAlign: 'right', width: 100, borderBottom: '1px solid #ffedd5' }}>Tổng KL Chứng từ</th>
+                                          <th style={{ padding: '8px 10px', textAlign: 'center', width: 80, borderBottom: '1px solid #ffedd5' }}>Hệ số logic</th>
+                                          <th style={{ padding: '8px 10px', textAlign: 'right', width: 110, borderBottom: '1px solid #ffedd5' }}>Đóng góp thực</th>
+                                        </tr>
+                                      </thead>
+                                      <tbody>
+                                        {xuatSummaryList.length === 0 ? (
+                                          <tr>
+                                            <td colSpan={6} style={{ padding: '16px', textAlign: 'center', color: '#64748b', fontStyle: 'italic' }}>
+                                              Không có dữ liệu thực xuất phát sinh
+                                            </td>
+                                          </tr>
+                                        ) : (
+                                          xuatSummaryList.map((sumItem, idx) => {
+                                            const isNegative = sumItem.logicVal < 0
+                                            const labelType = sumItem.detailType === 'xuat_todoi' ? 'Xuất cho Tổ đội'
+                                                            : sumItem.detailType === 'xuat_kho' ? 'Xuất đi Kho nhận'
+                                                            : sumItem.detailType === 'todoi_tra' ? 'Tổ đội trả hàng'
+                                                            : 'Khác'
+                                            return (
+                                              <tr key={idx} style={{ borderBottom: '1px solid #f1f5f9', background: idx % 2 === 1 ? '#fcfdfd' : '#ffffff' }}>
+                                                <td style={{ padding: '8px 10px', textAlign: 'center', color: '#64748b' }}>{idx + 1}</td>
+                                                <td style={{ padding: '8px 10px', fontWeight: 600 }}>
+                                                  <span style={{
+                                                    padding: '2px 6px', borderRadius: 4, fontSize: '10px',
+                                                    background: isNegative ? '#fee2e2' : '#fff7ed',
+                                                    color: isNegative ? '#991b1b' : '#c2410c',
+                                                    border: isNegative ? '1px solid #fca5a5' : '1px solid #fed7aa'
+                                                  }}>
+                                                    {labelType}
+                                                  </span>
+                                                </td>
+                                                <td style={{ padding: '8px 10px', fontWeight: 600, color: '#334155' }}>{sumItem.partner}</td>
+                                                <td style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 600, color: '#0f172a' }}>
+                                                  {sumItem.totalQty.toLocaleString('vi-VN', { minimumFractionDigits: 3, maximumFractionDigits: 3 })}
+                                                </td>
+                                                <td style={{ padding: '8px 10px', textAlign: 'center' }}>
+                                                  <span style={{
+                                                    fontWeight: 700, padding: '2px 6px', borderRadius: 4, fontSize: '10px',
+                                                    background: sumItem.logicVal > 0 ? '#dcfce7' : sumItem.logicVal < 0 ? '#fee2e2' : '#f1f5f9',
+                                                    color: sumItem.logicVal > 0 ? '#15803d' : sumItem.logicVal < 0 ? '#b91c1c' : '#475569'
+                                                  }}>
+                                                    {sumItem.logicVal > 0 ? `+${sumItem.logicVal}` : sumItem.logicVal}
+                                                  </span>
+                                                </td>
+                                                <td style={{
+                                                  padding: '8px 10px', textAlign: 'right', fontWeight: 700,
+                                                  color: sumItem.totalContribution > 0 ? '#c2410c' : sumItem.totalContribution < 0 ? '#b91c1c' : '#64748b'
+                                                }}>
+                                                  {sumItem.totalContribution === 0 ? '-' : (sumItem.totalContribution > 0 ? '+' : '') + sumItem.totalContribution.toLocaleString('vi-VN', { minimumFractionDigits: 3, maximumFractionDigits: 3 })}
+                                                </td>
+                                              </tr>
+                                            )
+                                          })
+                                        )}
+                                      </tbody>
+                                    </table>
+                                  </div>
+                                </div>
+
+                              </div>
+                            )
+                          })()}
 
                           {/* Transaction list table */}
                           <div style={{ border: '1px solid #e2e8f0', borderRadius: 6, overflow: 'hidden' }}>
@@ -6356,10 +6493,20 @@ CREATE POLICY "Allow public delete" ON public.don_gia_vat_tu FOR DELETE USING (t
           { key: 'thongSoKyThuat', label: 'Thông số kỹ thuật', width: 150 },
           { key: 'tenVatTu', label: 'Tên vật tư', width: 300 },
           { key: 'dvt', label: 'ĐVT', width: 80 },
-          { key: 'thucNhap', label: 'Thực nhập', width: 130 },
-          { key: 'thucXuat', label: 'Thực xuất', width: 130 },
-          { key: 'tonKho', label: 'Tồn kho', width: 130 }
+          { key: 'thucNhap', label: 'Thực nhập (SUMIFS)', width: 130 },
+          { key: 'thucXuat', label: 'Thực xuất (SUMIFS)', width: 130 },
+          { key: 'tonKho', label: 'Tồn kho (Formula)', width: 130 }
         ]
+
+        function getColLabel(index) {
+          let label = ''
+          let temp = index
+          while (temp >= 0) {
+            label = String.fromCharCode((temp % 26) + 65) + label
+            temp = Math.floor(temp / 26) - 1
+          }
+          return label
+        }
 
         ws['!cols'] = columns.map(c => ({ wpx: c.width }))
 
@@ -6422,20 +6569,30 @@ CREATE POLICY "Allow public delete" ON public.don_gia_vat_tu FOR DELETE USING (t
             let val = ''
             let cellType = 's'
             let numFormat = undefined
+            let isFormula = false
+            let formulaStr = ''
 
             if (col.key === 'STT') {
               val = rowIndex + 1
               cellType = 'n'
-            } else if (col.key === 'thucNhap' || col.key === 'thucXuat' || col.key === 'tonKho') {
-              const numVal = Number(row[col.key])
-              if (numVal === 0) {
-                val = '-'
-                cellType = 's'
-              } else {
-                val = numVal
-                cellType = 'n'
-                numFormat = '#,##0.000'
-              }
+            } else if (col.key === 'thucNhap') {
+              isFormula = true
+              formulaStr = `SUMIFS(Thuc_Nhap!L:L,Thuc_Nhap!C:C,C${excelRowIdx})`
+              val = Number(row.thucNhap)
+              cellType = 'n'
+              numFormat = '#,##0.000;[Red]-#,##0.000;"-"'
+            } else if (col.key === 'thucXuat') {
+              isFormula = true
+              formulaStr = `SUMIFS(Thuc_Xuat!L:L,Thuc_Xuat!C:C,C${excelRowIdx})`
+              val = Number(row.thucXuat)
+              cellType = 'n'
+              numFormat = '#,##0.000;[Red]-#,##0.000;"-"'
+            } else if (col.key === 'tonKho') {
+              isFormula = true
+              formulaStr = `G${excelRowIdx}-H${excelRowIdx}`
+              val = Number(row.tonKho)
+              cellType = 'n'
+              numFormat = '#,##0.000;[Red]-#,##0.000;"-"'
             } else {
               val = String(row[col.key] || '')
             }
@@ -6489,8 +6646,10 @@ CREATE POLICY "Allow public delete" ON public.don_gia_vat_tu FOR DELETE USING (t
               }
             }
 
-            ws[cellRef] = { v: val, t: cellType, s: cellStyle }
-            if (numFormat) ws[cellRef].z = numFormat
+            const cellObj = { v: val, t: cellType, s: cellStyle }
+            if (isFormula) cellObj.f = formulaStr
+            if (numFormat) cellObj.z = numFormat
+            ws[cellRef] = cellObj
           })
         })
 
@@ -6538,7 +6697,12 @@ CREATE POLICY "Allow public delete" ON public.don_gia_vat_tu FOR DELETE USING (t
           const colChar = getColLabel(colIdx)
           const cellRef = `${colChar}${excelRowIdx}`
 
-          const sumFormula = `SUM(${colChar}5:${colChar}${lastDataRow})`
+          let sumFormula = ''
+          if (col.key === 'tonKho') {
+            sumFormula = `G${excelRowIdx}-H${excelRowIdx}`
+          } else {
+            sumFormula = `SUM(${colChar}5:${colChar}${lastDataRow})`
+          }
           const sumVal = realReportSummaryRows.reduce((sum, r) => sum + (Number(r[col.key]) || 0), 0)
           
           ws[cellRef] = {
@@ -6561,7 +6725,314 @@ CREATE POLICY "Allow public delete" ON public.don_gia_vat_tu FOR DELETE USING (t
         })
 
         ws['!ref'] = `A1:${getColLabel(columns.length - 1)}${excelRowIdx}`
-        XLSXStyle.utils.book_append_sheet(wb, ws, "Tong_Hop_Thuc_Te")
+
+        // Prepare Detailed Sheets "Thực nhập" and "Thực xuất"
+        const thucNhapList = []
+        const thucXuatList = []
+
+        realReportSummaryRows.forEach(row => {
+          const txs = row.transactions || []
+          txs.forEach(tx => {
+            if (tx.nhapVal > 0) {
+              thucNhapList.push({
+                maSAP: row.maSAP,
+                tenVatTu: row.tenVatTu,
+                dvt: row.dvt,
+                ngayXuatNhap: tx.ngayXuatNhap || '',
+                maDon: tx.maDonNhapKho || tx.maDonXuatKho || '',
+                donViGiao: tx.donViGiao || '',
+                donViNhan: tx.donViNhan || '',
+                qty: tx.nhapVal,
+                typeLabel: tx.detailTypeNhap === 'nhan_ncc' ? 'Nhận từ NCC'
+                          : tx.detailTypeNhap === 'nhan_kho' ? 'Nhận từ Kho gửi'
+                          : tx.detailTypeNhap === 'tra_ncc' ? 'Trả lại NCC'
+                          : 'Khác',
+                logicVal: tx.logicNhapVal,
+                contribution: tx.nhapVal * tx.logicNhapVal
+              })
+            }
+            if (tx.xuatVal > 0) {
+              thucXuatList.push({
+                maSAP: row.maSAP,
+                tenVatTu: row.tenVatTu,
+                dvt: row.dvt,
+                ngayXuatNhap: tx.ngayXuatNhap || '',
+                maDon: tx.maDonNhapKho || tx.maDonXuatKho || '',
+                donViGiao: tx.donViGiao || '',
+                donViNhan: tx.donViNhan || '',
+                qty: tx.xuatVal,
+                typeLabel: tx.detailTypeXuat === 'xuat_todoi' ? 'Xuất cho Tổ đội'
+                          : tx.detailTypeXuat === 'xuat_kho' ? 'Xuất đi Kho nhận'
+                          : tx.detailTypeXuat === 'todoi_tra' ? 'Tổ đội trả hàng'
+                          : 'Khác',
+                logicVal: tx.logicXuatVal,
+                contribution: tx.xuatVal * tx.logicXuatVal
+              })
+            }
+          })
+        })
+
+        // Sheet 2: Thuc_Nhap
+        const thucNhapCols = [
+          { key: 'STT', label: 'STT', width: 50 },
+          { key: 'ngayXuatNhap', label: 'Ngày', width: 100 },
+          { key: 'maSAP', label: 'Mã SAP', width: 100 },
+          { key: 'tenVatTu', label: 'Tên vật tư', width: 250 },
+          { key: 'dvt', label: 'ĐVT', width: 70 },
+          { key: 'maDon', label: 'Mã chứng từ', width: 150 },
+          { key: 'donViGiao', label: 'Đơn vị giao (NCC/Kho gửi)', width: 180 },
+          { key: 'donViNhan', label: 'Đơn vị nhận (Kho nhận)', width: 180 },
+          { key: 'qty', label: 'KL Chứng từ', width: 120 },
+          { key: 'typeLabel', label: 'Phân loại', width: 150 },
+          { key: 'logicVal', label: 'Hệ số logic', width: 90 },
+          { key: 'contribution', label: 'Đóng góp thực', width: 120 }
+        ]
+
+        const wsThucNhap = {}
+        wsThucNhap['!cols'] = thucNhapCols.map(c => ({ wpx: c.width }))
+
+        wsThucNhap['A1'] = {
+          v: `CHI TIẾT CHỨNG TỪ THỰC NHẬP VẬT TƯ THIẾT BỊ`,
+          t: 's',
+          s: {
+            font: { name: 'Segoe UI', sz: 14, bold: true, color: { rgb: '0F766E' } },
+            alignment: { horizontal: 'left', vertical: 'center' }
+          }
+        }
+        wsThucNhap['A2'] = {
+          v: `Kho / Dự án: ${localProject || 'Tất cả'} | Xuất từ dữ liệu Đơn chung`,
+          t: 's',
+          s: {
+            font: { name: 'Segoe UI', sz: 10, italic: true },
+            alignment: { horizontal: 'left', vertical: 'center' }
+          }
+        }
+
+        let thucNhapRowIdx = 4
+        thucNhapCols.forEach((col, colIdx) => {
+          const colChar = getColLabel(colIdx)
+          wsThucNhap[`${colChar}${thucNhapRowIdx}`] = {
+            v: col.label,
+            t: 's',
+            s: {
+              fill: { patternType: 'solid', fgColor: { rgb: '0D9488' } },
+              font: { name: 'Segoe UI', sz: 9.5, bold: true, color: { rgb: 'FFFFFF' } },
+              alignment: { horizontal: 'center', vertical: 'center', wrapText: true },
+              border: {
+                top: { style: 'thin', color: { rgb: '0F766E' } },
+                bottom: { style: 'medium', color: { rgb: '0F766E' } },
+                left: { style: 'thin', color: { rgb: '0F766E' } },
+                right: { style: 'thin', color: { rgb: '0F766E' } }
+              }
+            }
+          }
+        })
+
+        thucNhapList.forEach((row, rowIndex) => {
+          thucNhapRowIdx++
+          const isEven = (rowIndex % 2 === 1)
+          const rowBgColor = isEven ? 'F8FAFC' : 'FFFFFF'
+
+          thucNhapCols.forEach((col, colIdx) => {
+            const colChar = getColLabel(colIdx)
+            const cellRef = `${colChar}${thucNhapRowIdx}`
+
+            let val = ''
+            let cellType = 's'
+            let numFormat = undefined
+            let isFormula = false
+            let formulaStr = ''
+
+            if (col.key === 'STT') {
+              val = rowIndex + 1
+              cellType = 'n'
+            } else if (col.key === 'qty') {
+              val = row.qty
+              cellType = 'n'
+              numFormat = '#,##0.000'
+            } else if (col.key === 'logicVal') {
+              val = row.logicVal
+              cellType = 'n'
+              numFormat = '0'
+            } else if (col.key === 'contribution') {
+              isFormula = true
+              formulaStr = `I${thucNhapRowIdx}*K${thucNhapRowIdx}`
+              val = row.contribution
+              cellType = 'n'
+              numFormat = '#,##0.000;[Red]-#,##0.000;"-"'
+            } else {
+              val = row[col.key] || ''
+            }
+
+            const isCentered = ['STT', 'ngayXuatNhap', 'maSAP', 'dvt', 'maDon', 'logicVal'].includes(col.key)
+            const isRight = ['qty', 'contribution'].includes(col.key)
+
+            const cellStyle = {
+              font: { name: 'Segoe UI', sz: 9, color: { rgb: '1B1919' } },
+              alignment: {
+                horizontal: isCentered ? 'center' : (isRight ? 'right' : 'left'),
+                vertical: 'center',
+                wrapText: true
+              },
+              fill: { patternType: 'solid', fgColor: { rgb: rowBgColor } },
+              border: {
+                top: { style: 'thin', color: { rgb: 'E2E8F0' } },
+                bottom: { style: 'thin', color: { rgb: 'E2E8F0' } },
+                left: { style: 'thin', color: { rgb: 'E2E8F0' } },
+                right: { style: 'thin', color: { rgb: 'E2E8F0' } }
+              }
+            }
+
+            if (col.key === 'contribution') {
+              cellStyle.font.bold = true
+              if (row.contribution < 0) {
+                cellStyle.font.color = { rgb: 'EF4444' }
+              } else if (row.contribution > 0) {
+                cellStyle.font.color = { rgb: '047857' }
+              }
+            }
+
+            const cellObj = { v: val, t: cellType, s: cellStyle }
+            if (isFormula) cellObj.f = formulaStr
+            if (numFormat) cellObj.z = numFormat
+
+            wsThucNhap[cellRef] = cellObj
+          })
+        })
+        wsThucNhap['!ref'] = `A1:${getColLabel(thucNhapCols.length - 1)}${thucNhapRowIdx}`
+
+        // Sheet 3: Thuc_Xuat
+        const thucXuatCols = [
+          { key: 'STT', label: 'STT', width: 50 },
+          { key: 'ngayXuatNhap', label: 'Ngày', width: 100 },
+          { key: 'maSAP', label: 'Mã SAP', width: 100 },
+          { key: 'tenVatTu', label: 'Tên vật tư', width: 250 },
+          { key: 'dvt', label: 'ĐVT', width: 70 },
+          { key: 'maDon', label: 'Mã chứng từ', width: 150 },
+          { key: 'donViGiao', label: 'Đơn vị giao (Kho gửi)', width: 180 },
+          { key: 'donViNhan', label: 'Đơn vị nhận (Tổ đội/Kho nhận)', width: 180 },
+          { key: 'qty', label: 'KL Chứng từ', width: 120 },
+          { key: 'typeLabel', label: 'Phân loại', width: 150 },
+          { key: 'logicVal', label: 'Hệ số logic', width: 90 },
+          { key: 'contribution', label: 'Đóng góp thực', width: 120 }
+        ]
+
+        const wsThucXuat = {}
+        wsThucXuat['!cols'] = thucXuatCols.map(c => ({ wpx: c.width }))
+
+        wsThucXuat['A1'] = {
+          v: `CHI TIẾT CHỨNG TỪ THỰC XUẤT VẬT TƯ THIẾT BỊ`,
+          t: 's',
+          s: {
+            font: { name: 'Segoe UI', sz: 14, bold: true, color: { rgb: 'C2410C' } },
+            alignment: { horizontal: 'left', vertical: 'center' }
+          }
+        }
+        wsThucXuat['A2'] = {
+          v: `Kho / Dự án: ${localProject || 'Tất cả'} | Xuất từ dữ liệu Đơn chung`,
+          t: 's',
+          s: {
+            font: { name: 'Segoe UI', sz: 10, italic: true },
+            alignment: { horizontal: 'left', vertical: 'center' }
+          }
+        }
+
+        let thucXuatRowIdx = 4
+        thucXuatCols.forEach((col, colIdx) => {
+          const colChar = getColLabel(colIdx)
+          wsThucXuat[`${colChar}${thucXuatRowIdx}`] = {
+            v: col.label,
+            t: 's',
+            s: {
+              fill: { patternType: 'solid', fgColor: { rgb: 'EA580C' } },
+              font: { name: 'Segoe UI', sz: 9.5, bold: true, color: { rgb: 'FFFFFF' } },
+              alignment: { horizontal: 'center', vertical: 'center', wrapText: true },
+              border: {
+                top: { style: 'thin', color: { rgb: 'C2410C' } },
+                bottom: { style: 'medium', color: { rgb: 'C2410C' } },
+                left: { style: 'thin', color: { rgb: 'C2410C' } },
+                right: { style: 'thin', color: { rgb: 'C2410C' } }
+              }
+            }
+          }
+        })
+
+        thucXuatList.forEach((row, rowIndex) => {
+          thucXuatRowIdx++
+          const isEven = (rowIndex % 2 === 1)
+          const rowBgColor = isEven ? 'F8FAFC' : 'FFFFFF'
+
+          thucXuatCols.forEach((col, colIdx) => {
+            const colChar = getColLabel(colIdx)
+            const cellRef = `${colChar}${thucXuatRowIdx}`
+
+            let val = ''
+            let cellType = 's'
+            let numFormat = undefined
+            let isFormula = false
+            let formulaStr = ''
+
+            if (col.key === 'STT') {
+              val = rowIndex + 1
+              cellType = 'n'
+            } else if (col.key === 'qty') {
+              val = row.qty
+              cellType = 'n'
+              numFormat = '#,##0.000'
+            } else if (col.key === 'logicVal') {
+              val = row.logicVal
+              cellType = 'n'
+              numFormat = '0'
+            } else if (col.key === 'contribution') {
+              isFormula = true
+              formulaStr = `I${thucXuatRowIdx}*K${thucXuatRowIdx}`
+              val = row.contribution
+              cellType = 'n'
+              numFormat = '#,##0.000;[Red]-#,##0.000;"-"'
+            } else {
+              val = row[col.key] || ''
+            }
+
+            const isCentered = ['STT', 'ngayXuatNhap', 'maSAP', 'dvt', 'maDon', 'logicVal'].includes(col.key)
+            const isRight = ['qty', 'contribution'].includes(col.key)
+
+            const cellStyle = {
+              font: { name: 'Segoe UI', sz: 9, color: { rgb: '1B1919' } },
+              alignment: {
+                horizontal: isCentered ? 'center' : (isRight ? 'right' : 'left'),
+                vertical: 'center',
+                wrapText: true
+              },
+              fill: { patternType: 'solid', fgColor: { rgb: rowBgColor } },
+              border: {
+                top: { style: 'thin', color: { rgb: 'E2E8F0' } },
+                bottom: { style: 'thin', color: { rgb: 'E2E8F0' } },
+                left: { style: 'thin', color: { rgb: 'E2E8F0' } },
+                right: { style: 'thin', color: { rgb: 'E2E8F0' } }
+              }
+            }
+
+            if (col.key === 'contribution') {
+              cellStyle.font.bold = true
+              if (row.contribution < 0) {
+                cellStyle.font.color = { rgb: 'EF4444' }
+              } else if (row.contribution > 0) {
+                cellStyle.font.color = { rgb: '047857' }
+              }
+            }
+
+            const cellObj = { v: val, t: cellType, s: cellStyle }
+            if (isFormula) cellObj.f = formulaStr
+            if (numFormat) cellObj.z = numFormat
+
+            wsThucXuat[cellRef] = cellObj
+          })
+        })
+        wsThucXuat['!ref'] = `A1:${getColLabel(thucXuatCols.length - 1)}${thucXuatRowIdx}`
+
+        XLSXStyle.utils.book_append_sheet(wb, ws, "Tổng hợp")
+        XLSXStyle.utils.book_append_sheet(wb, wsThucNhap, "Thuc_Nhap")
+        XLSXStyle.utils.book_append_sheet(wb, wsThucXuat, "Thuc_Xuat")
 
         const wbout = XLSXStyle.write(wb, { bookType: 'xlsx', type: 'binary', compression: true })
         const s2ab = (s) => {
