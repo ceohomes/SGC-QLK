@@ -17,7 +17,16 @@ const KEYS_TO_REMOVE_FOR_REAL_REPORT = [
   'bienSoXe', 'phanKhu', 'duAn', 'tinhTrang', 'nguoiNhan', 
   'maDonLienQuan', 'nhaCungCap', 'maDonChuyenTiepLC', 'maDonChuyenTiepNB'
 ]
-export const COLS_REAL_REPORT = COLS_GIAO_NHAN.filter(c => !KEYS_TO_REMOVE_FOR_REAL_REPORT.includes(c.key))
+
+const baseColsForReal = COLS_GIAO_NHAN.filter(c => !KEYS_TO_REMOVE_FOR_REAL_REPORT.includes(c.key))
+const loaiDonIdx = baseColsForReal.findIndex(c => c.key === 'loaiDon')
+if (loaiDonIdx !== -1) {
+  baseColsForReal.splice(loaiDonIdx, 1,
+    { key: 'khoiLuongThuc', label: 'Khối lượng thực', width: 80 },
+    { key: 'logicTongHop', label: 'Logic tổng hợp', width: 60 }
+  )
+}
+export const COLS_REAL_REPORT = baseColsForReal
 
 // ─── Searchable Select ────────────────────────────────────────────────────────
 function SearchableSelect({ value, onChange, options, placeholder = 'Tất cả dự án', searchPlaceholder, variant = 'header', align = 'left', onEditProject, onDeleteProject }) {
@@ -908,6 +917,456 @@ function FilterBar({
   )
 }
 
+// ─── Real Report Summary Table (Báo cáo tổng hợp khối lượng Thực nhập và Thực xuất) ─────────────────
+function RealReportSummaryTable({ summaryRows = [] }) {
+  const [pageSize, setPageSize] = React.useState(100)
+  const [currentPage, setCurrentPage] = React.useState(1)
+  const [expandedRows, setExpandedRows] = React.useState({})
+  const tableWrapRef = React.useRef(null)
+  const mirrorRef = React.useRef(null)
+
+  const toggleRow = (maSAP) => {
+    setExpandedRows(prev => ({
+      ...prev,
+      [maSAP]: !prev[maSAP]
+    }))
+  }
+
+  React.useEffect(() => {
+    setCurrentPage(1)
+    setExpandedRows({})
+  }, [summaryRows])
+
+  React.useEffect(() => {
+    const wrap = tableWrapRef.current
+    const mirror = mirrorRef.current
+    if (!wrap || !mirror) return
+
+    const syncMirrorWidth = () => {
+      const inner = wrap.querySelector('table')
+      if (inner) {
+        mirror.firstChild.style.width = inner.scrollWidth + 'px'
+      }
+    }
+    syncMirrorWidth()
+
+    const onWrapScroll = () => { mirror.scrollLeft = wrap.scrollLeft }
+    const onMirrorScroll = () => { wrap.scrollLeft = mirror.scrollLeft }
+
+    wrap.addEventListener('scroll', onWrapScroll)
+    mirror.addEventListener('scroll', onMirrorScroll)
+
+    const ro = new ResizeObserver(syncMirrorWidth)
+    ro.observe(wrap)
+
+    return () => {
+      wrap.removeEventListener('scroll', onWrapScroll)
+      mirror.removeEventListener('scroll', onMirrorScroll)
+      ro.disconnect()
+    }
+  }, [summaryRows, pageSize])
+
+  const totalPages = Math.ceil(summaryRows.length / pageSize)
+  const startIdx = (currentPage - 1) * pageSize
+  const endIdx = Math.min(startIdx + pageSize, summaryRows.length)
+  const pageRows = summaryRows.slice(startIdx, endIdx)
+
+  const columns = [
+    { key: 'maVatTu', label: 'Mã vật tư', width: 100 },
+    { key: 'maSAP', label: 'Mã SAP', width: 100 },
+    { key: 'thongSoKyThuat', label: 'Thông số kỹ thuật', width: 150 },
+    { key: 'tenVatTu', label: 'Tên vật tư', width: 300 },
+    { key: 'dvt', label: 'ĐVT', width: 80 },
+    { key: 'thucNhap', label: 'Thực nhập', width: 130 },
+    { key: 'thucXuat', label: 'Thực xuất', width: 130 },
+    { key: 'tonKho', label: 'Tồn kho', width: 130 }
+  ]
+
+  const getPageNums = () => {
+    const pages = []
+    if (totalPages <= 7) {
+      for (let i = 1; i <= totalPages; i++) pages.push(i)
+    } else {
+      pages.push(1)
+      if (currentPage > 3) pages.push('...')
+      for (let i = Math.max(2, currentPage - 1); i <= Math.min(totalPages - 1, currentPage + 1); i++) pages.push(i)
+      if (currentPage < totalPages - 2) pages.push('...')
+      pages.push(totalPages)
+    }
+    return pages
+  }
+
+  const btnBase = {
+    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+    height: 30, minWidth: 30, padding: '0 8px',
+    border: '1px solid #e2e8f0', borderRadius: 6,
+    fontSize: 13, fontWeight: 500, cursor: 'pointer',
+    background: '#fff', color: '#374151', transition: 'all 0.15s',
+    userSelect: 'none'
+  }
+  const btnActive = { ...btnBase, background: 'var(--primary)', color: '#fff', borderColor: 'var(--primary)', fontWeight: 700 }
+  const btnDisabled = { ...btnBase, opacity: 0.4, cursor: 'not-allowed', pointerEvents: 'none' }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
+      {/* Helpful tip banner */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 14px', background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '6px', marginBottom: '10px', fontSize: '12.5px', color: '#1e40af' }}>
+        <Info size={16} className="text-blue-600" style={{ flexShrink: 0 }} />
+        <span>
+          <strong>Hướng dẫn:</strong> Bấm vào bất kỳ dòng vật tư nào dưới đây để xem <strong>Bảng giải trình cấu thành số liệu chi tiết</strong> (Thực nhập và Thực xuất được tổng hợp từ nhà cung cấp nào, tổ đội nào bị trừ hoặc không tính, v.v.).
+        </span>
+      </div>
+
+      {/* Table wrapper */}
+      <div className="table-wrap" ref={tableWrapRef} style={{ overflowX: 'auto', overflowY: 'auto' }}>
+        <table>
+          <thead>
+            <tr>
+              <th style={{ width: 50, minWidth: 50, maxWidth: 50, textAlign: 'center', verticalAlign: 'middle', fontSize: '12px', padding: '8px 10px' }}>
+                STT
+              </th>
+              {columns.map(c => {
+                const isThucNhap = c.key === 'thucNhap'
+                const isThucXuat = c.key === 'thucXuat'
+                const isTonKho = c.key === 'tonKho'
+                const thBg = isThucNhap ? '#0d9488' : isThucXuat ? '#ea580c' : isTonKho ? '#0f58a7' : undefined
+                const thBorderBottom = isThucNhap ? '2px solid #0f766e' : isThucXuat ? '2px solid #c2410c' : isTonKho ? '2px solid #0a3d73' : undefined
+
+                return (
+                  <th
+                    key={c.key}
+                    style={{
+                      width: c.width, minWidth: c.width, maxWidth: c.width,
+                      textAlign: 'center', verticalAlign: 'middle',
+                      fontSize: '12px', padding: '8px 10px',
+                      whiteSpace: 'normal', wordBreak: 'break-word', lineHeight: '1.2',
+                      background: thBg,
+                      borderBottom: thBorderBottom
+                    }}
+                  >
+                    {c.label}
+                  </th>
+                )
+              })}
+            </tr>
+          </thead>
+          <tbody>
+            {pageRows.map((row, i) => {
+              const isExpanded = !!expandedRows[row.maSAP]
+              const txs = row.transactions || []
+
+              const sumNccRecv = txs.reduce((sum, tx) => sum + (tx.detailTypeNhap === 'nhan_ncc' ? tx.nhapVal : 0), 0)
+              const sumKhoRecv = txs.reduce((sum, tx) => sum + (tx.detailTypeNhap === 'nhan_kho' ? tx.nhapVal : 0), 0)
+              const sumTraNcc = txs.reduce((sum, tx) => sum + (tx.detailTypeNhap === 'tra_ncc' ? tx.nhapVal : 0), 0)
+
+              const sumToDoiIssue = txs.reduce((sum, tx) => sum + (tx.detailTypeXuat === 'xuat_todoi' ? tx.xuatVal : 0), 0)
+              const sumKhoIssue = txs.reduce((sum, tx) => sum + (tx.detailTypeXuat === 'xuat_kho' ? tx.xuatVal : 0), 0)
+              const sumTraToDoi = txs.reduce((sum, tx) => sum + (tx.detailTypeXuat === 'todoi_tra' ? tx.xuatVal : 0), 0)
+
+              return (
+                <React.Fragment key={row.maSAP}>
+                  <tr
+                    onClick={() => toggleRow(row.maSAP)}
+                    style={{
+                      cursor: 'pointer',
+                      background: isExpanded ? '#f0f9ff' : undefined,
+                      transition: 'background-color 0.15s'
+                    }}
+                    className="hover:bg-sky-50"
+                  >
+                    <td style={{ width: 50, minWidth: 50, maxWidth: 50, textAlign: 'center', fontSize: '12px', color: '#1b1919', padding: '6px 10px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
+                      {isExpanded ? <ChevronDown size={14} className="text-blue-600" /> : <ChevronRight size={14} className="text-gray-400" />}
+                      <span style={{ fontWeight: isExpanded ? 700 : 500 }}>{startIdx + i + 1}</span>
+                    </td>
+                    {columns.map(col => {
+                      const isCenteredCol = ['maVatTu', 'maSAP', 'dvt'].includes(col.key)
+                      const isRightAligned = ['thucNhap', 'thucXuat', 'tonKho'].includes(col.key)
+
+                      let cellBg = undefined
+                      let cellTextColor = '#1b1919'
+                      let cellFontWeight = undefined
+
+                      const isNumeric = col.key === 'thucNhap' || col.key === 'thucXuat' || col.key === 'tonKho'
+                      if (col.key === 'tonKho') {
+                        const numVal = Number(row[col.key])
+                        const isNegative = numVal < 0
+                        const isZero = numVal === 0
+                        cellBg = isNegative ? '#fef2f2' : (isZero ? undefined : 'var(--primary-light)')
+                        cellTextColor = isNegative ? '#ef4444' : (isZero ? 'var(--text-muted)' : 'var(--primary)')
+                        cellFontWeight = '800'
+                      } else if (col.key === 'thucNhap' || col.key === 'thucXuat') {
+                        const numVal = Number(row[col.key])
+                        if (numVal > 0) {
+                          cellBg = col.key === 'thucNhap' ? '#ecfdf5' : '#fff7ed' // soft green vs soft orange
+                          cellTextColor = col.key === 'thucNhap' ? '#065f46' : '#c2410c' // dark green vs dark orange
+                          cellFontWeight = '700'
+                        } else {
+                          cellBg = '#f1f5f9' // soft gray
+                          cellTextColor = '#475569' // dark gray
+                          cellFontWeight = '500'
+                        }
+                      }
+
+                      let displayVal = row[col.key]
+                      if (isNumeric) {
+                        const numVal = Number(row[col.key])
+                        displayVal = numVal === 0 ? '-' : numVal.toLocaleString('vi-VN', { minimumFractionDigits: 3, maximumFractionDigits: 3 })
+                      }
+
+                      return (
+                        <td
+                          key={col.key}
+                          style={{
+                            width: col.width, minWidth: col.width, maxWidth: col.width,
+                            color: cellTextColor,
+                            backgroundColor: cellBg,
+                            fontWeight: cellFontWeight,
+                            textAlign: isCenteredCol ? 'center' : (isRightAligned ? 'right' : 'left'),
+                            fontSize: '12px', padding: '6px 10px',
+                            wordBreak: 'break-word', whiteSpace: 'normal',
+                            borderBottom: '1px solid #e2e8f0'
+                          }}
+                          title={String(displayVal || '')}
+                        >
+                          {displayVal}
+                        </td>
+                      )
+                    })}
+                  </tr>
+                  {isExpanded && (
+                    <tr>
+                      <td colSpan={columns.length + 1} style={{ padding: '12px 16px', backgroundColor: '#f8fafc', borderBottom: '2px solid #cbd5e1' }}>
+                        <div style={{ background: '#fff', border: '1px solid #cbd5e1', borderRadius: 8, padding: 16, boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}>
+                          
+                          {/* Title banner */}
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12, borderBottom: '1px solid #e2e8f0', paddingBottom: 8 }}>
+                            <Info size={18} className="text-blue-600" />
+                            <div>
+                              <h4 style={{ margin: 0, fontSize: 13.5, fontWeight: 700, color: '#1e3a8a' }}>
+                                BẢNG GIẢI TRÌNH CẤU THÀNH SỐ LIỆU THỰC TẾ
+                              </h4>
+                              <p style={{ margin: 0, fontSize: 11, color: '#64748b' }}>
+                                {row.tenVatTu} ({row.maSAP}) | ĐVT: {row.dvt}
+                              </p>
+                            </div>
+                          </div>
+
+                          {/* Summary of calculation formulas */}
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
+                            
+                            {/* NHẬP Column */}
+                            <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 6, padding: 12 }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px dashed #bbf7d0', paddingBottom: 6, marginBottom: 8 }}>
+                                <span style={{ fontWeight: 700, fontSize: 12, color: '#166534' }}>Cấu thành THỰC NHẬP</span>
+                                <span style={{ fontWeight: 800, fontSize: 13, color: '#15803d' }}>
+                                  {row.thucNhap.toLocaleString('vi-VN', { minimumFractionDigits: 3, maximumFractionDigits: 3 })} {row.dvt}
+                                </span>
+                              </div>
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 11.5, color: '#374151' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                  <span>(+) Nhận từ Nhà cung cấp (NCC):</span>
+                                  <span style={{ fontWeight: 600 }}>{sumNccRecv.toLocaleString('vi-VN', { maximumFractionDigits: 3 })}</span>
+                                </div>
+                                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                  <span>(+) Nhận điều chuyển từ Kho cấp trên/khác:</span>
+                                  <span style={{ fontWeight: 600 }}>{sumKhoRecv.toLocaleString('vi-VN', { maximumFractionDigits: 3 })}</span>
+                                </div>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', color: '#b91c1c' }}>
+                                  <span>(-) Trả hàng lại cho NCC:</span>
+                                  <span style={{ fontWeight: 600 }}>-{sumTraNcc.toLocaleString('vi-VN', { maximumFractionDigits: 3 })}</span>
+                                </div>
+                                <div style={{ borderTop: '1px solid #dcfce7', marginTop: 4, paddingTop: 4, display: 'flex', justifyContent: 'space-between', fontWeight: 700, fontSize: 12, color: '#14532d' }}>
+                                  <span>Thực nhập = (NCC + Kho khác) - Trả NCC:</span>
+                                  <span>
+                                    {Math.max(0, sumNccRecv + sumKhoRecv - sumTraNcc).toLocaleString('vi-VN', { minimumFractionDigits: 3, maximumFractionDigits: 3 })}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* XUẤT Column */}
+                            <div style={{ background: '#fff7ed', border: '1px solid #fed7aa', borderRadius: 6, padding: 12 }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px dashed #fed7aa', paddingBottom: 6, marginBottom: 8 }}>
+                                <span style={{ fontWeight: 700, fontSize: 12, color: '#9a3412' }}>Cấu thành THỰC XUẤT</span>
+                                <span style={{ fontWeight: 800, fontSize: 13, color: '#c2410c' }}>
+                                  {row.thucXuat.toLocaleString('vi-VN', { minimumFractionDigits: 3, maximumFractionDigits: 3 })} {row.dvt}
+                                </span>
+                              </div>
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 11.5, color: '#374151' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                  <span>(+) Xuất cho Tổ đội / Nhà thầu phụ (NTP):</span>
+                                  <span style={{ fontWeight: 600 }}>{sumToDoiIssue.toLocaleString('vi-VN', { maximumFractionDigits: 3 })}</span>
+                                </div>
+                                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                  <span>(+) Xuất điều chuyển đi các Kho khác:</span>
+                                  <span style={{ fontWeight: 600 }}>{sumKhoIssue.toLocaleString('vi-VN', { maximumFractionDigits: 3 })}</span>
+                                </div>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', color: '#b91c1c' }}>
+                                  <span>(-) Tổ đội/NTP trả lại hàng thừa:</span>
+                                  <span style={{ fontWeight: 600 }}>-{sumTraToDoi.toLocaleString('vi-VN', { maximumFractionDigits: 3 })}</span>
+                                </div>
+                                <div style={{ borderTop: '1px solid #ffedd5', marginTop: 4, paddingTop: 4, display: 'flex', justifyContent: 'space-between', fontWeight: 700, fontSize: 12, color: '#7c2d12' }}>
+                                  <span>Thực xuất = (Tổ đội + Kho khác) - Trả thừa:</span>
+                                  <span>
+                                    {Math.max(0, sumToDoiIssue + sumKhoIssue - sumTraToDoi).toLocaleString('vi-VN', { minimumFractionDigits: 3, maximumFractionDigits: 3 })}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+
+                          </div>
+
+                          {/* Transaction list table */}
+                          <div style={{ border: '1px solid #e2e8f0', borderRadius: 6, overflow: 'hidden' }}>
+                            <div style={{ backgroundColor: '#f1f5f9', padding: '6px 12px', fontSize: 11, fontWeight: 700, color: '#475569', borderBottom: '1px solid #e2e8f0' }}>
+                              DANH SÁCH CHỨNG TỪ GIAO DỊCH CHI TIẾT
+                            </div>
+                            {txs.length === 0 ? (
+                              <div style={{ padding: 12, textAlign: 'center', fontSize: 11.5, color: '#94a3b8' }}>
+                                Không tìm thấy chứng từ chi tiết phát sinh nào cho mặt hàng này.
+                              </div>
+                            ) : (
+                              <div style={{ overflowX: 'auto', maxHeight: 240 }}>
+                                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11 }}>
+                                  <thead>
+                                    <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0', color: '#475569', fontWeight: 600 }}>
+                                      <th style={{ padding: '6px 10px', textAlign: 'center', width: 40 }}>#</th>
+                                      <th style={{ padding: '6px 10px', textAlign: 'center', width: 90 }}>Ngày</th>
+                                      <th style={{ padding: '6px 10px', textAlign: 'left', width: 110 }}>Mã chứng từ</th>
+                                      <th style={{ padding: '6px 10px', textAlign: 'left' }}>Đơn vị giao</th>
+                                      <th style={{ padding: '6px 10px', textAlign: 'left' }}>Đơn vị nhận</th>
+                                      <th style={{ padding: '6px 10px', textAlign: 'right', width: 90 }}>KL Chứng từ</th>
+                                      <th style={{ padding: '6px 10px', textAlign: 'center', width: 80 }}>Loại</th>
+                                      <th style={{ padding: '6px 10px', textAlign: 'left' }}>Quy tắc & Diễn giải logic</th>
+                                      <th style={{ padding: '6px 10px', textAlign: 'right', width: 95 }}>Đóng góp thực</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {txs.map((tx, txIdx) => {
+                                      const isNhap = tx.nhapVal > 0;
+                                      const qty = isNhap ? tx.nhapVal : tx.xuatVal;
+                                      const logicVal = isNhap ? tx.logicNhapVal : tx.logicXuatVal;
+                                      const explain = isNhap ? tx.explainNhap : tx.explainXuat;
+                                      const contribution = qty * logicVal;
+
+                                      return (
+                                        <tr key={txIdx} style={{ borderBottom: '1px solid #f1f5f9', backgroundColor: txIdx % 2 === 1 ? '#fafbfd' : '#fff' }}>
+                                          <td style={{ padding: '6px 10px', textAlign: 'center', color: '#64748b' }}>{txIdx + 1}</td>
+                                          <td style={{ padding: '6px 10px', textAlign: 'center', color: '#64748b' }}>{tx.ngayXuatNhap || '-'}</td>
+                                          <td style={{ padding: '6px 10px', fontWeight: 500, color: '#1e293b' }}>
+                                            {tx.maDonNhapKho || tx.maDonXuatKho || '-'}
+                                          </td>
+                                          <td style={{ padding: '6px 10px' }}>{tx.donViGiao || '-'}</td>
+                                          <td style={{ padding: '6px 10px' }}>{tx.donViNhan || '-'}</td>
+                                          <td style={{ padding: '6px 10px', textAlign: 'right', fontWeight: 500 }}>
+                                            {qty.toLocaleString('vi-VN', { maximumFractionDigits: 3 })}
+                                          </td>
+                                          <td style={{ padding: '6px 10px', textAlign: 'center' }}>
+                                            <span style={{
+                                              padding: '2px 6px', borderRadius: 4, fontSize: 9.5, fontWeight: 700,
+                                              background: isNhap ? '#ecfdf5' : '#fff7ed',
+                                              color: isNhap ? '#047857' : '#c2410c'
+                                            }}>
+                                              {isNhap ? 'NHẬP' : 'XUẤT'}
+                                            </span>
+                                          </td>
+                                          <td style={{ padding: '6px 10px', color: logicVal !== 0 ? '#0f172a' : '#64748b', fontStyle: logicVal === 0 ? 'italic' : 'normal' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                              <span style={{
+                                                padding: '1px 5px', borderRadius: 3, fontSize: 9.5, fontWeight: 700,
+                                                background: logicVal === 1 ? '#dcfce7' : logicVal === -1 ? '#fee2e2' : '#f1f5f9',
+                                                color: logicVal === 1 ? '#15803d' : logicVal === -1 ? '#b91c1c' : '#475569',
+                                                whiteSpace: 'nowrap'
+                                              }}>
+                                                Hệ số: {logicVal > 0 ? `+${logicVal}` : logicVal}
+                                              </span>
+                                              <span>{explain || '-'}</span>
+                                            </div>
+                                          </td>
+                                          <td style={{
+                                            padding: '6px 10px', textAlign: 'right', fontWeight: 700,
+                                            color: contribution > 0 ? '#15803d' : contribution < 0 ? '#b91c1c' : '#64748b'
+                                          }}>
+                                            {contribution === 0 ? '-' : (contribution > 0 ? '+' : '') + contribution.toLocaleString('vi-VN', { maximumFractionDigits: 3 })}
+                                          </td>
+                                        </tr>
+                                      )
+                                    })}
+                                  </tbody>
+                                </table>
+                              </div>
+                            )}
+                          </div>
+
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </React.Fragment>
+              )
+            })}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Mirror Scrollbar */}
+      <div className="scroll-mirror" ref={mirrorRef} style={{ overflowX: 'auto', overflowY: 'hidden', height: 12, flexShrink: 0, marginTop: 4, background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
+        <div style={{ height: 1 }}><span /></div>
+      </div>
+
+      {/* Pagination */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', background: '#f8fafc', borderTop: '1px solid #cbd5e1', borderBottomLeftRadius: 8, borderBottomRightRadius: 8, gap: 12, flexWrap: 'wrap', flexShrink: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '13px', color: '#475569' }}>
+          <span>Hiển thị</span>
+          <select
+            value={pageSize}
+            onChange={(e) => { setPageSize(Number(e.target.value)); setCurrentPage(1); }}
+            style={{ padding: '2px 4px', border: '1px solid #cbd5e1', borderRadius: 4, background: '#fff', fontSize: '13px', color: '#1e293b', cursor: 'pointer' }}
+          >
+            {PAGE_SIZE_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+          </select>
+          <span>dòng / trang</span>
+        </div>
+
+        <div style={{ fontSize: '13px', color: '#475569', fontWeight: 500 }}>
+          {summaryRows.length > 0 ? `${startIdx + 1}–${endIdx} / ${summaryRows.length} dòng` : '0 dòng'}
+        </div>
+
+        {totalPages > 1 && (
+          <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+            <button
+              onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+              disabled={currentPage === 1}
+              style={currentPage === 1 ? btnDisabled : btnBase}
+              title="Trang trước"
+            >
+              ◀
+            </button>
+            {getPageNums().map((num, idx) => (
+              <button
+                key={idx}
+                onClick={() => num !== '...' && setCurrentPage(num)}
+                style={num === '...' ? { ...btnBase, cursor: 'default', border: 'none', background: 'transparent' } : (num === currentPage ? btnActive : btnBase)}
+                disabled={num === '...'}
+              >
+                {num}
+              </button>
+            ))}
+            <button
+              onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+              disabled={currentPage === totalPages}
+              style={currentPage === totalPages ? btnDisabled : btnBase}
+              title="Trang sau"
+            >
+              ▶
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
 // ─── Data Table ───────────────────────────────────────────────────────────────
 const PAGE_SIZE_OPTIONS = [50, 100, 200, 500]
 
@@ -1317,8 +1776,9 @@ function DataTable({ rows, setRows, type, columns = COLS_GIAO_NHAN }) {
               {columns.map(c => {
                 const isNhapKhoGroup = ['khoiLuongNhap', 'maDonViGiao', 'donViGiao', 'nguoiGiao'].includes(c.key)
                 const isXuatKhoGroup = ['khoiLuongXuat', 'maDonViNhan', 'donViNhan', 'nguoiPheDuyet'].includes(c.key)
-                const thBg = isNhapKhoGroup ? '#0f766e' : isXuatKhoGroup ? '#c2410c' : undefined
-                const thBorderBottom = isNhapKhoGroup ? '2px solid #115e59' : isXuatKhoGroup ? '2px solid #9a3412' : undefined
+                const isRealReportGroup = ['khoiLuongThuc', 'logicTongHop'].includes(c.key)
+                const thBg = isNhapKhoGroup ? '#0f766e' : isXuatKhoGroup ? '#c2410c' : isRealReportGroup ? '#5b21b6' : undefined
+                const thBorderBottom = isNhapKhoGroup ? '2px solid #115e59' : isXuatKhoGroup ? '2px solid #9a3412' : isRealReportGroup ? '2px solid #4c1d95' : undefined
 
                 return (
                   <th
@@ -1363,18 +1823,44 @@ function DataTable({ rows, setRows, type, columns = COLS_GIAO_NHAN }) {
                 </td>
                 {columns.map(col => {
                   const isCenteredCol = [
-                    'ngayXuatNhap', 'maVatTu', 'maSAP', 'dvt', 'loaiDon',
+                    'ngayXuatNhap', 'maVatTu', 'maSAP', 'dvt', 'loaiDon', 'logicTongHop',
                     'maDonViGiao', 'nguoiGiao',
                     'maDonViNhan', 'nguoiPheDuyet', 'nguoiNhan',
                     'soHopDong', 'thuKho', 'tinhTrang'
                   ].includes(col.key)
                   const isRightAligned = ['khoiLuongNhap', 'khoiLuongXuat'].includes(col.key) || col.key.toLowerCase().includes('khoiluong')
+                  
+                  // Custom styling for logicTongHop and khoiLuongThuc
+                  const isRealReportGroup = ['khoiLuongThuc', 'logicTongHop'].includes(col.key)
+                  let cellBg = undefined
+                  let cellTextColor = '#1b1919'
+                  let cellFontWeight = undefined
+                  
+                  if (isRealReportGroup) {
+                    const valLogic = Number(row.logicTongHop)
+                    if (valLogic === 1) {
+                      cellBg = '#ecfdf5' // soft green
+                      cellTextColor = '#065f46' // dark green
+                      cellFontWeight = '700'
+                    } else if (valLogic === -1) {
+                      cellBg = '#fef2f2' // soft red
+                      cellTextColor = '#991b1b' // dark red
+                      cellFontWeight = '700'
+                    } else if (valLogic === 0) {
+                      cellBg = '#f1f5f9' // soft gray
+                      cellTextColor = '#475569' // dark gray
+                      cellFontWeight = '500'
+                    }
+                  }
+
                   return (
                     <td
                       key={col.key}
                       style={{
                         width: col.width, minWidth: col.width, maxWidth: col.width,
-                        color: '#1b1919',
+                        color: cellTextColor,
+                        backgroundColor: cellBg,
+                        fontWeight: cellFontWeight,
                         textAlign: isCenteredCol ? 'center' : (isRightAligned ? 'right' : 'left'),
                         fontSize: '12px', padding: '6px 10px',
                         wordBreak: 'break-word', whiteSpace: 'normal'
@@ -1391,6 +1877,8 @@ function DataTable({ rows, setRows, type, columns = COLS_GIAO_NHAN }) {
                         row[col.key]
                           ? <span className={`badge ${row[col.key] === 'NEW' ? 'badge-green' : row[col.key] === 'USED' ? 'badge-yellow' : 'badge-gray'}`} style={{ fontSize: '11px', padding: '2px 6px', lineHeight: 1.2 }}>{row[col.key]}</span>
                           : ''
+                      ) : (col.key === 'logicTongHop' || col.key === 'khoiLuongThuc') && Number(row[col.key]) === 0 ? (
+                        '-'
                       ) : (
                         formatVal(row[col.key], col.key) !== null && formatVal(row[col.key], col.key) !== undefined ? formatVal(row[col.key], col.key) : ''
                       )}
@@ -1745,7 +2233,7 @@ function OrderTab({
 
         // Check alignment
         const isCenteredCol = [
-          'STT', 'ngayXuatNhap', 'maVatTu', 'maSAP', 'dvt', 'loaiDon',
+          'STT', 'ngayXuatNhap', 'maVatTu', 'maSAP', 'dvt', 'loaiDon', 'logicTongHop',
           'maDonViGiao', 'nguoiGiao',
           'maDonViNhan', 'nguoiPheDuyet', 'nguoiNhan',
           'soHopDong', 'thuKho', 'tinhTrang', 'trangThai'
@@ -1808,7 +2296,7 @@ function OrderTab({
     XLSXStyle.utils.book_append_sheet(wb, ws, sheetName)
     
     // Save
-    const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'binary', compression: true })
+    const wbout = XLSXStyle.write(wb, { bookType: 'xlsx', type: 'binary', compression: true })
     function s2ab(s) {
       const buf = new ArrayBuffer(s.length)
       const view = new Uint8Array(buf)
@@ -2020,89 +2508,14 @@ function getUnitCategory(name) {
 }
 
 // ─── Kho Du An Tab (Auto-compiled from Don Chung) ───────────────────────────
-function KhoDuAnTab({ chungRows, selectedProject, setSelectedProject, allProjects = [] }) {
+function KhoDuAnTab({ chungRows, selectedProject, setSelectedProject, allProjects = [], customCategoryMap = {}, setCustomCategoryMap, dbCategoryMap = {}, setDbCategoryMap }) {
   const [search, setSearch] = useState('')
   const [saveStatus, setSaveStatus] = useState('idle') // 'idle' | 'saving' | 'success' | 'error'
   const [errorMessage, setErrorMessage] = useState('')
 
   // Drag and drop / Custom classifications state
-  const [customCategoryMap, setCustomCategoryMap] = useState({})
-  const [dbCategoryMap, setDbCategoryMap] = useState({}) // Stores the initial/saved state from Supabase
   const [draggedItemName, setDraggedItemName] = useState(null)
   const [dragOverCol, setDragOverCol] = useState(null)
-
-  // Load custom classifications from Supabase table phan_loai_don_vi
-  React.useEffect(() => {
-    let isMounted = true
-    let channel = null
-    const loadCustomClassifications = async () => {
-      if (!isSupabaseConfigured) {
-        if (isMounted) {
-          setCustomCategoryMap({})
-          setDbCategoryMap({})
-        }
-        return
-      }
-      try {
-        const { data, error } = await supabase
-          .from('phan_loai_don_vi')
-          .select('ten_don_vi, nhom_don_vi')
-          
-        if (error) throw error
-        
-        if (data && isMounted) {
-          const map = {}
-          data.forEach(row => {
-            if (row.ten_don_vi) {
-              map[row.ten_don_vi] = row.nhom_don_vi
-            }
-          })
-          setCustomCategoryMap(map)
-          setDbCategoryMap(map)
-        }
-      } catch (err) {
-        console.error('Error loading custom classifications:', err)
-      }
-    }
-    loadCustomClassifications()
-
-    if (isSupabaseConfigured) {
-      channel = supabase
-        .channel('phan_loai_don_vi-changes')
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'phan_loai_don_vi' }, (payload) => {
-          console.log('[Realtime] Nhận sự kiện thay đổi trên phan_loai_don_vi:', payload.eventType, payload)
-          if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
-            const row = payload.new
-            if (row && row.ten_don_vi) {
-              setCustomCategoryMap(prev => ({ ...prev, [row.ten_don_vi]: row.nhom_don_vi }))
-              setDbCategoryMap(prev => ({ ...prev, [row.ten_don_vi]: row.nhom_don_vi }))
-            }
-          } else if (payload.eventType === 'DELETE') {
-            const oldRow = payload.old
-            if (oldRow && oldRow.ten_don_vi) {
-              setCustomCategoryMap(prev => {
-                const next = { ...prev }
-                delete next[oldRow.ten_don_vi]
-                return next
-              })
-              setDbCategoryMap(prev => {
-                const next = { ...prev }
-                delete next[oldRow.ten_don_vi]
-                return next
-              })
-            }
-          }
-        })
-        .subscribe()
-    }
-
-    return () => {
-      isMounted = false
-      if (channel) {
-        supabase.removeChannel(channel)
-      }
-    }
-  }, [])
 
   // Drag & drop handlers
   const handleDragStart = (e, name) => {
@@ -2329,7 +2742,7 @@ function KhoDuAnTab({ chungRows, selectedProject, setSelectedProject, allProject
     createSheetForList(categorizedUnits.todoi, 'Tổ đội', '059669')
 
     // Save
-    const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'binary', compression: true })
+    const wbout = XLSXStyle.write(wb, { bookType: 'xlsx', type: 'binary', compression: true })
     function s2ab(s) {
       const buf = new ArrayBuffer(s.length)
       const view = new Uint8Array(buf)
@@ -4360,13 +4773,15 @@ function DeleteConfigConfirmModal({ isOpen, onClose, onConfirm, configName, proj
 }
 
 // ─── Inventory Report (Báo cáo xuất nhập tồn) ──────────────────────────────────
-function BaoCaoXuatNhapTonTab({ chungRows = [], giaoRows = [], nhanRows = [], selectedProject, setSelectedProject, allProjects = [], isRealReport = false }) {
+function BaoCaoXuatNhapTonTab({ chungRows = [], giaoRows = [], nhanRows = [], selectedProject, setSelectedProject, allProjects = [], isRealReport = false, customCategoryMap = {} }) {
   // Bộ lọc Kho/Dự án của tab này hoàn toàn độc lập (local), không lấy theo
   // và không đồng bộ ngược lại selectedProject toàn cục — tránh ảnh hưởng
   // tới các tab/sheet khác như Đơn chung, Kho dự án.
   const [localProject, setLocalProject] = React.useState('')
   const [subTab, setSubTab] = React.useState(isRealReport ? 'summary' : 'dashboard') // 'dashboard' | 'dongia' | 'summary'
   const [realReportSubTab, setRealReportSubTab] = React.useState('nhap') // 'nhap' | 'xuat'
+  const [showLogicExplainModal, setShowLogicExplainModal] = React.useState(false)
+  const [explainModalSubTab, setExplainModalSubTab] = React.useState('nhap')
   const [loadingDbPrices, setLoadingDbPrices] = React.useState(false)
   const [priceSearchQuery, setPriceSearchQuery] = React.useState('')
 
@@ -5133,7 +5548,7 @@ CREATE POLICY "Allow public delete" ON public.don_gia_vat_tu FOR DELETE USING (t
     }
 
     // Sort descending by date (newest/most recent first)
-    return [...list].sort((a, b) => {
+    const sorted = [...list].sort((a, b) => {
       const dateA = parseRowDate(a.ngayXuatNhap)
       const dateB = parseRowDate(b.ngayXuatNhap)
       if (!dateA && !dateB) return 0
@@ -5141,10 +5556,315 @@ CREATE POLICY "Allow public delete" ON public.don_gia_vat_tu FOR DELETE USING (t
       if (!dateB) return -1
       return dateB.getTime() - dateA.getTime()
     })
-  }, [chungRows, isRealReport, localProject, localGiao, localNhan, searchTerm, statusFilter, startDate, endDate, matchStatusFilter, realReportSubTab])
+
+    const getCategoryForUnit = (name) => {
+      if (!name) return 'chuaphanbo'
+      const normName = name.trim().replace(/\s+/g, ' ')
+      if (customCategoryMap && customCategoryMap[normName]) {
+        return customCategoryMap[normName]
+      }
+      if (customCategoryMap) {
+        const keys = Object.keys(customCategoryMap)
+        const foundKey = keys.find(k => k.toLowerCase() === normName.toLowerCase())
+        if (foundKey) {
+          return customCategoryMap[foundKey]
+        }
+      }
+      return getUnitCategory(normName)
+    }
+
+    return sorted.map(row => {
+      const nhap = parseNum(row.khoiLuongNhap)
+      const xuat = parseNum(row.khoiLuongXuat)
+      
+      const normProject = String(localProject || '').trim().toLowerCase()
+      const normGiao = String(row.donViGiao || '').trim().toLowerCase()
+      const normNhan = String(row.donViNhan || '').trim().toLowerCase()
+
+      const isGiaoProject = (normGiao === normProject)
+      const isNhanProject = (normNhan === normProject)
+
+      let logicTongHopVal = 0
+
+      if (realReportSubTab === 'nhap') {
+        if (isGiaoProject) {
+          const catNhan = getCategoryForUnit(row.donViNhan)
+          if (catNhan === 'ncc') {
+            logicTongHopVal = -1
+          } else if (catNhan === 'kho') {
+            logicTongHopVal = 0
+          } else if (catNhan === 'todoi') {
+            logicTongHopVal = 0
+          }
+        } else if (isNhanProject) {
+          const catGiao = getCategoryForUnit(row.donViGiao)
+          if (catGiao === 'ncc') {
+            logicTongHopVal = 1
+          } else if (catGiao === 'kho') {
+            logicTongHopVal = 1
+          } else if (catGiao === 'todoi') {
+            logicTongHopVal = 0
+          }
+        }
+      } else {
+        // realReportSubTab === 'xuat'
+        if (isGiaoProject) {
+          const catNhan = getCategoryForUnit(row.donViNhan)
+          if (catNhan === 'todoi') {
+            logicTongHopVal = 1
+          } else if (catNhan === 'kho') {
+            logicTongHopVal = 1
+          } else if (catNhan === 'ncc') {
+            logicTongHopVal = 0
+          }
+        } else if (isNhanProject) {
+          const catGiao = getCategoryForUnit(row.donViGiao)
+          if (catGiao === 'todoi') {
+            logicTongHopVal = -1
+          } else if (catGiao === 'kho') {
+            logicTongHopVal = 0
+          } else if (catGiao === 'ncc') {
+            logicTongHopVal = 0
+          }
+        }
+      }
+
+      const qty = realReportSubTab === 'nhap' ? nhap : xuat
+      const khoiLuongThuc = qty * logicTongHopVal
+
+      return {
+        ...row,
+        logicTongHop: logicTongHopVal,
+        khoiLuongThuc
+      }
+    })
+  }, [chungRows, isRealReport, localProject, localGiao, localNhan, searchTerm, statusFilter, startDate, endDate, matchStatusFilter, realReportSubTab, customCategoryMap])
+
+  const realReportSummaryRows = React.useMemo(() => {
+    if (!isRealReport) return []
+    if (!localProject) return []
+
+    let list = chungRows
+
+    if (localProject) {
+      const p = localProject.trim().toLowerCase()
+      list = list.filter(row => {
+        const g = (row.donViGiao || '').trim().toLowerCase()
+        const n = (row.donViNhan || '').trim().toLowerCase()
+        return g === p || n === p
+      })
+    }
+
+    if (localGiao) {
+      list = list.filter(row => String(row.donViGiao || '').trim() === localGiao.trim())
+    }
+    if (localNhan) {
+      list = list.filter(row => String(row.donViNhan || '').trim() === localNhan.trim())
+    }
+    list = list.filter(row => matchStatusFilter(row.trangThai))
+
+    if (searchTerm) {
+      const q = searchTerm.toLowerCase()
+      list = list.filter(row =>
+        String(row.tenVatTu || '').toLowerCase().includes(q) ||
+        String(row.maDonNhapKho || '').toLowerCase().includes(q) ||
+        String(row.maDonXuatKho || '').toLowerCase().includes(q) ||
+        String(row.donViGiao || '').toLowerCase().includes(q) ||
+        String(row.donViNhan || '').toLowerCase().includes(q) ||
+        String(row.maSAP || '').toLowerCase().includes(q) ||
+        String(row.maVatTu || '').toLowerCase().includes(q)
+      )
+    }
+
+    if (startDate || endDate) {
+      const start = startDate ? new Date(startDate) : null
+      if (start) start.setHours(0, 0, 0, 0)
+      const end = endDate ? new Date(endDate) : null
+      if (end) end.setHours(23, 59, 59, 999)
+
+      list = list.filter(row => {
+        const rowDate = parseRowDate(row.ngayXuatNhap)
+        if (!rowDate) return false
+        if (start && rowDate < start) return false
+        if (end && rowDate > end) return false
+        return true
+      })
+    }
+
+    const parseNum = (v) => {
+      if (v === null || v === undefined) return 0
+      if (typeof v === 'number') return v
+      const cleaned = String(v).replace(/[^\d.-]/g, '').replace(',', '.')
+      const num = parseFloat(cleaned)
+      return isNaN(num) ? 0 : num
+    }
+
+    const getCategoryForUnit = (name) => {
+      if (!name) return 'chuaphanbo'
+      const normName = name.trim().replace(/\s+/g, ' ')
+      if (customCategoryMap && customCategoryMap[normName]) {
+        return customCategoryMap[normName]
+      }
+      if (customCategoryMap) {
+        const keys = Object.keys(customCategoryMap)
+        const foundKey = keys.find(k => k.toLowerCase() === normName.toLowerCase())
+        if (foundKey) {
+          return customCategoryMap[foundKey]
+        }
+      }
+      return getUnitCategory(normName)
+    }
+
+    const groups = {}
+
+    list.forEach(row => {
+      const maSAP = String(row.maSAP || '').trim()
+      if (!maSAP) return
+
+      if (!groups[maSAP]) {
+        groups[maSAP] = {
+          maVatTu: String(row.maVatTu || '').trim(),
+          maSAP,
+          tenVatTu: String(row.tenVatTu || '').trim(),
+          thongSoKyThuat: String(row.thongSoKyThuat || '').trim(),
+          dvt: String(row.dvt || '').trim(),
+          thucNhap: 0,
+          thucXuat: 0,
+          transactions: []
+        }
+      }
+
+      const nhapVal = parseNum(row.khoiLuongNhap)
+      const xuatVal = parseNum(row.khoiLuongXuat)
+
+      const normProject = String(localProject || '').trim().toLowerCase()
+      const normGiao = String(row.donViGiao || '').trim().toLowerCase()
+      const normNhan = String(row.donViNhan || '').trim().toLowerCase()
+
+      const isGiaoProject = (normGiao === normProject)
+      const isNhanProject = (normNhan === normProject)
+
+      let logicNhapVal = 0
+      let explainNhap = ''
+      let detailTypeNhap = ''
+      if (nhapVal > 0) {
+        if (isGiaoProject) {
+          const catNhan = getCategoryForUnit(row.donViNhan)
+          if (catNhan === 'ncc') {
+            logicNhapVal = -1
+            detailTypeNhap = 'tra_ncc'
+            explainNhap = `Trả lại NCC (${row.donViNhan})`
+          } else {
+            explainNhap = `Điều chuyển đi (${row.donViNhan}) - Không tính`
+          }
+        } else if (isNhanProject) {
+          const catGiao = getCategoryForUnit(row.donViGiao)
+          if (catGiao === 'ncc' || catGiao === 'kho') {
+            logicNhapVal = 1
+            detailTypeNhap = catGiao === 'ncc' ? 'nhan_ncc' : 'nhan_kho'
+            explainNhap = `Nhận từ ${catGiao === 'ncc' ? 'NCC' : 'Kho cấp trên'} (${row.donViGiao})`
+          } else {
+            explainNhap = `Nhận từ nguồn khác (${row.donViGiao}) - Không tính`
+          }
+        }
+        groups[maSAP].thucNhap += nhapVal * logicNhapVal
+      }
+
+      let logicXuatVal = 0
+      let explainXuat = ''
+      let detailTypeXuat = ''
+      if (xuatVal > 0) {
+        if (isGiaoProject) {
+          const catNhan = getCategoryForUnit(row.donViNhan)
+          if (catNhan === 'todoi' || catNhan === 'kho') {
+            logicXuatVal = 1
+            detailTypeXuat = catNhan === 'todoi' ? 'xuat_todoi' : 'xuat_kho'
+            explainXuat = `Xuất cho ${catNhan === 'todoi' ? 'Tổ đội/NTP' : 'Kho khác'} (${row.donViNhan})`
+          } else {
+            explainXuat = `Xuất cho đối tượng khác (${row.donViNhan}) - Không tính`
+          }
+        } else if (isNhanProject) {
+          const catGiao = getCategoryForUnit(row.donViGiao)
+          if (catGiao === 'todoi') {
+            logicXuatVal = -1
+            detailTypeXuat = 'todoi_tra'
+            explainXuat = `Tổ đội trả hàng thừa (${row.donViGiao})`
+          } else {
+            explainXuat = `Nhận lại từ nguồn khác (${row.donViGiao}) - Không tính`
+          }
+        }
+        groups[maSAP].thucXuat += xuatVal * logicXuatVal
+      }
+
+      if (nhapVal > 0 || xuatVal > 0) {
+        groups[maSAP].transactions.push({
+          ngayXuatNhap: row.ngayXuatNhap,
+          maDonNhapKho: row.maDonNhapKho,
+          maDonXuatKho: row.maDonXuatKho,
+          donViGiao: row.donViGiao,
+          donViNhan: row.donViNhan,
+          nhapVal,
+          logicNhapVal,
+          explainNhap,
+          detailTypeNhap,
+          xuatVal,
+          logicXuatVal,
+          explainXuat,
+          detailTypeXuat
+        })
+      }
+    })
+
+    return Object.values(groups)
+      .filter(g => g.thucNhap !== 0 || g.thucXuat !== 0)
+      .map(g => {
+        const thucNhap = Math.max(0, g.thucNhap)
+        const thucXuat = Math.max(0, g.thucXuat)
+        return {
+          ...g,
+          thucNhap,
+          thucXuat,
+          tonKho: thucNhap - thucXuat
+        }
+      })
+  }, [chungRows, isRealReport, localProject, localGiao, localNhan, searchTerm, statusFilter, startDate, endDate, matchStatusFilter, customCategoryMap])
 
   const realReportMetrics = React.useMemo(() => {
     if (!isRealReport) return []
+
+    if (realReportSubTab === 'tonghop') {
+      let totalItems = realReportSummaryRows.length
+      let totalReceivedSum = realReportSummaryRows.reduce((sum, r) => sum + r.thucNhap, 0)
+      let totalIssuedSum = realReportSummaryRows.reduce((sum, r) => sum + r.thucXuat, 0)
+
+      return [
+        {
+          label: 'Tổng số mặt hàng thực tế',
+          value: totalItems.toLocaleString('vi-VN') + ' mặt hàng',
+          color: '#8b5cf6',
+          bg: '#f5f3ff',
+          border: '#ddd6fe',
+          icon: <PackageCheck size={18} />
+        },
+        {
+          label: 'Tổng khối lượng thực nhập',
+          value: totalReceivedSum.toLocaleString('vi-VN', { maximumFractionDigits: 3 }),
+          color: '#10b981',
+          bg: '#ecfdf5',
+          border: '#a7f3d0',
+          icon: <Truck size={18} />
+        },
+        {
+          label: 'Tổng khối lượng thực xuất',
+          value: totalIssuedSum.toLocaleString('vi-VN', { maximumFractionDigits: 3 }),
+          color: '#f97316',
+          bg: '#fff7ed',
+          border: '#fed7aa',
+          icon: <Download size={18} style={{ transform: 'rotate(180deg)' }} />
+        }
+      ]
+    }
+
     let total = realReportRows.length
     let totalReceived = 0
     let totalIssued = 0
@@ -5159,8 +5879,12 @@ CREATE POLICY "Allow public delete" ON public.don_gia_vat_tu FOR DELETE USING (t
 
     const counts = {}
     realReportRows.forEach(row => {
-      totalReceived += parseNum(row.khoiLuongNhap)
-      totalIssued += parseNum(row.khoiLuongXuat)
+      const klThuc = parseNum(row.khoiLuongThuc)
+      if (realReportSubTab === 'nhap') {
+        totalReceived += klThuc
+      } else {
+        totalIssued += klThuc
+      }
 
       const status = (row.trangThai || 'Chưa duyệt').trim()
       counts[status] = (counts[status] || 0) + 1
@@ -5253,7 +5977,7 @@ CREATE POLICY "Allow public delete" ON public.don_gia_vat_tu FOR DELETE USING (t
         ...statusCards
       ]
     }
-  }, [realReportRows, isRealReport, realReportSubTab])
+  }, [realReportRows, realReportSummaryRows, isRealReport, realReportSubTab])
 
   // Extract and group dashboard statistics specifically for BCH warehouses
   const bchWarehouses = React.useMemo(() => {
@@ -5619,6 +6343,246 @@ CREATE POLICY "Allow public delete" ON public.don_gia_vat_tu FOR DELETE USING (t
   // Excel export using xlsx-js-style
   const handleExportExcel = () => {
     if (isRealReport) {
+      if (realReportSubTab === 'tonghop') {
+        if (realReportSummaryRows.length === 0) return
+
+        const wb = XLSXStyle.utils.book_new()
+        const ws = {}
+
+        const columns = [
+          { key: 'STT', label: 'STT', width: 50 },
+          { key: 'maVatTu', label: 'Mã vật tư', width: 100 },
+          { key: 'maSAP', label: 'Mã SAP', width: 100 },
+          { key: 'thongSoKyThuat', label: 'Thông số kỹ thuật', width: 150 },
+          { key: 'tenVatTu', label: 'Tên vật tư', width: 300 },
+          { key: 'dvt', label: 'ĐVT', width: 80 },
+          { key: 'thucNhap', label: 'Thực nhập', width: 130 },
+          { key: 'thucXuat', label: 'Thực xuất', width: 130 },
+          { key: 'tonKho', label: 'Tồn kho', width: 130 }
+        ]
+
+        ws['!cols'] = columns.map(c => ({ wpx: c.width }))
+
+        let excelRowIdx = 1
+
+        ws['A1'] = {
+          v: `BÁO CÁO TỔNG HỢP KHỐI LƯỢNG THỰC NHẬP THỰC XUẤT`,
+          t: 's',
+          s: {
+            font: { name: 'Segoe UI', sz: 14, bold: true, color: { rgb: '0B2545' } },
+            alignment: { horizontal: 'left', vertical: 'center' }
+          }
+        }
+        ws['A2'] = {
+          v: `Kho / Dự án: ${localProject || 'Tất cả'} | Đơn vị giao: ${localGiao || 'Tất cả'} | Đơn vị nhận: ${localNhan || 'Tất cả'}`,
+          t: 's',
+          s: {
+            font: { name: 'Segoe UI', sz: 10, italic: true },
+            alignment: { horizontal: 'left', vertical: 'center' }
+          }
+        }
+        excelRowIdx = 4
+
+        columns.forEach((col, colIdx) => {
+          const colChar = getColLabel(colIdx)
+          const cellRef = `${colChar}${excelRowIdx}`
+          
+          const isThucNhap = col.key === 'thucNhap'
+          const isThucXuat = col.key === 'thucXuat'
+          const isTonKho = col.key === 'tonKho'
+          const excelBgColor = isThucNhap ? '0D9488' : isThucXuat ? 'EA580C' : isTonKho ? '0F58A7' : '0F58A7'
+          const excelBorderColor = isThucNhap ? '0F766E' : isThucXuat ? 'C2410C' : isTonKho ? '0A3D73' : '0A3D73'
+
+          ws[cellRef] = {
+            v: col.label,
+            t: 's',
+            s: {
+              fill: { patternType: 'solid', fgColor: { rgb: excelBgColor } },
+              font: { name: 'Segoe UI', sz: 9.5, bold: true, color: { rgb: 'FFFFFF' } },
+              alignment: { horizontal: 'center', vertical: 'center', wrapText: true },
+              border: {
+                top: { style: 'thin', color: { rgb: excelBorderColor } },
+                bottom: { style: 'medium', color: { rgb: excelBorderColor } },
+                left: { style: 'thin', color: { rgb: excelBorderColor } },
+                right: { style: 'thin', color: { rgb: excelBorderColor } }
+              }
+            }
+          }
+        })
+
+        realReportSummaryRows.forEach((row, rowIndex) => {
+          excelRowIdx++
+          const isEvenNum = (rowIndex % 2 === 1)
+          const rowBgColor = isEvenNum ? 'F8FAFC' : 'FFFFFF'
+
+          columns.forEach((col, colIdx) => {
+            const colChar = getColLabel(colIdx)
+            const cellRef = `${colChar}${excelRowIdx}`
+
+            let val = ''
+            let cellType = 's'
+            let numFormat = undefined
+
+            if (col.key === 'STT') {
+              val = rowIndex + 1
+              cellType = 'n'
+            } else if (col.key === 'thucNhap' || col.key === 'thucXuat' || col.key === 'tonKho') {
+              const numVal = Number(row[col.key])
+              if (numVal === 0) {
+                val = '-'
+                cellType = 's'
+              } else {
+                val = numVal
+                cellType = 'n'
+                numFormat = '#,##0.000'
+              }
+            } else {
+              val = String(row[col.key] || '')
+            }
+
+            const isCenteredCol = ['STT', 'maVatTu', 'maSAP', 'dvt'].includes(col.key)
+            const isRightAligned = ['thucNhap', 'thucXuat', 'tonKho'].includes(col.key)
+
+            const cellStyle = {
+              font: { name: 'Segoe UI', sz: 9, color: { rgb: '1A1A1A' } },
+              alignment: {
+                horizontal: isCenteredCol ? 'center' : (isRightAligned ? 'right' : 'left'),
+                vertical: 'center',
+                wrapText: true
+              },
+              fill: { patternType: 'solid', fgColor: { rgb: rowBgColor } },
+              border: {
+                top: { style: 'thin', color: { rgb: 'E2E8F0' } },
+                bottom: { style: 'thin', color: { rgb: 'E2E8F0' } },
+                left: { style: 'thin', color: { rgb: 'E2E8F0' } },
+                right: { style: 'thin', color: { rgb: 'E2E8F0' } }
+              }
+            }
+
+            if (col.key === 'tonKho') {
+              const numVal = Number(row[col.key])
+              const isNegative = numVal < 0
+              const isZero = numVal === 0
+              if (isNegative) {
+                cellStyle.fill = { patternType: 'solid', fgColor: { rgb: 'FEF2F2' } }
+                cellStyle.font.color = { rgb: 'EF4444' }
+                cellStyle.font.bold = true
+              } else if (!isZero) {
+                cellStyle.fill = { patternType: 'solid', fgColor: { rgb: 'EFF6FF' } }
+                cellStyle.font.color = { rgb: '1E40AF' }
+                cellStyle.font.bold = true
+              } else {
+                cellStyle.fill = { patternType: 'solid', fgColor: { rgb: 'F1F5F9' } }
+                cellStyle.font.color = { rgb: '475569' }
+                cellStyle.font.bold = false
+              }
+            } else if (col.key === 'thucNhap' || col.key === 'thucXuat') {
+              const numVal = Number(row[col.key])
+              if (numVal > 0) {
+                cellStyle.fill = { patternType: 'solid', fgColor: { rgb: col.key === 'thucNhap' ? 'ECFDF5' : 'FFF7ED' } }
+                cellStyle.font.color = { rgb: col.key === 'thucNhap' ? '065F46' : 'C2410C' }
+                cellStyle.font.bold = true
+              } else {
+                cellStyle.fill = { patternType: 'solid', fgColor: { rgb: 'F1F5F9' } }
+                cellStyle.font.color = { rgb: '475569' }
+                cellStyle.font.bold = false
+              }
+            }
+
+            ws[cellRef] = { v: val, t: cellType, s: cellStyle }
+            if (numFormat) ws[cellRef].z = numFormat
+          })
+        })
+
+        // Sum row
+        excelRowIdx++
+        const lastDataRow = excelRowIdx - 1
+        ws[`A${excelRowIdx}`] = {
+          v: 'TỔNG CỘNG',
+          t: 's',
+          s: {
+            font: { name: 'Segoe UI', sz: 10, bold: true },
+            alignment: { horizontal: 'center', vertical: 'center' },
+            fill: { patternType: 'solid', fgColor: { rgb: 'F1F5F9' } },
+            border: {
+              top: { style: 'medium', color: { rgb: '0F58A7' } },
+              bottom: { style: 'medium', color: { rgb: '0F58A7' } },
+              left: { style: 'thin', color: { rgb: 'E2E8F0' } },
+              right: { style: 'thin', color: { rgb: 'E2E8F0' } }
+            }
+          }
+        }
+
+        ws['!merges'] = [
+          { s: { r: excelRowIdx - 1, c: 0 }, e: { r: excelRowIdx - 1, c: 5 } }
+        ]
+
+        for (let c = 1; c <= 5; c++) {
+          ws[`${getColLabel(c)}${excelRowIdx}`] = {
+            v: '',
+            t: 's',
+            s: {
+              fill: { patternType: 'solid', fgColor: { rgb: 'F1F5F9' } },
+              border: {
+                top: { style: 'medium', color: { rgb: '0F58A7' } },
+                bottom: { style: 'medium', color: { rgb: '0F58A7' } },
+                left: { style: 'thin', color: { rgb: 'E2E8F0' } },
+                right: { style: 'thin', color: { rgb: 'E2E8F0' } }
+              }
+            }
+          }
+        }
+
+        columns.forEach((col, colIdx) => {
+          if (colIdx <= 5) return
+          const colChar = getColLabel(colIdx)
+          const cellRef = `${colChar}${excelRowIdx}`
+
+          const sumFormula = `SUM(${colChar}5:${colChar}${lastDataRow})`
+          const sumVal = realReportSummaryRows.reduce((sum, r) => sum + (Number(r[col.key]) || 0), 0)
+          
+          ws[cellRef] = {
+            f: sumFormula,
+            v: sumVal,
+            t: 'n',
+            s: {
+              font: { name: 'Segoe UI', sz: 10, bold: true },
+              alignment: { horizontal: 'right', vertical: 'center' },
+              fill: { patternType: 'solid', fgColor: { rgb: 'F1F5F9' } },
+              border: {
+                top: { style: 'medium', color: { rgb: '0F58A7' } },
+                bottom: { style: 'medium', color: { rgb: '0F58A7' } },
+                left: { style: 'thin', color: { rgb: 'E2E8F0' } },
+                right: { style: 'thin', color: { rgb: 'E2E8F0' } }
+              }
+            },
+            z: '#,##0.000;[Red]-#,##0.000;"-"'
+          }
+        })
+
+        ws['!ref'] = `A1:${getColLabel(columns.length - 1)}${excelRowIdx}`
+        XLSXStyle.utils.book_append_sheet(wb, ws, "Tong_Hop_Thuc_Te")
+
+        const wbout = XLSXStyle.write(wb, { bookType: 'xlsx', type: 'binary', compression: true })
+        const s2ab = (s) => {
+          const buf = new ArrayBuffer(s.length)
+          const view = new Uint8Array(buf)
+          for (let i = 0; i < s.length; i++) view[i] = s.charCodeAt(i) & 0xFF
+          return buf
+        }
+
+        const blob = new Blob([s2ab(wbout)], { type: 'application/octet-stream' })
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = `Bao_Cao_Tong_Hop_Thuc_Te_${localProject || 'Tat_Ca'}_${new Date().toISOString().slice(0, 10)}.xlsx`
+        document.body.appendChild(a)
+        a.click()
+        document.body.removeChild(a)
+        URL.revokeObjectURL(url)
+        return
+      }
+
       if (realReportRows.length === 0) return
 
       const wb = XLSXStyle.utils.book_new()
@@ -5661,8 +6625,9 @@ CREATE POLICY "Allow public delete" ON public.don_gia_vat_tu FOR DELETE USING (t
         
         const isNhapKhoGroup = ['khoiLuongNhap', 'maDonViGiao', 'donViGiao', 'nguoiGiao'].includes(col.key)
         const isXuatKhoGroup = ['khoiLuongXuat', 'maDonViNhan', 'donViNhan', 'nguoiPheDuyet'].includes(col.key)
-        const excelBgColor = isNhapKhoGroup ? '0F766E' : isXuatKhoGroup ? 'C2410C' : '0F58A7'
-        const excelBorderColor = isNhapKhoGroup ? '115E59' : isXuatKhoGroup ? '9A3412' : '0A3D73'
+        const isRealReportGroup = ['khoiLuongThuc', 'logicTongHop'].includes(col.key)
+        const excelBgColor = isNhapKhoGroup ? '0F766E' : isXuatKhoGroup ? 'C2410C' : isRealReportGroup ? '5B21B6' : '0F58A7'
+        const excelBorderColor = isNhapKhoGroup ? '115E59' : isXuatKhoGroup ? '9A3412' : isRealReportGroup ? '4C1D95' : '0A3D73'
 
         ws[cellRef] = {
           v: col.label,
@@ -5768,20 +6733,42 @@ CREATE POLICY "Allow public delete" ON public.don_gia_vat_tu FOR DELETE USING (t
           } else {
             const raw = row[col.key]
             if (raw !== null && raw !== undefined) {
-              const isRightAligned = ['khoiLuongNhap', 'khoiLuongXuat'].includes(col.key) || col.key.toLowerCase().includes('khoiluong')
-              if (isRightAligned && !isNaN(Number(raw)) && raw !== '') {
-                val = Number(raw)
-                cellType = 'n'
-                numFormat = '#,##0.000'
+              if (col.key === 'logicTongHop') {
+                const valLogic = Number(raw)
+                if (valLogic === 0) {
+                  val = '-'
+                  cellType = 's'
+                } else {
+                  val = valLogic
+                  cellType = 'n'
+                  numFormat = '0'
+                }
+              } else if (col.key === 'khoiLuongThuc') {
+                const valThuc = Number(raw)
+                if (valThuc === 0) {
+                  val = '-'
+                  cellType = 's'
+                } else {
+                  val = valThuc
+                  cellType = 'n'
+                  numFormat = '#,##0.000'
+                }
               } else {
-                val = String(raw)
+                const isRightAligned = ['khoiLuongNhap', 'khoiLuongXuat'].includes(col.key) || col.key.toLowerCase().includes('khoiluong')
+                if (isRightAligned && !isNaN(Number(raw)) && raw !== '') {
+                  val = Number(raw)
+                  cellType = 'n'
+                  numFormat = '#,##0.000'
+                } else {
+                  val = String(raw)
+                }
               }
             }
           }
 
           // Check alignment
           const isCenteredCol = [
-            'STT', 'ngayXuatNhap', 'maVatTu', 'maSAP', 'dvt', 'loaiDon',
+            'STT', 'ngayXuatNhap', 'maVatTu', 'maSAP', 'dvt', 'loaiDon', 'logicTongHop',
             'maDonViGiao', 'nguoiGiao',
             'maDonViNhan', 'nguoiPheDuyet', 'nguoiNhan',
             'soHopDong', 'thuKho', 'tinhTrang', 'trangThai'
@@ -5818,6 +6805,24 @@ CREATE POLICY "Allow public delete" ON public.don_gia_vat_tu FOR DELETE USING (t
             cellStyle.fill = { patternType: 'solid', fgColor: { rgb: statusStyle.fg } }
             cellStyle.font.bold = true
             cellStyle.font.color = { rgb: statusStyle.text }
+          }
+
+          // Special logicTongHop/khoiLuongThuc coloring to match web app y hệt
+          if (col.key === 'logicTongHop' || col.key === 'khoiLuongThuc') {
+            const valLogic = Number(row.logicTongHop)
+            if (valLogic === 1) {
+              cellStyle.fill = { patternType: 'solid', fgColor: { rgb: 'ECFDF5' } }
+              cellStyle.font.color = { rgb: '065F46' }
+              cellStyle.font.bold = true
+            } else if (valLogic === -1) {
+              cellStyle.fill = { patternType: 'solid', fgColor: { rgb: 'FEF2F2' } }
+              cellStyle.font.color = { rgb: '991B1B' }
+              cellStyle.font.bold = true
+            } else if (valLogic === 0) {
+              cellStyle.fill = { patternType: 'solid', fgColor: { rgb: 'F1F5F9' } }
+              cellStyle.font.color = { rgb: '475569' }
+              cellStyle.font.bold = false
+            }
           }
 
           ws[cellRef] = {
@@ -5914,7 +6919,7 @@ CREATE POLICY "Allow public delete" ON public.don_gia_vat_tu FOR DELETE USING (t
       const sheetName = realReportSubTab === 'nhap' ? "Bao_Cao_Nhap_Thuc" : "Bao_Cao_Xuat_Thuc"
       XLSXStyle.utils.book_append_sheet(wb, ws, sheetName)
 
-      const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'binary', compression: true })
+      const wbout = XLSXStyle.write(wb, { bookType: 'xlsx', type: 'binary', compression: true })
       const s2ab = (s) => {
         const buf = new ArrayBuffer(s.length)
         const view = new Uint8Array(buf)
@@ -6465,7 +7470,7 @@ CREATE POLICY "Allow public delete" ON public.don_gia_vat_tu FOR DELETE USING (t
     const xuatSheet = buildDetailSheet(detailRows.xuatList, 'CHI TIẾT ĐƠN XUẤT (cấu thành Khối lượng xuất)', 'Khối lượng xuất')
     XLSXStyle.utils.book_append_sheet(wb, xuatSheet, "Don_Xuat")
 
-    const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'binary', compression: true })
+    const wbout = XLSXStyle.write(wb, { bookType: 'xlsx', type: 'binary', compression: true })
 
     const s2ab = (s) => {
       const buf = new ArrayBuffer(s.length)
@@ -6597,6 +7602,25 @@ CREATE POLICY "Allow public delete" ON public.don_gia_vat_tu FOR DELETE USING (t
             }}
           >
             Xuất thực
+          </button>
+          <button
+            id="btn-real-report-tonghop"
+            onClick={() => { setRealReportSubTab('tonghop'); setCurrentPage(1); }}
+            style={{
+              padding: '8px 16px',
+              borderRadius: '6px 6px 0 0',
+              fontSize: '13.5px',
+              fontWeight: realReportSubTab === 'tonghop' ? 700 : 500,
+              background: realReportSubTab === 'tonghop' ? 'var(--primary)' : 'transparent',
+              color: realReportSubTab === 'tonghop' ? '#ffffff' : 'var(--text-muted)',
+              border: 'none',
+              cursor: 'pointer',
+              transition: 'all 0.15s',
+              boxShadow: realReportSubTab === 'tonghop' ? 'var(--shadow-sm)' : 'none',
+              borderBottom: realReportSubTab === 'tonghop' ? '3px solid #8b5cf6' : 'none'
+            }}
+          >
+            Tổng hợp
           </button>
         </div>
       )}
@@ -7430,7 +8454,46 @@ CREATE POLICY "Allow public delete" ON public.don_gia_vat_tu FOR DELETE USING (t
           </>
         )}
 
-        {((isRealReport ? realReportRows.length : reportData.length) > 0) && (
+        {isRealReport && (
+          <button
+            id="btn-show-logic-explain"
+            onClick={() => {
+              setExplainModalSubTab(realReportSubTab);
+              setShowLogicExplainModal(true);
+            }}
+            className="btn"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              height: 38,
+              padding: '0 14px',
+              borderRadius: 6,
+              fontWeight: 600,
+              fontSize: '13px',
+              border: '1px solid #cbd5e1',
+              color: '#0369a1',
+              background: '#f0f9ff',
+              borderColor: '#bae6fd',
+              cursor: 'pointer',
+              marginLeft: ((isRealReport ? (realReportSubTab === 'tonghop' ? realReportSummaryRows.length : realReportRows.length) : reportData.length) > 0) ? 'auto' : undefined,
+              transition: 'all 0.15s ease'
+            }}
+            onMouseOver={e => {
+              e.currentTarget.style.background = '#e0f2fe';
+              e.currentTarget.style.borderColor = '#7dd3fc';
+            }}
+            onMouseOut={e => {
+              e.currentTarget.style.background = '#f0f9ff';
+              e.currentTarget.style.borderColor = '#bae6fd';
+            }}
+          >
+            <HelpCircle size={14} />
+            <span>Xem Giải thích Logic</span>
+          </button>
+        )}
+
+        {((isRealReport ? (realReportSubTab === 'tonghop' ? realReportSummaryRows.length : realReportRows.length) : reportData.length) > 0) && (
           <button
             id="btn-export-inventory"
             onClick={handleExportExcel}
@@ -7449,7 +8512,7 @@ CREATE POLICY "Allow public delete" ON public.don_gia_vat_tu FOR DELETE USING (t
               border: 'none',
               cursor: 'pointer',
               boxShadow: '0 2px 4px rgba(16, 185, 129, 0.2)',
-              marginLeft: 'auto'
+              marginLeft: isRealReport ? undefined : 'auto'
             }}
           >
             <Download size={14} />
@@ -7504,7 +8567,23 @@ CREATE POLICY "Allow public delete" ON public.don_gia_vat_tu FOR DELETE USING (t
           </p>
         </div>
       ) : isRealReport ? (
-        realReportRows.length === 0 ? (
+        realReportSubTab === 'tonghop' ? (
+          realReportSummaryRows.length === 0 ? (
+            <div style={{ flex: 1, background: '#ffffff', border: '1px solid var(--border)', borderRadius: 8, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 48, boxShadow: 'var(--shadow-sm)' }}>
+              <div style={{ width: 56, height: 56, borderRadius: 28, background: '#fef2f2', color: '#ef4444', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
+                <AlertCircle size={28} />
+              </div>
+              <h3 style={{ fontSize: 16, fontWeight: 700, color: 'var(--text)', margin: '0 0 8px 0' }}>Không có dữ liệu phát sinh</h3>
+              <p style={{ color: 'var(--text-muted)', fontSize: 13.5, margin: 0, maxWidth: 420, textAlign: 'center', lineHeight: '1.5' }}>
+                Không tìm thấy dữ liệu tổng hợp thực tế nào{localProject ? ` liên quan đến kho "${localProject}"` : ''} trong dữ liệu Đơn chung hiện tại.
+              </p>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
+              <RealReportSummaryTable summaryRows={realReportSummaryRows} />
+            </div>
+          )
+        ) : realReportRows.length === 0 ? (
           <div style={{ flex: 1, background: '#ffffff', border: '1px solid var(--border)', borderRadius: 8, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 48, boxShadow: 'var(--shadow-sm)' }}>
             <div style={{ width: 56, height: 56, borderRadius: 28, background: '#fef2f2', color: '#ef4444', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
               <AlertCircle size={28} />
@@ -8080,6 +9159,308 @@ CREATE POLICY "Allow public delete" ON public.don_gia_vat_tu FOR DELETE USING (t
           </div>
         </div>
       )}
+
+      {/* Logic Explanation Modal */}
+      {showLogicExplainModal && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(15, 23, 42, 0.6)',
+          backdropFilter: 'blur(8px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 9999,
+          padding: 16
+        }}>
+          <div style={{
+            background: '#ffffff',
+            borderRadius: 16,
+            width: '100%',
+            maxWidth: 620,
+            boxShadow: '0 25px 50px -12px rgba(15, 23, 42, 0.25)',
+            border: '1px solid var(--border)',
+            display: 'flex',
+            flexDirection: 'column',
+            maxHeight: '90vh',
+            overflow: 'hidden'
+          }}>
+            {/* Header */}
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '16px 24px',
+              borderBottom: '1px solid var(--border)',
+              background: '#f8fafc'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <HelpCircle size={22} color="#0284c7" />
+                <h3 style={{ fontSize: 16, fontWeight: 800, color: '#0f172a', margin: 0 }}>
+                  Giải Thích Logic Tổng Hợp & Khối Lượng Thực
+                </h3>
+              </div>
+              <button
+                onClick={() => setShowLogicExplainModal(false)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  color: 'var(--text-muted)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  padding: 4,
+                  borderRadius: 4
+                }}
+                onMouseOver={e => e.currentTarget.style.color = '#000'}
+                onMouseOut={e => e.currentTarget.style.color = 'var(--text-muted)'}
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Modal Subtabs */}
+            <div style={{
+              display: 'flex',
+              borderBottom: '1px solid var(--border)',
+              padding: '0 24px',
+              background: '#f8fafc'
+            }}>
+              <button
+                onClick={() => setExplainModalSubTab('nhap')}
+                style={{
+                  padding: '12px 16px',
+                  fontWeight: 700,
+                  fontSize: 13.5,
+                  border: 'none',
+                  background: 'none',
+                  color: explainModalSubTab === 'nhap' ? 'var(--primary)' : 'var(--text-muted)',
+                  borderBottom: explainModalSubTab === 'nhap' ? '3px solid var(--primary)' : '3px solid transparent',
+                  cursor: 'pointer',
+                  marginRight: 16,
+                  transition: 'all 0.15s ease'
+                }}
+              >
+                Nhập Thực Tế
+              </button>
+              <button
+                onClick={() => setExplainModalSubTab('xuat')}
+                style={{
+                  padding: '12px 16px',
+                  fontWeight: 700,
+                  fontSize: 13.5,
+                  border: 'none',
+                  background: 'none',
+                  color: explainModalSubTab === 'xuat' ? 'var(--primary)' : 'var(--text-muted)',
+                  borderBottom: explainModalSubTab === 'xuat' ? '3px solid var(--primary)' : '3px solid transparent',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease'
+                }}
+              >
+                Xuất Thực Tế
+              </button>
+            </div>
+
+            {/* Content */}
+            <div style={{ padding: '24px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 18 }}>
+              <p style={{ margin: 0, fontSize: 13.5, color: '#475569', lineHeight: 1.6 }}>
+                Hệ thống tự động tính toán <strong>Hệ số Logic tổng hợp</strong> và <strong>Khối lượng thực</strong> dựa trên phân nhóm đơn vị (được quản lý tại tab <strong>Kho dự án</strong>).
+              </p>
+
+              {explainModalSubTab === 'nhap' ? (
+                <>
+                  {/* Case 1 */}
+                  <div>
+                    <h4 style={{ fontSize: 14, fontWeight: 700, color: '#0369a1', margin: '0 0 10px 0', display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <span style={{ display: 'inline-block', width: 6, height: 6, borderRadius: '50%', background: '#0369a1' }} />
+                      Trường hợp 1: Đơn vị GIAO là Kho / Dự án hiện tại (Nhận về giảm nhận)
+                    </h4>
+                    <div style={{ border: '1px solid #e2e8f0', borderRadius: 8, overflow: 'hidden' }}>
+                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                        <thead>
+                          <tr style={{ background: '#f1f5f9', borderBottom: '1px solid #e2e8f0' }}>
+                            <th style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 600, color: '#334155' }}>Đơn vị NHẬN thuộc nhóm</th>
+                            <th style={{ padding: '8px 12px', textAlign: 'center', fontWeight: 600, color: '#334155', width: 140 }}>Hệ số Logic</th>
+                            <th style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 600, color: '#334155' }}>Ý nghĩa thực tế</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
+                            <td style={{ padding: '8px 12px', fontWeight: 500 }}>Nhà cung cấp (NCC)</td>
+                            <td style={{ padding: '8px 12px', textAlign: 'center', fontWeight: 700, color: '#ef4444' }}>-1</td>
+                            <td style={{ padding: '8px 12px', color: '#64748b' }}>Xuất trả nhà cung cấp (giảm nhận thực tế)</td>
+                          </tr>
+                          <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
+                            <td style={{ padding: '8px 12px', fontWeight: 500 }}>Kho khác</td>
+                            <td style={{ padding: '8px 12px', textAlign: 'center', fontWeight: 700, color: '#64748b' }}>0</td>
+                            <td style={{ padding: '8px 12px', color: '#64748b' }}>Luân chuyển đi kho khác (đã tính ở Xuất thực)</td>
+                          </tr>
+                          <tr>
+                            <td style={{ padding: '8px 12px', fontWeight: 500 }}>Tổ đội</td>
+                            <td style={{ padding: '8px 12px', textAlign: 'center', fontWeight: 700, color: '#64748b' }}>0</td>
+                            <td style={{ padding: '8px 12px', color: '#64748b' }}>Cấp phát cho tổ đội thi công (đã tính ở Xuất thực)</td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+
+                  {/* Case 2 */}
+                  <div>
+                    <h4 style={{ fontSize: 14, fontWeight: 700, color: '#0891b2', margin: '0 0 10px 0', display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <span style={{ display: 'inline-block', width: 6, height: 6, borderRadius: '50%', background: '#0891b2' }} />
+                      Trường hợp 2: Đơn vị NHẬN là Kho / Dự án hiện tại
+                    </h4>
+                    <div style={{ border: '1px solid #e2e8f0', borderRadius: 8, overflow: 'hidden' }}>
+                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                        <thead>
+                          <tr style={{ background: '#f1f5f9', borderBottom: '1px solid #e2e8f0' }}>
+                            <th style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 600, color: '#334155' }}>Đơn vị GIAO thuộc nhóm</th>
+                            <th style={{ padding: '8px 12px', textAlign: 'center', fontWeight: 600, color: '#334155', width: 140 }}>Hệ số Logic</th>
+                            <th style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 600, color: '#334155' }}>Ý nghĩa thực tế</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
+                            <td style={{ padding: '8px 12px', fontWeight: 500 }}>Nhà cung cấp (NCC)</td>
+                            <td style={{ padding: '8px 12px', textAlign: 'center', fontWeight: 700, color: '#10b981' }}>1</td>
+                            <td style={{ padding: '8px 12px', color: '#64748b' }}>Nhập hàng mua từ NCC (tăng nhận)</td>
+                          </tr>
+                          <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
+                            <td style={{ padding: '8px 12px', fontWeight: 500 }}>Kho khác</td>
+                            <td style={{ padding: '8px 12px', textAlign: 'center', fontWeight: 700, color: '#10b981' }}>1</td>
+                            <td style={{ padding: '8px 12px', color: '#64748b' }}>Nhận điều chuyển từ kho khác (tăng nhận)</td>
+                          </tr>
+                          <tr>
+                            <td style={{ padding: '8px 12px', fontWeight: 500 }}>Tổ đội</td>
+                            <td style={{ padding: '8px 12px', textAlign: 'center', fontWeight: 700, color: '#64748b' }}>0</td>
+                            <td style={{ padding: '8px 12px', color: '#64748b' }}>Tổ đội trả lại vật tư dư thừa (đã tính ở Xuất thực)</td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <>
+                  {/* Case 1 for Xuat */}
+                  <div>
+                    <h4 style={{ fontSize: 14, fontWeight: 700, color: '#0369a1', margin: '0 0 10px 0', display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <span style={{ display: 'inline-block', width: 6, height: 6, borderRadius: '50%', background: '#0369a1' }} />
+                      Trường hợp 1: Đơn vị GIAO là Kho / Dự án hiện tại
+                    </h4>
+                    <div style={{ border: '1px solid #e2e8f0', borderRadius: 8, overflow: 'hidden' }}>
+                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                        <thead>
+                          <tr style={{ background: '#f1f5f9', borderBottom: '1px solid #e2e8f0' }}>
+                            <th style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 600, color: '#334155' }}>Đơn vị NHẬN thuộc nhóm</th>
+                            <th style={{ padding: '8px 12px', textAlign: 'center', fontWeight: 600, color: '#334155', width: 140 }}>Hệ số Logic</th>
+                            <th style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 600, color: '#334155' }}>Ý nghĩa thực tế</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
+                            <td style={{ padding: '8px 12px', fontWeight: 500 }}>Tổ đội</td>
+                            <td style={{ padding: '8px 12px', textAlign: 'center', fontWeight: 700, color: '#10b981' }}>1</td>
+                            <td style={{ padding: '8px 12px', color: '#64748b' }}>Cấp phát cho tổ đội thi công (tăng xuất)</td>
+                          </tr>
+                          <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
+                            <td style={{ padding: '8px 12px', fontWeight: 500 }}>Kho khác</td>
+                            <td style={{ padding: '8px 12px', textAlign: 'center', fontWeight: 700, color: '#10b981' }}>1</td>
+                            <td style={{ padding: '8px 12px', color: '#64748b' }}>Luân chuyển đi kho khác (tăng xuất)</td>
+                          </tr>
+                          <tr>
+                            <td style={{ padding: '8px 12px', fontWeight: 500 }}>Nhà cung cấp (NCC)</td>
+                            <td style={{ padding: '8px 12px', textAlign: 'center', fontWeight: 700, color: '#64748b' }}>0</td>
+                            <td style={{ padding: '8px 12px', color: '#64748b' }}>Xuất trả nhà cung cấp (đã tính ở Nhập thực là -1)</td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+
+                  {/* Case 2 for Xuat */}
+                  <div>
+                    <h4 style={{ fontSize: 14, fontWeight: 700, color: '#0891b2', margin: '0 0 10px 0', display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <span style={{ display: 'inline-block', width: 6, height: 6, borderRadius: '50%', background: '#0891b2' }} />
+                      Trường hợp 2: Đơn vị NHẬN là Kho / Dự án hiện tại
+                    </h4>
+                    <div style={{ border: '1px solid #e2e8f0', borderRadius: 8, overflow: 'hidden' }}>
+                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                        <thead>
+                          <tr style={{ background: '#f1f5f9', borderBottom: '1px solid #e2e8f0' }}>
+                            <th style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 600, color: '#334155' }}>Đơn vị GIAO thuộc nhóm</th>
+                            <th style={{ padding: '8px 12px', textAlign: 'center', fontWeight: 600, color: '#334155', width: 140 }}>Hệ số Logic</th>
+                            <th style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 600, color: '#334155' }}>Ý nghĩa thực tế</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
+                            <td style={{ padding: '8px 12px', fontWeight: 500 }}>Tổ đội</td>
+                            <td style={{ padding: '8px 12px', textAlign: 'center', fontWeight: 700, color: '#ef4444' }}>-1</td>
+                            <td style={{ padding: '8px 12px', color: '#64748b' }}>Tổ đội trả lại vật tư dư thừa (giảm xuất thực tế)</td>
+                          </tr>
+                          <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
+                            <td style={{ padding: '8px 12px', fontWeight: 500 }}>Kho khác</td>
+                            <td style={{ padding: '8px 12px', textAlign: 'center', fontWeight: 700, color: '#64748b' }}>0</td>
+                            <td style={{ padding: '8px 12px', color: '#64748b' }}>Nhận điều chuyển (đã tính ở Nhập thực là 1)</td>
+                          </tr>
+                          <tr>
+                            <td style={{ padding: '8px 12px', fontWeight: 500 }}>Nhà cung cấp (NCC)</td>
+                            <td style={{ padding: '8px 12px', textAlign: 'center', fontWeight: 700, color: '#64748b' }}>0</td>
+                            <td style={{ padding: '8px 12px', color: '#64748b' }}>Nhập mua từ NCC (đã tính ở Nhập thực là 1)</td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {/* Formula */}
+              <div style={{ background: '#f0f9ff', border: '1px solid #e0f2fe', borderRadius: 8, padding: '12px 16px' }}>
+                <span style={{ fontSize: 13, fontWeight: 700, color: '#0369a1', display: 'block', marginBottom: 4 }}>
+                  Công thức tính Khối lượng thực:
+                </span>
+                <code style={{ fontSize: 13, fontWeight: 700, color: '#0f172a', fontFamily: 'var(--font-mono)' }}>
+                  Khối lượng thực = Khối lượng {explainModalSubTab === 'nhap' ? 'nhập' : 'xuất'} * Hệ số Logic tổng hợp
+                </code>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div style={{
+              padding: '12px 24px',
+              borderTop: '1px solid var(--border)',
+              background: '#f8fafc',
+              display: 'flex',
+              justifyContent: 'flex-end'
+            }}>
+              <button
+                onClick={() => setShowLogicExplainModal(false)}
+                className="btn btn-primary"
+                style={{
+                  height: 38,
+                  padding: '0 18px',
+                  borderRadius: 6,
+                  fontWeight: 700,
+                  fontSize: 13,
+                  cursor: 'pointer',
+                  background: 'var(--primary)',
+                  color: '#ffffff',
+                  border: 'none'
+                }}
+              >
+                Đóng giải thích
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -8552,7 +9933,7 @@ function SummaryCompilationTab({ giaoRows, nhanRows, configs = [], selectedProje
     XLSXStyle.utils.book_append_sheet(wb, wsSummary, "Tổng hợp")
     XLSXStyle.utils.book_append_sheet(wb, ws, "Tổng hợp thông tin")
 
-    const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'binary', compression: true })
+    const wbout = XLSXStyle.write(wb, { bookType: 'xlsx', type: 'binary', compression: true })
     const buf = new ArrayBuffer(wbout.length)
     const view = new Uint8Array(buf)
     for (let i = 0; i < wbout.length; i++) view[i] = wbout.charCodeAt(i) & 0xFF
@@ -10664,6 +12045,46 @@ async function deleteFromTableAdaptive(tableName, possibleColumns, targetValue) 
 // ─── App ──────────────────────────────────────────────────────────────────────
 export default function App() {
   const [tab, setTab] = useState('chung')
+  const [customCategoryMap, setCustomCategoryMap] = useState({})
+  const [dbCategoryMap, setDbCategoryMap] = useState({})
+
+  React.useEffect(() => {
+    let isMounted = true
+    const loadCustomClassifications = async () => {
+      if (!isSupabaseConfigured) {
+        if (isMounted) {
+          setCustomCategoryMap({})
+          setDbCategoryMap({})
+        }
+        return
+      }
+      try {
+        const { data, error } = await supabase
+          .from('phan_loai_don_vi')
+          .select('ten_don_vi, nhom_don_vi')
+          
+        if (error) throw error
+        
+        if (data && isMounted) {
+          const map = {}
+          data.forEach(row => {
+            if (row.ten_don_vi) {
+              map[row.ten_don_vi] = row.nhom_don_vi
+            }
+          })
+          setCustomCategoryMap(map)
+          setDbCategoryMap(map)
+        }
+      } catch (err) {
+        console.error('Error loading custom classifications in App:', err)
+      }
+    }
+    loadCustomClassifications()
+    return () => {
+      isMounted = false
+    }
+  }, [])
+
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
   const [isSidebarPinned, setIsSidebarPinned] = useState(() => {
     try {
@@ -10855,6 +12276,47 @@ export default function App() {
 
       if (countErr) throw countErr
 
+      // 1.5. SIÊU TỐI ƯU (Pre-flight comparison of Max Timestamp + Row Count):
+      // Thay vì tải hàng chục nghìn ID/timestamp để so sánh (mất 15+ API requests và vài MB),
+      // chúng ta chỉ cần so sánh Số lượng dòng và Timestamp mới nhất (updated_at/created_at) trên server.
+      // Nếu khớp hoàn hảo với dữ liệu cache, thoát ngay lập tức! Giảm 1500 lần egress và 15 lần API requests khi không có thay đổi.
+      if (!forceBypassCache && serverCount !== null && cachedRows.length === serverCount && cachedRows.length > 0) {
+        let localMaxTimestamp = ''
+        const timestampField = hasUpdatedAt ? 'updated_at' : (hasCreatedAt ? 'created_at' : null)
+        
+        if (timestampField) {
+          // Tính max timestamp từ local cachedRows
+          cachedRows.forEach(r => {
+            const val = r[timestampField] || r.updated_at || r.created_at || ''
+            if (val && val > localMaxTimestamp) {
+              localMaxTimestamp = val
+            }
+          })
+
+          try {
+            // Query max timestamp trên server (chỉ trả về đúng 1 dòng siêu nhẹ)
+            const { data: serverMaxData, error: serverMaxErr } = await supabase
+              .from(tableName)
+              .select(timestampField)
+              .order(timestampField, { ascending: false })
+              .limit(1)
+
+            if (!serverMaxErr && serverMaxData && serverMaxData.length > 0) {
+              const serverMaxTimestamp = serverMaxData[0][timestampField]
+              if (serverMaxTimestamp && String(localMaxTimestamp) === String(serverMaxTimestamp)) {
+                console.log('[Ultra-Lightweight Precheck] Khớp số dòng và max timestamp hoàn hảo! Bỏ qua sync chi tiết. Tiết kiệm 100% Egress.')
+                setChungRows(cachedRows)
+                setChungFileName(cachedRows.length > 0 ? 'Report_Orders_Don_chung (Cached DB - Up to date)' : '')
+                setIsInitialLoading(false)
+                return
+              }
+            }
+          } catch (precheckErr) {
+            console.warn('[Ultra-Lightweight Precheck] Có lỗi khi chạy pre-check, dùng fallback so sánh chi tiết:', precheckErr)
+          }
+        }
+      }
+
       // 2. TỐI ƯU CỰC ĐẠI: Smart Incremental Sync dựa trên danh sách ID và Timestamps nhẹ
       if (!forceBypassCache && serverCount !== null && cachedRows.length > 0) {
         console.log(`[Smart Sync] Bắt đầu so sánh lightweight để đồng bộ tối ưu cho bảng "${tableName}"...`)
@@ -10938,30 +12400,38 @@ export default function App() {
             return
           }
 
-          // Nếu số dòng thay đổi ở mức vừa phải (<= 5000 dòng), tải chính xác theo các ID đó
-          if (idsToFetch.length <= 5000) {
+          // TỐI ƯU EGRESS (02/07/2026): Trước đây nếu số dòng thay đổi > 5000 sẽ tự động chuyển
+          // sang tải lại TOÀN BỘ bảng (kể cả các dòng không hề thay đổi) → đây chính là nguyên nhân
+          // chính gây egress tăng vọt mỗi khi re-import 1 dự án lớn: mọi tab/thiết bị khác đang mở app
+          // sẽ tải lại toàn bộ bảng (>50.000 dòng) thay vì chỉ tải đúng phần đã đổi.
+          // Đã bỏ giới hạn "<= 5000" — LUÔN tải đúng các dòng đã thay đổi theo ID, bất kể số lượng
+          // bao nhiêu, chỉ khác là chạy song song có giới hạn (6 request cùng lúc) để không chậm khi
+          // số lượng dòng thay đổi lớn. Kết quả trả về giống hệt hành vi cũ, chỉ khác về lượng dữ liệu
+          // truyền tải (egress) và tốc độ.
+          {
             let updatedRows = cachedRows.filter(r => !idsToDelete.has(Number(r.id)))
 
             if (idsToFetch.length > 0) {
-              console.log(`[Smart Sync] Đang tiến hành tải ${idsToFetch.length} dòng thay đổi...`)
+              console.log(`[Smart Sync] Đang tiến hành tải ${idsToFetch.length} dòng thay đổi (chỉ đúng phần thay đổi, không tải lại toàn bộ bảng)...`)
               const fetchedRows = []
               let fetchErrObj = null
 
-              // Tải theo từng chunk tối đa 1000 ID để tránh tràn query limit hoặc URI limit
+              // Tải theo từng chunk tối đa 1000 ID để tránh tràn query limit hoặc URI limit,
+              // chạy song song tối đa 6 chunk cùng lúc (giữ đồng bộ với các đoạn code khác trong file)
+              const idChunkTasks = []
               for (let i = 0; i < idsToFetch.length; i += 1000) {
                 const chunkIds = idsToFetch.slice(i, i + 1000)
-                const { data: chunkData, error: chunkErr } = await supabase
-                  .from(tableName)
-                  .select(tableColumnsStr)
-                  .in('id', chunkIds)
-
-                if (chunkErr) {
-                  fetchErrObj = chunkErr
-                  break
-                }
-                if (chunkData) {
-                  fetchedRows.push(...chunkData)
-                }
+                idChunkTasks.push(() =>
+                  supabase
+                    .from(tableName)
+                    .select(tableColumnsStr)
+                    .in('id', chunkIds)
+                )
+              }
+              const idChunkResults = await runWithConcurrencyLimit(idChunkTasks, 6)
+              for (const r of idChunkResults) {
+                if (r.error) { fetchErrObj = r.error; break }
+                if (r.data) fetchedRows.push(...r.data)
               }
 
               if (!fetchErrObj) {
@@ -10998,15 +12468,14 @@ export default function App() {
               console.log(`[Smart Sync Hoàn Tất] Đã dọn dẹp ${idsToDelete.size} dòng bị xóa thành công.`)
               return
             }
-          } else {
-            console.log(`[Smart Sync] Số lượng dòng thay đổi lớn (${idsToFetch.length} dòng), chuyển sang tải lại toàn bộ...`)
           }
         } else {
           console.warn('[Smart Sync] Lỗi khi lấy thông tin so sánh, chuyển sang tải lại đầy đủ...', lightErr)
         }
       }
 
-      // TRƯỜNG HỢP 3: Cache miss hoặc force reload hoặc có thay đổi phức tạp lượng lớn (> 5000 dòng)
+      // TRƯỜNG HỢP 3: Cache miss (mở lần đầu / trình duyệt khác) hoặc force reload thủ công, hoặc
+      // bước so sánh lightweight ở trên gặp lỗi. Đây mới là trường hợp thực sự cần tải lại toàn bộ bảng.
       console.log(`[Tải DB] Bắt đầu tải mới toàn bộ từ Supabase cho bảng "${tableName}"...`)
       // LƯU Ý: Supabase/PostgREST mặc định giới hạn cứng tối đa 1000 dòng/request (max_rows).
       // Trước đây PAGE_SIZE=10000 khiến mọi trang đều bị cắt còn 1000 dòng, code phải huỷ toàn bộ
@@ -11185,7 +12654,11 @@ export default function App() {
 
     // Tự động đồng bộ ngầm siêu nhanh khi người dùng quay lại Tab/App (Focus-based Smart Sync)
     // Giúp loại bỏ hoàn toàn việc lắng nghe Realtime liên tục trên hàng ngàn row gây ngốn Egress bandwidth.
-    const FOCUS_SYNC_MIN_INTERVAL_MS = 60 * 1000 // Không sync lại nếu vừa sync trong vòng 60s gần nhất
+    // TỐI ƯU EGRESS (02/07/2026): Tăng từ 60s lên 5 phút. Việc chuyển tab qua lại nhiều lần trong lúc
+    // làm việc/test trước đây cứ mỗi 60s lại kích hoạt 1 lượt kiểm tra đồng bộ (tốn request + có thể
+    // vô tình trùng thời điểm bảng đang bị ghi đè hàng loạt do import). 5 phút vẫn đủ nhanh để thấy
+    // dữ liệu mới trong lúc dùng bình thường, nhưng giảm đáng kể số lần gọi Supabase khi bật/tắt tab liên tục.
+    const FOCUS_SYNC_MIN_INTERVAL_MS = 5 * 60 * 1000 // Không sync lại nếu vừa sync trong vòng 5 phút gần nhất
     const handleFocus = () => {
       if (document.visibilityState !== 'visible' || !isSupabaseConfigured || syncInProgressRef.current) return
       // Chặn trùng lặp: 'visibilitychange' và 'focus' thường bắn gần như cùng lúc khi đổi tab,
@@ -11204,31 +12677,11 @@ export default function App() {
     document.addEventListener('visibilitychange', handleFocus)
     window.addEventListener('focus', handleFocus)
 
-    // Realtime: CHỈ lắng nghe bảng du_an (rất nhẹ, vài row)
-    // KHÔNG lắng nghe bảng don_chung để triệt tiêu việc websocket stream hàng vạn dòng khi Excel được import/delete
-    const debouncedLoadProjects = () => {
-      if (syncInProgressRef.current) return
-      if (realtimeDebounceRef.current) clearTimeout(realtimeDebounceRef.current)
-      realtimeDebounceRef.current = setTimeout(() => {
-        loadProjectsFromSupabase()
-      }, 3000)
-    }
-
-    const channel = supabase
-      .channel('db-changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'du_an' }, () => {
-        if (syncInProgressRef.current) return
-        console.log('[Realtime] Cập nhật danh sách Dự Án...')
-        debouncedLoadProjects()
-      })
-      .subscribe()
-
     return () => {
       isMounted = false
       if (realtimeDebounceRef.current) clearTimeout(realtimeDebounceRef.current)
       document.removeEventListener('visibilitychange', handleFocus)
       window.removeEventListener('focus', handleFocus)
-      supabase.removeChannel(channel)
     }
   }, [isSupabaseConfigured, loadDataFromSupabase, loadProjectsFromSupabase])
 
@@ -12517,6 +13970,10 @@ export default function App() {
                 selectedProject={selectedProject}
                 setSelectedProject={setSelectedProject}
                 allProjects={allProjects}
+                customCategoryMap={customCategoryMap}
+                setCustomCategoryMap={setCustomCategoryMap}
+                dbCategoryMap={dbCategoryMap}
+                setDbCategoryMap={setDbCategoryMap}
               />
             )}
             {tab === 'inventory' && (
@@ -12528,6 +13985,7 @@ export default function App() {
                 setSelectedProject={setSelectedProject}
                 allProjects={allProjects}
                 isRealReport={false}
+                customCategoryMap={customCategoryMap}
               />
             )}
             {tab === 'inventory_real' && (
@@ -12539,6 +13997,7 @@ export default function App() {
                 setSelectedProject={setSelectedProject}
                 allProjects={allProjects}
                 isRealReport={true}
+                customCategoryMap={customCategoryMap}
               />
             )}
           </div>
