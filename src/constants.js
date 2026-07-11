@@ -158,9 +158,10 @@ export function formatVal(val, colKey) {
       colKey === 'khoiLuongXuat'
     )
     if (isQuantityCol) {
+      if (val === 0) return '-'
       // Format số với dấu phân cách hàng nghìn
       if (Number.isInteger(val)) return val.toLocaleString('vi-VN')
-      return val.toLocaleString('vi-VN', { maximumFractionDigits: 3 })
+      return val.toLocaleString('vi-VN', { maximumFractionDigits: 2 })
     }
     // Check if it's an Excel date serial (between 1 and 50000, integer)
     if (val > 1 && val < 50000 && Number.isInteger(val)) {
@@ -178,21 +179,23 @@ export function formatVal(val, colKey) {
     const cleaned = val.replace(/[^\d.,]/g, '').replace(',', '.')
     const num = parseFloat(cleaned)
     if (!isNaN(num)) {
+      if (num === 0) return '-'
       if (Number.isInteger(num)) return num.toLocaleString('vi-VN')
-      return num.toLocaleString('vi-VN', { maximumFractionDigits: 3 })
+      return num.toLocaleString('vi-VN', { maximumFractionDigits: 2 })
     }
   }
   return String(val)
 }
 
 export function isApprovedStatus(statusStr) {
-  if (!statusStr) return false
-  const s = String(statusStr).toLowerCase()
+  if (!statusStr) return true
+  const s = String(statusStr).toLowerCase().trim()
+  if (!s) return true
   // Exclude explicit pending or negative status
   if (s.includes('chờ') || s.includes('chưa') || s.includes('pending')) return false
   if (s.includes('từ chối') || s.includes('hủy') || s.includes('reject') || s.includes('không')) return false
-  // Include valid approved indications
-  return s.includes('đã') || s.includes('duyệt') || s.includes('approved') || s.includes('hoàn thành')
+  // Consider approved/completed by default
+  return true
 }
 
 export function isPendingStatus(statusStr) {

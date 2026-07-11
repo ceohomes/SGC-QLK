@@ -1,7 +1,7 @@
 import * as XLSXStyleRaw from 'xlsx-js-style'
 const XLSXStyle = XLSXStyleRaw.default || XLSXStyleRaw
 
-export const exportConsolidatedExcel = (selectedRows, localProject, customCategoryMap, getUnitCategory) => {
+export const exportConsolidatedExcel = (selectedRows, localProject, customCategoryMap, getUnitCategory, materialPriceRows, materialMetadataMap) => {
   if (!selectedRows || selectedRows.length === 0) return
 
   const wb = XLSXStyle.utils.book_new()
@@ -394,7 +394,7 @@ export const exportConsolidatedExcel = (selectedRows, localProject, customCatego
     wsBaoCao[`D${rowBaoCao + 5}`] = { v: '', t: 's', s: footerStyle }
     wsBaoCao[`E${rowBaoCao + 5}`] = { v: 'Tổng cộng', t: 's', s: { ...footerStyle, alignment: { horizontal: 'right', vertical: 'center', wrapText: true } } }
     wsBaoCao[`F${rowBaoCao + 5}`] = { v: '', t: 's', s: footerStyle }
-    wsBaoCao[`G${rowBaoCao + 5}`] = { f: sheetMaxRows > 0 ? `SUM(G${rowBaoCao + 6}:G${rowBaoCao + 5 + sheetMaxRows})` : '', t: 'n', z: '#,##0.000;[Red](#,##0.000);"-"', s: totalYellowStyle }
+    wsBaoCao[`G${rowBaoCao + 5}`] = { f: sheetMaxRows > 0 ? `SUM(G${rowBaoCao + 6}:G${rowBaoCao + 5 + sheetMaxRows})` : '', t: 'n', z: '#,##0.00;[Red](#,##0.00);"-"', s: totalYellowStyle }
     wsBaoCao[`H${rowBaoCao + 5}`] = { v: '', t: 's', s: footerStyle }
 
     wsBaoCao[`I${rowBaoCao + 5}`] = { v: '', t: 's', s: { font: { name: 'Segoe UI', sz: 9.5 } } }
@@ -405,7 +405,7 @@ export const exportConsolidatedExcel = (selectedRows, localProject, customCatego
     wsBaoCao[`M${rowBaoCao + 5}`] = { v: '', t: 's', s: footerStyle }
     wsBaoCao[`N${rowBaoCao + 5}`] = { v: 'Tổng cộng', t: 's', s: { ...footerStyle, alignment: { horizontal: 'right', vertical: 'center', wrapText: true } } }
     wsBaoCao[`O${rowBaoCao + 5}`] = { v: '', t: 's', s: footerStyle }
-    wsBaoCao[`P${rowBaoCao + 5}`] = { f: sheetMaxRows > 0 ? `SUM(P${rowBaoCao + 6}:P${rowBaoCao + 5 + sheetMaxRows})` : '', t: 'n', z: '#,##0.000;[Red](#,##0.000);"-"', s: totalYellowStyle }
+    wsBaoCao[`P${rowBaoCao + 5}`] = { f: sheetMaxRows > 0 ? `SUM(P${rowBaoCao + 6}:P${rowBaoCao + 5 + sheetMaxRows})` : '', t: 'n', z: '#,##0.00;[Red](#,##0.00);"-"', s: totalYellowStyle }
     wsBaoCao[`Q${rowBaoCao + 5}`] = { v: '', t: 's', s: footerStyle }
 
     // Section data rows on Sheet 1
@@ -586,7 +586,7 @@ export const exportConsolidatedExcel = (selectedRows, localProject, customCatego
         wsBaoCao[`G${rowNum}`] = { 
           f: `SUMIFS('Chi tiết Thực nhập'!L:L, 'Chi tiết Thực nhập'!${partnerCol}:${partnerCol}, E${rowNum}, 'Chi tiết Thực nhập'!B:B, "${maSAP}")`, 
           t: 'n', 
-          z: '#,##0.000;[Red](#,##0.000);"-"',
+          z: '#,##0.00;[Red](#,##0.00);"-"',
           s: { ...dataCellStyle, alignment: { horizontal: 'right', vertical: 'center', wrapText: true }, font: { name: 'Segoe UI', sz: 9.5, bold: true, color: { rgb: '0F766E' } } } 
         }
         wsBaoCao[`H${rowNum}`] = { v: item.explain || '', t: 's', s: { ...dataCellStyle, font: { name: 'Segoe UI', sz: 9.5, italic: true, color: { rgb: '475569' } }, alignment: { horizontal: 'left', vertical: 'center', wrapText: true } } }
@@ -772,7 +772,7 @@ export const exportConsolidatedExcel = (selectedRows, localProject, customCatego
         wsBaoCao[`P${rowNum}`] = { 
           f: `SUMIFS('Chi tiết Thực xuất'!L:L, 'Chi tiết Thực xuất'!${partnerColXuat}:${partnerColXuat}, N${rowNum}, 'Chi tiết Thực xuất'!B:B, "${maSAP}")`, 
           t: 'n', 
-          z: '#,##0.000;[Red](#,##0.000);"-"',
+          z: '#,##0.00;[Red](#,##0.00);"-"',
           s: { ...dataCellStyle, alignment: { horizontal: 'right', vertical: 'center', wrapText: true }, font: { name: 'Segoe UI', sz: 9.5, bold: true, color: { rgb: 'C2410C' } } } 
         }
         wsBaoCao[`Q${rowNum}`] = { v: item.explain || '', t: 's', s: { ...dataCellStyle, font: { name: 'Segoe UI', sz: 9.5, italic: true, color: { rgb: '475569' } }, alignment: { horizontal: 'left', vertical: 'center', wrapText: true } } }
@@ -808,11 +808,11 @@ export const exportConsolidatedExcel = (selectedRows, localProject, customCatego
     wsThucNhap[`E${rowThucNhap + 2}`] = { v: '', t: 's', s: footerStyle1 }
     wsThucNhap[`F${rowThucNhap + 2}`] = { v: '', t: 's', s: footerStyle1 }
     wsThucNhap[`G${rowThucNhap + 2}`] = { v: 'Tổng cộng', t: 's', s: { ...footerStyle1, alignment: { horizontal: 'right', vertical: 'center', wrapText: true } } }
-    wsThucNhap[`H${rowThucNhap + 2}`] = { f: nhapTxList.length > 0 ? `SUM(H${rowThucNhap + 3}:H${rowThucNhap + 2 + nhapTxList.length})` : '', t: 'n', z: '#,##0.000;[Red](#,##0.000);"-"', s: { ...footerStyle1, alignment: { horizontal: 'right', vertical: 'center', wrapText: true } } }
+    wsThucNhap[`H${rowThucNhap + 2}`] = { f: nhapTxList.length > 0 ? `SUM(H${rowThucNhap + 3}:H${rowThucNhap + 2 + nhapTxList.length})` : '', t: 'n', z: '#,##0.00;[Red](#,##0.00);"-"', s: { ...footerStyle1, alignment: { horizontal: 'right', vertical: 'center', wrapText: true } } }
     wsThucNhap[`I${rowThucNhap + 2}`] = { v: '', t: 's', s: footerStyle1 }
     wsThucNhap[`J${rowThucNhap + 2}`] = { v: '', t: 's', s: footerStyle1 }
     wsThucNhap[`K${rowThucNhap + 2}`] = { v: '', t: 's', s: footerStyle1 }
-    wsThucNhap[`L${rowThucNhap + 2}`] = { f: nhapTxList.length > 0 ? `SUM(L${rowThucNhap + 3}:L${rowThucNhap + 2 + nhapTxList.length})` : '', t: 'n', z: '#,##0.000;[Red](#,##0.000);"-"', s: { ...footerStyle1, alignment: { horizontal: 'right', vertical: 'center', wrapText: true } } }
+    wsThucNhap[`L${rowThucNhap + 2}`] = { f: nhapTxList.length > 0 ? `SUM(L${rowThucNhap + 3}:L${rowThucNhap + 2 + nhapTxList.length})` : '', t: 'n', z: '#,##0.00;[Red](#,##0.00);"-"', s: { ...footerStyle1, alignment: { horizontal: 'right', vertical: 'center', wrapText: true } } }
 
     // Data rows for Sheet 2
     nhapTxList.forEach((tx, idx) => {
@@ -875,7 +875,7 @@ export const exportConsolidatedExcel = (selectedRows, localProject, customCatego
       wsThucNhap[`E${rowNum}`] = { v: tx.maDonNhapKho || tx.maDonXuatKho || '', t: 's', s: { ...dataCellStyle, font: { name: 'Segoe UI', sz: 9.5, bold: true }, alignment: { vertical: 'center', wrapText: true } } }
       wsThucNhap[`F${rowNum}`] = { v: tx.donViGiao || '', t: 's', s: { ...dataCellStyle, alignment: { vertical: 'center', wrapText: true } } }
       wsThucNhap[`G${rowNum}`] = { v: tx.donViNhan || '', t: 's', s: { ...dataCellStyle, alignment: { vertical: 'center', wrapText: true } } }
-      wsThucNhap[`H${rowNum}`] = { v: tx.nhapVal, t: 'n', z: '#,##0.000;[Red](#,##0.000);"-"', s: { ...dataCellStyle, alignment: { horizontal: 'right', vertical: 'center', wrapText: true } } }
+      wsThucNhap[`H${rowNum}`] = { v: tx.nhapVal, t: 'n', z: '#,##0.00;[Red](#,##0.00);"-"', s: { ...dataCellStyle, alignment: { horizontal: 'right', vertical: 'center', wrapText: true } } }
       wsThucNhap[`I${rowNum}`] = { v: typeLabel, t: 's', s: typeStyle }
       wsThucNhap[`J${rowNum}`] = { 
         v: tx.logicNhapVal, 
@@ -896,7 +896,7 @@ export const exportConsolidatedExcel = (selectedRows, localProject, customCatego
       wsThucNhap[`L${rowNum}`] = { 
         f: `H${rowNum} * J${rowNum}`, 
         t: 'n', 
-        z: '#,##0.000;[Red](#,##0.000);"-"',
+        z: '#,##0.00;[Red](#,##0.00);"-"',
         s: { ...dataCellStyle, alignment: { horizontal: 'right', vertical: 'center', wrapText: true }, font: { name: 'Segoe UI', sz: 9.5, bold: true, color: { rgb: '0F766E' } } } 
       }
     })
@@ -926,11 +926,11 @@ export const exportConsolidatedExcel = (selectedRows, localProject, customCatego
     wsThucXuat[`E${rowThucXuat + 2}`] = { v: '', t: 's', s: footerStyle2 }
     wsThucXuat[`F${rowThucXuat + 2}`] = { v: '', t: 's', s: footerStyle2 }
     wsThucXuat[`G${rowThucXuat + 2}`] = { v: 'Tổng cộng', t: 's', s: { ...footerStyle2, alignment: { horizontal: 'right', vertical: 'center', wrapText: true } } }
-    wsThucXuat[`H${rowThucXuat + 2}`] = { f: xuatTxList.length > 0 ? `SUM(H${rowThucXuat + 3}:H${rowThucXuat + 2 + xuatTxList.length})` : '', t: 'n', z: '#,##0.000;[Red](#,##0.000);"-"', s: { ...footerStyle2, alignment: { horizontal: 'right', vertical: 'center', wrapText: true } } }
+    wsThucXuat[`H${rowThucXuat + 2}`] = { f: xuatTxList.length > 0 ? `SUM(H${rowThucXuat + 3}:H${rowThucXuat + 2 + xuatTxList.length})` : '', t: 'n', z: '#,##0.00;[Red](#,##0.00);"-"', s: { ...footerStyle2, alignment: { horizontal: 'right', vertical: 'center', wrapText: true } } }
     wsThucXuat[`I${rowThucXuat + 2}`] = { v: '', t: 's', s: footerStyle2 }
     wsThucXuat[`J${rowThucXuat + 2}`] = { v: '', t: 's', s: footerStyle2 }
     wsThucXuat[`K${rowThucXuat + 2}`] = { v: '', t: 's', s: footerStyle2 }
-    wsThucXuat[`L${rowThucXuat + 2}`] = { f: xuatTxList.length > 0 ? `SUM(L${rowThucXuat + 3}:L${rowThucXuat + 2 + xuatTxList.length})` : '', t: 'n', z: '#,##0.000;[Red](#,##0.000);"-"', s: { ...footerStyle2, alignment: { horizontal: 'right', vertical: 'center', wrapText: true } } }
+    wsThucXuat[`L${rowThucXuat + 2}`] = { f: xuatTxList.length > 0 ? `SUM(L${rowThucXuat + 3}:L${rowThucXuat + 2 + xuatTxList.length})` : '', t: 'n', z: '#,##0.00;[Red](#,##0.00);"-"', s: { ...footerStyle2, alignment: { horizontal: 'right', vertical: 'center', wrapText: true } } }
 
     // Data rows for Sheet 3
     xuatTxList.forEach((tx, idx) => {
@@ -993,7 +993,7 @@ export const exportConsolidatedExcel = (selectedRows, localProject, customCatego
       wsThucXuat[`E${rowNum}`] = { v: tx.maDonNhapKho || tx.maDonXuatKho || '', t: 's', s: { ...dataCellStyle, font: { name: 'Segoe UI', sz: 9.5, bold: true }, alignment: { vertical: 'center', wrapText: true } } }
       wsThucXuat[`F${rowNum}`] = { v: tx.donViGiao || '', t: 's', s: { ...dataCellStyle, alignment: { vertical: 'center', wrapText: true } } }
       wsThucXuat[`G${rowNum}`] = { v: tx.donViNhan || '', t: 's', s: { ...dataCellStyle, alignment: { vertical: 'center', wrapText: true } } }
-      wsThucXuat[`H${rowNum}`] = { v: tx.xuatVal, t: 'n', z: '#,##0.000;[Red](#,##0.000);"-"', s: { ...dataCellStyle, alignment: { horizontal: 'right', vertical: 'center', wrapText: true } } }
+      wsThucXuat[`H${rowNum}`] = { v: tx.xuatVal, t: 'n', z: '#,##0.00;[Red](#,##0.00);"-"', s: { ...dataCellStyle, alignment: { horizontal: 'right', vertical: 'center', wrapText: true } } }
       wsThucXuat[`I${rowNum}`] = { v: typeLabel, t: 's', s: typeStyle }
       wsThucXuat[`J${rowNum}`] = { 
         v: tx.logicXuatVal, 
@@ -1014,7 +1014,7 @@ export const exportConsolidatedExcel = (selectedRows, localProject, customCatego
       wsThucXuat[`L${rowNum}`] = { 
         f: `H${rowNum} * J${rowNum}`, 
         t: 'n', 
-        z: '#,##0.000;[Red](#,##0.000);"-"',
+        z: '#,##0.00;[Red](#,##0.00);"-"',
         s: { ...dataCellStyle, alignment: { horizontal: 'right', vertical: 'center', wrapText: true }, font: { name: 'Segoe UI', sz: 9.5, bold: true, color: { rgb: 'C2410C' } } } 
       }
     })
@@ -1071,7 +1071,12 @@ export const exportConsolidatedExcel = (selectedRows, localProject, customCatego
   XLSXStyle.utils.book_append_sheet(wb, wsThucNhap, "Chi tiết Thực nhập")
   XLSXStyle.utils.book_append_sheet(wb, wsThucXuat, "Chi tiết Thực xuất")
 
-  const wbout = XLSXStyle.write(wb, { bookType: 'xlsx', type: 'binary', compression: true })
+  if (materialPriceRows && materialPriceRows.length > 0) {
+    const phanNhomSheet = buildPhanNhomVatTuSheet(materialPriceRows, materialMetadataMap)
+    XLSXStyle.utils.book_append_sheet(wb, phanNhomSheet, "Phân nhóm Vật tư")
+  }
+
+  const wbout = XLSXStyle.write(wb, { bookType: 'xlsx', type: 'binary', compression: false })
   const s2ab = (s) => {
     const buf = new ArrayBuffer(s.length)
     const view = new Uint8Array(buf)
@@ -1088,4 +1093,164 @@ export const exportConsolidatedExcel = (selectedRows, localProject, customCatego
   a.click()
   document.body.removeChild(a)
   URL.revokeObjectURL(url)
+}
+
+export const buildPhanNhomVatTuSheet = (materialPriceRows, materialMetadataMap) => {
+  const pws = {}
+  const pcols = [
+    { key: 'STT', label: 'STT', width: 50 },
+    { key: 'maSAP', label: 'Mã SAP', width: 120 },
+    { key: 'tenVatTu', label: 'Tên vật tư', width: 250 },
+    { key: 'dvt', label: 'ĐVT', width: 80 },
+    { key: 'khoiLuongTong', label: 'Khối lượng tổng', width: 140 },
+    { key: 'thanhTien', label: 'Thành tiền', width: 150 },
+    { key: 'donGiaTrungBinh', label: 'Đơn giá trung bình', width: 140 },
+    { key: 'donGiaTrungBinh1Ngay', label: 'Đơn giá TB 1 ngày', width: 160 },
+    { key: 'phanLoaiVatTu', label: 'Phân loại vật tư', width: 180 }
+  ]
+
+  pws['!cols'] = pcols.map(c => ({ wpx: c.width }))
+
+  let pRowIdx = 1
+
+  pws['A1'] = {
+    v: 'DANH SÁCH PHÂN NHÓM VẬT TƯ & ĐƠN GIÁ',
+    t: 's',
+    s: {
+      font: { name: 'Segoe UI', sz: 14, bold: true, color: { rgb: '0A3D73' } },
+      alignment: { horizontal: 'left', vertical: 'center' }
+    }
+  }
+  pws['A2'] = {
+    v: `Xuất ngày: ${new Date().toLocaleDateString('vi-VN')} | Tổng số dòng: ${(materialPriceRows || []).length}`,
+    t: 's',
+    s: {
+      font: { name: 'Segoe UI', sz: 10, italic: true },
+      alignment: { horizontal: 'left', vertical: 'center' }
+    }
+  }
+
+  pRowIdx = 4
+
+  pcols.forEach((col, colIdx) => {
+    const colChar = String.fromCharCode(65 + colIdx)
+    const cellRef = `${colChar}${pRowIdx}`
+    pws[cellRef] = {
+      v: col.label,
+      t: 's',
+      s: {
+        fill: { patternType: 'solid', fgColor: { rgb: '0F58A7' } },
+        font: { name: 'Segoe UI', sz: 9.5, bold: true, color: { rgb: 'FFFFFF' } },
+        alignment: { horizontal: 'center', vertical: 'center', wrapText: true },
+        border: {
+          top: { style: 'thin', color: { rgb: '0A3D73' } },
+          bottom: { style: 'medium', color: { rgb: '0A3D73' } },
+          left: { style: 'thin', color: { rgb: '0A3D73' } },
+          right: { style: 'thin', color: { rgb: '0A3D73' } }
+        }
+      }
+    }
+  })
+
+  const rowsToUse = materialPriceRows || []
+  rowsToUse.forEach((row, rowIndex) => {
+    pRowIdx++
+    const isEven = (rowIndex % 2 === 1)
+    const rowBgColor = isEven ? 'F8FAFC' : 'FFFFFF'
+    
+    let meta = { tenVatTu: '—', dvt: '—' }
+    if (materialMetadataMap) {
+      const sapKey = String(row.maSAP || '').trim().toLowerCase()
+      if (materialMetadataMap.get) {
+        meta = materialMetadataMap.get(sapKey) || meta
+      } else {
+        meta = materialMetadataMap[sapKey] || meta
+      }
+    }
+
+    pcols.forEach((col, colIdx) => {
+      const colChar = String.fromCharCode(65 + colIdx)
+      const cellRef = `${colChar}${pRowIdx}`
+
+      let val = ''
+      let cellType = 's'
+      let numFormat = undefined
+
+      if (col.key === 'STT') {
+        val = rowIndex + 1
+        cellType = 'n'
+      } else if (col.key === 'maSAP') {
+        val = row.maSAP || ''
+        cellType = 's'
+      } else if (col.key === 'tenVatTu') {
+        val = meta.tenVatTu || ''
+        cellType = 's'
+      } else if (col.key === 'dvt') {
+        val = meta.dvt || ''
+        cellType = 's'
+      } else if (col.key === 'khoiLuongTong') {
+        val = Number(row.khoiLuongTong) || 0
+        cellType = 'n'
+        numFormat = '#,##0.00'
+      } else if (col.key === 'thanhTien') {
+        val = Number(row.thanhTien) || 0
+        cellType = 'n'
+        numFormat = '#,##0'
+      } else if (col.key === 'donGiaTrungBinh') {
+        val = Number(row.donGiaTrungBinh) || 0
+        cellType = 'n'
+        numFormat = '#,##0'
+      } else if (col.key === 'donGiaTrungBinh1Ngay') {
+        val = Number(row.donGiaTrungBinh1Ngay) || 0
+        cellType = 'n'
+        numFormat = '#,##0'
+      } else if (col.key === 'phanLoaiVatTu') {
+        val = row.phanLoaiVatTu || 'Chưa phân loại'
+        cellType = 's'
+      }
+
+      const isCentered = ['STT', 'maSAP', 'dvt', 'phanLoaiVatTu'].includes(col.key)
+      const isRight = ['khoiLuongTong', 'thanhTien', 'donGiaTrungBinh', 'donGiaTrungBinh1Ngay'].includes(col.key)
+
+      const cellStyle = {
+        font: { name: 'Segoe UI', sz: 9, color: { rgb: '1A1A1A' } },
+        alignment: {
+          horizontal: isCentered ? 'center' : (isRight ? 'right' : 'left'),
+          vertical: 'center',
+          wrapText: true
+        },
+        fill: { patternType: 'solid', fgColor: { rgb: rowBgColor } },
+        border: {
+          top: { style: 'thin', color: { rgb: 'E2E8F0' } },
+          bottom: { style: 'thin', color: { rgb: 'E2E8F0' } },
+          left: { style: 'thin', color: { rgb: 'E2E8F0' } },
+          right: { style: 'thin', color: { rgb: 'E2E8F0' } }
+        }
+      }
+
+      if (col.key === 'phanLoaiVatTu' && row.phanLoaiVatTu) {
+        const text = String(row.phanLoaiVatTu).trim().toLowerCase()
+        if (text.includes('tiêu hao')) {
+          cellStyle.fill = { patternType: 'solid', fgColor: { rgb: 'ECFDF5' } }
+          cellStyle.font.color = { rgb: '047857' }
+          cellStyle.font.bold = true
+        } else if (text.includes('khấu hao') || text.includes('tài sản')) {
+          cellStyle.fill = { patternType: 'solid', fgColor: { rgb: 'FFF7ED' } }
+          cellStyle.font.color = { rgb: 'EA580C' }
+          cellStyle.font.bold = true
+        } else {
+          cellStyle.fill = { patternType: 'solid', fgColor: { rgb: 'EFF6FF' } }
+          cellStyle.font.color = { rgb: '1D4ED8' }
+          cellStyle.font.bold = true
+        }
+      }
+
+      const cellObj = { v: val, t: cellType, s: cellStyle }
+      if (numFormat) cellObj.z = numFormat
+      pws[cellRef] = cellObj
+    })
+  })
+
+  pws['!ref'] = `A1:I${pRowIdx}`
+  return pws
 }
