@@ -5,7 +5,7 @@ const XLSX = XLSXStyle
 
 import { 
   DollarSign, Search, Filter, ArrowUpDown, Download, 
-  Layers, Package, AlertTriangle, Calendar, Info, CheckCircle2 
+  Layers, Package, AlertTriangle, Calendar, Info, CheckCircle2, Database
 } from 'lucide-react'
 
 import { isApprovedStatus } from '../constants.js'
@@ -154,7 +154,9 @@ export default function TaiSanKhauHaoTab({
   customCategoryMap = {},
   materialPriceRows: propMaterialPriceRows,
   materialPrices: propMaterialPrices,
-  materialClassifications: propMaterialClassifications
+  materialClassifications: propMaterialClassifications,
+  isDbSchemaOutdated = false,
+  onOpenDbUpgradeModal = () => {}
 }) {
   const [localProject, setLocalProject] = useState('')
   const [selectedYear, setSelectedYear] = useState(2026)
@@ -3061,6 +3063,58 @@ export default function TaiSanKhauHaoTab({
   return (
     <div style={{ padding: '20px', height: '100%', display: 'flex', flexDirection: 'column', overflowY: 'auto', boxSizing: 'border-box', background: '#f8fafc' }}>
       
+      {isDbSchemaOutdated && (
+        <div style={{
+          background: '#fef2f2',
+          border: '1.5px solid #f87171',
+          borderRadius: '8px',
+          padding: '16px 20px',
+          marginBottom: '16px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: '16px',
+          boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+            <AlertTriangle size={22} style={{ color: '#dc2626', marginTop: '2px', flexShrink: 0 }} />
+            <div>
+              <h3 style={{ margin: 0, fontSize: '15px', fontWeight: 800, color: '#991b1b' }}>
+                Phát hiện cấu trúc cơ sở dữ liệu Supabase chưa được nâng cấp!
+              </h3>
+              <p style={{ margin: '4px 0 0 0', fontSize: '13.5px', color: '#7f1d1d', lineHeight: '1.5' }}>
+                Bảng <strong>cau_hinh_khau_hao</strong> trên database của bạn hiện tại thiếu cột <strong>ma_sap</strong>. 
+                Do đó, hệ thống không thể liên kết và hiển thị chính xác Thời gian khấu hao cho các mã vật tư đã lưu. 
+                Vui lòng nhấp vào nút bên phải để xem câu lệnh SQL nâng cấp cơ sở dữ liệu.
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={onOpenDbUpgradeModal}
+            style={{
+              padding: '8px 16px',
+              background: '#dc2626',
+              color: '#ffffff',
+              border: 'none',
+              borderRadius: '6px',
+              fontSize: '13px',
+              fontWeight: 750,
+              cursor: 'pointer',
+              whiteSpace: 'nowrap',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              transition: 'all 0.15s'
+            }}
+            onMouseOver={(e) => e.currentTarget.style.background = '#b91c1c'}
+            onMouseOut={(e) => e.currentTarget.style.background = '#dc2626'}
+          >
+            <Database size={14} />
+            Nâng cấp DB ngay
+          </button>
+        </div>
+      )}
+
       {/* Sub-tabs Selection & Export controls */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '12px', borderBottom: '2px solid #e2e8f0', paddingBottom: '12px' }}>
         <div style={{ display: 'flex', gap: '8px' }}>

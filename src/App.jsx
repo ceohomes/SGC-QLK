@@ -8090,6 +8090,7 @@ function PhanNhomVatTuTab({
 
   const isDepreciationAndPricesSynced = React.useMemo(() => {
     if (!isSupabaseConfigured) return true
+    if (isDbSchemaOutdated) return false
     if (lastSyncedDepreciationOptions === null || lastSyncedMaterialPriceRows === null) {
       return true
     }
@@ -8156,6 +8157,10 @@ function PhanNhomVatTuTab({
       
       if (error) {
         console.warn('Lỗi khi tải cấu hình khấu hao từ Supabase:', error.message)
+        const errMsg = error.message || ''
+        if (error.code === '42703' || error.code === '42P01' || errMsg.toLowerCase().includes('column') || errMsg.toLowerCase().includes('relation') || errMsg.toLowerCase().includes('does not exist')) {
+          setIsDbSchemaOutdated(true)
+        }
         return
       }
       
@@ -8887,6 +8892,65 @@ function PhanNhomVatTuTab({
         {/* Save button matching the design in the screenshot */}
         {isSupabaseConfigured && (
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            {isDbSchemaOutdated ? (
+              <button
+                onClick={() => setShowDbUpgradeModal(true)}
+                title="Lỗi cấu trúc bảng: Thiếu cột ma_sap trong bảng cau_hinh_khau_hao. Click để xem hướng dẫn sửa lỗi!"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  padding: '6px 12px',
+                  background: '#fef2f2',
+                  border: '1.5px solid #f87171',
+                  color: '#dc2626',
+                  borderRadius: 6,
+                  fontSize: '12.5px',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease',
+                  boxShadow: '0 2px 4px rgba(220, 38, 38, 0.1)'
+                }}
+                onMouseOver={(e) => {
+                  e.currentTarget.style.background = '#fee2e2'
+                }}
+                onMouseOut={(e) => {
+                  e.currentTarget.style.background = '#fef2f2'
+                }}
+              >
+                <AlertTriangle size={14} style={{ color: '#dc2626' }} />
+                <span>Nâng cấp DB (Yêu cầu)</span>
+              </button>
+            ) : (
+              <button
+                onClick={() => setShowDbUpgradeModal(true)}
+                title="Xem hướng dẫn nâng cấp hoặc khởi tạo cấu trúc bảng trên Supabase"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  padding: '6px 12px',
+                  background: '#f8fafc',
+                  border: '1px solid #cbd5e1',
+                  color: '#475569',
+                  borderRadius: 6,
+                  fontSize: '12.5px',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease'
+                }}
+                onMouseOver={(e) => {
+                  e.currentTarget.style.background = '#f1f5f9'
+                }}
+                onMouseOut={(e) => {
+                  e.currentTarget.style.background = '#f8fafc'
+                }}
+              >
+                <Database size={13} style={{ color: '#64748b' }} />
+                <span>Nâng cấp DB</span>
+              </button>
+            )}
+
             {isDepreciationAndPricesSynced ? (
               <span style={{
                 fontSize: '12px',
@@ -18236,6 +18300,7 @@ export default function App() {
   const [showDeleteProjectModal, setShowDeleteProjectModal] = useState(false)
   const [showConfigModal, setShowConfigModal] = useState(false)
   const [showDbUpgradeModal, setShowDbUpgradeModal] = useState(false)
+  const [isDbSchemaOutdated, setIsDbSchemaOutdated] = React.useState(false)
   const [supabaseAuthError, setSupabaseAuthError] = useState(false)
   const [projectToEdit, setProjectToEdit] = useState('')
   const [projectToDelete, setProjectToDelete] = useState('')
@@ -18342,6 +18407,10 @@ export default function App() {
       if (error) {
         console.error('Lỗi khi tải đơn giá từ Supabase:', error)
         setLastSyncedMaterialPriceRows(cachedRows)
+        const errMsg = error.message || ''
+        if (error.code === '42703' || errMsg.toLowerCase().includes('column') || errMsg.toLowerCase().includes('relation') || errMsg.toLowerCase().includes('does not exist')) {
+          setIsDbSchemaOutdated(true)
+        }
       } else if (data) {
         // Tải các cấu hình khấu hao riêng của từng vật tư từ cau_hinh_khau_hao làm nguồn chính bền vững
         const configMap = new Map()
@@ -18351,7 +18420,13 @@ export default function App() {
             .select('*')
             .not('ma_sap', 'is', null)
           
-          if (!configError && configData) {
+          if (configError) {
+            console.warn('Lỗi khi tải cấu hình khấu hao chi tiết từ Supabase:', configError.message)
+            const errMsg = configError.message || ''
+            if (configError.code === '42703' || errMsg.toLowerCase().includes('column') || errMsg.toLowerCase().includes('relation') || errMsg.toLowerCase().includes('does not exist')) {
+              setIsDbSchemaOutdated(true)
+            }
+          } else if (configData) {
             configData.forEach(item => {
               if (item.ma_sap) {
                 configMap.set(String(item.ma_sap).trim().toLowerCase(), {
@@ -18539,51 +18614,9 @@ export default function App() {
   const SELECT_COLS = 'id,ngay_xuat_nhap,ma_vat_tu,ma_s_a_p,thong_so_ky_thuat,ten_vat_tu,dvt,loai_don,ma_don_nhap_kho,ma_don_xuat_kho,khoi_luong_nhap,ma_don_vi_giao,don_vi_giao,nguoi_giao,khoi_luong_xuat,ma_don_vi_nhan,don_vi_nhan,nguoi_phe_duyet,ten_nguon,ma_nguon,lo,hang_muc,so_hop_dong,thu_kho,bien_so_xe,phan_khu,du_an,tinh_trang,nguoi_nhan,ma_don_lien_quan,nha_cung_cap,ma_don_chuyen_tiep_l_c,ma_don_chuyen_tiep_n_b,ghi_chu,ghi_chu_vat_tu,trang_thai,nhan_hieu,ten_du_an,tenDuAn'
 
   const loadProjectsFromSupabase = React.useCallback(async () => {
-    if (!isSupabaseConfigured) return
-    try {
-      // Select * để tự detect cột tên dự án bất kể snake_case hay camelCase
-      const { data: projData, error: projError } = await supabase
-        .from('du_an')
-        .select('*')
-
-      if (projError) {
-        if (projError.message && (projError.message.includes('Could not find the table') || projError.message.includes('du_an'))) {
-          // Bỏ qua lỗi thiếu bảng du_an
-        } else {
-          console.error('Lỗi tải danh mục dự án:', projError.message || projError)
-        }
-        if (projError.status === 401) setSupabaseAuthError(true)
-        return
-      }
-      setSupabaseAuthError(false)
-      if (projData && projData.length > 0) {
-        console.log('[loadProjects] Raw Supabase du_an columns:', Object.keys(projData[0]))
-        // Tự detect cột tên dự án theo thứ tự ưu tiên
-        const NAME_COLS = ['ten_du_an', 'tenduan', 'tenDuAn', 'ten_duan', 'name', 'tendu_an']
-        const detectedCol = NAME_COLS.find(col => col in projData[0])
-        if (detectedCol) {
-          console.log('[loadProjects] Dùng cột:', detectedCol)
-          const list = projData.map(d => d[detectedCol]).filter(Boolean).sort()
-          setCustomProjects(list)
-          localStorage.setItem('sgc_custom_projects', JSON.stringify(list))
-        } else {
-          // Fallback: thử tất cả giá trị string đầu tiên tìm được
-          console.warn('[loadProjects] Không tìm thấy cột tên quen thuộc, thử fallback...')
-          const firstRow = projData[0]
-          const firstStrKey = Object.keys(firstRow).find(k => k !== 'id' && typeof firstRow[k] === 'string')
-          if (firstStrKey) {
-            const list = projData.map(d => d[firstStrKey]).filter(Boolean).sort()
-            console.log('[loadProjects] Fallback dùng cột:', firstStrKey, '→', list)
-            setCustomProjects(list)
-            localStorage.setItem('sgc_custom_projects', JSON.stringify(list))
-          }
-        }
-      } else if (projData && projData.length === 0) {
-        // Bảng du_an rỗng — giữ nguyên localStorage
-      }
-    } catch (e) {
-      console.error('Lỗi tải dự án:', e)
-    }
+    // Đã gỡ bỏ tính năng load danh mục dự án từ bảng du_an của Supabase theo yêu cầu người dùng
+    // Danh sách dự án hiện tại hoạt động offline-first thông qua localStorage
+    console.log('[loadProjects] Đã gỡ bỏ query bảng du_an từ Supabase.')
   }, [])
 
   const loadTableFromSupabase = React.useCallback(async (tableType, forceBypassCache = false) => {
@@ -19411,34 +19444,8 @@ export default function App() {
       setCustomProjects(updated)
       localStorage.setItem('sgc_custom_projects', JSON.stringify(updated))
 
-      // 2. Đồng bộ lên Supabase với fallback cột, rồi reload lại đúng danh sách
-      if (isSupabaseConfigured) {
-        let insertOk = false
-        const colVariants = ['ten_du_an', 'tenduan', 'tenDuAn']
-        for (const col of colVariants) {
-          const { error } = await supabase.from('du_an').insert([{ [col]: trimmed }])
-          if (!error) {
-            insertOk = true
-            console.log('[AddProject] Lưu dự án "' + trimmed + '" thành công với cột "' + col + '"')
-            break
-          } else {
-            const msg = error.message || ''
-            const isColMissing = msg.includes('column') || msg.includes('not exist') || msg.includes('schema cache') || msg.includes('violates')
-            if (!isColMissing) {
-              console.error('[AddProject] Lỗi khi insert dự án:', error)
-              setSupabaseMessage({ text: 'Đã tạo dự án cục bộ nhưng lỗi lưu Supabase: ' + msg, type: 'error' })
-              setTimeout(() => setSupabaseMessage(null), 5000)
-              break
-            }
-          }
-        }
-        // 3. Reload lại danh sách từ Supabase để đảm bảo hiển thị đúng
-        if (insertOk) {
-          await loadProjectsFromSupabase()
-          setSupabaseMessage({ text: 'Tạo kho dự án "' + trimmed + '" và đồng bộ Supabase thành công!', type: 'success' })
-          setTimeout(() => setSupabaseMessage(null), 3000)
-        }
-      }
+      setSupabaseMessage({ text: 'Tạo kho dự án "' + trimmed + '" thành công!', type: 'success' })
+      setTimeout(() => setSupabaseMessage(null), 3000)
     }
     setSelectedProject(trimmed)
   }
@@ -19484,61 +19491,11 @@ export default function App() {
 
     // 3. Update Supabase
     if (isSupabaseConfigured) {
-      try {
-        setSupabaseMessage({
-          text: `Đang cập nhật tên dự án trên Supabase...`,
-          type: 'info'
-        })
-
-        const errors = []
-
-        // Helper: thử update một bảng với nhiều kiểu cột
-        const updateTable = async (table, possibleCols) => {
-          for (const col of possibleCols) {
-            const { error } = await supabase
-              .from(table)
-              .update({ [col]: trimmedNew })
-              .eq(col, trimmedOld)
-            if (!error) return true // thành công
-            // Nếu lỗi do cột không tồn tại → thử cột tiếp theo
-            const msg = error.message || ''
-            const isColMissing = msg.includes('column') || msg.includes('not exist') || msg.includes('schema cache')
-            if (!isColMissing) {
-              // Lỗi thực sự (quyền, constraint...) → báo lỗi ngay
-              errors.push(`[${table}] ${msg}`)
-              return false
-            }
-          }
-          // Không có cột nào khớp → coi như không có gì cần update (bảng dùng cột khác)
-          return true
-        }
-
-        // Cập nhật bảng du_an
-        await updateTable('du_an', ['ten_du_an', 'tenduan', 'tenDuAn'])
-
-        // don_chung is disconnected from Supabase, so we bypass remote update for it
-        console.log('[Supabase Rename] don_chung đã ngắt kết nối Supabase, bỏ qua cập nhật.')
-
-        if (errors.length > 0) {
-          setSupabaseMessage({
-            text: `Cập nhật cục bộ thành công! Một số lỗi Supabase: ${errors.join(' | ')}`,
-            type: 'error'
-          })
-        } else {
-          setSupabaseMessage({
-            text: `Đã đổi tên dự án thành "${trimmedNew}" và đồng bộ toàn bộ dữ liệu lên Supabase!`,
-            type: 'success'
-          })
-        }
-        setTimeout(() => setSupabaseMessage(null), 5000)
-      } catch (err) {
-        console.error('Lỗi khi cập nhật Supabase:', err)
-        setSupabaseMessage({
-          text: `Sửa cục bộ thành công! Nhưng gặp lỗi đồng bộ Supabase: ${err.message || err}`,
-          type: 'error'
-        })
-        setTimeout(() => setSupabaseMessage(null), 6000)
-      }
+      setSupabaseMessage({
+        text: `Đã đổi tên dự án thành "${trimmedNew}" thành công!`,
+        type: 'success'
+      })
+      setTimeout(() => setSupabaseMessage(null), 5000)
     }
   }
 
@@ -19584,40 +19541,11 @@ export default function App() {
 
     // 2. Xóa trên Supabase nếu đã cấu hình
     if (isSupabaseConfigured) {
-      try {
-        setSupabaseMessage({
-          text: `Đang kết nối để xóa kho dự án "${trimmed}" trên Supabase...`,
-          type: 'info'
-        })
-
-        // don_chung is disconnected from Supabase, so we bypass remote deletion for it
-        console.log('[Supabase Delete] don_chung đã ngắt kết nối Supabase, bỏ qua xóa liên kết.')
-
-        console.log('[Supabase Delete] Thực hiện xóa dự án trong bảng du_an...')
-        const resDuAn = await deleteFromTableAdaptive('du_an', ['ten_du_an', 'tenduan', 'tenDuAn', 'ten_duan', 'tendu_an', 'name'], trimmed)
-        if (!resDuAn.success) {
-          const errObj = resDuAn.error || {}
-          const errorMsg = errObj.message || errObj.details || 'Không rõ nguyên nhân. Vui lòng kiểm tra quyền RLS (Row Level Security) cho chính sách DELETE hoặc ràng buộc khóa ngoại (Foreign Key Constraints).'
-          throw new Error(errorMsg)
-        }
-
-        // Chỉ reload danh sách dự án (nhẹ), KHÔNG reload toàn bộ don_giao/don_nhan
-        await loadProjectsFromSupabase()
-
-        setSupabaseMessage({
-          text: `Xóa kho dự án "${trimmed}" thành công và đã đồng bộ!`,
-          type: 'success'
-        })
-        setTimeout(() => setSupabaseMessage(null), 4000)
-      } catch (err) {
-        console.error('Lỗi khi xóa dự án trên Supabase:', err)
-        await loadProjectsFromSupabase().catch(() => {})
-        setSupabaseMessage({
-          text: `Đã xóa cục bộ thành công! Nhưng gặp lỗi đồng bộ Supabase: ${err.message || err}`,
-          type: 'error'
-        })
-        setTimeout(() => setSupabaseMessage(null), 5000)
-      }
+      setSupabaseMessage({
+        text: `Xóa kho dự án "${trimmed}" thành công!`,
+        type: 'success'
+      })
+      setTimeout(() => setSupabaseMessage(null), 4000)
     }
   }
 
@@ -20337,6 +20265,8 @@ export default function App() {
                 materialPriceRows={materialPriceRows}
                 materialPrices={materialPrices}
                 materialClassifications={materialClassifications}
+                isDbSchemaOutdated={isDbSchemaOutdated}
+                onOpenDbUpgradeModal={() => setShowDbUpgradeModal(true)}
               />
             )}
             {tab === 'accounts' && (
