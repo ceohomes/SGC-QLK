@@ -7903,6 +7903,18 @@ function PhanNhomVatTuTab({
 }) {
   const [priceSearchQuery, setPriceSearchQuery] = React.useState('')
   const [currentSubTab, setCurrentSubTab] = React.useState('classification') // 'classification' | 'depreciation_duration'
+  const [syncNotification, setSyncNotification] = React.useState(null)
+
+  const showNotification = React.useCallback((message, type = 'success') => {
+    setSyncNotification({ message, type })
+    const timer = setTimeout(() => {
+      setSyncNotification(prev => {
+        if (prev && prev.message === message) return null
+        return prev
+      })
+    }, 6000)
+    return () => clearTimeout(timer)
+  }, [])
 
   const getClassification = React.useCallback((row) => {
     const sap = String(row.maSAP || '').trim()
@@ -8118,7 +8130,7 @@ function PhanNhomVatTuTab({
 
   const handleSaveAllToSupabase = async () => {
     if (!isSupabaseConfigured) {
-      alert('Vui lòng kết nối cơ sở dữ liệu Supabase trước.')
+      showNotification('Vui lòng kết nối cơ sở dữ liệu Supabase trước.', 'error')
       return
     }
 
@@ -8231,10 +8243,10 @@ function PhanNhomVatTuTab({
 
       setLastSyncedDepreciationOptions(depreciationOptions)
       setLastSyncedMaterialPriceRows(materialPriceRows)
-      alert('Đồng bộ dữ liệu thành công lên Supabase!')
+      showNotification('Đồng bộ dữ liệu thành công lên Supabase!', 'success')
     } catch (err) {
       console.error('Lỗi đồng bộ dữ liệu lên Supabase:', err)
-      alert('Đồng bộ thất bại: ' + (err.message || err))
+      showNotification('Đồng bộ thất bại: ' + (err.message || err), 'error')
     } finally {
       setIsSyncingToSupabase(false)
     }
@@ -8307,7 +8319,7 @@ function PhanNhomVatTuTab({
     
     const oldSize = selectedMaterials.size
     setSelectedMaterials(new Set())
-    alert(`Đã chuyển thành công ${oldSize} vật tư sang nhóm khấu hao ${targetOption.months > 0 ? `${targetOption.months} tháng (${targetOption.isApproved ? 'Đã duyệt' : 'Tạm tính'})` : 'Chưa thiết lập'} cục bộ! Hãy bấm "Lưu dữ liệu" để đồng bộ lên Supabase.`)
+    showNotification(`Đã chuyển thành công ${oldSize} vật tư sang nhóm khấu hao ${targetOption.months > 0 ? `${targetOption.months} tháng (${targetOption.isApproved ? 'Đã duyệt' : 'Tạm tính'})` : 'Chưa thiết lập'} cục bộ! Hãy bấm "Lưu dữ liệu" để đồng bộ lên Supabase.`, 'success')
   }
 
   const handleBatchChangeStatusOnly = (targetApproved) => {
@@ -8328,7 +8340,7 @@ function PhanNhomVatTuTab({
     
     const oldSize = selectedMaterials.size
     setSelectedMaterials(new Set())
-    alert(`Đã chuyển thành công ${oldSize} vật tư sang nhóm "${targetApproved ? 'Đã duyệt' : 'Tạm tính'}" cục bộ! Hãy bấm "Lưu dữ liệu" để đồng bộ lên Supabase.`)
+    showNotification(`Đã chuyển thành công ${oldSize} vật tư sang nhóm "${targetApproved ? 'Đã duyệt' : 'Tạm tính'}" cục bộ! Hãy bấm "Lưu dữ liệu" để đồng bộ lên Supabase.`, 'success')
   }
 
   const handleApplyBatchChanges = (targetMonths, targetApproved) => {
@@ -8356,7 +8368,7 @@ function PhanNhomVatTuTab({
     
     const oldSize = selectedMaterials.size
     setSelectedMaterials(new Set())
-    alert(`Đã chuyển thành công ${oldSize} vật tư sang nhóm khấu hao ${targetMonths > 0 ? `${targetMonths} tháng (${targetApproved ? 'Đã duyệt' : 'Tạm tính'})` : 'Chưa thiết lập'} cục bộ! Hãy bấm "Lưu dữ liệu" để đồng bộ lên Supabase.`)
+    showNotification(`Đã chuyển thành công ${oldSize} vật tư sang nhóm khấu hao ${targetMonths > 0 ? `${targetMonths} tháng (${targetApproved ? 'Đã duyệt' : 'Tạm tính'})` : 'Chưa thiết lập'} cục bộ! Hãy bấm "Lưu dữ liệu" để đồng bộ lên Supabase.`, 'success')
   }
 
   const handleUploadPriceExcel = async (e) => {
@@ -8373,7 +8385,7 @@ function PhanNhomVatTuTab({
         const data = XLSX.utils.sheet_to_json(ws, { header: 1 })
 
         if (data.length < 2) {
-          alert('File Excel không có đủ dữ liệu.')
+          showNotification('File Excel không có đủ dữ liệu.', 'error')
           return
         }
 
@@ -8444,7 +8456,7 @@ function PhanNhomVatTuTab({
         }
 
          if (rows.length === 0) {
-          alert('Không tìm thấy dòng dữ liệu hợp lệ nào.')
+          showNotification('Không tìm thấy dòng dữ liệu hợp lệ nào.', 'error')
           return
         }
 
@@ -8492,7 +8504,7 @@ function PhanNhomVatTuTab({
         localStorage.setItem('sgc_report_material_prices', JSON.stringify(newPrices))
         localStorage.setItem('sgc_report_material_classifications', JSON.stringify(newClassifications))
 
-        alert(`Đã tải lên thành công ${rows.length} đơn giá vật tư cục bộ!`)
+        showNotification(`Đã tải lên thành công ${rows.length} đơn giá vật tư cục bộ!`, 'success')
 
         if (isSupabaseConfigured) {
           try {
@@ -8509,17 +8521,17 @@ function PhanNhomVatTuTab({
 
             if (payload.length > 0) {
               await upsertWithFallback('don_gia_vat_tu', payload, 'maSAP')
-              alert('Đã đồng bộ thành công dữ liệu đơn giá vật tư lên Supabase!')
+              showNotification('Đã đồng bộ thành công dữ liệu đơn giá vật tư lên Supabase!', 'success')
             } else {
-              alert('Không tìm thấy bản ghi đơn giá hợp lệ có mã SAP để đồng bộ lên Supabase.')
+              showNotification('Không tìm thấy bản ghi đơn giá hợp lệ có mã SAP để đồng bộ lên Supabase.', 'error')
             }
           } catch (upsertErr) {
             console.error('Lỗi kết nối Supabase:', upsertErr)
-            alert('Đã lưu cục bộ thành công nhưng lỗi đồng bộ lên Supabase: ' + (upsertErr.message || upsertErr))
+            showNotification('Đã lưu cục bộ thành công nhưng lỗi đồng bộ lên Supabase: ' + (upsertErr.message || upsertErr), 'error')
           }
         }
       } catch (err) {
-        alert('Lỗi đọc file Excel: ' + err.message)
+        showNotification('Lỗi đọc file Excel: ' + err.message, 'error')
       }
     }
     reader.readAsArrayBuffer(file)
@@ -9985,6 +9997,75 @@ function PhanNhomVatTuTab({
                     (Tìm thấy {searchedActiveRows.length} vật tư)
                   </span>
                 </div>
+
+                {syncNotification && (
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      padding: '6px 12px',
+                      borderRadius: '6px',
+                      fontSize: '12.5px',
+                      fontWeight: 600,
+                      background: syncNotification.type === 'success' 
+                        ? '#ecfdf5' 
+                        : syncNotification.type === 'error'
+                          ? '#fef2f2'
+                          : '#eff6ff',
+                      color: syncNotification.type === 'success' 
+                        ? '#059669' 
+                        : syncNotification.type === 'error'
+                          ? '#dc2626'
+                          : '#2563eb',
+                      border: syncNotification.type === 'success'
+                        ? '1px solid #a7f3d0'
+                        : syncNotification.type === 'error'
+                          ? '1px solid #fca5a5'
+                          : '1px solid #bfdbfe',
+                      boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+                      maxWidth: '400px',
+                      animation: 'fadeIn 0.2s ease-out',
+                      flex: 1,
+                      margin: '0 12px',
+                      justifyContent: 'space-between'
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', overflow: 'hidden' }}>
+                      <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        {syncNotification.type === 'success' && <CheckCircle2 size={14} style={{ color: '#10b981' }} />}
+                        {syncNotification.type === 'error' && <AlertTriangle size={14} style={{ color: '#ef4444' }} />}
+                        {syncNotification.type === 'info' && <Info size={14} style={{ color: '#3b82f6' }} />}
+                      </span>
+                      <span style={{
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap'
+                      }} title={syncNotification.message}>
+                        {syncNotification.message}
+                      </span>
+                    </div>
+                    <button
+                      onClick={() => setSyncNotification(null)}
+                      style={{
+                        background: 'transparent',
+                        border: 'none',
+                        cursor: 'pointer',
+                        padding: '2px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: 'inherit',
+                        opacity: 0.7,
+                        flexShrink: 0
+                      }}
+                      onMouseOver={(e) => e.currentTarget.style.opacity = 1}
+                      onMouseOut={(e) => e.currentTarget.style.opacity = 0.7}
+                    >
+                      <X size={13} />
+                    </button>
+                  </div>
+                )}
                 
                 {/* Search query input */}
                 <div style={{ position: 'relative', width: 280 }}>
@@ -10389,7 +10470,7 @@ function PhanNhomVatTuTab({
                               ? '5px solid #64748b' 
                               : (closestGroup.isApproved 
                                 ? `5px solid ${groupColors.fg}` 
-                                : `5px dashed ${groupColors.fg}`)),
+                                : `5px solid ${groupColors.fg}`)),
                           padding: '8px 16px',
                           display: 'flex',
                           alignItems: 'center',
@@ -10443,13 +10524,13 @@ function PhanNhomVatTuTab({
                             borderRadius: '4px',
                             background: closestGroup.months === 0 
                               ? '#f1f5f9' 
-                              : (closestGroup.isApproved ? groupColors.fg : groupColors.bg),
+                              : (closestGroup.isApproved ? '#f0fdf4' : '#fff7ed'),
                             color: closestGroup.months === 0 
                               ? '#475569' 
-                              : (closestGroup.isApproved ? '#ffffff' : groupColors.fg),
+                              : (closestGroup.isApproved ? '#15803d' : '#d97706'),
                             border: `1px solid ${closestGroup.months === 0 
                               ? '#cbd5e1' 
-                              : (closestGroup.isApproved ? groupColors.fg : groupColors.border)}`,
+                              : (closestGroup.isApproved ? '#bbf7d0' : '#fed7aa')}`,
                             fontFamily: '"Roboto", sans-serif',
                             display: 'flex',
                             alignItems: 'center',
@@ -10528,7 +10609,7 @@ function PhanNhomVatTuTab({
             localStorage.setItem('sgc_report_material_price_rows', JSON.stringify(alignedRows))
 
             setDepreciationToDelete(null)
-            alert(`Đã xóa cấu hình khấu hao ${opt.months} tháng cục bộ thành công! Hãy bấm "Lưu dữ liệu" để đồng bộ lên Supabase.`)
+            showNotification(`Đã xóa cấu hình khấu hao ${opt.months} tháng cục bộ thành công! Hãy bấm "Lưu dữ liệu" để đồng bộ lên Supabase.`, 'success')
           }}
           months={depreciationToDelete.months}
         />
