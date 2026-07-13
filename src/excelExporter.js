@@ -1095,18 +1095,112 @@ export const exportConsolidatedExcel = (selectedRows, localProject, customCatego
   URL.revokeObjectURL(url)
 }
 
-export const buildPhanNhomVatTuSheet = (materialPriceRows, materialMetadataMap) => {
+export const buildPhanNhomVatTuSheet = (materialPriceRows, materialMetadataMap, depreciationOptions, customCategoryMap, materialClassifications) => {
   const pws = {}
+  
+  // Resolve dependencies from local storage if not passed (makes it robust and backwards-compatible)
+  let activeDepreciationOptions = depreciationOptions
+  if (!activeDepreciationOptions) {
+    const saved = localStorage.getItem('sgc_depreciation_options_v2')
+    if (saved) {
+      try {
+        activeDepreciationOptions = JSON.parse(saved)
+      } catch (e) {}
+    }
+  }
+  if (!Array.isArray(activeDepreciationOptions)) {
+    activeDepreciationOptions = []
+  }
+
+  let activeClassifications = materialClassifications
+  if (!activeClassifications) {
+    const saved = localStorage.getItem('sgc_report_material_classifications')
+    if (saved) {
+      try {
+        activeClassifications = JSON.parse(saved)
+      } catch (e) {}
+    }
+  }
+  if (!activeClassifications) {
+    activeClassifications = {}
+  }
+
+  // Local helper functions matching App.jsx logic
+  const getClosestMonthsGroupLocal = (row, options) => {
+    const activeOptions = (options || []).filter(o => o.months > 0)
+    if (row.depreciationMonths && row.depreciationMonths > 0) {
+      if (activeOptions.length > 0) {
+        const matched = activeOptions.find(o => o.months === row.depreciationMonths && !!o.isApproved === !!row.isApprovedDepreciation)
+        if (matched) return matched
+        
+        const matchedMonthsOnly = activeOptions.find(o => o.months === row.depreciationMonths)
+        if (matchedMonthsOnly) return matchedMonthsOnly
+      }
+      return { months: row.depreciationMonths, isApproved: !!row.isApprovedDepreciation }
+    }
+    return { months: 0, isApproved: false }
+  }
+
+  const getGroupColorsLocal = (opt) => {
+    const val = opt && typeof opt === 'object' ? opt.months : opt
+    if (val === 0) {
+      return { bg: 'F8FAFC', fg: '475569', border: 'E2E8F0' }
+    }
+    const toHex = (c) => String(c).replace('#', '').toUpperCase()
+    
+    let colObj = { bg: '#eff6ff', fg: '#1d4ed8', border: '#bfdbfe' } // default blue
+    switch (val) {
+      case 3: colObj = { bg: '#fff1f2', fg: '#e11d48', border: '#fecdd3' }; break
+      case 6: colObj = { bg: '#f0fdfa', fg: '#0d9488', border: '#ccfbf1' }; break
+      case 12: colObj = { bg: '#eff6ff', fg: '#1d4ed8', border: '#bfdbfe' }; break
+      case 18: colObj = { bg: '#f0f9ff', fg: '#0284c7', border: '#bae6fd' }; break
+      case 24: colObj = { bg: '#f5f3ff', fg: '#6d28d9', border: '#ddd6fe' }; break
+      case 36: colObj = { bg: '#fff7ed', fg: '#c2410c', border: '#fed7aa' }; break
+      case 48: colObj = { bg: '#ecfdf5', fg: '#047857', border: '#a7f3d0' }; break
+      case 60: colObj = { bg: '#fdf2f8', fg: '#be185d', border: '#fbcfe8' }; break
+      case 72: colObj = { bg: '#fffbeb', fg: '#b45309', border: '#fde68a' }; break
+      case 120: colObj = { bg: '#faf5ff', fg: '#701a75', border: '#f3e8ff' }; break
+      default: {
+        const palettes = [
+          { bg: '#eff6ff', fg: '#1d4ed8', border: '#bfdbfe' },
+          { bg: '#f5f3ff', fg: '#6d28d9', border: '#ddd6fe' },
+          { bg: '#fff7ed', fg: '#c2410c', border: '#fed7aa' },
+          { bg: '#ecfdf5', fg: '#047857', border: '#a7f3d0' },
+          { bg: '#fdf2f8', fg: '#be185d', border: '#fbcfe8' },
+          { bg: '#f0fdfa', fg: '#0d9488', border: '#ccfbf1' },
+          { bg: '#f0f9ff', fg: '#0284c7', border: '#bae6fd' },
+          { bg: '#fffbeb', fg: '#b45309', border: '#fde68a' },
+          { bg: '#faf5ff', fg: '#701a75', border: '#f3e8ff' },
+          { bg: '#fff1f2', fg: '#e11d48', border: '#fecdd3' }
+        ]
+        colObj = palettes[val % palettes.length]
+      }
+    }
+    return {
+      bg: toHex(colObj.bg),
+      fg: toHex(colObj.fg),
+      border: toHex(colObj.border)
+    }
+  }
+
+  const getClassificationLocal = (row) => {
+    const sap = String(row.maSAP || '').trim()
+    return String((customCategoryMap && customCategoryMap[sap]) || activeClassifications[sap] || row.phanLoaiVatTu || '').trim()
+  }
+
   const pcols = [
-    { key: 'STT', label: 'STT', width: 50 },
-    { key: 'maSAP', label: 'Mã SAP', width: 120 },
-    { key: 'tenVatTu', label: 'Tên vật tư', width: 250 },
+    { key: 'STT', label: 'STT', width: 60 },
+    { key: 'maSAP', label: 'Mã SAP', width: 140 },
+    { key: 'tenVatTu', label: 'Tên vật tư', width: 300 },
     { key: 'dvt', label: 'ĐVT', width: 80 },
     { key: 'khoiLuongTong', label: 'Khối lượng tổng', width: 140 },
-    { key: 'thanhTien', label: 'Thành tiền', width: 150 },
-    { key: 'donGiaTrungBinh', label: 'Đơn giá trung bình', width: 140 },
-    { key: 'donGiaTrungBinh1Ngay', label: 'Đơn giá TB 1 ngày', width: 160 },
-    { key: 'phanLoaiVatTu', label: 'Phân loại vật tư', width: 180 }
+    { key: 'thanhTien', label: 'Thành tiền', width: 160 },
+    { key: 'donGiaTrungBinh', label: 'Đơn giá trung bình', width: 160 },
+    { key: 'donGia1Thang', label: 'Đơn giá 1 tháng', width: 120 },
+    { key: 'donGiaTrungBinh1Ngay', label: 'Đơn giá TB 1 ngày', width: 130 },
+    { key: 'phanLoaiVatTu', label: 'Phân loại vật tư', width: 180 },
+    { key: 'thoiGianKhauHao', label: 'Thời gian khấu hao', width: 180 },
+    { key: 'nhomKhauHao', label: 'Nhóm khấu hao', width: 180 }
   ]
 
   pws['!cols'] = pcols.map(c => ({ wpx: c.width }))
@@ -1140,7 +1234,7 @@ export const buildPhanNhomVatTuSheet = (materialPriceRows, materialMetadataMap) 
       t: 's',
       s: {
         fill: { patternType: 'solid', fgColor: { rgb: '0F58A7' } },
-        font: { name: 'Segoe UI', sz: 9.5, bold: true, color: { rgb: 'FFFFFF' } },
+        font: { name: 'Segoe UI', sz: 10, bold: true, color: { rgb: 'FFFFFF' } },
         alignment: { horizontal: 'center', vertical: 'center', wrapText: true },
         border: {
           top: { style: 'thin', color: { rgb: '0A3D73' } },
@@ -1175,6 +1269,20 @@ export const buildPhanNhomVatTuSheet = (materialPriceRows, materialMetadataMap) 
       let val = ''
       let cellType = 's'
       let numFormat = undefined
+      let customCellBg = rowBgColor
+      let customCellFg = '1A1A1A'
+      let customCellBold = false
+      let customCellItalic = false
+      let customBorder = {
+        top: { style: 'thin', color: { rgb: 'E2E8F0' } },
+        bottom: { style: 'thin', color: { rgb: 'E2E8F0' } },
+        left: { style: 'thin', color: { rgb: 'E2E8F0' } },
+        right: { style: 'thin', color: { rgb: 'E2E8F0' } }
+      }
+
+      const classification = getClassificationLocal(row)
+      const isAsset = classification.toLowerCase().includes('khấu hao') || classification.toLowerCase().includes('tài sản') || classification.toLowerCase().includes('tskh')
+      const currentMonths = getClosestMonthsGroupLocal(row, activeDepreciationOptions)
 
       if (col.key === 'STT') {
         val = rowIndex + 1
@@ -1182,11 +1290,12 @@ export const buildPhanNhomVatTuSheet = (materialPriceRows, materialMetadataMap) 
       } else if (col.key === 'maSAP') {
         val = row.maSAP || ''
         cellType = 's'
+        customCellBold = true
       } else if (col.key === 'tenVatTu') {
-        val = meta.tenVatTu || ''
+        val = meta.tenVatTu || '—'
         cellType = 's'
       } else if (col.key === 'dvt') {
-        val = meta.dvt || ''
+        val = meta.dvt || '—'
         cellType = 's'
       } else if (col.key === 'khoiLuongTong') {
         val = Number(row.khoiLuongTong) || 0
@@ -1196,53 +1305,121 @@ export const buildPhanNhomVatTuSheet = (materialPriceRows, materialMetadataMap) 
         val = Number(row.thanhTien) || 0
         cellType = 'n'
         numFormat = '#,##0'
+        customCellBold = true
       } else if (col.key === 'donGiaTrungBinh') {
         val = Number(row.donGiaTrungBinh) || 0
         cellType = 'n'
         numFormat = '#,##0'
+        customCellFg = '0F58A7' // Matching primary color
+        customCellBold = true
+      } else if (col.key === 'donGia1Thang') {
+        val = Number(row.donGiaTrungBinh1Ngay) ? Math.round(row.donGiaTrungBinh1Ngay * 30.417) : 0
+        cellType = 'n'
+        numFormat = '#,##0'
+        customCellFg = '2563EB' // blue-600
+        customCellBold = true
       } else if (col.key === 'donGiaTrungBinh1Ngay') {
         val = Number(row.donGiaTrungBinh1Ngay) || 0
         cellType = 'n'
         numFormat = '#,##0'
       } else if (col.key === 'phanLoaiVatTu') {
-        val = row.phanLoaiVatTu || 'Chưa phân loại'
+        val = classification || 'Chưa phân loại'
+        cellType = 's'
+        
+        // Exact matching colors for phanLoaiVatTu badge
+        if (val.toLowerCase().includes('tiêu hao')) {
+          customCellBg = 'ECFDF5' // green-50
+          customCellFg = '047857' // green-700
+          customCellBold = true
+        } else if (isAsset) {
+          customCellBg = 'FFF7ED' // orange-50
+          customCellFg = 'EA580C' // orange-600
+          customCellBold = true
+        } else {
+          customCellBg = 'EFF6FF' // blue-50
+          customCellFg = '1D4ED8' // blue-700
+          customCellBold = true
+        }
+      } else if (col.key === 'thoiGianKhauHao') {
+        if (!isAsset) {
+          val = '— Không áp dụng'
+          customCellFg = '94A3B8'
+          customCellItalic = true
+        } else {
+          if (currentMonths.months === 0) {
+            val = 'Chưa thiết lập'
+            customCellBg = 'F1F5F9'
+            customCellFg = '475569'
+            customCellBold = true
+          } else {
+            val = `Khấu hao ${currentMonths.months} T`
+            const groupColor = getGroupColorsLocal(currentMonths)
+            customCellBg = groupColor.bg
+            customCellFg = groupColor.fg
+            customCellBold = true
+            customBorder = {
+              top: { style: 'thin', color: { rgb: groupColor.border } },
+              bottom: { style: 'thin', color: { rgb: groupColor.border } },
+              left: { style: 'thin', color: { rgb: groupColor.border } },
+              right: { style: 'thin', color: { rgb: groupColor.border } }
+            }
+          }
+        }
+        cellType = 's'
+      } else if (col.key === 'nhomKhauHao') {
+        if (!isAsset) {
+          val = '— Không áp dụng'
+          customCellFg = '94A3B8'
+          customCellItalic = true
+        } else if (currentMonths.months === 0) {
+          val = '— Chưa thiết lập'
+          customCellFg = '94A3B8'
+          customCellItalic = true
+        } else {
+          val = currentMonths.isApproved ? 'Đã duyệt' : 'Tạm tính'
+          if (currentMonths.isApproved) {
+            customCellBg = 'ECFDF5' // light green
+            customCellFg = '16A34A' // emerald-600
+            customCellBold = true
+            customBorder = {
+              top: { style: 'thin', color: { rgb: '16A34A' } },
+              bottom: { style: 'thin', color: { rgb: '16A34A' } },
+              left: { style: 'thin', color: { rgb: '16A34A' } },
+              right: { style: 'thin', color: { rgb: '16A34A' } }
+            }
+          } else {
+            customCellBg = 'FFFBEB' // light amber
+            customCellFg = 'D97706' // amber-600
+            customCellBold = true
+            customBorder = {
+              top: { style: 'thin', color: { rgb: 'D97706' } },
+              bottom: { style: 'thin', color: { rgb: 'D97706' } },
+              left: { style: 'thin', color: { rgb: 'D97706' } },
+              right: { style: 'thin', color: { rgb: 'D97706' } }
+            }
+          }
+        }
         cellType = 's'
       }
 
-      const isCentered = ['STT', 'maSAP', 'dvt', 'phanLoaiVatTu'].includes(col.key)
-      const isRight = ['khoiLuongTong', 'thanhTien', 'donGiaTrungBinh', 'donGiaTrungBinh1Ngay'].includes(col.key)
+      const isCentered = ['STT', 'maSAP', 'dvt', 'phanLoaiVatTu', 'thoiGianKhauHao', 'nhomKhauHao'].includes(col.key)
+      const isRight = ['khoiLuongTong', 'thanhTien', 'donGiaTrungBinh', 'donGia1Thang', 'donGiaTrungBinh1Ngay'].includes(col.key)
 
       const cellStyle = {
-        font: { name: 'Segoe UI', sz: 9, color: { rgb: '1A1A1A' } },
+        font: { 
+          name: 'Segoe UI', 
+          sz: 9.5, 
+          color: { rgb: customCellFg },
+          bold: customCellBold,
+          italic: customCellItalic
+        },
         alignment: {
           horizontal: isCentered ? 'center' : (isRight ? 'right' : 'left'),
           vertical: 'center',
           wrapText: true
         },
-        fill: { patternType: 'solid', fgColor: { rgb: rowBgColor } },
-        border: {
-          top: { style: 'thin', color: { rgb: 'E2E8F0' } },
-          bottom: { style: 'thin', color: { rgb: 'E2E8F0' } },
-          left: { style: 'thin', color: { rgb: 'E2E8F0' } },
-          right: { style: 'thin', color: { rgb: 'E2E8F0' } }
-        }
-      }
-
-      if (col.key === 'phanLoaiVatTu' && row.phanLoaiVatTu) {
-        const text = String(row.phanLoaiVatTu).trim().toLowerCase()
-        if (text.includes('tiêu hao')) {
-          cellStyle.fill = { patternType: 'solid', fgColor: { rgb: 'ECFDF5' } }
-          cellStyle.font.color = { rgb: '047857' }
-          cellStyle.font.bold = true
-        } else if (text.includes('khấu hao') || text.includes('tài sản')) {
-          cellStyle.fill = { patternType: 'solid', fgColor: { rgb: 'FFF7ED' } }
-          cellStyle.font.color = { rgb: 'EA580C' }
-          cellStyle.font.bold = true
-        } else {
-          cellStyle.fill = { patternType: 'solid', fgColor: { rgb: 'EFF6FF' } }
-          cellStyle.font.color = { rgb: '1D4ED8' }
-          cellStyle.font.bold = true
-        }
+        fill: { patternType: 'solid', fgColor: { rgb: customCellBg } },
+        border: customBorder
       }
 
       const cellObj = { v: val, t: cellType, s: cellStyle }
@@ -1251,6 +1428,6 @@ export const buildPhanNhomVatTuSheet = (materialPriceRows, materialMetadataMap) 
     })
   })
 
-  pws['!ref'] = `A1:I${pRowIdx}`
+  pws['!ref'] = `A1:L${pRowIdx}`
   return pws
 }

@@ -8,7 +8,7 @@ import {
   ChevronDown, ChevronRight, Download, Truck, PackageCheck, Settings, BarChart3,
   AlertCircle, CheckCircle2, Filter, ArrowUpDown, Clock, CloudUpload, Database, Save,
   Pencil, Trash2, Lock, ClipboardList, Warehouse, Building2, Users, HelpCircle,
-  Calendar, AlertTriangle, DollarSign, Copy, Terminal, LogOut, User as UserIcon
+  Calendar, AlertTriangle, DollarSign, Copy, Terminal, LogOut, User as UserIcon, CheckSquare, ArrowRight
 } from 'lucide-react'
 import { COLS_GIAO_NHAN, parseXlsxToRows, formatVal, getTrangThaiColor, isApprovedStatus, isPendingStatus, isRejectedStatus } from './constants.js'
 import { supabase, isSupabaseConfigured, supabaseUrl, supabaseAnonKey } from './supabaseClient.js'
@@ -320,6 +320,8 @@ function Header({ selectedProject, setSelectedProject, duAnOptions, onOpenAddPro
         return 'SGC | BÁO CÁO XUẤT NHẬP THỰC'
       case 'depreciation_assets':
         return 'SGC | THỐNG KÊ TÀI SẢN KHẤU HAO'
+      case 'dongia':
+        return 'SGC | PHÂN NHÓM VẬT TƯ'
       case 'accounts':
         return 'SGC | QUẢN LÝ TÀI KHOẢN'
       default:
@@ -7544,6 +7546,178 @@ function CreateSummaryConfigModal({ onClose, onSave, selectedProject }) {
   )
 }
 
+function DeleteDepreciationConfirmModal({ isOpen, onClose, onConfirm, months }) {
+  React.useEffect(() => {
+    const handleKey = (e) => { if (e.key === 'Escape') onClose() }
+    document.addEventListener('keydown', handleKey)
+    return () => document.removeEventListener('keydown', handleKey)
+  }, [onClose])
+
+  if (!isOpen) return null
+
+  return (
+    <div style={{
+      position: 'fixed',
+      top: 0, left: 0, right: 0, bottom: 0,
+      backgroundColor: 'rgba(15, 23, 42, 0.65)',
+      backdropFilter: 'blur(4px)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      zIndex: 10002,
+      fontFamily: '"Roboto", sans-serif'
+    }}>
+      <div style={{
+        background: '#ffffff',
+        borderRadius: '24px',
+        width: '100%',
+        maxWidth: 500,
+        boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+        overflow: 'hidden',
+        border: 'none',
+        display: 'flex',
+        flexDirection: 'column'
+      }}>
+        {/* Header - Crimson red/rose color matching the first screenshot */}
+        <div style={{
+          background: '#d91b43', 
+          padding: '18px 24px',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          color: '#ffffff'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div style={{
+              width: 36,
+              height: 36,
+              borderRadius: '50%',
+              background: 'rgba(255, 255, 255, 0.2)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}>
+              <Trash2 size={18} color="#ffffff" />
+            </div>
+            <h3 style={{
+              margin: 0,
+              fontSize: '15px',
+              fontWeight: 800,
+              letterSpacing: '0.03em',
+              textTransform: 'uppercase',
+              color: '#ffffff'
+            }}>
+              XÁC NHẬN XÓA THỜI GIAN KHẤU HAO
+            </h3>
+          </div>
+          <button
+            onClick={onClose}
+            style={{
+              background: 'transparent',
+              border: 'none',
+              color: '#ffffff',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              padding: 4,
+              opacity: 0.8,
+              transition: 'opacity 0.15s'
+            }}
+            onMouseOver={e => e.currentTarget.style.opacity = '1'}
+            onMouseOut={e => e.currentTarget.style.opacity = '0.8'}
+          >
+            <X size={18} />
+          </button>
+        </div>
+
+        {/* Body */}
+        <div style={{ padding: '24px 32px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <span style={{ fontSize: '14px', color: '#64748b', fontWeight: 500 }}>
+              Xóa cấu hình khấu hao:
+            </span>
+            <span style={{ fontSize: '24px', fontWeight: 800, color: '#d91b43' }}>
+              Khấu hao {months} tháng
+            </span>
+          </div>
+
+          <p style={{ margin: 0, fontSize: '14.5px', color: '#334155', lineHeight: '1.6', fontWeight: 500 }}>
+            Bạn có chắc chắn muốn xóa cấu hình khấu hao này khỏi hệ thống không?
+            <span style={{ display: 'block', marginTop: 8, color: '#64748b', fontWeight: 400 }}>
+              Tất cả vật tư thuộc nhóm này sẽ được đưa về nhóm <strong style={{ color: '#0f172a' }}>"Chưa thiết lập"</strong>.
+            </span>
+          </p>
+
+          <p style={{
+            margin: 0,
+            fontSize: '13px',
+            color: '#94a3b8',
+            fontStyle: 'italic',
+            borderTop: '1px solid #f1f5f9',
+            paddingTop: 12
+          }}>
+            Hành động này sẽ xóa vĩnh viễn dữ liệu cấu hình khấu hao của các vật tư thuộc nhóm này cục bộ. Hãy bấm "Lưu dữ liệu" sau khi xóa để đồng bộ lên Supabase.
+          </p>
+        </div>
+
+        {/* Footer */}
+        <div style={{
+          display: 'flex',
+          justifyContent: 'flex-end',
+          gap: 12,
+          padding: '16px 32px 24px 32px',
+          background: '#f8fafc',
+          borderTop: '1px solid #f1f5f9'
+        }}>
+          <button
+            onClick={onClose}
+            style={{
+              padding: '10px 24px',
+              borderRadius: '12px',
+              border: '1px solid #cbd5e1',
+              background: '#ffffff',
+              color: '#475569',
+              fontSize: '13.5px',
+              fontWeight: 600,
+              cursor: 'pointer',
+              transition: 'all 0.15s'
+            }}
+            onMouseOver={e => {
+              e.currentTarget.style.background = '#f1f5f9'
+              e.currentTarget.style.borderColor = '#94a3b8'
+            }}
+            onMouseOut={e => {
+              e.currentTarget.style.background = '#ffffff'
+              e.currentTarget.style.borderColor = '#cbd5e1'
+            }}
+          >
+            Hủy
+          </button>
+          <button
+            onClick={onConfirm}
+            style={{
+              padding: '10px 24px',
+              borderRadius: '12px',
+              border: 'none',
+              background: '#d91b43',
+              color: '#ffffff',
+              fontSize: '13.5px',
+              fontWeight: 700,
+              cursor: 'pointer',
+              boxShadow: '0 4px 6px -1px rgba(217, 27, 67, 0.2), 0 2px 4px -1px rgba(217, 27, 67, 0.1)',
+              transition: 'all 0.15s'
+            }}
+            onMouseOver={e => e.currentTarget.style.background = '#b91235'}
+            onMouseOut={e => e.currentTarget.style.background = '#d91b43'}
+          >
+            Xác nhận xóa
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function DeleteConfigConfirmModal({ isOpen, onClose, onConfirm, configName, projectName, giaoCount, nhanCount }) {
   React.useEffect(() => {
     const handleKey = (e) => { if (e.key === 'Escape') onClose() }
@@ -7663,6 +7837,42 @@ function DeleteConfigConfirmModal({ isOpen, onClose, onConfirm, configName, proj
   )
 }
 
+// ─── Utility functions for Depreciation Calculation ───────────────────────────
+export const getClosestMonthsGroup = (row, options) => {
+  const activeOptions = options.filter(o => o.months > 0)
+  
+  // Check if the row already has a specific assigned depreciationMonths
+  if (row.depreciationMonths && row.depreciationMonths > 0) {
+    if (activeOptions.length > 0) {
+      // Find option that matches BOTH months and isApproved status
+      const matched = activeOptions.find(o => o.months === row.depreciationMonths && !!o.isApproved === !!row.isApprovedDepreciation)
+      if (matched) return matched
+      
+      // If same approval status is not found, try to find any active option with the same months
+      const matchedMonthsOnly = activeOptions.find(o => o.months === row.depreciationMonths)
+      if (matchedMonthsOnly) return matchedMonthsOnly
+    }
+    // If the active options list is empty or doesn't have the option, return the row values themselves
+    return { months: row.depreciationMonths, isApproved: !!row.isApprovedDepreciation }
+  }
+
+  // Under the user's requirement, we MUST NOT automatically assign/calculate mathematical closest groups
+  // based on rawMonths if the row does not have a saved depreciation_months group.
+  // Thus, if it has no explicitly assigned depreciationMonths, it stays as 'Chưa thiết lập' (months = 0).
+  return { months: 0, isApproved: false }
+}
+
+export const alignMaterialDepreciationWithConfig = (rows, configs) => {
+  return rows.map(row => {
+    const closest = getClosestMonthsGroup(row, configs)
+    
+    if (row.isApprovedDepreciation !== closest.isApproved || row.depreciationMonths !== closest.months) {
+      return { ...row, isApprovedDepreciation: closest.isApproved, depreciationMonths: closest.months }
+    }
+    return row
+  })
+}
+
 // ─── Phan Nhom Vat Tu Tab ──────────────────────────────────────────────────────
 function PhanNhomVatTuTab({
   giaoRows,
@@ -7674,9 +7884,583 @@ function PhanNhomVatTuTab({
   setMaterialPrices,
   materialClassifications,
   setMaterialClassifications,
-  loadingDbPrices
+  loadingDbPrices,
+  allProjects = [],
+  customCategoryMap = {},
+  handleClassificationChange,
+  handlePriceChange,
+  lastSyncedDepreciationOptions,
+  setLastSyncedDepreciationOptions,
+  lastSyncedMaterialPriceRows,
+  setLastSyncedMaterialPriceRows
 }) {
   const [priceSearchQuery, setPriceSearchQuery] = React.useState('')
+  const [currentSubTab, setCurrentSubTab] = React.useState('classification') // 'classification' | 'depreciation_duration'
+
+  const getClassification = React.useCallback((row) => {
+    const sap = String(row.maSAP || '').trim()
+    return String(customCategoryMap[sap] || materialClassifications[sap] || row.phanLoaiVatTu || '').trim()
+  }, [customCategoryMap, materialClassifications])
+
+  const [selectedMonthsGroup, setSelectedMonthsGroup] = React.useState({ months: 0, isApproved: false })
+  const [depreciationOptions, setDepreciationOptions] = React.useState(() => {
+    const saved = localStorage.getItem('sgc_depreciation_options_v2')
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved)
+        if (Array.isArray(parsed) && parsed.length > 0 && typeof parsed[0] === 'object' && parsed[0] !== null) {
+          const unique = []
+          const seen = new Set()
+          parsed.forEach(opt => {
+            const key = `${opt.months}-${!!opt.isApproved}`
+            if (!seen.has(key)) {
+              seen.add(key)
+              unique.push(opt)
+            }
+          })
+          return unique.sort((a, b) => a.months - b.months || (a.isApproved ? 1 : 0) - (b.isApproved ? 1 : 0))
+        }
+      } catch (e) {}
+    }
+    return [
+      { months: 0, isApproved: false },
+      { months: 12, isApproved: true },
+      { months: 24, isApproved: true },
+      { months: 36, isApproved: true },
+      { months: 48, isApproved: true },
+      { months: 60, isApproved: true },
+      { months: 72, isApproved: true },
+      { months: 120, isApproved: true }
+    ]
+  })
+
+  const saveDepreciationOptions = (newOpts) => {
+    const unique = []
+    const seen = new Set()
+    newOpts.forEach(opt => {
+      const key = `${opt.months}-${!!opt.isApproved}`
+      if (!seen.has(key)) {
+        seen.add(key)
+        unique.push(opt)
+      }
+    })
+    const sorted = unique.sort((a, b) => a.months - b.months || (a.isApproved ? 1 : 0) - (b.isApproved ? 1 : 0))
+    setDepreciationOptions(sorted)
+    localStorage.setItem('sgc_depreciation_options_v2', JSON.stringify(sorted))
+  }
+
+  const allAvailableDurations = React.useMemo(() => {
+    const set = new Set([12, 24, 36, 48, 60, 72, 120])
+    depreciationOptions.forEach(opt => {
+      if (opt.months > 0) set.add(opt.months)
+    })
+    return Array.from(set).sort((a, b) => a - b)
+  }, [depreciationOptions])
+
+  const handleSingleDepreciationChange = React.useCallback((maSAP, targetMonths) => {
+    const updatedRows = materialPriceRows.map(row => {
+      if (String(row.maSAP || '').trim().toLowerCase() === String(maSAP || '').trim().toLowerCase()) {
+        const currentApproved = !!row.isApprovedDepreciation;
+        let targetOption = depreciationOptions.find(o => o.months === targetMonths && !!o.isApproved === currentApproved);
+        if (!targetOption && targetMonths > 0) {
+          targetOption = depreciationOptions.find(o => o.months === targetMonths);
+        }
+        
+        const finalMonths = targetOption ? targetOption.months : targetMonths;
+        const finalApproved = targetOption ? targetOption.isApproved : currentApproved;
+        
+        let newDaily = 0;
+        if (finalMonths > 0) {
+          newDaily = Math.round(row.donGiaTrungBinh / (finalMonths * 30.417));
+        }
+        return { 
+          ...row, 
+          donGiaTrungBinh1Ngay: newDaily,
+          isApprovedDepreciation: finalApproved,
+          depreciationMonths: finalMonths
+        }
+      }
+      return row;
+    });
+    setMaterialPriceRows(updatedRows);
+    localStorage.setItem('sgc_report_material_price_rows', JSON.stringify(updatedRows));
+  }, [materialPriceRows, depreciationOptions, setMaterialPriceRows]);
+
+  const handleSingleGroupStatusChange = React.useCallback((maSAP, targetApproved) => {
+    const updatedRows = materialPriceRows.map(row => {
+      if (String(row.maSAP || '').trim().toLowerCase() === String(maSAP || '').trim().toLowerCase()) {
+        const currentMonths = row.depreciationMonths || 0;
+        if (currentMonths === 0) return row; // cannot set group for 0 months
+
+        // Find matching option with same months and targetApproved status
+        let targetOption = depreciationOptions.find(o => o.months === currentMonths && !!o.isApproved === !!targetApproved);
+        if (!targetOption) {
+          targetOption = { months: currentMonths, isApproved: targetApproved };
+        }
+        
+        return {
+          ...row,
+          isApprovedDepreciation: targetOption.isApproved,
+          depreciationMonths: targetOption.months
+        }
+      }
+      return row;
+    });
+    setMaterialPriceRows(updatedRows);
+    localStorage.setItem('sgc_report_material_price_rows', JSON.stringify(updatedRows));
+  }, [materialPriceRows, depreciationOptions, setMaterialPriceRows]);
+
+  const [selectedMaterials, setSelectedMaterials] = React.useState(new Set())
+  const [batchTargetMonths, setBatchTargetMonths] = React.useState(0)
+  const [isBatchMonthsOpen, setIsBatchMonthsOpen] = React.useState(false)
+  const [batchTargetApproved, setBatchTargetApproved] = React.useState(true)
+
+  React.useEffect(() => {
+    if (batchTargetMonths === 0 && depreciationOptions && depreciationOptions.length > 0) {
+      const sortedValid = [...depreciationOptions]
+        .filter(o => o.months > 0)
+        .sort((a, b) => a.months - b.months);
+      if (sortedValid.length > 0) {
+        setBatchTargetMonths(sortedValid[0].months);
+      }
+    }
+  }, [depreciationOptions, batchTargetMonths]);
+
+  const [newDurationInput, setNewDurationInput] = React.useState('')
+  const [newDurationIsApproved, setNewDurationIsApproved] = React.useState(false)
+  const [addDurationFeedback, setAddDurationFeedback] = React.useState(null)
+  const feedbackTimeoutRef = React.useRef(null)
+
+  const showAddDurationFeedback = (text, isError = false) => {
+    if (feedbackTimeoutRef.current) {
+      clearTimeout(feedbackTimeoutRef.current)
+    }
+    setAddDurationFeedback({ text, isError })
+    feedbackTimeoutRef.current = setTimeout(() => {
+      setAddDurationFeedback(null)
+    }, 6000)
+  }
+
+  const [depreciationToDelete, setDepreciationToDelete] = React.useState(null)
+
+  const getGroupColors = (opt) => {
+    const val = opt && typeof opt === 'object' ? opt.months : opt
+    if (val === 0) {
+      return { bg: '#f8fafc', fg: '#475569', border: '#e2e8f0' }
+    }
+    switch (val) {
+      case 3:
+        return { bg: '#fff1f2', fg: '#e11d48', border: '#fecdd3' } // Rose
+      case 6:
+        return { bg: '#f0fdfa', fg: '#0d9488', border: '#ccfbf1' } // Teal
+      case 12:
+        return { bg: '#eff6ff', fg: '#1d4ed8', border: '#bfdbfe' } // Blue
+      case 18:
+        return { bg: '#f0f9ff', fg: '#0284c7', border: '#bae6fd' } // Sky
+      case 24:
+        return { bg: '#f5f3ff', fg: '#6d28d9', border: '#ddd6fe' } // Purple
+      case 36:
+        return { bg: '#fff7ed', fg: '#c2410c', border: '#fed7aa' } // Orange
+      case 48:
+        return { bg: '#ecfdf5', fg: '#047857', border: '#a7f3d0' } // Emerald
+      case 60:
+        return { bg: '#fdf2f8', fg: '#be185d', border: '#fbcfe8' } // Pink
+      case 72:
+        return { bg: '#fffbeb', fg: '#b45309', border: '#fde68a' } // Amber
+      case 120:
+        return { bg: '#faf5ff', fg: '#701a75', border: '#f3e8ff' } // Fuchsia/Violet
+      default: {
+        const palettes = [
+          { bg: '#eff6ff', fg: '#1d4ed8', border: '#bfdbfe' }, // Blue
+          { bg: '#f5f3ff', fg: '#6d28d9', border: '#ddd6fe' }, // Purple
+          { bg: '#fff7ed', fg: '#c2410c', border: '#fed7aa' }, // Orange
+          { bg: '#ecfdf5', fg: '#047857', border: '#a7f3d0' }, // Emerald
+          { bg: '#fdf2f8', fg: '#be185d', border: '#fbcfe8' }, // Pink
+          { bg: '#f0fdfa', fg: '#0d9488', border: '#ccfbf1' }, // Teal
+          { bg: '#f0f9ff', fg: '#0284c7', border: '#bae6fd' }, // Sky
+          { bg: '#fffbeb', fg: '#b45309', border: '#fde68a' }, // Amber
+          { bg: '#faf5ff', fg: '#701a75', border: '#f3e8ff' }, // Fuchsia
+          { bg: '#fff1f2', fg: '#e11d48', border: '#fecdd3' }  // Rose
+        ]
+        const idx = val % palettes.length
+        return palettes[idx]
+      }
+    }
+  }
+
+  const isDepreciationAndPricesSynced = React.useMemo(() => {
+    if (!isSupabaseConfigured) return true
+    if (lastSyncedDepreciationOptions === null || lastSyncedMaterialPriceRows === null) {
+      return true
+    }
+
+    const optsMatch = depreciationOptions.length === lastSyncedDepreciationOptions.length &&
+      depreciationOptions.every((val, idx) => {
+        const lastVal = lastSyncedDepreciationOptions[idx]
+        return val.months === lastVal.months && val.isApproved === lastVal.isApproved
+      })
+
+    if (!optsMatch) return false
+
+    if (materialPriceRows.length !== lastSyncedMaterialPriceRows.length) return false
+
+    const lastMap = new Map()
+    lastSyncedMaterialPriceRows.forEach(row => {
+      lastMap.set(row.maSAP, row)
+    })
+
+    for (let i = 0; i < materialPriceRows.length; i++) {
+      const row = materialPriceRows[i]
+      const lastRow = lastMap.get(row.maSAP)
+      if (!lastRow) return false
+      if (
+        row.khoiLuongTong !== lastRow.khoiLuongTong ||
+        row.thanhTien !== lastRow.thanhTien ||
+        row.donGiaTrungBinh !== lastRow.donGiaTrungBinh ||
+        row.donGiaTrungBinh1Ngay !== lastRow.donGiaTrungBinh1Ngay ||
+        row.phanLoaiVatTu !== lastRow.phanLoaiVatTu ||
+        !!row.isApprovedDepreciation !== !!lastRow.isApprovedDepreciation
+      ) {
+        return false
+      }
+    }
+
+    return true
+  }, [
+    isSupabaseConfigured,
+    depreciationOptions,
+    lastSyncedDepreciationOptions,
+    materialPriceRows,
+    lastSyncedMaterialPriceRows
+  ])
+
+  const hasLocalDuplicateMonths = React.useMemo(() => {
+    const seen = new Set()
+    for (const opt of depreciationOptions) {
+      if (opt.months !== 0) {
+        if (seen.has(opt.months)) {
+          return true
+        }
+        seen.add(opt.months)
+      }
+    }
+    return false
+  }, [depreciationOptions])
+
+  const loadDepreciationOptionsFromSupabase = React.useCallback(async () => {
+    if (!isSupabaseConfigured) return
+    try {
+      const { data, error } = await supabase
+        .from('cau_hinh_khau_hao')
+        .select('*')
+      
+      if (error) {
+        console.warn('Lỗi khi tải cấu hình khấu hao từ Supabase:', error.message)
+        return
+      }
+      
+      if (data && data.length > 0) {
+        const unique = []
+        const seen = new Set()
+        // Chỉ lọc các cấu hình chung (không gắn với mã vật tư)
+        const globalConfigs = data.filter(item => !item.ma_sap)
+        globalConfigs.forEach(item => {
+          let itemApproved = item.is_approved !== undefined ? !!item.is_approved : true
+          let realMonths = item.months
+          if (realMonths < 0) {
+            realMonths = Math.abs(realMonths)
+            itemApproved = false
+          } else if (item.is_approved === false) {
+            itemApproved = false
+          }
+          const key = `${realMonths}-${itemApproved}`
+          if (!seen.has(key)) {
+            seen.add(key)
+            unique.push({
+              months: realMonths,
+              isApproved: itemApproved
+            })
+          }
+        })
+        if (!unique.some(o => o.months === 0)) {
+          unique.push({ months: 0, isApproved: false })
+        }
+        const sortedOpts = unique.sort((a, b) => a.months - b.months || (a.isApproved ? 1 : 0) - (b.isApproved ? 1 : 0))
+        saveDepreciationOptions(sortedOpts)
+        setLastSyncedDepreciationOptions(sortedOpts)
+        
+        // Align materialPriceRows
+        setMaterialPriceRows(prev => {
+          const aligned = alignMaterialDepreciationWithConfig(prev, sortedOpts)
+          localStorage.setItem('sgc_report_material_price_rows', JSON.stringify(aligned))
+          return aligned
+        })
+      } else {
+        const fetchedOpts = [{ months: 0, isApproved: false }]
+        saveDepreciationOptions(fetchedOpts)
+        setLastSyncedDepreciationOptions(fetchedOpts)
+        
+        setMaterialPriceRows(prev => {
+          const aligned = alignMaterialDepreciationWithConfig(prev, fetchedOpts)
+          localStorage.setItem('sgc_report_material_price_rows', JSON.stringify(aligned))
+          return aligned
+        })
+      }
+    } catch (err) {
+      console.error('Lỗi loadDepreciationOptionsFromSupabase:', err)
+    }
+  }, [])
+
+  React.useEffect(() => {
+    if (isSupabaseConfigured) {
+      loadDepreciationOptionsFromSupabase()
+    }
+  }, [isSupabaseConfigured, loadDepreciationOptionsFromSupabase])
+
+  const [isSyncingToSupabase, setIsSyncingToSupabase] = React.useState(false)
+
+  const handleSaveAllToSupabase = async () => {
+    if (!isSupabaseConfigured) {
+      alert('Vui lòng kết nối cơ sở dữ liệu Supabase trước.')
+      return
+    }
+
+    setIsSyncingToSupabase(true)
+    try {
+      // 1. Sync cau_hinh_khau_hao (Cấu hình chung và Cấu hình riêng theo vật tư)
+      const localNonZeroOpts = depreciationOptions.filter(opt => opt.months !== 0)
+      
+      // Chỉ xóa các cấu hình chung (ma_sap is null) và chèn lại
+      const { error: delErr } = await supabase
+        .from('cau_hinh_khau_hao')
+        .delete()
+        .is('ma_sap', null)
+      
+      if (delErr) {
+        console.warn('Lỗi đồng bộ cấu hình khấu hao (Xóa cấu hình chung) lên Supabase:', delErr.message)
+      }
+
+      const uniquePayload = []
+      const seenKeys = new Set()
+      localNonZeroOpts.forEach(m => {
+        const key = `${m.months}-${!!m.isApproved}`
+        if (!seenKeys.has(key)) {
+          seenKeys.add(key)
+          uniquePayload.push({
+            months: m.months,
+            isApproved: !!m.isApproved,
+            ma_sap: null
+          })
+        }
+      })
+
+      if (uniquePayload.length > 0) {
+        try {
+          await insertWithFallback('cau_hinh_khau_hao', uniquePayload)
+        } catch (insErr) {
+          console.warn('Lỗi đồng bộ cấu hình khấu hao (Thêm) lên Supabase:', insErr.message || insErr)
+          const errMsg = insErr.message || ''
+          const isDuplicateKey = errMsg.includes('cau_hinh_khau_hao_months_key') || 
+                                 errMsg.toLowerCase().includes('duplicate key') ||
+                                 errMsg.toLowerCase().includes('trùng lặp khóa')
+
+          if (isDuplicateKey) {
+            console.log('[Duplicate Month Conflict] Phát hiện lỗi trùng lặp số tháng khấu hao do cấu trúc DB chưa nâng cấp.');
+            setShowDbUpgradeModal(true)
+            throw new Error('Bạn đang lưu trùng số tháng khấu hao (ví dụ: 6 tháng) ở cả 2 nhóm "Đã duyệt" và "Tạm tính". Ràng buộc UNIQUE của cơ sở dữ liệu Supabase hiện tại đang chặn việc này.\n\nHệ thống đã tự động mở bảng hướng dẫn nâng cấp bằng câu lệnh SQL. Vui lòng làm theo hướng dẫn chạy SQL trên màn hình để khắc phục hoàn toàn lỗi này và bảo toàn dữ liệu.')
+          } else {
+            throw insErr
+          }
+        }
+      }
+
+      // 1b. Đồng bộ cấu hình khấu hao theo từng vật tư (ma_sap) sang bảng cau_hinh_khau_hao
+      // Đầu tiên, xóa các cấu hình riêng cũ (ma_sap không null) để làm sạch các cấu hình đã bị đưa về "Chưa thiết lập" (months = 0)
+      const { error: delIndivErr } = await supabase
+        .from('cau_hinh_khau_hao')
+        .delete()
+        .not('ma_sap', 'is', null)
+      
+      if (delIndivErr) {
+        console.warn('Lỗi khi dọn dẹp cấu hình khấu hao riêng biệt cũ:', delIndivErr.message)
+      }
+
+      // Chỉ lọc ra các vật tư có thiết lập thời gian khấu hao thực sự (> 0 tháng) để lưu/chèn mới vào cau_hinh_khau_hao
+      const seenMaSap = new Set()
+      const materialConfigsPayload = []
+      materialPriceRows.forEach(row => {
+        if (row && row.maSAP && String(row.maSAP).trim()) {
+          const maSapTrimmed = String(row.maSAP).trim()
+          const key = maSapTrimmed.toLowerCase()
+          const months = row.depreciationMonths || 0
+          if (months > 0 && !seenMaSap.has(key)) {
+            seenMaSap.add(key)
+            materialConfigsPayload.push({
+              ma_sap: maSapTrimmed,
+              months: months,
+              is_approved: !!row.isApprovedDepreciation
+            })
+          }
+        }
+      })
+
+      if (materialConfigsPayload.length > 0) {
+        try {
+          await upsertWithFallback('cau_hinh_khau_hao', materialConfigsPayload, 'ma_sap')
+        } catch (confErr) {
+          console.warn('Lỗi đồng bộ cấu hình khấu hao riêng của vật tư lên bảng cau_hinh_khau_hao:', confErr.message || confErr)
+        }
+      }
+
+      // 2. Sync don_gia_vat_tu
+      if (materialPriceRows.length > 0) {
+        const payload = materialPriceRows
+          .filter(row => row && row.maSAP && String(row.maSAP).trim())
+          .map(row => ({
+            maSAP: String(row.maSAP).trim(),
+            khoiLuongTong: row.khoiLuongTong || 0,
+            thanhTien: row.thanhTien || 0,
+            donGiaTrungBinh: row.donGiaTrungBinh || 0,
+            donGiaTrungBinh1Ngay: row.donGiaTrungBinh1Ngay || 0,
+            phanLoaiVatTu: getClassification(row) || '',
+            isApprovedDepreciation: row.isApprovedDepreciation !== undefined ? !!row.isApprovedDepreciation : false,
+            depreciationMonths: row.depreciationMonths || 0
+          }))
+
+        if (payload.length > 0) {
+          await upsertWithFallback('don_gia_vat_tu', payload, 'maSAP')
+        }
+      }
+
+      setLastSyncedDepreciationOptions(depreciationOptions)
+      setLastSyncedMaterialPriceRows(materialPriceRows)
+      alert('Đồng bộ dữ liệu thành công lên Supabase!')
+    } catch (err) {
+      console.error('Lỗi đồng bộ dữ liệu lên Supabase:', err)
+      alert('Đồng bộ thất bại: ' + (err.message || err))
+    } finally {
+      setIsSyncingToSupabase(false)
+    }
+  }
+
+  
+
+
+  const handleAddDuration = () => {
+    const months = parseInt(newDurationInput)
+    if (isNaN(months) || months <= 0) {
+      showAddDurationFeedback('Vui lòng nhập số tháng hợp lệ lớn hơn 0.', true)
+      return
+    }
+    
+    const existingExact = depreciationOptions.find(o => o.months === months && o.isApproved === newDurationIsApproved)
+    if (existingExact) {
+      showAddDurationFeedback(`Thời gian khấu hao ${months} tháng đã tồn tại trong nhóm ${newDurationIsApproved ? 'Đã duyệt' : 'Tạm tính'}.`, true)
+      setSelectedMonthsGroup({ months, isApproved: newDurationIsApproved })
+      return
+    }
+    
+    const newOpts = [...depreciationOptions, { months, isApproved: newDurationIsApproved }].sort((a, b) => a.months - b.months || (a.isApproved ? 1 : 0) - (b.isApproved ? 1 : 0))
+    saveDepreciationOptions(newOpts)
+    setNewDurationInput('')
+    setSelectedMonthsGroup({ months, isApproved: newDurationIsApproved })
+    showAddDurationFeedback(`Đã thêm mới nhóm khấu hao ${months} tháng vào nhóm ${newDurationIsApproved ? 'Đã duyệt' : 'Tạm tính'} cục bộ thành công! Hãy bấm "Lưu dữ liệu" để đồng bộ lên Supabase.`, false)
+  }
+
+  const handleToggleApproval = (optToToggle, targetApproved) => {
+    const updatedOpts = depreciationOptions.map(opt => {
+      if (opt.months === optToToggle.months && opt.isApproved === optToToggle.isApproved) {
+        return { ...opt, isApproved: targetApproved }
+      }
+      return opt
+    })
+    
+    saveDepreciationOptions(updatedOpts)
+    
+    const alignedRows = alignMaterialDepreciationWithConfig(materialPriceRows, updatedOpts)
+    setMaterialPriceRows(alignedRows)
+    localStorage.setItem('sgc_report_material_price_rows', JSON.stringify(alignedRows))
+    
+    if (selectedMonthsGroup && !selectedMonthsGroup.isAll && selectedMonthsGroup.months === optToToggle.months && selectedMonthsGroup.isApproved === optToToggle.isApproved) {
+      setSelectedMonthsGroup({ months: optToToggle.months, isApproved: targetApproved })
+    }
+  }
+
+  const handleBatchMove = (targetOption) => {
+    if (selectedMaterials.size === 0) return
+    
+    const updatedRows = materialPriceRows.map(row => {
+      if (selectedMaterials.has(row.maSAP)) {
+        let newDaily = 0
+        if (targetOption.months > 0) {
+          newDaily = Math.round(row.donGiaTrungBinh / (targetOption.months * 30.417))
+        }
+        return { 
+          ...row, 
+          donGiaTrungBinh1Ngay: newDaily,
+          isApprovedDepreciation: targetOption.isApproved,
+          depreciationMonths: targetOption.months
+        }
+      }
+      return row
+    })
+    
+    setMaterialPriceRows(updatedRows)
+    localStorage.setItem('sgc_report_material_price_rows', JSON.stringify(updatedRows))
+    
+    const oldSize = selectedMaterials.size
+    setSelectedMaterials(new Set())
+    alert(`Đã chuyển thành công ${oldSize} vật tư sang nhóm khấu hao ${targetOption.months > 0 ? `${targetOption.months} tháng (${targetOption.isApproved ? 'Đã duyệt' : 'Tạm tính'})` : 'Chưa thiết lập'} cục bộ! Hãy bấm "Lưu dữ liệu" để đồng bộ lên Supabase.`)
+  }
+
+  const handleBatchChangeStatusOnly = (targetApproved) => {
+    if (selectedMaterials.size === 0) return
+    
+    const updatedRows = materialPriceRows.map(row => {
+      if (selectedMaterials.has(row.maSAP)) {
+        return {
+          ...row,
+          isApprovedDepreciation: targetApproved
+        }
+      }
+      return row
+    })
+    
+    setMaterialPriceRows(updatedRows)
+    localStorage.setItem('sgc_report_material_price_rows', JSON.stringify(updatedRows))
+    
+    const oldSize = selectedMaterials.size
+    setSelectedMaterials(new Set())
+    alert(`Đã chuyển thành công ${oldSize} vật tư sang nhóm "${targetApproved ? 'Đã duyệt' : 'Tạm tính'}" cục bộ! Hãy bấm "Lưu dữ liệu" để đồng bộ lên Supabase.`)
+  }
+
+  const handleApplyBatchChanges = (targetMonths, targetApproved) => {
+    if (selectedMaterials.size === 0) return
+    if (targetMonths === undefined) return
+    
+    const updatedRows = materialPriceRows.map(row => {
+      if (selectedMaterials.has(row.maSAP)) {
+        let newDaily = 0
+        if (targetMonths > 0) {
+          newDaily = Math.round(row.donGiaTrungBinh / (targetMonths * 30.417))
+        }
+        return { 
+          ...row, 
+          donGiaTrungBinh1Ngay: newDaily,
+          isApprovedDepreciation: targetApproved,
+          depreciationMonths: targetMonths
+        }
+      }
+      return row
+    })
+    
+    setMaterialPriceRows(updatedRows)
+    localStorage.setItem('sgc_report_material_price_rows', JSON.stringify(updatedRows))
+    
+    const oldSize = selectedMaterials.size
+    setSelectedMaterials(new Set())
+    alert(`Đã chuyển thành công ${oldSize} vật tư sang nhóm khấu hao ${targetMonths > 0 ? `${targetMonths} tháng (${targetApproved ? 'Đã duyệt' : 'Tạm tính'})` : 'Chưa thiết lập'} cục bộ! Hãy bấm "Lưu dữ liệu" để đồng bộ lên Supabase.`)
+  }
 
   const handleUploadPriceExcel = async (e) => {
     const file = e.target.files?.[0]
@@ -7762,9 +8546,45 @@ function PhanNhomVatTuTab({
           newClassifications[sap] = phanLoai
         }
 
-        if (rows.length === 0) {
+         if (rows.length === 0) {
           alert('Không tìm thấy dòng dữ liệu hợp lệ nào.')
           return
+        }
+
+        // Tự động khôi phục cấu hình khấu hao đã được lưu từ Supabase (nếu có) vào các dòng vừa import
+        if (isSupabaseConfigured) {
+          try {
+            const { data: configData } = await supabase
+              .from('cau_hinh_khau_hao')
+              .select('*')
+              .not('ma_sap', 'is', null)
+            
+            if (configData && configData.length > 0) {
+              const configMap = new Map()
+              configData.forEach(item => {
+                if (item.ma_sap) {
+                  configMap.set(String(item.ma_sap).trim().toLowerCase(), {
+                    months: item.months || 0,
+                    isApproved: item.is_approved !== undefined ? !!item.is_approved : false
+                  })
+                }
+              })
+              
+              rows.forEach(r => {
+                const sapKey = String(r.maSAP || '').trim().toLowerCase()
+                if (configMap.has(sapKey)) {
+                  const cfg = configMap.get(sapKey)
+                  r.depreciationMonths = cfg.months
+                  r.isApprovedDepreciation = cfg.isApproved
+                  if (cfg.months > 0) {
+                    r.donGiaTrungBinh1Ngay = Math.round((r.donGiaTrungBinh || 0) / (cfg.months * 30.417))
+                  }
+                }
+              })
+            }
+          } catch (confErr) {
+            console.warn('Lỗi tự động khôi phục cấu hình khấu hao cho file Excel vừa tải lên:', confErr)
+          }
         }
 
         setMaterialPriceRows(rows)
@@ -7779,28 +8599,26 @@ function PhanNhomVatTuTab({
 
         if (isSupabaseConfigured) {
           try {
-            const payload = rows.map(r => ({
-              ma_sap: r.maSAP,
-              khoi_luong_tong: r.khoiLuongTong,
-              thanh_tien: r.thanhTien,
-              don_gia_trung_binh: r.donGiaTrungBinh,
-              don_gia_trung_binh_1_ngay: r.donGiaTrungBinh1Ngay,
-              phan_loai_vat_tu: r.phanLoaiVatTu
-            }))
+            const payload = rows
+              .filter(r => r && r.maSAP && String(r.maSAP).trim())
+              .map(r => ({
+                maSAP: String(r.maSAP).trim(),
+                khoiLuongTong: r.khoiLuongTong,
+                thanhTien: r.thanhTien,
+                donGiaTrungBinh: r.donGiaTrungBinh,
+                donGiaTrungBinh1Ngay: r.donGiaTrungBinh1Ngay,
+                phanLoaiVatTu: r.phanLoaiVatTu
+              }))
 
-            const { error } = await supabase
-              .from('don_gia_vat_tu')
-              .upsert(payload, { onConflict: 'ma_sap' })
-
-            if (error) {
-              console.error('Lỗi khi đồng bộ lên Supabase:', error)
-              alert('Đã lưu cục bộ thành công nhưng lỗi đồng bộ lên Supabase: ' + error.message)
-            } else {
+            if (payload.length > 0) {
+              await upsertWithFallback('don_gia_vat_tu', payload, 'maSAP')
               alert('Đã đồng bộ thành công dữ liệu đơn giá vật tư lên Supabase!')
+            } else {
+              alert('Không tìm thấy bản ghi đơn giá hợp lệ có mã SAP để đồng bộ lên Supabase.')
             }
           } catch (upsertErr) {
             console.error('Lỗi kết nối Supabase:', upsertErr)
-            alert('Đã lưu cục bộ thành công nhưng lỗi đồng bộ lên Supabase: ' + upsertErr.message)
+            alert('Đã lưu cục bộ thành công nhưng lỗi đồng bộ lên Supabase: ' + (upsertErr.message || upsertErr))
           }
         }
       } catch (err) {
@@ -7809,15 +8627,6 @@ function PhanNhomVatTuTab({
     }
     reader.readAsArrayBuffer(file)
   }
-
-  const filteredPriceRows = React.useMemo(() => {
-    const q = priceSearchQuery.toLowerCase().trim()
-    if (!q) return materialPriceRows
-    return materialPriceRows.filter(r => 
-      String(r.maSAP || '').toLowerCase().includes(q) || 
-      String(r.phanLoaiVatTu || '').toLowerCase().includes(q)
-    )
-  }, [materialPriceRows, priceSearchQuery])
 
   const materialMetadataMap = React.useMemo(() => {
     const map = new Map()
@@ -7848,6 +8657,154 @@ function PhanNhomVatTuTab({
     return map
   }, [chungRows, giaoRows, nhanRows])
 
+  const filteredPriceRows = React.useMemo(() => {
+    const q = priceSearchQuery.toLowerCase().trim()
+    if (!q) return materialPriceRows
+    return materialPriceRows.filter(r => {
+      const sap = String(r.maSAP || '').trim()
+      const val = getClassification(r)
+      const meta = materialMetadataMap.get(sap.toLowerCase()) || { tenVatTu: '' }
+      const name = String(meta.tenVatTu || '').toLowerCase()
+      return sap.toLowerCase().includes(q) || val.toLowerCase().includes(q) || name.includes(q)
+    })
+  }, [materialPriceRows, priceSearchQuery, getClassification, materialMetadataMap])
+
+  const assetRows = React.useMemo(() => {
+    const seenSaps = new Set()
+    const list = []
+
+    materialPriceRows.forEach(r => {
+      const val = getClassification(r)
+      const text = val.toLowerCase()
+      const isAsset = text.includes('khấu hao') || text.includes('tài sản') || text.includes('tskh')
+      if (isAsset) {
+        const sap = String(r.maSAP || '').trim()
+        seenSaps.add(sap.toLowerCase())
+        list.push(r)
+      }
+    })
+
+    materialMetadataMap.forEach((meta, sapKey) => {
+      const classification = String(materialClassifications[sapKey] || '').trim()
+      const text = classification.toLowerCase()
+      const isAsset = text.includes('khấu hao') || text.includes('tài sản') || text.includes('tskh')
+      if (isAsset && !seenSaps.has(sapKey.toLowerCase())) {
+        seenSaps.add(sapKey.toLowerCase())
+        const existingRow = materialPriceRows.find(r => String(r.maSAP || '').trim().toLowerCase() === sapKey.toLowerCase())
+        if (existingRow) {
+          list.push(existingRow)
+        } else {
+          list.push({
+            maSAP: sapKey.toUpperCase(),
+            khoiLuongTong: 0,
+            thanhTien: 0,
+            donGiaTrungBinh: materialPrices[sapKey.toUpperCase()] || materialPrices[sapKey] || 0,
+            donGiaTrungBinh1Ngay: 0,
+            phanLoaiVatTu: classification
+          })
+        }
+      }
+    })
+
+    return list
+  }, [materialPriceRows, getClassification, materialMetadataMap, materialClassifications, materialPrices])
+
+  const filteredDepreciationRows = React.useMemo(() => {
+    const q = priceSearchQuery.toLowerCase().trim()
+    if (!q) return assetRows
+    return assetRows.filter(r => {
+      const sap = String(r.maSAP || '').trim()
+      const val = getClassification(r)
+      const meta = materialMetadataMap.get(sap.toLowerCase()) || { tenVatTu: '' }
+      const name = String(meta.tenVatTu || '').toLowerCase()
+      return sap.toLowerCase().includes(q) || val.toLowerCase().includes(q) || name.includes(q)
+    })
+  }, [assetRows, priceSearchQuery, getClassification, materialMetadataMap])
+
+  const rowMonthsMap = React.useMemo(() => {
+    const map = new Map()
+    assetRows.forEach(row => {
+      const closest = getClosestMonthsGroup(row, depreciationOptions)
+      map.set(row.maSAP, closest)
+    })
+    return map
+  }, [assetRows, depreciationOptions])
+
+  const groupCounts = React.useMemo(() => {
+    const counts = {}
+    depreciationOptions.forEach(opt => {
+      const key = `${opt.months}-${opt.isApproved}`
+      counts[key] = 0
+    })
+
+    const q = priceSearchQuery.toLowerCase().trim()
+    const filteredRows = q
+      ? assetRows.filter(row => {
+          const meta = materialMetadataMap.get(String(row.maSAP || '').trim().toLowerCase()) || { tenVatTu: '' }
+          return (
+            String(row.maSAP || '').toLowerCase().includes(q) ||
+            String(meta.tenVatTu || '').toLowerCase().includes(q)
+          )
+        })
+      : assetRows
+
+    filteredRows.forEach(row => {
+      const closest = rowMonthsMap.get(row.maSAP)
+      if (closest) {
+        const key = `${closest.months}-${closest.isApproved}`
+        counts[key] = (counts[key] || 0) + 1
+      }
+    })
+    return counts
+  }, [assetRows, depreciationOptions, rowMonthsMap, priceSearchQuery, materialMetadataMap])
+
+  const sidebarChuaThietLap = React.useMemo(() => {
+    return depreciationOptions.filter(o => o.months === 0).filter(opt => {
+      if (!priceSearchQuery.trim()) return true
+      const count = groupCounts[`${opt.months}-${opt.isApproved}`] || 0
+      return count > 0
+    })
+  }, [depreciationOptions, priceSearchQuery, groupCounts])
+
+  const sidebarDaDuyet = React.useMemo(() => {
+    return depreciationOptions.filter(o => o.isApproved && o.months !== 0).filter(opt => {
+      if (!priceSearchQuery.trim()) return true
+      const count = groupCounts[`${opt.months}-${opt.isApproved}`] || 0
+      return count > 0
+    })
+  }, [depreciationOptions, priceSearchQuery, groupCounts])
+
+  const sidebarTamTinh = React.useMemo(() => {
+    return depreciationOptions.filter(o => !o.isApproved && o.months !== 0).filter(opt => {
+      if (!priceSearchQuery.trim()) return true
+      const count = groupCounts[`${opt.months}-${opt.isApproved}`] || 0
+      return count > 0
+    })
+  }, [depreciationOptions, priceSearchQuery, groupCounts])
+
+  const activeGroupRows = React.useMemo(() => {
+    if (selectedMonthsGroup && selectedMonthsGroup.isAll) {
+      return assetRows
+    }
+    return assetRows.filter(row => {
+      const closest = rowMonthsMap.get(row.maSAP)
+      if (!closest) return false
+      return closest.months === selectedMonthsGroup?.months && closest.isApproved === selectedMonthsGroup?.isApproved
+    })
+  }, [assetRows, rowMonthsMap, selectedMonthsGroup])
+
+  const searchedActiveRows = React.useMemo(() => {
+    const q = priceSearchQuery.toLowerCase().trim()
+    if (!q) return activeGroupRows
+    return activeGroupRows.filter(row => {
+      const meta = materialMetadataMap.get(String(row.maSAP || '').trim().toLowerCase()) || { tenVatTu: '' }
+      return (
+        String(row.maSAP || '').toLowerCase().includes(q) ||
+        String(meta.tenVatTu || '').toLowerCase().includes(q)
+      )
+    })
+  }, [activeGroupRows, priceSearchQuery, materialMetadataMap])
+
   const btnBase = {
     padding: '4px 8px',
     background: '#ffffff',
@@ -7869,85 +8826,241 @@ function PhanNhomVatTuTab({
   }
 
   return (
-    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: 0 }}>
-      {/* Title and Controls Card */}
+    <div id="phan-nhom-vat-tu-root" style={{ height: '100%', boxSizing: 'border-box', display: 'flex', flexDirection: 'column', overflow: 'hidden', padding: '16px 20px', minHeight: 0 }}>
+      {/* Sub-tabs for Phân nhóm Vật tư & Đơn giá */}
       <div style={{
-        background: '#ffffff',
-        borderRadius: 8,
-        border: '1px solid var(--border)',
-        padding: '16px 20px',
-        marginBottom: 12,
-        boxShadow: 'var(--shadow-sm)',
-        flexShrink: 0,
         display: 'flex',
         justifyContent: 'space-between',
-        alignItems: 'center'
+        alignItems: 'center',
+        marginBottom: 12,
+        borderBottom: '1px solid var(--border)',
+        paddingBottom: 6,
+        flexShrink: 0
       }}>
-        <div>
-          <h2 style={{ fontSize: 18, fontWeight: 800, color: 'var(--text)', margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
-            <PackageCheck size={20} style={{ color: 'var(--primary)' }} />
-            Phân nhóm Vật tư & Đơn giá
-          </h2>
-          <p style={{ color: 'var(--text-muted)', fontSize: 13, margin: '4px 0 0 0' }}>
-            Cập nhật đơn giá trung bình và phân loại vật tư bằng cách tải lên file Excel hoặc nhập trực tiếp. Dữ liệu này sẽ tự động liên thông với Bảng tổng hợp xuất nhập tồn.
-          </p>
-        </div>
-        
-        <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-          <label className="btn btn-primary" style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 6,
-            cursor: 'pointer',
-            background: 'var(--primary)',
-            color: '#ffffff',
-            padding: '8px 16px',
-            borderRadius: 6,
-            fontSize: 13,
-            fontWeight: 600,
-            border: 'none',
-            boxShadow: 'var(--shadow-sm)',
-            transition: 'all 0.15s'
-          }}>
-            <Upload size={14} />
-            <span>Tải lên Excel đơn giá</span>
-            <input
-              type="file"
-              accept=".xlsx, .xls"
-              onChange={handleUploadPriceExcel}
-              style={{ display: 'none' }}
-            />
-          </label>
-
+        <div style={{ display: 'flex', gap: 6 }}>
           <button
-            onClick={async () => {
-              if (window.confirm('Bạn có chắc chắn muốn xóa toàn bộ danh sách đơn giá vật tư này không?')) {
-                setMaterialPriceRows([]);
-                setMaterialPrices({});
-                setMaterialClassifications({});
-                localStorage.removeItem('sgc_report_material_price_rows');
-                localStorage.removeItem('sgc_report_material_prices');
-                localStorage.removeItem('sgc_report_material_classifications');
-                if (isSupabaseConfigured) {
-                  try {
-                    const { error } = await supabase.from('don_gia_vat_tu').delete().neq('id', -999);
-                    if (error) alert('Lỗi xóa trên Supabase: ' + error.message);
-                    else alert('Đã xóa sạch dữ liệu trên cả cục bộ và Supabase!');
-                  } catch (e) {
-                    alert('Lỗi kết nối Supabase: ' + e.message);
-                  }
-                } else {
-                  alert('Đã xóa sạch dữ liệu cục bộ!');
-                }
-              }
-            }}
-            className="btn"
+            onClick={() => setCurrentSubTab('classification')}
             style={{
+              padding: '8px 16px',
+              borderRadius: '6px 6px 0 0',
+              fontSize: '13.5px',
+              fontWeight: currentSubTab === 'classification' ? 700 : 500,
+              background: currentSubTab === 'classification' ? 'var(--primary)' : 'transparent',
+              color: currentSubTab === 'classification' ? '#ffffff' : 'var(--text-muted)',
+              border: 'none',
+              cursor: 'pointer',
+              transition: 'all 0.15s',
+              boxShadow: currentSubTab === 'classification' ? 'var(--shadow-sm)' : 'none',
+              borderBottom: currentSubTab === 'classification' ? '2px solid var(--primary)' : 'none',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px'
+            }}
+          >
+            <PackageCheck size={16} />
+            Phân nhóm vật tư
+          </button>
+          <button
+            onClick={() => setCurrentSubTab('depreciation')}
+            style={{
+              padding: '8px 16px',
+              borderRadius: '6px 6px 0 0',
+              fontSize: '13.5px',
+              fontWeight: currentSubTab === 'depreciation' ? 700 : 500,
+              background: currentSubTab === 'depreciation' ? 'var(--primary)' : 'transparent',
+              color: currentSubTab === 'depreciation' ? '#ffffff' : 'var(--text-muted)',
+              border: 'none',
+              cursor: 'pointer',
+              transition: 'all 0.15s',
+              boxShadow: currentSubTab === 'depreciation' ? 'var(--shadow-sm)' : 'none',
+              borderBottom: currentSubTab === 'depreciation' ? '2px solid var(--primary)' : 'none',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px'
+            }}
+          >
+            <DollarSign size={16} />
+            Thời gian khấu hao
+          </button>
+        </div>
+
+        {/* Save button matching the design in the screenshot */}
+        {isSupabaseConfigured && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            {isDepreciationAndPricesSynced ? (
+              <span style={{
+                fontSize: '12px',
+                color: '#475569',
+                background: '#f1f5f9',
+                padding: '4px 8px',
+                borderRadius: '6px',
+                border: '1px solid #cbd5e1',
+                fontWeight: 600,
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px'
+              }}>
+                <span className="animate-pulse" style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#10b981' }}></span>
+                Dữ liệu khớp (Đã đồng bộ)
+              </span>
+            ) : (
+              <span style={{
+                fontSize: '12px',
+                color: '#b45309',
+                background: '#fffbeb',
+                padding: '4px 8px',
+                borderRadius: '6px',
+                border: '1px solid #fde047',
+                fontWeight: 600,
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px'
+              }}>
+                <span className="animate-pulse" style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#f59e0b' }}></span>
+                Có thay đổi chưa lưu
+              </span>
+            )}
+
+            <button
+              onClick={handleSaveAllToSupabase}
+              disabled={isSyncingToSupabase || isDepreciationAndPricesSynced}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                padding: '6px 14px',
+                background: isDepreciationAndPricesSynced ? '#cbd5e1' : '#16a34a', // Clearer gray for synced/disabled
+                color: isDepreciationAndPricesSynced ? '#64748b' : '#ffffff',
+                border: 'none',
+                borderRadius: 6,
+                fontSize: '13px',
+                fontWeight: 700,
+                cursor: (isSyncingToSupabase || isDepreciationAndPricesSynced) ? 'not-allowed' : 'pointer',
+                opacity: isSyncingToSupabase ? 0.7 : 1,
+                boxShadow: isDepreciationAndPricesSynced ? 'none' : '0 2px 5px rgba(22, 163, 74, 0.2)',
+                transition: 'all 0.15s'
+              }}
+              onMouseOver={(e) => {
+                if (!isSyncingToSupabase && !isDepreciationAndPricesSynced) {
+                  e.currentTarget.style.background = '#15803d'
+                  e.currentTarget.style.boxShadow = '0 4px 8px rgba(22, 163, 74, 0.3)'
+                }
+              }}
+              onMouseOut={(e) => {
+                if (!isSyncingToSupabase && !isDepreciationAndPricesSynced) {
+                  e.currentTarget.style.background = '#16a34a'
+                  e.currentTarget.style.boxShadow = '0 2px 5px rgba(22, 163, 74, 0.2)'
+                }
+              }}
+            >
+              {isSyncingToSupabase ? (
+                <>
+                  <RefreshCw size={13} className="animate-spin" />
+                  <span>Đang đồng bộ...</span>
+                </>
+              ) : isDepreciationAndPricesSynced ? (
+                <>
+                  <Save size={14} />
+                  <span>Lưu dữ liệu (Đã đồng bộ)</span>
+                </>
+              ) : (
+                <>
+                  <Save size={14} />
+                  <span>Lưu dữ liệu</span>
+                </>
+              )}
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Title and Controls Card */}
+      {currentSubTab === 'classification' && (
+        <div style={{
+          background: '#ffffff',
+          borderRadius: 8,
+          border: '1px solid var(--border)',
+          padding: '16px 20px',
+          marginBottom: 12,
+          boxShadow: 'var(--shadow-sm)',
+          flexShrink: 0,
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
+            <div>
+              <h2 style={{ fontSize: 18, fontWeight: 800, color: 'var(--text)', margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
+                <PackageCheck size={20} style={{ color: 'var(--primary)' }} />
+                Phân nhóm vật tư
+              </h2>
+              <p style={{ color: 'var(--text-muted)', fontSize: 13, margin: '4px 0 0 0' }}>
+                Cập nhật đơn giá trung bình và phân loại vật tư bằng cách tải lên file Excel hoặc nhập trực tiếp. Dữ liệu này sẽ tự động liên thông với Bảng tổng hợp xuất nhập tồn.
+              </p>
+            </div>
+          </div>
+          
+          <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+            <button
+              className="btn btn-success"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                cursor: 'pointer',
+                background: '#10b981',
+                color: '#ffffff',
+                padding: '8px 16px',
+                borderRadius: 6,
+                fontSize: 13,
+                fontWeight: 600,
+                border: 'none',
+                boxShadow: 'var(--shadow-sm)',
+                transition: 'all 0.15s'
+              }}
+              onClick={() => {
+                try {
+                  const wb = XLSXStyle.utils.book_new()
+                  const rowsToExport = filteredPriceRows || materialPriceRows || []
+                  const phanNhomSheet = buildPhanNhomVatTuSheet(
+                    rowsToExport,
+                    materialMetadataMap,
+                    depreciationOptions,
+                    customCategoryMap,
+                    materialClassifications
+                  )
+                  XLSXStyle.utils.book_append_sheet(wb, phanNhomSheet, "Phân nhóm Vật tư")
+                  
+                  const wbout = XLSXStyle.write(wb, { bookType: 'xlsx', type: 'binary', compression: false })
+                  const s2ab = (s) => {
+                    const buf = new ArrayBuffer(s.length)
+                    const view = new Uint8Array(buf)
+                    for (let i = 0; i < s.length; i++) view[i] = s.charCodeAt(i) & 0xFF
+                    return buf
+                  }
+                  const blob = new Blob([s2ab(wbout)], { type: 'application/octet-stream' })
+                  const url = URL.createObjectURL(blob)
+                  const a = document.createElement('a')
+                  a.href = url
+                  a.download = `Phan_Nhom_Vat_Tu_${new Date().toISOString().slice(0, 10)}.xlsx`
+                  a.click()
+                  URL.revokeObjectURL(url)
+                } catch (err) {
+                  console.error("Export Excel error:", err)
+                  alert("Đã xảy ra lỗi khi xuất Excel. Vui lòng thử lại.")
+                }
+              }}
+            >
+              <Download size={14} />
+              <span>Xuất Excel</span>
+            </button>
+
+            <label className="btn btn-primary" style={{
               display: 'inline-flex',
               alignItems: 'center',
               gap: 6,
               cursor: 'pointer',
-              background: '#ef4444',
+              background: 'var(--primary)',
               color: '#ffffff',
               padding: '8px 16px',
               borderRadius: 6,
@@ -7956,138 +9069,1514 @@ function PhanNhomVatTuTab({
               border: 'none',
               boxShadow: 'var(--shadow-sm)',
               transition: 'all 0.15s'
-            }}
-          >
-            <Trash2 size={14} />
-            <span>Xóa sạch</span>
-          </button>
-        </div>
-      </div>
-
-      {/* Search bar & Grid */}
-      <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, overflow: 'hidden', paddingBottom: 4 }}>
-        {/* Table side */}
-        <div style={{ background: '#ffffff', borderRadius: 8, border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: 'var(--shadow-sm)', flex: 1 }}>
-          {/* Search bar inside table */}
-          <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border)', background: '#f8fafc', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
-            <div style={{ position: 'relative', width: 280 }}>
-              <Search size={15} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+            }}>
+              <Upload size={14} />
+              <span>Tải lên Excel đơn giá</span>
               <input
-                type="text"
-                placeholder="Tìm kiếm theo mã SAP hoặc phân loại..."
-                value={priceSearchQuery}
-                onChange={(e) => setPriceSearchQuery(e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '6px 10px 6px 32px',
-                  fontSize: '13px',
-                  border: '1px solid var(--border)',
-                  borderRadius: 6,
-                  background: '#ffffff',
-                  outline: 'none',
-                  color: 'var(--text)'
-                }}
+                type="file"
+                accept=".xlsx, .xls"
+                onChange={handleUploadPriceExcel}
+                style={{ display: 'none' }}
               />
-            </div>
-            <div style={{ fontSize: '12.5px', color: 'var(--text-muted)', fontWeight: 500 }}>
-              Có <strong>{filteredPriceRows.length}</strong> vật tư được thiết lập đơn giá
-            </div>
-          </div>
+            </label>
 
-          {/* Table wrapper */}
-          <div style={{ flex: 1, overflow: 'auto', minHeight: 0 }}>
-            <table style={{ width: '100%', minWidth: 1220, borderCollapse: 'collapse', borderSpacing: 0, tableLayout: 'fixed' }}>
-              <thead>
-                <tr style={{ position: 'sticky', top: 0, background: '#f1f5f9', zIndex: 10, borderBottom: '2px solid var(--border)' }}>
-                  <th style={{ width: 50, textAlign: 'center', fontSize: 12, fontWeight: 700, color: '#475569', padding: '10px' }}>STT</th>
-                  <th style={{ width: 120, textAlign: 'left', fontSize: 12, fontWeight: 700, color: '#475569', padding: '10px' }}>Mã SAP</th>
-                  <th style={{ width: 220, textAlign: 'left', fontSize: 12, fontWeight: 700, color: '#475569', padding: '10px' }}>Tên vật tư</th>
-                  <th style={{ width: 80, textAlign: 'center', fontSize: 12, fontWeight: 700, color: '#475569', padding: '10px' }}>Đơn vị</th>
-                  <th style={{ width: 140, textAlign: 'right', fontSize: 12, fontWeight: 700, color: '#475569', padding: '10px' }}>Khối lượng tổng</th>
-                  <th style={{ width: 150, textAlign: 'right', fontSize: 12, fontWeight: 700, color: '#475569', padding: '10px' }}>Thành tiền</th>
-                  <th style={{ width: 140, textAlign: 'right', fontSize: 12, fontWeight: 700, color: '#475569', padding: '10px' }}>Đơn giá trung bình</th>
-                  <th style={{ width: 160, textAlign: 'right', fontSize: 12, fontWeight: 700, color: '#475569', padding: '10px' }}>Đơn giá TB 1 ngày</th>
-                  <th style={{ width: 160, textAlign: 'center', fontSize: 12, fontWeight: 700, color: '#475569', padding: '10px' }}>Phân loại vật tư</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredPriceRows.length === 0 ? (
-                  <tr>
-                    <td colSpan={9} style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '13.5px' }}>
-                      Chưa có đơn giá nào được thiết lập. Hãy tải lên file Excel để xem dữ liệu.
-                    </td>
-                  </tr>
-                ) : (
-                  filteredPriceRows.map((row, idx) => {
-                    const meta = materialMetadataMap.get(String(row.maSAP || '').trim().toLowerCase()) || { tenVatTu: '—', dvt: '—' }
-                    return (
-                      <tr key={row.maSAP + idx} style={{ borderBottom: '1px solid #f1f5f9', background: idx % 2 === 0 ? '#ffffff' : '#f8fafc' }}>
-                        <td style={{ textAlign: 'center', padding: '10px', fontSize: 13, color: 'var(--text-muted)' }}>{idx + 1}</td>
-                        <td style={{ fontWeight: 700, padding: '10px', fontSize: 13, color: 'var(--text)' }}>{row.maSAP}</td>
-                        <td style={{ textAlign: 'left', padding: '10px', fontSize: 13, color: 'var(--text)', whiteSpace: 'normal', wordBreak: 'break-word' }}>{meta.tenVatTu || '—'}</td>
-                        <td style={{ textAlign: 'center', padding: '10px', fontSize: 13, color: 'var(--text-muted)' }}>{meta.dvt || '—'}</td>
-                        <td style={{ textAlign: 'right', padding: '10px', fontSize: 13, color: 'var(--text)' }}>
-                          {row.khoiLuongTong ? row.khoiLuongTong.toLocaleString('vi-VN', { maximumFractionDigits: 2 }) : '0'}
-                        </td>
-                        <td style={{ textAlign: 'right', padding: '10px', fontSize: 13, color: 'var(--text)', fontWeight: 600 }}>
-                          {row.thanhTien ? row.thanhTien.toLocaleString('vi-VN') : '0'}
-                        </td>
-                        <td style={{ textAlign: 'right', padding: '10px', fontSize: 13, color: 'var(--primary)', fontWeight: 700 }}>
-                          {row.donGiaTrungBinh ? row.donGiaTrungBinh.toLocaleString('vi-VN') : '0'}
-                        </td>
-                        <td style={{ textAlign: 'right', padding: '10px', fontSize: 13, color: 'var(--text-muted)' }}>
-                          {row.donGiaTrungBinh1Ngay ? row.donGiaTrungBinh1Ngay.toLocaleString('vi-VN') : '0'}
-                        </td>
-                        <td style={{ textAlign: 'center', padding: '10px', fontSize: 13 }}>
-                          {(() => {
-                            const val = row.phanLoaiVatTu || ''
-                            const text = val.trim().toLowerCase()
-                            
-                            let bg = '#f1f5f9'
-                            let fg = '#475569'
-                            let border = '#cbd5e1'
-                            
-                            if (text) {
-                              if (text.includes('tiêu hao')) {
-                                bg = '#ecfdf5' // Soft green
-                                fg = '#047857' // Deep green
-                                border = '#a7f3d0'
-                              } else if (text.includes('khấu hao') || text.includes('tài sản')) {
-                                bg = '#fff7ed' // Soft orange
-                                fg = '#ea580c' // Deep orange
-                                border = '#fed7aa'
-                              } else {
-                                bg = '#eff6ff' // Soft blue
-                                fg = '#1d4ed8' // Deep blue
-                                border = '#bfdbfe'
-                              }
-                            }
-
-                            return (
-                              <span style={{
-                                background: bg,
-                                color: fg,
-                                border: `1.5px solid ${border}`,
-                                padding: '3px 8px',
-                                borderRadius: 4,
-                                fontWeight: 700,
-                                fontSize: 11.5,
-                                display: 'inline-block'
-                              }}>
-                                {val || 'Chưa phân loại'}
-                              </span>
-                            )
-                          })()}
-                        </td>
-                      </tr>
-                    )
-                  })
-                )}
-              </tbody>
-            </table>
+            <button
+              onClick={async () => {
+                if (window.confirm('Bạn có chắc chắn muốn xóa toàn bộ danh sách đơn giá vật tư này không?')) {
+                  setMaterialPriceRows([]);
+                  setMaterialPrices({});
+                  setMaterialClassifications({});
+                  localStorage.removeItem('sgc_report_material_price_rows');
+                  localStorage.removeItem('sgc_report_material_prices');
+                  localStorage.removeItem('sgc_report_material_classifications');
+                  if (isSupabaseConfigured) {
+                    try {
+                      const { error } = await supabase.from('don_gia_vat_tu').delete().neq('id', -999);
+                      if (error) alert('Lỗi xóa trên Supabase: ' + error.message);
+                      else {
+                        setLastSyncedMaterialPriceRows([]);
+                        alert('Đã xóa sạch dữ liệu trên cả cục bộ và Supabase!');
+                      }
+                    } catch (e) {
+                      alert('Lỗi kết nối Supabase: ' + e.message);
+                    }
+                  } else {
+                    setLastSyncedMaterialPriceRows([]);
+                    alert('Đã xóa sạch dữ liệu cục bộ!');
+                  }
+                }
+              }}
+              className="btn"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                cursor: 'pointer',
+                background: '#ef4444',
+                color: '#ffffff',
+                padding: '8px 16px',
+                borderRadius: 6,
+                fontSize: 13,
+                fontWeight: 600,
+                border: 'none',
+                boxShadow: 'var(--shadow-sm)',
+                transition: 'all 0.15s'
+              }}
+            >
+              <Trash2 size={14} />
+              <span>Xóa sạch</span>
+            </button>
           </div>
         </div>
-      </div>
+      )}
+
+      {currentSubTab === 'classification' ? (
+        /* Search bar & Grid for Classification */
+        <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, overflow: 'hidden', paddingBottom: 4 }}>
+          {/* Table side */}
+          <div style={{ background: '#ffffff', borderRadius: 8, border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: 'var(--shadow-sm)', flex: 1 }}>
+            {/* Search bar inside table */}
+            <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border)', background: '#f8fafc', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
+              <div style={{ position: 'relative', width: 280 }}>
+                <Search size={15} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+                <input
+                  type="text"
+                  placeholder="Tìm kiếm theo mã SAP hoặc phân loại..."
+                  value={priceSearchQuery}
+                  onChange={(e) => setPriceSearchQuery(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: priceSearchQuery ? '6px 32px 6px 32px' : '6px 10px 6px 32px',
+                    fontSize: '13px',
+                    border: '1px solid var(--border)',
+                    borderRadius: 6,
+                    background: '#ffffff',
+                    outline: 'none',
+                    color: 'var(--text)'
+                  }}
+                />
+                {priceSearchQuery && (
+                  <button
+                    onClick={() => setPriceSearchQuery('')}
+                    style={{
+                      position: 'absolute',
+                      right: 10,
+                      top: '50%',
+                      transform: 'translateY(-50%)',
+                      background: 'none',
+                      border: 'none',
+                      cursor: 'pointer',
+                      padding: 0,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: '#94a3b8',
+                      transition: 'color 0.15s'
+                    }}
+                    onMouseOver={(e) => e.currentTarget.style.color = '#ef4444'}
+                    onMouseOut={(e) => e.currentTarget.style.color = '#94a3b8'}
+                    title="Xóa lọc"
+                  >
+                    <X size={15} />
+                  </button>
+                )}
+              </div>
+              <div style={{ fontSize: '12.5px', color: 'var(--text-muted)', fontWeight: 500 }}>
+                Có <strong>{filteredPriceRows.length}</strong> vật tư được thiết lập đơn giá
+              </div>
+            </div>
+
+            {/* Table wrapper */}
+            <div style={{ flex: 1, overflow: 'auto', minHeight: 0 }}>
+              <table style={{ width: '100%', minWidth: 1870, borderCollapse: 'collapse', borderSpacing: 0, tableLayout: 'fixed' }}>
+                <thead>
+                  <tr style={{ position: 'sticky', top: 0, background: '#f1f5f9', zIndex: 10, borderBottom: '2px solid var(--border)' }}>
+                    <th style={{ width: 60, textAlign: 'center', fontSize: 12, fontWeight: 700, color: '#475569', padding: '10px' }}>STT</th>
+                    <th style={{ width: 140, textAlign: 'center', fontSize: 12, fontWeight: 700, color: '#475569', padding: '10px' }}>Mã SAP</th>
+                    <th style={{ width: 300, textAlign: 'center', fontSize: 12, fontWeight: 700, color: '#475569', padding: '10px' }}>Tên vật tư</th>
+                    <th style={{ width: 80, textAlign: 'center', fontSize: 12, fontWeight: 700, color: '#475569', padding: '10px' }}>Đơn vị</th>
+                    <th style={{ width: 140, textAlign: 'center', fontSize: 12, fontWeight: 700, color: '#475569', padding: '10px' }}>Khối lượng tổng</th>
+                    <th style={{ width: 160, textAlign: 'center', fontSize: 12, fontWeight: 700, color: '#475569', padding: '10px' }}>Thành tiền</th>
+                    <th style={{ width: 160, textAlign: 'center', fontSize: 12, fontWeight: 700, color: '#475569', padding: '10px' }}>Đơn giá trung bình</th>
+                    <th style={{ width: 120, textAlign: 'center', fontSize: 12, fontWeight: 700, color: '#475569', padding: '10px' }}>Đơn giá 1 tháng</th>
+                    <th style={{ width: 130, textAlign: 'center', fontSize: 12, fontWeight: 700, color: '#475569', padding: '10px' }}>Đơn giá TB 1 ngày</th>
+                    <th style={{ width: 180, textAlign: 'center', fontSize: 12, fontWeight: 700, color: '#475569', padding: '10px' }}>Phân loại vật tư</th>
+                    <th style={{ width: 180, textAlign: 'center', fontSize: 12, fontWeight: 700, color: '#475569', padding: '10px' }}>Thời gian khấu hao</th>
+                    <th style={{ width: 180, textAlign: 'center', fontSize: 12, fontWeight: 700, color: '#475569', padding: '10px' }}>Nhóm khấu hao</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredPriceRows.length === 0 ? (
+                    <tr>
+                      <td colSpan={12} style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '13.5px' }}>
+                        Chưa có đơn giá nào được thiết lập. Hãy tải lên file Excel để xem dữ liệu.
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredPriceRows.map((row, idx) => {
+                      const meta = materialMetadataMap.get(String(row.maSAP || '').trim().toLowerCase()) || { tenVatTu: '—', dvt: '—' }
+                      return (
+                        <tr key={row.maSAP + idx} style={{ borderBottom: '1px solid #f1f5f9', background: idx % 2 === 0 ? '#ffffff' : '#f8fafc' }}>
+                          <td style={{ textAlign: 'center', padding: '10px', fontSize: 13, color: 'var(--text-muted)' }}>{idx + 1}</td>
+                          <td style={{ fontWeight: 700, padding: '10px', fontSize: 13, color: 'var(--text)' }}>{row.maSAP}</td>
+                          <td style={{ textAlign: 'left', padding: '10px', fontSize: 13, color: 'var(--text)', whiteSpace: 'normal', wordBreak: 'break-word' }}>{meta.tenVatTu || '—'}</td>
+                          <td style={{ textAlign: 'center', padding: '10px', fontSize: 13, color: 'var(--text-muted)' }}>{meta.dvt || '—'}</td>
+                          <td style={{ textAlign: 'right', padding: '10px', fontSize: 13, color: 'var(--text)' }}>
+                            {row.khoiLuongTong ? row.khoiLuongTong.toLocaleString('vi-VN', { maximumFractionDigits: 2 }) : '0'}
+                          </td>
+                          <td style={{ textAlign: 'right', padding: '10px', fontSize: 13, color: 'var(--text)', fontWeight: 600 }}>
+                            {row.thanhTien ? row.thanhTien.toLocaleString('vi-VN') : '0'}
+                          </td>
+                          <td style={{ textAlign: 'right', padding: '10px', fontSize: 13, color: 'var(--primary)', fontWeight: 700 }}>
+                            {row.donGiaTrungBinh ? row.donGiaTrungBinh.toLocaleString('vi-VN') : '0'}
+                          </td>
+                          <td style={{ textAlign: 'right', padding: '10px', fontSize: 13, color: '#2563eb', fontWeight: 600 }}>
+                            {row.donGiaTrungBinh1Ngay ? Math.round(row.donGiaTrungBinh1Ngay * 30.417).toLocaleString('vi-VN') : '0'}
+                          </td>
+                          <td style={{ textAlign: 'right', padding: '10px', fontSize: 13, color: 'var(--text-muted)' }}>
+                            {row.donGiaTrungBinh1Ngay ? row.donGiaTrungBinh1Ngay.toLocaleString('vi-VN') : '0'}
+                          </td>
+                          <td style={{ textAlign: 'center', padding: '10px 18px 10px 10px', fontSize: 13 }}>
+                            {(() => {
+                              const val = getClassification(row)
+                              const text = val.trim().toLowerCase()
+                              
+                              let bg = '#f1f5f9'
+                              let fg = '#475569'
+                              let border = '#cbd5e1'
+                              
+                              if (text) {
+                                  if (text.includes('tiêu hao')) {
+                                    bg = '#ecfdf5' // Soft green
+                                    fg = '#047857' // Deep green
+                                    border = '#a7f3d0'
+                                  } else if (text.includes('khấu hao') || text.includes('tài sản') || text.includes('tskh')) {
+                                    bg = '#fff7ed' // Soft orange
+                                    fg = '#ea580c' // Deep orange
+                                    border = '#fed7aa'
+                                  } else {
+                                    bg = '#eff6ff' // Soft blue
+                                    fg = '#1d4ed8' // Deep blue
+                                    border = '#bfdbfe'
+                                  }
+                              }
+
+                              return (
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                  <input
+                                    list="material-classification-options"
+                                    type="text"
+                                    placeholder="Chưa phân loại"
+                                    value={val}
+                                    onChange={(e) => handleClassificationChange && handleClassificationChange(row.maSAP, e.target.value)}
+                                    style={{
+                                      width: '100%',
+                                      padding: '4px 8px',
+                                      fontSize: '12px',
+                                      border: `1.5px solid ${border}`,
+                                      borderRadius: 4,
+                                      background: bg,
+                                      color: fg,
+                                      fontWeight: 700,
+                                      textAlign: 'center',
+                                      outline: 'none',
+                                      transition: 'all 0.15s'
+                                    }}
+                                  />
+                                  <datalist id="material-classification-options">
+                                    <option value="Vật tư tiêu hao" />
+                                    <option value="Tài sản khấu hao" />
+                                  </datalist>
+                                </div>
+                              )
+                            })()}
+                          </td>
+                          <td style={{ textAlign: 'center', padding: '10px 18px 10px 10px', fontSize: 13 }}>
+                            {(() => {
+                              const val = getClassification(row)
+                              const text = val.trim().toLowerCase()
+                              const isAsset = text.includes('khấu hao') || text.includes('tài sản') || text.includes('tskh')
+                              
+                              if (!isAsset) {
+                                return (
+                                  <span style={{ fontSize: '12.5px', color: '#94a3b8', fontStyle: 'italic', fontWeight: 500 }}>— Không áp dụng</span>
+                                )
+                              }
+                              
+                              const currentMonths = getClosestMonthsGroup(row, depreciationOptions)
+                              const colors = getGroupColors(currentMonths)
+                              
+                              return (
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                  <span
+                                    style={{
+                                      width: '100%',
+                                      padding: '5px 8px',
+                                      fontSize: '12px',
+                                      border: `1.5px solid ${currentMonths.months === 0 ? '#cbd5e1' : colors.border}`,
+                                      borderRadius: 4,
+                                      background: currentMonths.months === 0 ? '#f1f5f9' : colors.bg,
+                                      color: currentMonths.months === 0 ? '#475569' : colors.fg,
+                                      fontWeight: 700,
+                                      textAlign: 'center',
+                                      display: 'inline-block',
+                                      userSelect: 'none'
+                                    }}
+                                  >
+                                    {currentMonths.months === 0 ? 'Chưa thiết lập' : `Khấu hao ${currentMonths.months} T`}
+                                  </span>
+                                </div>
+                              )
+                            })()}
+                          </td>
+                          <td style={{ textAlign: 'center', padding: '10px 18px 10px 10px', fontSize: 13 }}>
+                            {(() => {
+                              const val = getClassification(row)
+                              const text = val.trim().toLowerCase()
+                              const isAsset = text.includes('khấu hao') || text.includes('tài sản') || text.includes('tskh')
+                              
+                              if (!isAsset) {
+                                return (
+                                  <span style={{ fontSize: '12.5px', color: '#94a3b8', fontStyle: 'italic', fontWeight: 500 }}>— Không áp dụng</span>
+                                )
+                              }
+                              
+                              const currentMonths = getClosestMonthsGroup(row, depreciationOptions)
+                              if (currentMonths.months === 0) {
+                                return (
+                                  <span style={{ fontSize: '12.5px', color: '#94a3b8', fontStyle: 'italic', fontWeight: 500 }}>— Chưa thiết lập</span>
+                                )
+                              }
+                              
+                              return (
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                  <span
+                                    style={{
+                                      width: '100%',
+                                      padding: '5px 8px',
+                                      fontSize: '12px',
+                                      border: `1.5px solid ${currentMonths.isApproved ? '#16a34a' : '#d97706'}`,
+                                      borderRadius: 4,
+                                      background: currentMonths.isApproved ? '#ecfdf5' : '#fffbeb',
+                                      color: currentMonths.isApproved ? '#16a34a' : '#d97706',
+                                      fontWeight: 700,
+                                      textAlign: 'center',
+                                      display: 'inline-block',
+                                      userSelect: 'none'
+                                    }}
+                                  >
+                                    {currentMonths.isApproved ? 'Đã duyệt' : 'Tạm tính'}
+                                  </span>
+                                </div>
+                              )
+                            })()}
+                          </td>
+                        </tr>
+                      )
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      ) : (
+        /* Redesigned Two-Pane Sidebar & Grid for Depreciation Duration */
+        <div style={{ display: 'flex', gap: '16px', flex: 1, minHeight: 0, overflow: 'hidden', paddingBottom: 4 }}>
+          {/* LEFT SIDEBAR: LIST OF DEPRECIATION DURATION GROUPS */}
+          <div style={{
+            width: '320px',
+            background: '#ffffff',
+            borderRadius: 8,
+            border: '1px solid var(--border)',
+            display: 'flex',
+            flexDirection: 'column',
+            overflow: 'hidden',
+            boxShadow: 'var(--shadow-sm)',
+            flexShrink: 0
+          }}>
+            {/* Sidebar Header */}
+            <div style={{ padding: '16px', borderBottom: '1px solid var(--border)', background: '#f8fafc' }}>
+              <div style={{ fontWeight: 800, fontSize: '13.5px', color: 'var(--text)', display: 'flex', alignItems: 'center', gap: 6, marginBottom: 12 }}>
+                <Clock size={16} style={{ color: 'var(--primary)' }} />
+                DANH SÁCH KHẤU HAO ({depreciationOptions.length})
+              </div>
+              
+              {/* Add New Duration Form */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <div style={{ display: 'flex', gap: 6 }}>
+                  <input
+                    type="number"
+                    placeholder="Nhập số tháng..."
+                    value={newDurationInput}
+                    onChange={(e) => setNewDurationInput(e.target.value)}
+                    style={{
+                      flex: 1,
+                      padding: '6px 10px',
+                      fontSize: '13px',
+                      border: '1px solid var(--border)',
+                      borderRadius: 6,
+                      outline: 'none',
+                      color: 'var(--text)',
+                      background: '#ffffff'
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        handleAddDuration()
+                      }
+                    }}
+                  />
+                  <button
+                    onClick={handleAddDuration}
+                    style={{
+                      padding: '6px 12px',
+                      background: 'var(--primary)',
+                      color: '#ffffff',
+                      border: 'none',
+                      borderRadius: 6,
+                      fontSize: '12.5px',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      transition: 'all 0.15s'
+                    }}
+                  >
+                    + Thêm
+                  </button>
+                </div>
+                
+                {/* Segment control to choose type */}
+                <div style={{ display: 'flex', background: '#f1f5f9', borderRadius: 6, padding: 2, border: '1px solid #e2e8f0' }}>
+                  <button
+                    onClick={() => setNewDurationIsApproved(true)}
+                    style={{
+                      flex: 1,
+                      padding: '4px 8px',
+                      fontSize: '11px',
+                      fontWeight: 700,
+                      border: 'none',
+                      borderRadius: 4,
+                      background: newDurationIsApproved ? '#16a34a' : 'transparent',
+                      color: newDurationIsApproved ? '#ffffff' : '#64748b',
+                      cursor: 'pointer',
+                      transition: 'all 0.15s',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: 4
+                    }}
+                  >
+                    <span style={{ fontSize: '11px' }}>✓</span> Đã duyệt
+                  </button>
+                  <button
+                    onClick={() => setNewDurationIsApproved(false)}
+                    style={{
+                      flex: 1,
+                      padding: '4px 8px',
+                      fontSize: '11px',
+                      fontWeight: 700,
+                      border: 'none',
+                      borderRadius: 4,
+                      background: !newDurationIsApproved ? '#d97706' : 'transparent',
+                      color: !newDurationIsApproved ? '#ffffff' : '#64748b',
+                      cursor: 'pointer',
+                      transition: 'all 0.15s',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: 4
+                    }}
+                  >
+                    <span style={{ fontSize: '11px' }}>⏱</span> Tạm tính
+                  </button>
+                </div>
+
+                {addDurationFeedback && (
+                  <div style={{
+                    padding: '8px 10px',
+                    borderRadius: 6,
+                    fontSize: '11.5px',
+                    fontWeight: 500,
+                    background: addDurationFeedback.isError ? '#fef2f2' : '#f0fdf4',
+                    border: `1px solid ${addDurationFeedback.isError ? '#fca5a5' : '#86efac'}`,
+                    color: addDurationFeedback.isError ? '#b91c1c' : '#15803d',
+                    display: 'flex',
+                    alignItems: 'flex-start',
+                    gap: 6,
+                    lineHeight: '1.4',
+                    wordBreak: 'break-word',
+                    marginTop: 4
+                  }}>
+                    <span style={{ fontSize: '13px', flexShrink: 0, marginTop: '1px' }}>{addDurationFeedback.isError ? '⚠️' : '✅'}</span>
+                    <span style={{ flex: 1 }}>{addDurationFeedback.text}</span>
+                    <button 
+                      onClick={() => setAddDurationFeedback(null)}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        color: 'inherit',
+                        fontSize: '13px',
+                        cursor: 'pointer',
+                        padding: 0,
+                        marginLeft: 'auto',
+                        display: 'flex',
+                        alignItems: 'center',
+                        flexShrink: 0
+                      }}
+                    >
+                      ×
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Sidebar list of groups */}
+            <div style={{ flex: 1, overflowY: 'auto', padding: '12px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                
+                {/* TỔNG QUAN SECTION */}
+                <div>
+                  <div style={{
+                    fontSize: '11px',
+                    fontWeight: 800,
+                    textTransform: 'uppercase',
+                    color: 'var(--primary)',
+                    letterSpacing: '0.05em',
+                    marginBottom: '8px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    paddingLeft: '4px'
+                  }}>
+                    <BarChart3 size={13} style={{ color: 'var(--primary)' }} />
+                    Tổng quan
+                  </div>
+                  
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <div
+                      onClick={() => {
+                        setSelectedMonthsGroup({ isAll: true })
+                        setSelectedMaterials(new Set()) // clear selection
+                      }}
+                      style={{
+                        padding: '10px 12px',
+                        borderRadius: '10px',
+                        cursor: 'pointer',
+                        transition: 'all 0.15s',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        border: selectedMonthsGroup?.isAll ? `2px solid var(--primary)` : `1px solid var(--border)`,
+                        background: selectedMonthsGroup?.isAll ? 'var(--primary-light, #eff6ff)' : '#ffffff',
+                        boxShadow: selectedMonthsGroup?.isAll ? '0 4px 12px rgba(15, 88, 167, 0.08)' : 'none'
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+                        <div style={{
+                          fontSize: '10px',
+                          fontWeight: 800,
+                          padding: '3px 6px',
+                          borderRadius: '6px',
+                          background: selectedMonthsGroup?.isAll ? '#ffffff' : `rgba(15, 88, 167, 0.1)`,
+                          color: 'var(--primary)',
+                          width: '42px',
+                          textAlign: 'center',
+                          flexShrink: 0,
+                          border: `1.5px solid rgba(15, 88, 167, 0.3)`
+                        }}>
+                          ALL
+                        </div>
+                        <div style={{
+                          fontWeight: selectedMonthsGroup?.isAll ? 800 : 600,
+                          fontSize: '13px',
+                          color: selectedMonthsGroup?.isAll ? 'var(--primary)' : 'var(--text)',
+                          whiteSpace: 'nowrap',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis'
+                        }}>
+                          Tất cả vật tư khấu hao
+                        </div>
+                      </div>
+                      
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                        <span style={{
+                          fontSize: '11px',
+                          fontWeight: 700,
+                          background: 'var(--primary)',
+                          color: '#ffffff',
+                          padding: '3px 8px',
+                          borderRadius: '20px'
+                        }}>
+                          {assetRows.length}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 0. CHƯA THIẾT LẬP SECTION */}
+                {sidebarChuaThietLap.length > 0 && (
+                  <div>
+                    <div style={{
+                      fontSize: '11px',
+                      fontWeight: 800,
+                      textTransform: 'uppercase',
+                      color: '#64748b',
+                      letterSpacing: '0.05em',
+                      marginBottom: '8px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      paddingLeft: '4px'
+                    }}>
+                      <Clock size={13} style={{ color: '#64748b' }} />
+                      Chưa thiết lập
+                    </div>
+                    
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      {sidebarChuaThietLap.map((opt) => {
+                        const isActive = !selectedMonthsGroup?.isAll && selectedMonthsGroup?.months === opt.months && selectedMonthsGroup?.isApproved === opt.isApproved
+                        const count = groupCounts[`${opt.months}-${opt.isApproved}`] || 0
+                        const titleLabel = 'Chưa thiết lập'
+                        const shortBadge = 'CHƯA'
+                        const colors = getGroupColors(opt)
+
+                        return (
+                          <div
+                            key={`${opt.months}-${opt.isApproved}`}
+                            onClick={() => {
+                              setSelectedMonthsGroup(opt)
+                              setSelectedMaterials(new Set()) // clear selection
+                            }}
+                            style={{
+                              padding: '10px 12px',
+                              borderRadius: '10px',
+                              cursor: 'pointer',
+                              transition: 'all 0.15s',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'space-between',
+                              border: isActive ? `2px solid ${colors.fg}` : `1px solid ${colors.border}`,
+                              background: colors.bg,
+                              boxShadow: isActive ? '0 4px 12px rgba(15, 88, 167, 0.08)' : 'none'
+                            }}
+                          >
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+                              <div style={{
+                                fontSize: '10px',
+                                fontWeight: 800,
+                                padding: '3px 6px',
+                                borderRadius: '6px',
+                                background: isActive ? '#ffffff' : `${colors.fg}20`,
+                                color: colors.fg,
+                                width: '42px',
+                                textAlign: 'center',
+                                flexShrink: 0,
+                                border: `1.5px solid ${colors.fg}40`
+                              }}>
+                                {shortBadge}
+                              </div>
+                              <div style={{
+                                fontWeight: isActive ? 800 : 600,
+                                fontSize: '13px',
+                                color: colors.fg,
+                                whiteSpace: 'nowrap',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis'
+                              }}>
+                                {titleLabel}
+                              </div>
+                            </div>
+                            
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                              <span style={{
+                                fontSize: '11px',
+                                fontWeight: 700,
+                                background: colors.fg,
+                                color: '#ffffff',
+                                padding: '3px 8px',
+                                borderRadius: '20px'
+                              }}>
+                                {count}
+                              </span>
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* 1. ĐÃ DUYỆT SECTION */}
+                {sidebarDaDuyet.length > 0 && (
+                  <div>
+                    <div style={{
+                      fontSize: '11px',
+                      fontWeight: 800,
+                      textTransform: 'uppercase',
+                      color: '#16a34a',
+                      letterSpacing: '0.05em',
+                      marginBottom: '8px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      paddingLeft: '4px'
+                    }}>
+                      <CheckCircle2 size={13} />
+                      Đã duyệt ({sidebarDaDuyet.length})
+                    </div>
+                    
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      {sidebarDaDuyet.map((opt) => {
+                        const isActive = !selectedMonthsGroup?.isAll && selectedMonthsGroup?.months === opt.months && selectedMonthsGroup?.isApproved === opt.isApproved
+                        const count = groupCounts[`${opt.months}-${opt.isApproved}`] || 0
+                        const titleLabel = `Khấu hao ${opt.months} tháng`
+                        const shortBadge = `${opt.months}T`
+                        const colors = getGroupColors(opt)
+
+                        return (
+                          <div
+                            key={`${opt.months}-${opt.isApproved}`}
+                            onClick={() => {
+                              setSelectedMonthsGroup(opt)
+                              setSelectedMaterials(new Set()) // clear selection
+                            }}
+                            style={{
+                              padding: '10px 12px',
+                              borderRadius: '10px',
+                              cursor: 'pointer',
+                              transition: 'all 0.15s',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'space-between',
+                              border: isActive ? `2px solid ${colors.fg}` : `1px solid ${colors.border}`,
+                              background: colors.bg,
+                              boxShadow: isActive ? '0 4px 12px rgba(15, 88, 167, 0.08)' : 'none'
+                            }}
+                          >
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+                              <div style={{
+                                fontSize: '10px',
+                                fontWeight: 800,
+                                padding: '3px 6px',
+                                borderRadius: '6px',
+                                background: isActive ? '#ffffff' : `${colors.fg}20`,
+                                color: colors.fg,
+                                width: '42px',
+                                textAlign: 'center',
+                                flexShrink: 0,
+                                border: `1.5px solid ${colors.fg}40`
+                              }}>
+                                {shortBadge}
+                              </div>
+                              <div style={{
+                                fontWeight: isActive ? 800 : 600,
+                                fontSize: '13px',
+                                color: colors.fg,
+                                whiteSpace: 'nowrap',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis'
+                              }}>
+                                {titleLabel}
+                              </div>
+                            </div>
+                            
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                              <span style={{
+                                fontSize: '11px',
+                                fontWeight: 700,
+                                background: colors.fg,
+                                color: '#ffffff',
+                                padding: '3px 8px',
+                                borderRadius: '20px'
+                              }}>
+                                {count}
+                              </span>
+                              
+                              {/* Move to Tạm tính */}
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  handleToggleApproval(opt, false)
+                                }}
+                                style={{
+                                  background: 'transparent',
+                                  border: 'none',
+                                  color: '#eab308',
+                                  cursor: 'pointer',
+                                  padding: 4,
+                                  borderRadius: 4,
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center'
+                                }}
+                                title="Chuyển sang nhóm Tạm tính"
+                              >
+                                <Clock size={13} />
+                              </button>
+
+                              {/* Delete button */}
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  setDepreciationToDelete(opt)
+                                }}
+                                style={{
+                                  background: 'transparent',
+                                  border: 'none',
+                                  color: '#ef4444',
+                                  cursor: 'pointer',
+                                  padding: 4,
+                                  borderRadius: 4,
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center'
+                                }}
+                                title="Xóa nhóm này"
+                              >
+                                <Trash2 size={13} />
+                              </button>
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* 2. TẠM TÍNH SECTION */}
+                {sidebarTamTinh.length > 0 && (
+                  <div>
+                    <div style={{
+                      fontSize: '11px',
+                      fontWeight: 800,
+                      textTransform: 'uppercase',
+                      color: '#d97706',
+                      letterSpacing: '0.05em',
+                      marginBottom: '8px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      paddingLeft: '4px'
+                    }}>
+                      <Clock size={13} />
+                      Tạm tính ({sidebarTamTinh.length})
+                    </div>
+                    
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      {sidebarTamTinh.map((opt) => {
+                        const isActive = !selectedMonthsGroup?.isAll && selectedMonthsGroup?.months === opt.months && selectedMonthsGroup?.isApproved === opt.isApproved
+                        const count = groupCounts[`${opt.months}-${opt.isApproved}`] || 0
+                        const titleLabel = opt.months === 0 ? 'Chưa thiết lập' : `Khấu hao ${opt.months} tháng`
+                        const shortBadge = opt.months === 0 ? 'CHƯA' : `${opt.months}T`
+                        const colors = getGroupColors(opt)
+
+                        return (
+                          <div
+                            key={`${opt.months}-${opt.isApproved}`}
+                            onClick={() => {
+                              setSelectedMonthsGroup(opt)
+                              setSelectedMaterials(new Set()) // clear selection
+                            }}
+                            style={{
+                              padding: '10px 12px',
+                              borderRadius: '10px',
+                              cursor: 'pointer',
+                              transition: 'all 0.15s',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'space-between',
+                              border: isActive ? `2px solid ${colors.fg}` : `1px solid ${colors.border}`,
+                              background: colors.bg,
+                              boxShadow: isActive ? '0 4px 12px rgba(15, 88, 167, 0.08)' : 'none'
+                            }}
+                          >
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+                              <div style={{
+                                fontSize: '10px',
+                                fontWeight: 800,
+                                padding: '3px 6px',
+                                borderRadius: '6px',
+                                background: isActive ? '#ffffff' : `${colors.fg}20`,
+                                color: colors.fg,
+                                width: '42px',
+                                textAlign: 'center',
+                                flexShrink: 0,
+                                border: `1.5px solid ${colors.fg}40`
+                              }}>
+                                {shortBadge}
+                              </div>
+                              <div style={{
+                                fontWeight: isActive ? 800 : 600,
+                                fontSize: '13px',
+                                color: colors.fg,
+                                whiteSpace: 'nowrap',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis'
+                              }}>
+                                {titleLabel}
+                              </div>
+                            </div>
+                            
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                              <span style={{
+                                fontSize: '11px',
+                                fontWeight: 700,
+                                background: colors.fg,
+                                color: '#ffffff',
+                                padding: '3px 8px',
+                                borderRadius: '20px'
+                              }}>
+                                {count}
+                              </span>
+                              
+                              {/* Move to Đã duyệt */}
+                              {opt.months !== 0 && (
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    handleToggleApproval(opt, true)
+                                  }}
+                                  style={{
+                                    background: 'transparent',
+                                    border: 'none',
+                                    color: '#16a34a',
+                                    cursor: 'pointer',
+                                    padding: 4,
+                                    borderRadius: 4,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center'
+                                  }}
+                                  title="Chuyển sang nhóm Đã duyệt"
+                                >
+                                  <CheckCircle2 size={13} />
+                                </button>
+                              )}
+
+                              {/* Delete button */}
+                              {opt.months !== 0 && (
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    setDepreciationToDelete(opt)
+                                  }}
+                                  style={{
+                                    background: 'transparent',
+                                    border: 'none',
+                                    color: '#ef4444',
+                                    cursor: 'pointer',
+                                    padding: 4,
+                                    borderRadius: 4,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center'
+                                  }}
+                                  title="Xóa nhóm này"
+                                >
+                                  <Trash2 size={13} />
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )}
+
+              </div>
+            </div>
+          </div>
+
+          {/* RIGHT CONTENT: MATERIALS GRID WITH SEARCH AND BATCH SELECTION */}
+          <div style={{
+            flex: 1,
+            background: '#ffffff',
+            borderRadius: 8,
+            border: '1px solid var(--border)',
+            display: 'flex',
+            flexDirection: 'column',
+            overflow: 'hidden',
+            boxShadow: 'var(--shadow-sm)'
+          }}>
+            {/* Header / Filter area */}
+            <div style={{
+              padding: '12px 16px',
+              borderBottom: '1px solid var(--border)',
+              background: '#f8fafc',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 12,
+              flexShrink: 0
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <h3 style={{ margin: 0, fontSize: '14px', fontWeight: 800, color: 'var(--text)' }}>
+                    {selectedMonthsGroup?.isAll
+                      ? (priceSearchQuery.trim() ? 'KẾT QUẢ TÌM KIẾM TOÀN BỘ VẬT TƯ' : 'TẤT CẢ VẬT TƯ KHẤU HAO')
+                      : priceSearchQuery.trim()
+                        ? `KẾT QUẢ TÌM KIẾM TRONG: ${
+                            selectedMonthsGroup?.months === 0 
+                              ? 'VẬT TƯ CHƯA THIẾT LẬP' 
+                              : `KHẤU HAO ${selectedMonthsGroup?.months} THÁNG (${selectedMonthsGroup?.isApproved ? 'ĐÃ DUYỆT' : 'TẠM TÍNH'})`
+                          }`
+                        : selectedMonthsGroup?.months === 0
+                          ? 'VẬT TƯ CHƯA THIẾT LẬP KHẤU HAO'
+                          : `KHẤU HAO ${selectedMonthsGroup?.months} THÁNG (${selectedMonthsGroup?.isApproved ? 'ĐÃ DUYỆT' : 'TẠM TÍNH'})`}
+                  </h3>
+                  <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+                    (Tìm thấy {searchedActiveRows.length} vật tư)
+                  </span>
+                </div>
+                
+                {/* Search query input */}
+                <div style={{ position: 'relative', width: 280 }}>
+                  <Search size={15} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+                  <input
+                    type="text"
+                    placeholder="Tìm theo mã SAP hoặc tên vật tư..."
+                    value={priceSearchQuery}
+                    onChange={(e) => setPriceSearchQuery(e.target.value)}
+                    style={{
+                      width: '100%',
+                      padding: priceSearchQuery ? '6px 32px 6px 32px' : '6px 10px 6px 32px',
+                      fontSize: '13px',
+                      border: '1px solid var(--border)',
+                      borderRadius: 6,
+                      background: '#ffffff',
+                      outline: 'none',
+                      color: 'var(--text)'
+                    }}
+                  />
+                  {priceSearchQuery && (
+                    <button
+                      onClick={() => setPriceSearchQuery('')}
+                      style={{
+                        position: 'absolute',
+                        right: 10,
+                        top: '50%',
+                        transform: 'translateY(-50%)',
+                        background: 'none',
+                        border: 'none',
+                        cursor: 'pointer',
+                        padding: 0,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: '#94a3b8',
+                        transition: 'color 0.15s'
+                      }}
+                      onMouseOver={(e) => e.currentTarget.style.color = '#ef4444'}
+                      onMouseOut={(e) => e.currentTarget.style.color = '#94a3b8'}
+                      title="Xóa lọc"
+                    >
+                      <X size={15} />
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* SELECT ALL TOOL */}
+              {searchedActiveRows.length > 0 && (
+                <div style={{ display: 'flex', justifyContent: 'flex-start', alignItems: 'center', marginTop: -4 }}>
+                  <label style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 8,
+                    cursor: 'pointer',
+                    fontSize: '12.5px',
+                    fontWeight: 600,
+                    color: 'var(--text-muted)',
+                    userSelect: 'none'
+                  }}>
+                    <input
+                      type="checkbox"
+                      checked={searchedActiveRows.length > 0 && searchedActiveRows.every(row => selectedMaterials.has(row.maSAP))}
+                      onChange={(e) => {
+                        const newSelection = new Set(selectedMaterials)
+                        if (e.target.checked) {
+                          searchedActiveRows.forEach(row => {
+                            newSelection.add(row.maSAP)
+                          })
+                        } else {
+                          searchedActiveRows.forEach(row => {
+                            newSelection.delete(row.maSAP)
+                          })
+                        }
+                        setSelectedMaterials(newSelection)
+                      }}
+                      style={{
+                        width: '16px',
+                        height: '16px',
+                        cursor: 'pointer',
+                        accentColor: 'var(--primary)'
+                      }}
+                    />
+                    <span>Chọn tất cả ({searchedActiveRows.length} vật tư)</span>
+                  </label>
+                </div>
+              )}
+
+              {/* BATCH ACTION BAR: Show only if materials are selected */}
+              {selectedMaterials.size > 0 ? (
+                <div style={{
+                  background: '#ffffff',
+                  border: '1px solid #cbd5e1',
+                  boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.05)',
+                  borderRadius: '12px',
+                  padding: '16px 20px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '14px',
+                  animation: 'fadeIn 0.2s ease-out',
+                  width: '100%',
+                  boxSizing: 'border-box'
+                }}>
+                  {/* Header Row */}
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    borderBottom: '1px solid #f1f5f9',
+                    paddingBottom: '10px',
+                    flexWrap: 'wrap',
+                    gap: '10px'
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                      <div style={{
+                        background: 'var(--primary)',
+                        color: '#ffffff',
+                        fontWeight: 700,
+                        fontSize: '13px',
+                        padding: '4px 12px',
+                        borderRadius: '20px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px'
+                      }}>
+                        <CheckSquare size={14} />
+                        <span>Đã chọn {selectedMaterials.size} vật tư</span>
+                      </div>
+                      <span style={{ fontSize: '13.5px', color: '#64748b', fontWeight: 500 }}>
+                        Thiết lập số tháng & trạng thái đồng loạt cho các vật tư đã chọn bên dưới.
+                      </span>
+                    </div>
+                    <button
+                      onClick={() => setSelectedMaterials(new Set())}
+                      style={{
+                        padding: '5px 12px',
+                        background: '#f1f5f9',
+                        border: '1px solid #cbd5e1',
+                        borderRadius: '6px',
+                        fontSize: '12px',
+                        fontWeight: 600,
+                        color: '#64748b',
+                        cursor: 'pointer',
+                        transition: 'all 0.15s'
+                      }}
+                      onMouseOver={(e) => {
+                        e.currentTarget.style.background = '#fee2e2';
+                        e.currentTarget.style.color = '#ef4444';
+                        e.currentTarget.style.borderColor = '#fca5a5';
+                      }}
+                      onMouseOut={(e) => {
+                        e.currentTarget.style.background = '#f1f5f9';
+                        e.currentTarget.style.color = '#64748b';
+                        e.currentTarget.style.borderColor = '#cbd5e1';
+                      }}
+                    >
+                      Hủy chọn tất cả
+                    </button>
+                  </div>
+
+                  {/* Action Columns Row */}
+                  <div style={{
+                    display: 'flex',
+                    flexWrap: 'wrap',
+                    gap: '20px',
+                    width: '100%'
+                  }}>
+                    {/* Complete Batch Movement (Months + Status) */}
+                    <div style={{
+                      flex: '1 1 100%',
+                      display: 'flex',
+                      flexWrap: 'wrap',
+                      gap: '12px',
+                      alignItems: 'flex-end',
+                      background: '#f8fafc',
+                      padding: '12px 16px',
+                      borderRadius: '10px',
+                      border: '1px solid #cbd5e1'
+                    }}>
+                      {/* 1. Month select */}
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', flex: '2 1 320px' }}>
+                        <span style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', color: '#475569', letterSpacing: '0.02em' }}>
+                          📅 Bước 1: Chọn số tháng mới
+                        </span>
+                        
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', alignItems: 'center' }}>
+                          {/* Existing options sorted */}
+                          {depreciationOptions.filter(o => o.months > 0).reduce((acc, current) => {
+                            if (!acc.some(o => o.months === current.months)) {
+                              acc.push(current);
+                            }
+                            return acc;
+                          }, []).sort((a, b) => a.months - b.months).map(o => {
+                            const optColors = getGroupColors(o);
+                            const isSelected = batchTargetMonths === o.months;
+                            return (
+                              <div
+                                key={o.months}
+                                onClick={() => setBatchTargetMonths(o.months)}
+                                style={{
+                                  padding: '6px 12px',
+                                  borderRadius: '6px',
+                                  border: isSelected ? `2px solid ${optColors.fg}` : `1px solid ${optColors.fg}40`,
+                                  background: isSelected ? optColors.bg : '#ffffff',
+                                  color: optColors.fg,
+                                  fontSize: '12.5px',
+                                  fontWeight: isSelected ? 700 : 600,
+                                  cursor: 'pointer',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '6px',
+                                  userSelect: 'none',
+                                  boxShadow: isSelected ? '0 2px 4px rgba(0,0,0,0.08)' : 'none',
+                                  opacity: isSelected ? 1 : 0.65,
+                                  transition: 'all 0.15s',
+                                  height: '37px',
+                                  boxSizing: 'border-box'
+                                }}
+                                onMouseOver={(e) => {
+                                  e.currentTarget.style.opacity = '1';
+                                  if (!isSelected) {
+                                    e.currentTarget.style.borderColor = optColors.fg;
+                                  }
+                                }}
+                                onMouseOut={(e) => {
+                                  if (!isSelected) {
+                                    e.currentTarget.style.opacity = '0.65';
+                                    e.currentTarget.style.borderColor = `${optColors.fg}40`;
+                                  }
+                                }}
+                              >
+                                <span style={{
+                                  fontSize: '10px',
+                                  fontWeight: 800,
+                                  padding: '1px 5px',
+                                  borderRadius: '4px',
+                                  background: optColors.bg,
+                                  color: optColors.fg,
+                                  border: `1.5px solid ${optColors.fg}40`
+                                }}>
+                                  {o.months}T
+                                </span>
+                                <span>Khấu hao {o.months} tháng</span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* 2. Status toggle buttons */}
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', flex: '0 0 220px' }}>
+                        <span style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', color: '#475569', letterSpacing: '0.02em' }}>
+                          🏷️ Bước 2: Chọn trạng thái mới
+                        </span>
+                        <div style={{
+                          display: 'flex',
+                          background: '#e2e8f0',
+                          padding: '3px',
+                          borderRadius: '6px',
+                          gap: '2px',
+                          height: '37px',
+                          boxSizing: 'border-box',
+                          width: '100%'
+                        }}>
+                          <button
+                            type="button"
+                            onClick={() => setBatchTargetApproved(true)}
+                            style={{
+                              flex: 1,
+                              padding: '2px 8px',
+                              border: 'none',
+                              borderRadius: '4px',
+                              fontSize: '11.5px',
+                              fontWeight: 600,
+                              cursor: 'pointer',
+                              background: batchTargetApproved ? '#16a34a' : 'transparent',
+                              color: batchTargetApproved ? '#ffffff' : '#64748b',
+                              boxShadow: batchTargetApproved ? '0 2px 4px rgba(22, 163, 74, 0.25)' : 'none',
+                              transition: 'all 0.15s'
+                            }}
+                          >
+                            Đã duyệt
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setBatchTargetApproved(false)}
+                            style={{
+                              flex: 1,
+                              padding: '2px 8px',
+                              border: 'none',
+                              borderRadius: '4px',
+                              fontSize: '11.5px',
+                              fontWeight: 600,
+                              cursor: 'pointer',
+                              background: !batchTargetApproved ? '#d97706' : 'transparent',
+                              color: !batchTargetApproved ? '#ffffff' : '#64748b',
+                              boxShadow: !batchTargetApproved ? '0 2px 4px rgba(217, 119, 6, 0.25)' : 'none',
+                              transition: 'all 0.15s'
+                            }}
+                          >
+                            Tạm tính
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* 3. Apply Action Button */}
+                      <button
+                        onClick={() => handleApplyBatchChanges(batchTargetMonths, batchTargetApproved)}
+                        style={{
+                          padding: '0 16px',
+                          background: 'var(--primary)',
+                          color: '#ffffff',
+                          border: 'none',
+                          borderRadius: '6px',
+                          fontSize: '12.5px',
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                          transition: 'all 0.15s',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '6px',
+                          height: '37px',
+                          flex: '0 0 120px'
+                        }}
+                        onMouseOver={(e) => {
+                          e.currentTarget.style.background = '#7c3aed';
+                        }}
+                        onMouseOut={(e) => {
+                          e.currentTarget.style.background = 'var(--primary)';
+                        }}
+                      >
+                        <ArrowRight size={14} />
+                        Áp dụng
+                      </button>
+                    </div>
+
+                  </div>
+                </div>
+              ) : (
+                <div style={{ fontSize: '12.5px', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <Info size={14} style={{ color: 'var(--primary)' }} />
+                  <span>Chọn một hoặc nhiều thẻ vật tư để chuyển sang thời gian khấu hao tương ứng nhanh chóng.</span>
+                </div>
+              )}
+            </div>
+
+            {/* Grid of Material Cards */}
+            <div style={{ flex: 1, overflowY: 'auto', padding: '16px', background: '#f8fafc' }}>
+              {searchedActiveRows.length === 0 ? (
+                <div style={{
+                  height: '100%',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  padding: '40px',
+                  color: 'var(--text-muted)',
+                  fontSize: '13.5px',
+                  background: '#ffffff',
+                  borderRadius: '12px',
+                  border: '1.5px dashed var(--border)'
+                }}>
+                  <PackageCheck size={36} style={{ color: '#cbd5e1', marginBottom: 12 }} />
+                  Không tìm thấy vật tư nào trong nhóm này.
+                </div>
+              ) : (
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fill, minmax(420px, 1fr))',
+                  gap: '12px'
+                }}>
+                  {searchedActiveRows.map((row) => {
+                    const meta = materialMetadataMap.get(String(row.maSAP || '').trim().toLowerCase()) || { tenVatTu: '—', dvt: '—' }
+                    const isSelected = selectedMaterials.has(row.maSAP)
+                    const closestGroup = getClosestMonthsGroup(row, depreciationOptions)
+                    const groupColors = getGroupColors(closestGroup)
+
+                    return (
+                      <div
+                        key={row.maSAP}
+                        onClick={() => {
+                          const newSelection = new Set(selectedMaterials)
+                          if (newSelection.has(row.maSAP)) {
+                            newSelection.delete(row.maSAP)
+                          } else {
+                            newSelection.add(row.maSAP)
+                          }
+                          setSelectedMaterials(newSelection)
+                        }}
+                        style={{
+                          background: closestGroup.months === 0 
+                            ? '#f1f5f9' 
+                            : (closestGroup.isApproved ? groupColors.bg : '#ffffff'),
+                          fontFamily: '"Roboto", sans-serif',
+                          borderRadius: '8px',
+                          border: isSelected ? '2px solid var(--primary)' : `1px solid ${groupColors.border}`,
+                          borderLeft: isSelected 
+                            ? '5px solid var(--primary)' 
+                            : (closestGroup.months === 0 
+                              ? '5px solid #64748b' 
+                              : (closestGroup.isApproved 
+                                ? `5px solid ${groupColors.fg}` 
+                                : `5px dashed ${groupColors.fg}`)),
+                          padding: '8px 16px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          gap: '12px',
+                          cursor: 'pointer',
+                          transition: 'all 0.15s',
+                          position: 'relative',
+                          boxShadow: isSelected ? '0 4px 10px -2px rgba(15, 88, 167, 0.1)' : 'var(--shadow-xs)'
+                        }}
+                      >
+                        {/* Main contents in a single horizontal row */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0, flex: 1 }}>
+                          {/* SAP Code */}
+                          <span style={{
+                            fontWeight: 800,
+                            fontSize: '11.5px',
+                            color: groupColors.fg,
+                            background: `${groupColors.fg}15`,
+                            padding: '1.5px 5px',
+                            borderRadius: '4px',
+                            fontFamily: '"Roboto", sans-serif',
+                            whiteSpace: 'nowrap',
+                            flexShrink: 0
+                          }}>
+                            {row.maSAP}
+                          </span>
+                          
+                          <span style={{ color: '#cbd5e1', flexShrink: 0 }}>•</span>
+                          
+                          {/* Material Name */}
+                          <span style={{
+                            fontWeight: 700,
+                            fontSize: '13px',
+                            color: '#1e293b',
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            fontFamily: '"Roboto", sans-serif',
+                            flex: 1,
+                            minWidth: 0
+                          }} title={meta.tenVatTu}>
+                            {meta.tenVatTu || '—'}
+                          </span>
+
+                          {/* Status Badge */}
+                          <span style={{
+                            fontSize: '10.5px',
+                            fontWeight: 800,
+                            padding: '2px 6px',
+                            borderRadius: '4px',
+                            background: closestGroup.months === 0 
+                              ? '#f1f5f9' 
+                              : (closestGroup.isApproved ? groupColors.fg : groupColors.bg),
+                            color: closestGroup.months === 0 
+                              ? '#475569' 
+                              : (closestGroup.isApproved ? '#ffffff' : groupColors.fg),
+                            border: `1px solid ${closestGroup.months === 0 
+                              ? '#cbd5e1' 
+                              : (closestGroup.isApproved ? groupColors.fg : groupColors.border)}`,
+                            fontFamily: '"Roboto", sans-serif',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            flexShrink: 0,
+                            marginLeft: '4px'
+                          }}>
+                            {closestGroup.months === 0 ? (
+                              <>⏱ Chưa thiết lập</>
+                            ) : closestGroup.isApproved ? (
+                              <>✓ {closestGroup.months}T (Đã duyệt)</>
+                            ) : (
+                              <>⏱ {closestGroup.months}T (Tạm tính)</>
+                            )}
+                          </span>
+                        </div>
+
+                        {/* Right side: Checkbox */}
+                        <div
+                          onClick={(e) => e.stopPropagation()} // Stop propagation so it doesn't double toggle
+                          style={{ padding: '2px', display: 'flex', alignItems: 'center', flexShrink: 0 }}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={(e) => {
+                              const newSelection = new Set(selectedMaterials)
+                              if (e.target.checked) {
+                                newSelection.add(row.maSAP)
+                              } else {
+                                newSelection.delete(row.maSAP)
+                              }
+                              setSelectedMaterials(newSelection)
+                            }}
+                            style={{
+                              width: '15px',
+                              height: '15px',
+                              cursor: 'pointer',
+                              accentColor: groupColors.fg
+                            }}
+                          />
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Custom Delete Depreciation Confirmation Modal */}
+      {depreciationToDelete !== null && (
+        <DeleteDepreciationConfirmModal
+          isOpen={depreciationToDelete !== null}
+          onClose={() => setDepreciationToDelete(null)}
+          onConfirm={() => {
+            const opt = depreciationToDelete
+            const newOpts = depreciationOptions.filter(o => o.months !== opt.months || o.isApproved !== opt.isApproved)
+            saveDepreciationOptions(newOpts)
+            if (selectedMonthsGroup.months === opt.months && selectedMonthsGroup.isApproved === opt.isApproved) {
+              setSelectedMonthsGroup({ months: 0, isApproved: false })
+            }
+
+            // Reset the materials that were in this group back to 0 (Chưa thiết lập)
+            const resetRows = materialPriceRows.map(row => {
+              const closest = getClosestMonthsGroup(row, depreciationOptions)
+              if (closest.months === opt.months && closest.isApproved === opt.isApproved) {
+                return { ...row, donGiaTrungBinh1Ngay: 0 }
+              }
+              return row
+            })
+            const alignedRows = alignMaterialDepreciationWithConfig(resetRows, newOpts)
+            setMaterialPriceRows(alignedRows)
+            localStorage.setItem('sgc_report_material_price_rows', JSON.stringify(alignedRows))
+
+            setDepreciationToDelete(null)
+            alert(`Đã xóa cấu hình khấu hao ${opt.months} tháng cục bộ thành công! Hãy bấm "Lưu dữ liệu" để đồng bộ lên Supabase.`)
+          }}
+          months={depreciationToDelete.months}
+        />
+      )}
     </div>
   )
 }
@@ -8163,6 +10652,8 @@ CREATE TABLE IF NOT EXISTS public.don_gia_vat_tu (
     don_gia_trung_binh numeric,
     don_gia_trung_binh_1_ngay numeric,
     phan_loai_vat_tu text,
+    is_approved_depreciation boolean DEFAULT false,
+    depreciation_months integer DEFAULT 0,
     created_at timestamp with time zone DEFAULT timezone('utc'::text, now())
 );
 
@@ -8171,7 +10662,29 @@ ALTER TABLE public.don_gia_vat_tu ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Allow public read" ON public.don_gia_vat_tu FOR SELECT USING (true);
 CREATE POLICY "Allow public insert" ON public.don_gia_vat_tu FOR INSERT WITH CHECK (true);
 CREATE POLICY "Allow public update" ON public.don_gia_vat_tu FOR UPDATE USING (true);
-CREATE POLICY "Allow public delete" ON public.don_gia_vat_tu FOR DELETE USING (true);`
+CREATE POLICY "Allow public delete" ON public.don_gia_vat_tu FOR DELETE USING (true);
+
+-- Bảng lưu cấu hình khấu hao (tháng)
+CREATE TABLE IF NOT EXISTS public.cau_hinh_khau_hao (
+    id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    months integer NOT NULL,
+    is_approved boolean DEFAULT false,
+    ma_sap text,
+    created_at timestamp with time zone DEFAULT timezone('utc'::text, now())
+);
+
+ALTER TABLE public.cau_hinh_khau_hao ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Allow public read" ON public.cau_hinh_khau_hao FOR SELECT USING (true);
+CREATE POLICY "Allow public insert" ON public.cau_hinh_khau_hao FOR INSERT WITH CHECK (true);
+CREATE POLICY "Allow public update" ON public.cau_hinh_khau_hao FOR UPDATE USING (true);
+CREATE POLICY "Allow public delete" ON public.cau_hinh_khau_hao FOR DELETE USING (true);
+
+-- Tạo các unique indexes để tránh trùng lặp cấu hình
+CREATE UNIQUE INDEX IF NOT EXISTS cau_hinh_khau_hao_global_idx ON public.cau_hinh_khau_hao (months, is_approved) WHERE ma_sap IS NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS cau_hinh_khau_hao_ma_sap_idx ON public.cau_hinh_khau_hao (ma_sap) WHERE ma_sap IS NOT NULL;
+
+-- Thêm một số giá trị mặc định ban đầu cho cấu hình chung
+INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (24, true), (36, true), (48, true), (60, true) ON CONFLICT (months, is_approved) WHERE ma_sap IS NULL DO NOTHING;`
 
   const formatDate = (date) => {
     if (!date) return '—'
@@ -14842,6 +17355,43 @@ ALTER TABLE public.don_kho ADD CONSTRAINT don_kho_ten_du_an_fkey
           </div>
         </details>
 
+        {/* SQL Queries / Upgrade Depreciation Schema */}
+        <details style={{ fontSize: 12, color: '#475569', border: '1px solid #c084fc', borderRadius: 8, padding: '8px 12px', background: '#faf5ff', marginBottom: 8 }}>
+          <summary style={{ fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, userSelect: 'none', color: '#7e22ce' }}>
+            <AlertCircle size={14} color="#9333ea" />
+            <span>Nâng cấp cấu trúc bảng "Đơn giá vật tư & Khấu hao"</span>
+          </summary>
+          <div style={{ marginTop: 8, paddingLeft: 4, display: 'flex', flexDirection: 'column', gap: 6, textAlign: 'left' }}>
+            <p style={{ margin: 0, fontSize: 11.5, color: '#475569', lineHeight: '1.5' }}>
+              Nếu bạn đã khởi tạo cơ sở dữ liệu từ trước và muốn cập nhật các cột mới cũng như gỡ bỏ khóa trùng lặp số tháng (để có thể lưu đồng thời số tháng trong cả nhóm Đã duyệt và Tạm tính), vui lòng chạy lệnh SQL sau trong <strong>SQL Editor</strong> của Supabase:
+            </p>
+            <pre style={{
+              margin: '6px 0',
+              padding: '8px 10px',
+              background: '#0f172a',
+              color: '#c084fc',
+              borderRadius: 6,
+              fontSize: 10.5,
+              overflowX: 'auto',
+              fontFamily: 'monospace',
+              lineHeight: '1.4'
+            }}>
+{`-- Nâng cấp thêm cột ma_sap cho bảng cau_hinh_khau_hao để lưu cấu hình theo vật tư bền vững
+ALTER TABLE public.cau_hinh_khau_hao ADD COLUMN IF NOT EXISTS ma_sap text;
+
+-- Gỡ bỏ ràng buộc UNIQUE cũ trên bảng cau_hinh_khau_hao để cho phép cấu hình theo từng vật tư cụ thể
+ALTER TABLE public.cau_hinh_khau_hao DROP CONSTRAINT IF EXISTS cau_hinh_khau_hao_months_key;
+ALTER TABLE public.cau_hinh_khau_hao DROP CONSTRAINT IF EXISTS cau_hinh_khau_hao_months_is_approved_key;
+
+-- Tạo unique index cho cấu hình chung (ma_sap IS NULL)
+CREATE UNIQUE INDEX IF NOT EXISTS cau_hinh_khau_hao_global_idx ON public.cau_hinh_khau_hao (months, is_approved) WHERE ma_sap IS NULL;
+
+-- Tạo unique index cho cấu hình riêng của từng vật tư (ma_sap IS NOT NULL)
+CREATE UNIQUE INDEX IF NOT EXISTS cau_hinh_khau_hao_ma_sap_idx ON public.cau_hinh_khau_hao (ma_sap) WHERE ma_sap IS NOT NULL;`}
+            </pre>
+          </div>
+        </details>
+
         {/* Footer actions */}
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, borderTop: '1px solid #f1f5f9', paddingTop: 12 }}>
           {currentSource === 'local' && (
@@ -14913,11 +17463,164 @@ ALTER TABLE public.don_kho ADD CONSTRAINT don_kho_ten_du_an_fkey
 }
 
 
+function SupabaseDbUpgradeModal({ isOpen, onClose }) {
+  const [copied, setCopied] = useState(false)
+
+  if (!isOpen) return null
+
+  const sqlCode = `-- Nâng cấp thêm cột ma_sap cho bảng cau_hinh_khau_hao để lưu cấu hình theo vật tư bền vững
+ALTER TABLE public.cau_hinh_khau_hao ADD COLUMN IF NOT EXISTS ma_sap text;
+
+-- Gỡ bỏ ràng buộc UNIQUE cũ trên bảng cau_hinh_khau_hao để cho phép cấu hình theo từng vật tư cụ thể
+ALTER TABLE public.cau_hinh_khau_hao DROP CONSTRAINT IF EXISTS cau_hinh_khau_hao_months_key;
+ALTER TABLE public.cau_hinh_khau_hao DROP CONSTRAINT IF EXISTS cau_hinh_khau_hao_months_is_approved_key;
+
+-- Tạo unique index cho cấu hình chung (ma_sap IS NULL)
+CREATE UNIQUE INDEX IF NOT EXISTS cau_hinh_khau_hao_global_idx ON public.cau_hinh_khau_hao (months, is_approved) WHERE ma_sap IS NULL;
+
+-- Tạo unique index cho cấu hình riêng của từng vật tư (ma_sap IS NOT NULL)
+CREATE UNIQUE INDEX IF NOT EXISTS cau_hinh_khau_hao_ma_sap_idx ON public.cau_hinh_khau_hao (ma_sap) WHERE ma_sap IS NOT NULL;`
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(sqlCode)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+
+  return (
+    <div style={{
+      position: 'fixed',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      backgroundColor: 'rgba(15, 23, 42, 0.65)',
+      backdropFilter: 'blur(5px)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      zIndex: 10003
+    }}>
+      <div style={{
+        background: '#ffffff',
+        borderRadius: 16,
+        width: '100%',
+        maxWidth: 580,
+        maxHeight: '90vh',
+        overflowY: 'auto',
+        padding: 24,
+        boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)',
+        border: '1px solid #e2e8f0',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 16
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #f1f5f9', paddingBottom: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <Database size={18} color="#7e22ce" />
+            <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: '#0f172a' }}>Nâng cấp cấu trúc cơ sở dữ liệu Supabase</h3>
+          </div>
+          <button onClick={onClose} style={{ background: 'transparent', border: 'none', color: '#64748b', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: 4 }}>
+            <X size={18} />
+          </button>
+        </div>
+
+        <div style={{
+          backgroundColor: '#faf5ff',
+          border: '1px solid #e9d5ff',
+          borderRadius: 8,
+          padding: '12px 16px',
+          fontSize: '13px',
+          color: '#581c87',
+          lineHeight: '1.5'
+        }}>
+          <strong>Tại sao cần nâng cấp?</strong>
+          <p style={{ margin: '6px 0 0 0' }}>
+            Bạn đang lưu số tháng khấu hao giống nhau (ví dụ: 6 tháng) ở cả 2 nhóm <strong>Đã duyệt</strong> và <strong>Tạm tính</strong>.
+            Cơ sở dữ liệu Supabase của bạn hiện có ràng buộc UNIQUE cũ, chỉ cho phép một số tháng xuất hiện một lần duy nhất.
+            Lệnh SQL dưới đây sẽ nâng cấp cấu trúc bảng để cho phép lưu trữ song song số tháng trùng lặp giữa các nhóm.
+          </p>
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <label style={{ fontSize: '12.5px', fontWeight: 600, color: '#475569' }}>Các bước thực hiện:</label>
+          <ol style={{ margin: 0, paddingLeft: 20, fontSize: '12.5px', color: '#475569', lineHeight: '1.6', display: 'flex', flexDirection: 'column', gap: 4 }}>
+            <li>Copy đoạn mã SQL bên dưới bằng nút <strong>Copy câu lệnh SQL</strong>.</li>
+            <li>Truy cập vào trang quản trị <strong>Supabase Dashboard</strong> của bạn.</li>
+            <li>Nhấp vào mục <strong>SQL Editor</strong> ở thanh menu bên trái.</li>
+            <li>Nhấp vào nút <strong>New Query</strong>, dán đoạn mã vừa copy vào khung soạn thảo.</li>
+            <li>Nhấp nút <strong>Run</strong> (hoặc nhấn Ctrl+Enter / Cmd+Enter) để thực thi.</li>
+          </ol>
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontSize: '12.5px', fontWeight: 600, color: '#475569' }}>Mã SQL nâng cấp:</span>
+            <button
+              onClick={handleCopy}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 4,
+                padding: '4px 10px',
+                background: copied ? '#22c55e' : '#f1f5f9',
+                color: copied ? '#ffffff' : '#475569',
+                border: '1px solid ' + (copied ? '#22c55e' : '#cbd5e1'),
+                borderRadius: 6,
+                fontSize: '11.5px',
+                fontWeight: 600,
+                cursor: 'pointer',
+                transition: 'all 0.15s'
+              }}
+            >
+              {copied ? 'Đã copy!' : 'Copy câu lệnh SQL'}
+            </button>
+          </div>
+          <pre style={{
+            margin: 0,
+            padding: '12px 14px',
+            background: '#0f172a',
+            color: '#c084fc',
+            borderRadius: 8,
+            fontSize: 11,
+            overflowX: 'auto',
+            fontFamily: 'monospace',
+            lineHeight: '1.4',
+            border: '1px solid #1e293b'
+          }}>
+            {sqlCode}
+          </pre>
+        </div>
+
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, borderTop: '1px solid #f1f5f9', paddingTop: 12 }}>
+          <button
+            onClick={onClose}
+            style={{
+              padding: '6px 14px',
+              borderRadius: 6,
+              border: '1px solid #cbd5e1',
+              background: '#ffffff',
+              color: '#475569',
+              fontSize: 13,
+              fontWeight: 600,
+              cursor: 'pointer'
+            }}
+          >
+            Đóng
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+
 // Helper functions for robust database access and column-case normalization
 function toSnakeCase(str) {
   if (str === 'maSAP') return 'ma_sap'
   if (str === 'maDonChuyenTiepLC') return 'ma_don_chuyen_tiep_lc'
   if (str === 'maDonChuyenTiepNB') return 'ma_don_chuyen_tiep_nb'
+  if (str === 'donGiaTrungBinh1Ngay') return 'don_gia_trung_binh_1_ngay'
   return str.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`)
 }
 
@@ -15142,6 +17845,176 @@ async function insertWithFallback(tableName, originalChunk) {
   throw new Error('Supabase từ chối đồng bộ dữ liệu. Đã thử đồng hóa viết hoa/thường và tự động gỡ các cột không có trong Table nhưng vẫn thất bại.')
 }
 
+async function upsertWithFallback(tableName, originalChunk, keyColumn) {
+  // If we already know the casing style for this table, use it directly!
+  const cachedStyle = tableCasingStyleCache[tableName]
+  if (cachedStyle) {
+    const styledChunk = originalChunk.map(row => 
+      filterRowByBlacklist(convertToCasingStyle(row, cachedStyle), tableName)
+    )
+    let styledKey = keyColumn
+    if (cachedStyle === 'lower') styledKey = keyColumn.toLowerCase()
+    else if (cachedStyle === 'snake') styledKey = toSnakeCase(keyColumn)
+    
+    const res = await tryUpsertWithSelfHealing(tableName, styledChunk, styledKey, cachedStyle)
+    if (res.success) return { success: true }
+    console.warn(`Cached style "${cachedStyle}" failed for upsert ${tableName}:`, res.error?.message || res.error)
+  }
+
+  // First try direct straight upsert across casings WITHOUT self-healing to find the perfect style 
+  const stylesToTry = ['snake', 'lower', 'camel']
+  for (const style of stylesToTry) {
+    const styledChunk = originalChunk.map(row => 
+      filterRowByBlacklist(convertToCasingStyle(row, style), tableName)
+    )
+    let styledKey = keyColumn
+    if (style === 'lower') styledKey = keyColumn.toLowerCase()
+    else if (style === 'snake') styledKey = toSnakeCase(keyColumn)
+    
+    const { error } = await supabase.from(tableName).upsert(styledChunk, { onConflict: styledKey })
+    if (!error) {
+      console.log(`[Casing Finder] Phát hiện cấu trúc table "${tableName}" trùng khớp hoàn hảo với kiểu: "${style}"`)
+      tableCasingStyleCache[tableName] = style
+      return { success: true }
+    }
+    
+    // Check if the error is due to missing columns or something else.
+    const errMsg = error.message || ''
+    const isMissingColumnError = 
+      (errMsg.toLowerCase().includes('column') || errMsg.toLowerCase().includes('property') || errMsg.toLowerCase().includes('relation')) &&
+      (errMsg.toLowerCase().includes('not exist') || errMsg.toLowerCase().includes('could not find') || errMsg.toLowerCase().includes('schema cache'))
+      
+    const isNoUniqueConstraintError = 
+      error.code === '42P10' || 
+      errMsg.toLowerCase().includes('there is no unique or exclusion constraint') ||
+      errMsg.toLowerCase().includes('on conflict specification')
+
+    if (!isMissingColumnError && !isNoUniqueConstraintError) {
+      // If it's a constraint, RLS or real error, bubble it up.
+      throw error
+    }
+  }
+
+  // If all straight upserts failed, we attempt with Self Healing
+  const healingOrder = ['snake', 'lower', 'camel']
+  const styleErrors = {}
+  for (const style of healingOrder) {
+    const styledChunk = originalChunk.map(row => 
+      filterRowByBlacklist(convertToCasingStyle(row, style), tableName)
+    )
+    let styledKey = keyColumn
+    if (style === 'lower') styledKey = keyColumn.toLowerCase()
+    else if (style === 'snake') styledKey = toSnakeCase(keyColumn)
+    
+    const res = await tryUpsertWithSelfHealing(tableName, styledChunk, styledKey, style)
+    if (res.success) {
+      console.log(`[Casing Finder/Healed] Đồng bộ thành công trên "${tableName}" kiểu "${style}" sau khi loại bỏ các cột không dùng`)
+      tableCasingStyleCache[tableName] = style
+      return { success: true }
+    }
+    styleErrors[style] = res.error
+  }
+
+  const chosenError = styleErrors['snake'] || styleErrors['lower'] || styleErrors['camel']
+  const detailMsg = chosenError?.message || (typeof chosenError === 'string' ? chosenError : JSON.stringify(chosenError))
+  throw new Error(`Supabase từ chối đồng bộ dữ liệu. Đã thử đồng hóa viết hoa/thường và tự động gỡ các cột không có trong Table nhưng vẫn thất bại. Chi tiết lỗi từ DB: ${detailMsg || 'Không rõ nguyên nhân'}`)
+}
+
+async function tryUpsertWithSelfHealing(tableName, payload, keyColumn, style) {
+  let currentPayload = JSON.parse(JSON.stringify(payload))
+  
+  for (let retry = 0; retry < 50; retry++) {
+    const { error } = await supabase
+      .from(tableName)
+      .upsert(currentPayload, { onConflict: keyColumn })
+      
+    if (!error) {
+      return { success: true }
+    }
+    
+    const errMsg = error.message || ''
+    const isNoUniqueConstraintError = 
+      error.code === '42P10' || 
+      errMsg.toLowerCase().includes('there is no unique or exclusion constraint') ||
+      errMsg.toLowerCase().includes('on conflict specification')
+
+    if (isNoUniqueConstraintError) {
+      console.warn(`[Self-Healing Upsert] Phát hiện lỗi thiếu ràng buộc UNIQUE trên cột khóa '${keyColumn}' của bảng '${tableName}'. Tiến hành tự động chuyển sang cơ chế xóa-và-chèn (delete-and-insert) để thay thế cho upsert...`)
+      try {
+        const keyValues = currentPayload
+          .map(row => row[keyColumn])
+          .filter(val => val !== undefined && val !== null)
+
+        if (keyValues.length > 0) {
+          const { error: delError } = await supabase
+            .from(tableName)
+            .delete()
+            .in(keyColumn, keyValues)
+
+          if (delError) {
+            console.error(`[Self-Healing Upsert] Xóa bản ghi cũ thất bại:`, delError.message)
+            return { success: false, error: delError }
+          }
+        }
+
+        const { error: insError } = await supabase
+          .from(tableName)
+          .insert(currentPayload)
+
+        if (insError) {
+          console.error(`[Self-Healing Upsert] Chèn bản ghi mới thất bại sau khi xóa:`, insError.message)
+          return { success: false, error: insError }
+        }
+
+        console.log(`[Self-Healing Upsert] Đồng bộ xóa-và-chèn thành công cho bảng '${tableName}'!`)
+        return { success: true }
+      } catch (fallbackErr) {
+        return { success: false, error: fallbackErr }
+      }
+    }
+
+    const missingField = extractMissingField(errMsg)
+    
+    if (missingField) {
+      // Nếu cột bị thiếu chính là khóa chính/khóa so khớp (onConflict), tuyệt đối không gỡ bỏ nó.
+      // Thay vào đó, trả về thất bại luôn để vòng lặp thử style khác (ví dụ từ camel sang snake).
+      const isKeyCol = 
+        missingField.toLowerCase() === keyColumn.toLowerCase() ||
+        toSnakeCase(missingField).toLowerCase() === keyColumn.toLowerCase() ||
+        missingField.replace(/_/g, '').toLowerCase() === keyColumn.replace(/_/g, '').toLowerCase()
+        
+      if (isKeyCol) {
+        return { success: false, error }
+      }
+
+      console.warn(`[Self-Healing Upsert] Loại bỏ cột không tồn tại '${missingField}' trên bảng '${tableName}' và thử lại...`)
+      
+      // Update our global blacklist for subsequent chunks & retry
+      if (!blacklistedColumnsCache[tableName]) {
+        blacklistedColumnsCache[tableName] = []
+      }
+      if (!blacklistedColumnsCache[tableName].includes(missingField)) {
+        blacklistedColumnsCache[tableName].push(missingField)
+      }
+      
+      currentPayload.forEach(row => {
+        delete row[missingField]
+        delete row[missingField.toLowerCase()]
+        delete row[toSnakeCase(missingField)]
+        delete row[missingField.replace(/_/g, '')]
+      })
+      
+      if (currentPayload.length > 0 && Object.keys(currentPayload[0]).length === 0) {
+        break
+      }
+      continue
+    }
+    
+    return { success: false, error }
+  }
+  return { success: false, error: new Error('Không thể tự khắc phục cột bị thiếu sau nhiều lần thử') }
+}
+
 // ─── Reset sequence của bảng về MAX(id)+1 hoặc về 1 nếu bảng trống ──────────
 // Yêu cầu: đã tạo 2 functions trên Supabase SQL Editor (xem hướng dẫn trong app)
 async function resetTableSequence(tableName) {
@@ -15362,6 +18235,7 @@ export default function App() {
   const [deleteFileType, setDeleteFileType] = useState(null) // 'giao' | 'nhan'
   const [showDeleteProjectModal, setShowDeleteProjectModal] = useState(false)
   const [showConfigModal, setShowConfigModal] = useState(false)
+  const [showDbUpgradeModal, setShowDbUpgradeModal] = useState(false)
   const [supabaseAuthError, setSupabaseAuthError] = useState(false)
   const [projectToEdit, setProjectToEdit] = useState('')
   const [projectToDelete, setProjectToDelete] = useState('')
@@ -15419,6 +18293,8 @@ export default function App() {
   })
 
   const [loadingDbPrices, setLoadingDbPrices] = React.useState(false)
+  const [lastSyncedDepreciationOptions, setLastSyncedDepreciationOptions] = React.useState(null)
+  const [lastSyncedMaterialPriceRows, setLastSyncedMaterialPriceRows] = React.useState(null)
 
   const loadPricesFromSupabase = React.useCallback(async () => {
     if (!isSupabaseConfigured) return
@@ -15455,6 +18331,7 @@ export default function App() {
       if (!countErr && serverCount !== null && cachedRows.length > 0 && serverCount === cachedRows.length) {
         console.log('[Cache Tối Ưu] Đơn giá vật tư trùng khớp số lượng. Bỏ qua tải tải từ Supabase.')
         setLoadingDbPrices(false)
+        setLastSyncedMaterialPriceRows(cachedRows)
         return
       }
 
@@ -15464,21 +18341,85 @@ export default function App() {
       
       if (error) {
         console.error('Lỗi khi tải đơn giá từ Supabase:', error)
+        setLastSyncedMaterialPriceRows(cachedRows)
       } else if (data) {
-        const rows = data.map(item => ({
-          maSAP: item.ma_sap,
-          khoiLuongTong: item.khoi_luong_tong || 0,
-          thanhTien: item.thanh_tien || 0,
-          donGiaTrungBinh: item.don_gia_trung_binh || 0,
-          donGiaTrungBinh1Ngay: item.don_gia_trung_binh_1_ngay || 0,
-          phanLoaiVatTu: item.phan_loai_vat_tu || ''
-        }))
-        setMaterialPriceRows(rows)
-        localStorage.setItem('sgc_report_material_price_rows', JSON.stringify(rows))
+        // Tải các cấu hình khấu hao riêng của từng vật tư từ cau_hinh_khau_hao làm nguồn chính bền vững
+        const configMap = new Map()
+        try {
+          const { data: configData, error: configError } = await supabase
+            .from('cau_hinh_khau_hao')
+            .select('*')
+            .not('ma_sap', 'is', null)
+          
+          if (!configError && configData) {
+            configData.forEach(item => {
+              if (item.ma_sap) {
+                configMap.set(String(item.ma_sap).trim().toLowerCase(), {
+                  months: item.months || 0,
+                  isApproved: item.is_approved !== undefined ? !!item.is_approved : false
+                })
+              }
+            })
+          }
+        } catch (e) {
+          console.warn('Lỗi khi tải cấu hình khấu hao chi tiết:', e)
+        }
+
+        const rows = data.map(item => {
+          const sapKey = String(item.ma_sap || '').trim().toLowerCase()
+          const config = configMap.get(sapKey)
+          return {
+            maSAP: item.ma_sap,
+            khoiLuongTong: item.khoi_luong_tong || 0,
+            thanhTien: item.thanh_tien || 0,
+            donGiaTrungBinh: item.don_gia_trung_binh || 0,
+            donGiaTrungBinh1Ngay: item.don_gia_trung_binh_1_ngay || 0,
+            phanLoaiVatTu: item.phan_loai_vat_tu || '',
+            isApprovedDepreciation: config ? config.isApproved : (item.is_approved_depreciation !== undefined ? !!item.is_approved_depreciation : false),
+            depreciationMonths: config ? config.months : (item.depreciation_months || 0)
+          }
+        })
+        let localOptions = []
+        try {
+          const saved = localStorage.getItem('sgc_depreciation_options_v2')
+          if (saved) {
+            const parsed = JSON.parse(saved)
+            if (Array.isArray(parsed) && parsed.length > 0 && typeof parsed[0] === 'object' && parsed[0] !== null) {
+              const unique = []
+              const seen = new Set()
+              parsed.forEach(opt => {
+                const key = `${opt.months}-${!!opt.isApproved}`
+                if (!seen.has(key)) {
+                  seen.add(key)
+                  unique.push(opt)
+                }
+              })
+              localOptions = unique.sort((a, b) => a.months - b.months || (a.isApproved ? 1 : 0) - (b.isApproved ? 1 : 0))
+            }
+          }
+        } catch (e) {}
+        if (localOptions.length === 0) {
+          localOptions = [
+            { months: 0, isApproved: false },
+            { months: 12, isApproved: true },
+            { months: 24, isApproved: true },
+            { months: 36, isApproved: true },
+            { months: 48, isApproved: true },
+            { months: 60, isApproved: true },
+            { months: 72, isApproved: true },
+            { months: 120, isApproved: true }
+          ]
+        }
+
+        const alignedRows = alignMaterialDepreciationWithConfig(rows, localOptions)
+
+        setMaterialPriceRows(alignedRows)
+        setLastSyncedMaterialPriceRows(alignedRows)
+        localStorage.setItem('sgc_report_material_price_rows', JSON.stringify(alignedRows))
 
         const prices = {}
         const classifications = {}
-        rows.forEach(r => {
+        alignedRows.forEach(r => {
           prices[r.maSAP] = r.donGiaTrungBinh
           classifications[r.maSAP] = r.phanLoaiVatTu
         })
@@ -15486,6 +18427,8 @@ export default function App() {
         setMaterialClassifications(classifications)
         localStorage.setItem('sgc_report_material_prices', JSON.stringify(prices))
         localStorage.setItem('sgc_report_material_classifications', JSON.stringify(classifications))
+      } else {
+        setLastSyncedMaterialPriceRows([])
       }
     } catch (err) {
       console.error('Lỗi khi truy vấn Supabase:', err)
@@ -15499,10 +18442,27 @@ export default function App() {
   }, [loadPricesFromSupabase])
 
   const handlePriceChange = React.useCallback((maSAP, value) => {
+    const numVal = parseFloat(value) || 0
     setMaterialPrices(prev => {
-      const updated = { ...prev, [maSAP]: value }
+      const updated = { ...prev, [maSAP]: numVal }
       localStorage.setItem('sgc_report_material_prices', JSON.stringify(updated))
       return updated
+    })
+
+    setMaterialPriceRows(prev => {
+      const copy = prev.map(r => {
+        if (r.maSAP === maSAP) {
+          const months = r.depreciationMonths || 0
+          let newDaily = 0
+          if (months > 0) {
+            newDaily = Math.round(numVal / (months * 30.417))
+          }
+          return { ...r, donGiaTrungBinh: numVal, donGiaTrungBinh1Ngay: newDaily }
+        }
+        return r
+      })
+      localStorage.setItem('sgc_report_material_price_rows', JSON.stringify(copy))
+      return copy
     })
   }, [])
 
@@ -16678,10 +19638,10 @@ export default function App() {
   const tabs = [
     { id: 'chung', label: 'Đơn chung', icon: <ClipboardList size={15} /> },
     { id: 'kho', label: 'Kho dự án', icon: <Warehouse size={15} /> },
-    { id: 'dongia', label: 'Phân nhóm Vật tư', icon: <PackageCheck size={15} /> },
+    { id: 'dongia', label: 'Phân nhóm vật tư', icon: <PackageCheck size={15} /> },
     { id: 'inventory', label: 'Báo cáo xuất nhập tồn', icon: <Database size={15} /> },
     { id: 'inventory_real', label: 'Báo cáo xuất nhập thực', icon: <BarChart3 size={15} /> },
-    { id: 'depreciation_assets', label: 'Thống kê Tài sản khấu hao', icon: <DollarSign size={15} /> },
+    { id: 'depreciation_assets', label: 'Báo cáo tài sản khấu hao', icon: <DollarSign size={15} /> },
     { id: 'accounts', label: 'Quản lý tài khoản', icon: <Users size={15} /> },
   ]
 
@@ -17106,7 +20066,7 @@ export default function App() {
                 Xử lý & Tổng hợp
               </div>
 
-              {tabs.filter(t => t.id === 'inventory' || t.id === 'inventory_real').map(t => {
+              {tabs.filter(t => t.id === 'inventory' || t.id === 'inventory_real' || t.id === 'depreciation_assets').map(t => {
                 const isSelected = tab === t.id
 
                 return (
@@ -17323,6 +20283,14 @@ export default function App() {
                 materialClassifications={materialClassifications}
                 setMaterialClassifications={setMaterialClassifications}
                 loadingDbPrices={loadingDbPrices}
+                allProjects={allProjects}
+                customCategoryMap={customCategoryMap}
+                handleClassificationChange={handleClassificationChange}
+                handlePriceChange={handlePriceChange}
+                lastSyncedDepreciationOptions={lastSyncedDepreciationOptions}
+                setLastSyncedDepreciationOptions={setLastSyncedDepreciationOptions}
+                lastSyncedMaterialPriceRows={lastSyncedMaterialPriceRows}
+                setLastSyncedMaterialPriceRows={setLastSyncedMaterialPriceRows}
               />
             )}
             {tab === 'inventory' && (
@@ -17414,6 +20382,11 @@ export default function App() {
       <SupabaseConfigModal
         isOpen={showConfigModal}
         onClose={() => setShowConfigModal(false)}
+      />
+
+      <SupabaseDbUpgradeModal
+        isOpen={showDbUpgradeModal}
+        onClose={() => setShowDbUpgradeModal(false)}
       />
 
       <DeleteFileModal

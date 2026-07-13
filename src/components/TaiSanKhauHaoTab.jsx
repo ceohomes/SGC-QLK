@@ -924,6 +924,7 @@ export default function TaiSanKhauHaoTab({
             dvt: g.dvt,
             totalStock: Math.round(stock * 1000) / 1000,
             totalValue,
+            unitPrice: averageUnitPrice,
             monthlyStock: monthlyStockSum
           })
         }
@@ -1000,15 +1001,21 @@ export default function TaiSanKhauHaoTab({
     const stockII = itemsII.reduce((sum, item) => sum + item.totalStock, 0)
 
     const monthlyDiff = {}
+    const monthlyAmtDiff = {}
     for (let m = 1; m <= 12; m++) {
       const valI = itemsI.reduce((sum, item) => sum + (item.monthlyStock[`T${m}`] || 0), 0)
       const valII = itemsII.reduce((sum, item) => sum + (item.monthlyStock[`T${m}`] || 0), 0)
       monthlyDiff[`T${m}`] = Math.round((valI - valII) * 1000) / 1000
+
+      const amtI = itemsI.reduce((sum, item) => sum + (item.monthlyStock[`T${m}`] || 0) * (item.unitPrice || 0), 0)
+      const amtII = itemsII.reduce((sum, item) => sum + (item.monthlyStock[`T${m}`] || 0) * (item.unitPrice || 0), 0)
+      monthlyAmtDiff[`T${m}`] = Math.round(amtI - amtII)
     }
 
     return {
       stockDiff: Math.round((stockI - stockII) * 1000) / 1000,
-      monthlyDiff
+      monthlyDiff,
+      monthlyAmtDiff
     }
   }, [groupedProjectMonthlySummaries])
 
@@ -1288,8 +1295,8 @@ export default function TaiSanKhauHaoTab({
   const projectStocksByMaterial = useMemo(() => {
     const map = {} // { [maSAP]: { [projName]: stock } }
     
-    // Dates for the selected month M in selectedYear
-    const cutoffDate = new Date(selectedYear, selectedMonth, 0, 23, 59, 59, 999)
+    // Dates up to the end of selectedYear
+    const cutoffDate = new Date(selectedYear, 12, 0, 23, 59, 59, 999)
     const sourceRows = (chungRows && chungRows.length > 0) ? chungRows : [...giaoRows, ...nhanRows]
     
     sourceRows.forEach(r => {
@@ -1351,11 +1358,13 @@ export default function TaiSanKhauHaoTab({
     })
 
     return map
-  }, [uniquePhysicalWarehouses, selectedYear, selectedMonth, chungRows, giaoRows, nhanRows, customCategoryMap, materialClassifications])
+  }, [uniquePhysicalWarehouses, selectedYear, chungRows, giaoRows, nhanRows, customCategoryMap, materialClassifications])
 
   const materialStatsData = useMemo(() => {
     const groups = {}
-    const projLower = localProject ? localProject.trim().toLowerCase() : ''
+    // We ignore localProject because "Thống kê theo vật tư" must always compile across all BCH warehouses
+    const targetProject = ''
+    const projLower = ''
 
     const processRow = (r) => {
       const nhanUnit = String(r.donViNhan || '').trim()
@@ -1372,7 +1381,7 @@ export default function TaiSanKhauHaoTab({
       let receivedVal = 0
       let issuedVal = 0
 
-      if (localProject) {
+      if (targetProject) {
         const nhanLower = nhanUnit.toLowerCase()
         const giaoLower = giaoUnit.toLowerCase()
         const isNhan = nhanLower === projLower
@@ -1458,9 +1467,9 @@ export default function TaiSanKhauHaoTab({
       })
     })
 
-    // Dates for the selected month M in selectedYear
-    const startOfMonth = new Date(selectedYear, selectedMonth - 1, 1, 0, 0, 0, 0)
-    const endOfMonth = new Date(selectedYear, selectedMonth, 0, 23, 59, 59, 999)
+    // Dates for the selectedYear
+    const startOfYear = new Date(selectedYear, 0, 1, 0, 0, 0, 0)
+    const endOfYear = new Date(selectedYear, 12, 0, 23, 59, 59, 999)
 
     const list = Object.values(groups).map(g => {
       let openStock = 0
@@ -1470,9 +1479,9 @@ export default function TaiSanKhauHaoTab({
 
       g.rawTransactions.forEach(t => {
         if (!t.date) return
-        if (t.date < startOfMonth) {
+        if (t.date < startOfYear) {
           openStock += (t.receivedVal - t.issuedVal)
-        } else if (t.date <= endOfMonth) {
+        } else if (t.date <= endOfYear) {
           inMonthReceived += t.receivedVal
           inMonthIssued += t.issuedVal
           if (t.receivedVal > 0 && (!latestReceivedDate || t.date > latestReceivedDate)) {
@@ -1512,13 +1521,13 @@ export default function TaiSanKhauHaoTab({
     })
 
     return list
-  }, [chungRows, giaoRows, nhanRows, localProject, selectedYear, selectedMonth, customCategoryMap, materialClassifications, materialPriceRows, materialPrices, uniquePhysicalWarehouses, projectStocksByMaterial])
+  }, [chungRows, giaoRows, nhanRows, localProject, selectedYear, customCategoryMap, materialClassifications, materialPriceRows, materialPrices, uniquePhysicalWarehouses, projectStocksByMaterial])
 
   const filteredMaterialStatsData = useMemo(() => {
     const text = searchTerm.toLowerCase().trim()
     return materialStatsData.filter(item => {
       // Show item if it has any active stock/activity or if search is active
-      const hasActivity = item.openStock !== 0 || item.inMonthReceived !== 0 || item.inMonthIssued !== 0 || item.closingStock !== 0
+      const hasActivity = item.openStock !== 0 || item.inMonthReceived !== 0 || item.inMonthIssued !== 0 || item.closingStock !== 0 || item.totalStock !== 0
       if (!hasActivity && !text) return false
 
       if (!text) return true
@@ -1994,19 +2003,24 @@ export default function TaiSanKhauHaoTab({
       const ws = {}
 
       const columns = [
-        { key: 'STT', label: 'STT', width: 50 },
-        { key: 'projectName', label: 'Kho / Dự án', width: 280 },
-        { key: 'maSAP', label: 'Mã SAP', width: 110 },
-        { key: 'tenVatTu', label: 'Tên vật tư', width: 280 },
-        { key: 'dvt', label: 'Đvt', width: 80 },
-        { key: 'totalStock', label: 'Tổng tồn kho', width: 130 },
+        { key: 'STT', width: 50 },
+        { key: 'projectName', width: 280 },
+        { key: 'maSAP', width: 110 },
+        { key: 'tenVatTu', width: 280 },
+        { key: 'dvt', width: 80 },
+        { key: 'totalStock', width: 130 },
+        { key: 'unitPrice', width: 140 },
       ]
 
       for (let m = 1; m <= 12; m++) {
-        columns.push({ key: `T${m}`, label: `T${m}`, width: 65 })
+        columns.push({ key: `T${m}`, width: 65 })
       }
 
-      columns.push({ key: 'totalValue', label: 'Giá trị tồn tạm tính (đ)', width: 160 })
+      for (let m = 1; m <= 12; m++) {
+        columns.push({ key: `Amt_T${m}`, width: 110 })
+      }
+
+      const maxColIdx = columns.length - 1
 
       ws['!cols'] = columns.map(c => ({ wpx: c.width }))
 
@@ -2035,11 +2049,20 @@ export default function TaiSanKhauHaoTab({
         }
       }
 
-      const maxColIdx = columns.length - 1
       ws['!merges'] = [
         { s: { r: 0, c: 0 }, e: { r: 0, c: maxColIdx } },
         { s: { r: 1, c: 0 }, e: { r: 1, c: maxColIdx } },
-        { s: { r: 2, c: 0 }, e: { r: 2, c: maxColIdx } }
+        { s: { r: 2, c: 0 }, e: { r: 2, c: maxColIdx } },
+        // Header row merges
+        { s: { r: 4, c: 0 }, e: { r: 5, c: 0 } }, // STT
+        { s: { r: 4, c: 1 }, e: { r: 5, c: 1 } }, // ProjectName
+        { s: { r: 4, c: 2 }, e: { r: 5, c: 2 } }, // SAP
+        { s: { r: 4, c: 3 }, e: { r: 5, c: 3 } }, // Tên vật tư
+        { s: { r: 4, c: 4 }, e: { r: 5, c: 4 } }, // Đvt
+        { s: { r: 4, c: 5 }, e: { r: 5, c: 5 } }, // Tổng tồn kho
+        { s: { r: 4, c: 6 }, e: { r: 5, c: 6 } }, // Đơn giá tháng
+        { s: { r: 4, c: 7 }, e: { r: 4, c: 18 } }, // KHỐI LƯỢNG
+        { s: { r: 4, c: 19 }, e: { r: 4, c: 30 } }, // THÀNH TIỀN
       ]
 
       let excelRowIdx = 5
@@ -2054,28 +2077,54 @@ export default function TaiSanKhauHaoTab({
         return label
       }
 
-      // Write headers
-      columns.forEach((col, colIdx) => {
-        const cellRef = `${getColLabel(colIdx)}${excelRowIdx}`
-        const isMonthCol = col.key.startsWith('T') && col.key.length <= 3
-        const bg = isMonthCol ? '1D4ED8' : '1E3A8A'
-
-        ws[cellRef] = {
-          v: col.label,
-          t: 's',
-          s: {
-            fill: { fgColor: { rgb: bg } },
-            font: { name: 'Segoe UI', sz: 10, bold: true, color: { rgb: 'FFFFFF' } },
-            alignment: { horizontal: 'center', vertical: 'center', wrapText: true },
-            border: {
-              top: { style: 'thin', color: { rgb: '475569' } },
-              bottom: { style: 'medium', color: { rgb: '1E293B' } },
-              left: { style: 'thin', color: { rgb: '475569' } },
-              right: { style: 'thin', color: { rgb: '475569' } }
-            }
+      // Helper to generate cell with styles
+      const createHeaderCell = (val, bg) => ({
+        v: val,
+        t: 's',
+        s: {
+          fill: { fgColor: { rgb: bg } },
+          font: { name: 'Segoe UI', sz: 10, bold: true, color: { rgb: 'FFFFFF' } },
+          alignment: { horizontal: 'center', vertical: 'center', wrapText: true },
+          border: {
+            top: { style: 'thin', color: { rgb: '475569' } },
+            bottom: { style: 'thin', color: { rgb: '475569' } },
+            left: { style: 'thin', color: { rgb: '475569' } },
+            right: { style: 'thin', color: { rgb: '475569' } }
           }
         }
       })
+
+      // Write headers Row 5 (excelRowIdx = 5, which is row index 4 in 0-based index)
+      ws['A5'] = createHeaderCell('STT', '1E3A8A')
+      ws['B5'] = createHeaderCell('Kho / Dự án', '1E3A8A')
+      ws['C5'] = createHeaderCell('Mã SAP', '1E3A8A')
+      ws['D5'] = createHeaderCell('Tên vật tư', '1E3A8A')
+      ws['E5'] = createHeaderCell('Đvt', '1E3A8A')
+      ws['F5'] = createHeaderCell('Tổng tồn kho', '1E3A8A')
+      ws['G5'] = createHeaderCell('KHỐI LƯỢNG TỒN KHO THEO THÁNG', '1D4ED8')
+      ws['S5'] = createHeaderCell('Đơn giá tháng', '1E3A8A')
+      ws['T5'] = createHeaderCell('THÀNH TIỀN TỒN KHO THEO THÁNG', '047857')
+
+      // Fill empty cells for merged ranges in row 5 so borders look nice
+      for (let c = 7; c <= 17; c++) ws[`${getColLabel(c)}5`] = createHeaderCell('', '1D4ED8')
+      for (let c = 20; c <= 30; c++) ws[`${getColLabel(c)}5`] = createHeaderCell('', '047857')
+
+      // Write headers Row 6 (excelRowIdx = 6, which is row index 5 in 0-based index)
+      ws['A6'] = createHeaderCell('', '1E3A8A')
+      ws['B6'] = createHeaderCell('', '1E3A8A')
+      ws['C6'] = createHeaderCell('', '1E3A8A')
+      ws['D6'] = createHeaderCell('', '1E3A8A')
+      ws['E6'] = createHeaderCell('', '1E3A8A')
+      ws['F6'] = createHeaderCell('', '1E3A8A')
+      for (let m = 1; m <= 12; m++) {
+        ws[`${getColLabel(5 + m)}6`] = createHeaderCell(`T${m}`, '1D4ED8')
+      }
+      ws['S6'] = createHeaderCell('', '1E3A8A')
+      for (let m = 1; m <= 12; m++) {
+        ws[`${getColLabel(18 + m)}6`] = createHeaderCell(`T${m}`, '047857')
+      }
+
+      excelRowIdx = 6 // set to 6 since we have written rows 5 and 6
 
       // Write groups
       groupedProjectMonthlySummaries.forEach((group) => {
@@ -2120,13 +2169,15 @@ export default function TaiSanKhauHaoTab({
             item.dvt,
             item.totalStock,
             ...[...Array(12)].map((_, i) => item.monthlyStock[`T${i + 1}`] || 0),
-            item.totalValue
+            item.unitPrice || 0,
+            ...[...Array(12)].map((_, i) => (item.monthlyStock[`T${i + 1}`] || 0) * (item.unitPrice || 0))
           ]
 
           rowValues.forEach((val, colIdx) => {
             const cellRef = `${getColLabel(colIdx)}${excelRowIdx}`
             const isNum = typeof val === 'number'
-            const isMonthCol = colIdx >= 6 && colIdx < 18
+            const isQtyMonthCol = colIdx >= 6 && colIdx < 18
+            const isAmtMonthCol = colIdx >= 19 && colIdx < 31
 
             const baseStyle = {
               font: { name: 'Segoe UI', sz: 9.5 },
@@ -2142,13 +2193,16 @@ export default function TaiSanKhauHaoTab({
               }
             }
 
-            if (isMonthCol) {
+            if (isQtyMonthCol) {
               baseStyle.fill = { fgColor: { rgb: 'F0F9FF' } }
+            } else if (isAmtMonthCol) {
+              baseStyle.fill = { fgColor: { rgb: 'ECFDF5' } }
             }
 
             const cellObj = { v: val === 0 && colIdx >= 5 ? '' : val, t: isNum ? 'n' : 's', s: baseStyle }
             if (isNum) {
-              cellObj.z = colIdx === maxColIdx ? '#,##0;(#,##0);"-"' : '#,##0.00;(#,##0.00);"-"'
+              const useNoDecimals = colIdx === 18 || isAmtMonthCol
+              cellObj.z = useNoDecimals ? '#,##0;(#,##0);"-"' : '#,##0.00;(#,##0.00);"-"'
             }
             ws[cellRef] = cellObj
           })
@@ -2157,10 +2211,11 @@ export default function TaiSanKhauHaoTab({
         // Group total row
         excelRowIdx++
         const groupStock = group.items.reduce((sum, item) => sum + item.totalStock, 0)
-        const groupValue = group.items.reduce((sum, item) => sum + item.totalValue, 0)
         const groupMonthly = {}
+        const groupMonthlyAmount = {}
         for (let m = 1; m <= 12; m++) {
           groupMonthly[`T${m}`] = group.items.reduce((sum, item) => sum + (item.monthlyStock[`T${m}`] || 0), 0)
+          groupMonthlyAmount[`T${m}`] = group.items.reduce((sum, item) => sum + (item.monthlyStock[`T${m}`] || 0) * (item.unitPrice || 0), 0)
         }
 
         const totalRowValues = [
@@ -2171,16 +2226,18 @@ export default function TaiSanKhauHaoTab({
           '',
           groupStock,
           ...[...Array(12)].map((_, i) => groupMonthly[`T${i + 1}`] || 0),
-          groupValue
+          '',
+          ...[...Array(12)].map((_, i) => groupMonthlyAmount[`T${i + 1}`] || 0)
         ]
 
         totalRowValues.forEach((val, colIdx) => {
-          const actualColIdx = colIdx === 0 ? 0 : colIdx
+          const actualColIdx = colIdx
           if (colIdx >= 1 && colIdx <= 4) return // merged
 
           const cellRef = `${getColLabel(actualColIdx)}${excelRowIdx}`
           const isNum = typeof val === 'number'
-          const isMonthCol = actualColIdx >= 6 && actualColIdx < 18
+          const isQtyMonthCol = actualColIdx >= 6 && actualColIdx < 18
+          const isAmtMonthCol = actualColIdx >= 19 && actualColIdx < 31
 
           const baseStyle = {
             font: { name: 'Segoe UI', sz: 9.5, bold: true, color: { rgb: '1E3A8A' } },
@@ -2197,13 +2254,17 @@ export default function TaiSanKhauHaoTab({
             }
           }
 
-          if (isMonthCol) {
+          if (isQtyMonthCol) {
             baseStyle.fill = { fgColor: { rgb: 'E0F2FE' } }
+          } else if (isAmtMonthCol) {
+            baseStyle.fill = { fgColor: { rgb: 'D1FAE5' } }
+            baseStyle.font.color = { rgb: '047857' }
           }
 
           const cellObj = { v: val === 0 && actualColIdx >= 5 ? '' : val, t: isNum ? 'n' : 's', s: baseStyle }
           if (isNum) {
-            cellObj.z = actualColIdx === maxColIdx ? '#,##0;(#,##0);"-"' : '#,##0.00;(#,##0.00);"-"'
+            const useNoDecimals = actualColIdx === 18 || isAmtMonthCol
+            cellObj.z = useNoDecimals ? '#,##0;(#,##0);"-"' : '#,##0.00;(#,##0.00);"-"'
           }
           ws[cellRef] = cellObj
         })
@@ -2220,15 +2281,18 @@ export default function TaiSanKhauHaoTab({
         '',
         reconciliationMonthlyDifference.stockDiff,
         ...[...Array(12)].map((_, i) => reconciliationMonthlyDifference.monthlyDiff[`T${i + 1}`] || 0),
-        ''
+        '',
+        ...[...Array(12)].map((_, i) => reconciliationMonthlyDifference.monthlyAmtDiff[`T${i + 1}`] || 0)
       ]
 
       diffRowValues.forEach((val, colIdx) => {
         if (colIdx >= 1 && colIdx <= 4) return
 
-        const actualColIdx = colIdx === 0 ? 0 : colIdx
+        const actualColIdx = colIdx
         const cellRef = `${getColLabel(actualColIdx)}${excelRowIdx}`
         const isNum = typeof val === 'number'
+        const isQtyCol = actualColIdx >= 5 && actualColIdx < 18
+        const isAmtCol = actualColIdx >= 19 && actualColIdx < 31
 
         const baseStyle = {
           font: { name: 'Segoe UI', sz: 10, bold: true, color: { rgb: '047857' } },
@@ -2247,7 +2311,8 @@ export default function TaiSanKhauHaoTab({
 
         const cellObj = { v: val === 0 && actualColIdx >= 5 ? '' : val, t: isNum ? 'n' : 's', s: baseStyle }
         if (isNum) {
-          cellObj.z = '#,##0.00;(#,##0.00);"-"'
+          const useNoDecimals = isAmtCol
+          cellObj.z = useNoDecimals ? '#,##0;(#,##0);"-"' : '#,##0.00;(#,##0.00);"-"'
         }
         ws[cellRef] = cellObj
       })
@@ -2287,7 +2352,7 @@ export default function TaiSanKhauHaoTab({
       const maxColIdx = columns.length - 1
 
       ws['A1'] = {
-        v: `BÁO CÁO THỐNG KÊ TÀI SẢN KHẤU HAO THEO VẬT TƯ (THÁNG ${selectedMonth}/${selectedYear})`,
+        v: `BÁO CÁO THỐNG KÊ TÀI SẢN KHẤU HAO THEO VẬT TƯ (NĂM ${selectedYear})`,
         t: 's',
         s: {
           font: { name: 'Segoe UI', sz: 14, bold: true, color: { rgb: '1E3A8A' } },
@@ -2295,7 +2360,7 @@ export default function TaiSanKhauHaoTab({
         }
       }
       ws['A2'] = {
-        v: `Kho / Dự án: ${localProject || 'Tất cả Kho / Dự án'} | Trạng thái: Tất cả tài sản | Năm: ${selectedYear} | Tháng: ${selectedMonth}`,
+        v: `Kho / Dự án: Tất cả Kho / Dự án | Trạng thái: Tất cả tài sản | Năm: ${selectedYear}`,
         t: 's',
         s: {
           font: { name: 'Segoe UI', sz: 10, italic: true, color: { rgb: '475569' } },
@@ -2465,8 +2530,8 @@ export default function TaiSanKhauHaoTab({
       ws['!ref'] = `A1:${getColLabel(columns.length - 1)}${excelRowIdx}`
       XLSXStyle.utils.book_append_sheet(wb, ws, 'Thống kê Vật tư')
 
-      const fileProjName = localProject ? String(localProject).replace(/[^a-zA-Z0-9_đĐâÂêÊôÔ]/g, '_') : 'Tat_ca'
-      XLSXStyle.writeFile(wb, `SGC_ThongKe_VatTu_Thang_${selectedMonth}_${selectedYear}_${fileProjName}.xlsx`)
+      const fileProjName = 'Tat_ca'
+      XLSXStyle.writeFile(wb, `SGC_ThongKe_VatTu_Nam_${selectedYear}_${fileProjName}.xlsx`)
       return
     }
 
@@ -3159,8 +3224,8 @@ export default function TaiSanKhauHaoTab({
         flexWrap: 'wrap',
         boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
       }}>
-        {/* Project Selector - Hide on Company-wide Summary */}
-        {(activeSubTab === 'detail' || activeSubTab === 'material_stats') && (
+        {/* Project Selector - Hide on Company-wide Summary and Material Stats */}
+        {activeSubTab === 'detail' && (
           <div style={{ flex: '1 1 200px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
             <label style={{ fontSize: '12px', fontWeight: 700, color: '#475569' }}>Chọn Kho / Dự án:</label>
             <LocalSearchableSelect
@@ -3196,32 +3261,6 @@ export default function TaiSanKhauHaoTab({
             ))}
           </select>
         </div>
-
-        {/* Month Selector for Material Stats or Monthly Summary */}
-        {(activeSubTab === 'material_stats' || activeSubTab === 'summary_month') && (
-          <div style={{ flex: '0 0 120px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
-            <label style={{ fontSize: '12px', fontWeight: 700, color: '#475569' }}>Chọn Tháng:</label>
-            <select
-              value={selectedMonth}
-              onChange={(e) => setSelectedMonth(parseInt(e.target.value, 10))}
-              style={{
-                padding: '8px 12px',
-                border: '1px solid #cbd5e1',
-                borderRadius: '6px',
-                fontSize: '13px',
-                fontWeight: 600,
-                background: '#ffffff',
-                color: '#1e293b',
-                height: '38px',
-                outline: 'none'
-              }}
-            >
-              {[...Array(12)].map((_, i) => (
-                <option key={i + 1} value={i + 1}>Tháng {i + 1}</option>
-              ))}
-            </select>
-          </div>
-        )}
 
         {/* Status Selector - Hide on Company-wide Summary */}
         {activeSubTab === 'detail' && (
@@ -3821,62 +3860,92 @@ export default function TaiSanKhauHaoTab({
               </tbody>
             </table>
           ) : activeSubTab === 'summary_month' ? (
-            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '12px', minWidth: '1800px' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '11.5px', minWidth: '2600px', border: '1px solid #cbd5e1' }}>
               <thead>
-                <tr style={{ background: '#1e3a8a', borderBottom: '2px solid #0f172a' }}>
-                  <th style={{ padding: '12px 10px', fontWeight: 700, color: '#ffffff', width: '60px', textAlign: 'center' }}>STT</th>
-                  <th onClick={() => handleSumSort('projectName')} style={{ padding: '12px 10px', fontWeight: 700, color: '#ffffff', cursor: 'pointer', userSelect: 'none', width: '220px' }}>
+                <tr style={{ background: '#1e3a8a', borderBottom: '1px solid #cbd5e1' }}>
+                  <th rowSpan={2} style={{ padding: '10px 8px', fontWeight: 700, color: '#ffffff', width: '50px', textAlign: 'center', verticalAlign: 'middle', border: '1px solid #cbd5e1' }}>STT</th>
+                  <th rowSpan={2} onClick={() => handleSumSort('projectName')} style={{ padding: '10px 8px', fontWeight: 700, color: '#ffffff', cursor: 'pointer', userSelect: 'none', width: '220px', textAlign: 'center', verticalAlign: 'middle', border: '1px solid #cbd5e1' }}>
                     Kho / Dự án {sumSortField === 'projectName' && (sumSortDirection === 'asc' ? '▲' : '▼')}
                   </th>
-                  <th onClick={() => handleSumSort('maSAP')} style={{ padding: '12px 10px', fontWeight: 700, color: '#ffffff', cursor: 'pointer', userSelect: 'none', width: '110px', textAlign: 'center' }}>
+                  <th rowSpan={2} onClick={() => handleSumSort('maSAP')} style={{ padding: '10px 8px', fontWeight: 700, color: '#ffffff', cursor: 'pointer', userSelect: 'none', width: '100px', textAlign: 'center', verticalAlign: 'middle', border: '1px solid #cbd5e1' }}>
                     Mã SAP {sumSortField === 'maSAP' && (sumSortDirection === 'asc' ? '▲' : '▼')}
                   </th>
-                  <th onClick={() => handleSumSort('tenVatTu')} style={{ padding: '12px 10px', fontWeight: 700, color: '#ffffff', cursor: 'pointer', userSelect: 'none', width: '250px' }}>
+                  <th rowSpan={2} onClick={() => handleSumSort('tenVatTu')} style={{ padding: '10px 8px', fontWeight: 700, color: '#ffffff', cursor: 'pointer', userSelect: 'none', width: '240px', textAlign: 'center', verticalAlign: 'middle', border: '1px solid #cbd5e1' }}>
                     Tên vật tư {sumSortField === 'tenVatTu' && (sumSortDirection === 'asc' ? '▲' : '▼')}
                   </th>
-                  <th onClick={() => handleSumSort('dvt')} style={{ padding: '12px 10px', fontWeight: 700, color: '#ffffff', cursor: 'pointer', userSelect: 'none', width: '80px', textAlign: 'center' }}>
+                  <th rowSpan={2} onClick={() => handleSumSort('dvt')} style={{ padding: '10px 8px', fontWeight: 700, color: '#ffffff', cursor: 'pointer', userSelect: 'none', width: '70px', textAlign: 'center', verticalAlign: 'middle', border: '1px solid #cbd5e1' }}>
                     Đvt {sumSortField === 'dvt' && (sumSortDirection === 'asc' ? '▲' : '▼')}
                   </th>
-                  <th onClick={() => handleSumSort('totalStock')} style={{ padding: '12px 10px', fontWeight: 700, color: '#facc15', cursor: 'pointer', userSelect: 'none', width: '110px', textAlign: 'right' }}>
+                  <th rowSpan={2} onClick={() => handleSumSort('totalStock')} style={{ padding: '10px 8px', fontWeight: 700, color: '#facc15', cursor: 'pointer', userSelect: 'none', width: '100px', textAlign: 'center', verticalAlign: 'middle', border: '1px solid #cbd5e1' }}>
                     Tổng tồn kho {sumSortField === 'totalStock' && (sumSortDirection === 'asc' ? '▲' : '▼')}
                   </th>
                   
-                  {/* Monthly columns T1 - T12 */}
+                  <th rowSpan={2} onClick={() => handleSumSort('unitPrice')} style={{ padding: '10px 8px', fontWeight: 700, color: '#ffffff', cursor: 'pointer', userSelect: 'none', width: '130px', textAlign: 'center', verticalAlign: 'middle', border: '1px solid #cbd5e1' }}>
+                    Đơn giá tháng {sumSortField === 'unitPrice' && (sumSortDirection === 'asc' ? '▲' : '▼')}
+                  </th>
+
+                  <th colSpan={12} style={{ padding: '6px 8px', fontWeight: 700, color: '#ffffff', textAlign: 'center', background: '#1d4ed8', border: '1px solid #cbd5e1', fontSize: '12px' }}>
+                    KHỐI LƯỢNG TỒN KHO THEO THÁNG
+                  </th>
+                  
+                  <th colSpan={12} style={{ padding: '6px 8px', fontWeight: 700, color: '#ffffff', textAlign: 'center', background: '#047857', border: '1px solid #cbd5e1', fontSize: '12px' }}>
+                    THÀNH TIỀN TÀI SẢN KHẤU HAO
+                  </th>
+                </tr>
+                <tr style={{ background: '#1e3a8a', borderBottom: '1px solid #cbd5e1' }}>
+                  {/* Khối lượng subheaders */}
                   {[...Array(12)].map((_, i) => {
                     const m = i + 1
                     const key = `T${m}`
                     return (
                       <th 
-                        key={key}
+                        key={`qty_T${m}`}
                         onClick={() => handleSumSort(key)}
                         style={{ 
-                          padding: '12px 4px', 
+                          padding: '6px 4px', 
                           fontWeight: 700, 
                           color: '#ffffff', 
                           textAlign: 'center', 
                           cursor: 'pointer', 
                           userSelect: 'none',
-                          width: '65px',
-                          background: '#1d4ed8',
-                          borderLeft: '1px solid rgba(255, 255, 255, 0.25)',
-                          borderRight: '1px solid rgba(255, 255, 255, 0.25)',
-                          fontSize: '11px'
+                          width: '60px',
+                          background: '#2563eb',
+                          border: '1px solid #cbd5e1',
+                          fontSize: '10.5px'
                         }}
                       >
                         T{m} {sumSortField === key && (sumSortDirection === 'asc' ? '▲' : '▼')}
                       </th>
                     )
                   })}
- 
-                  <th onClick={() => handleSumSort('totalValue')} style={{ padding: '12px 10px', fontWeight: 700, color: '#ffffff', cursor: 'pointer', userSelect: 'none', width: '140px', textAlign: 'right' }}>
-                    Giá trị tồn tạm tính {sumSortField === 'totalValue' && (sumSortDirection === 'asc' ? '▲' : '▼')}
-                  </th>
+                  {/* Thành tiền subheaders */}
+                  {[...Array(12)].map((_, i) => {
+                    const m = i + 1
+                    return (
+                      <th 
+                        key={`amt_T${m}`}
+                        style={{ 
+                          padding: '6px 4px', 
+                          fontWeight: 700, 
+                          color: '#ffffff', 
+                          textAlign: 'center', 
+                          userSelect: 'none',
+                          width: '85px',
+                          background: '#059669',
+                          border: '1px solid #cbd5e1',
+                          fontSize: '10.5px'
+                        }}
+                      >
+                        T{m}
+                      </th>
+                    )
+                  })}
                 </tr>
               </thead>
               <tbody>
                 {companyProjectMonthlySummaries.length === 0 ? (
                   <tr>
-                    <td colSpan={19} style={{ padding: '32px', textTransform: 'none', color: '#94a3b8', textAlign: 'center', fontSize: '14px', fontWeight: 500 }}>
+                    <td colSpan={31} style={{ padding: '32px', textTransform: 'none', color: '#94a3b8', textAlign: 'center', fontSize: '14px', fontWeight: 500 }}>
                       Không có dữ liệu tổng hợp tháng.
                     </td>
                   </tr>
@@ -3884,23 +3953,25 @@ export default function TaiSanKhauHaoTab({
                   <>
                     {groupedProjectMonthlySummaries.map((group) => {
                       const groupStock = group.items.reduce((sum, item) => sum + item.totalStock, 0)
-                      const groupValue = group.items.reduce((sum, item) => sum + item.totalValue, 0)
                       const groupMonthly = {}
+                      const groupMonthlyAmount = {}
                       for (let m = 1; m <= 12; m++) {
                         groupMonthly[`T${m}`] = group.items.reduce((sum, item) => sum + (item.monthlyStock[`T${m}`] || 0), 0)
+                        groupMonthlyAmount[`T${m}`] = group.items.reduce((sum, item) => sum + (item.monthlyStock[`T${m}`] || 0) * (item.unitPrice || 0), 0)
                       }
- 
+                      const groupValue = group.items.reduce((sum, item) => sum + item.totalValue, 0)
+
                       return (
                         <React.Fragment key={group.id}>
                           <tr style={{ background: '#f1f5f9', borderBottom: '1px solid #cbd5e1' }}>
-                            <td colSpan={19} style={{ padding: '10px 14px', fontSize: '13px', fontWeight: 800, color: '#1e3a8a', background: '#f1f5f9', letterSpacing: '0.5px' }}>
+                            <td colSpan={31} style={{ padding: '10px 14px', fontSize: '13px', fontWeight: 800, color: '#1e3a8a', background: '#f1f5f9', letterSpacing: '0.5px' }}>
                               {group.title}
                             </td>
                           </tr>
- 
+
                           {group.items.length === 0 ? (
                             <tr>
-                              <td colSpan={19} style={{ padding: '12px', color: '#94a3b8', textAlign: 'center', fontStyle: 'italic' }}>
+                              <td colSpan={31} style={{ padding: '12px', color: '#94a3b8', textAlign: 'center', fontStyle: 'italic' }}>
                                 Không có dữ liệu cho nhóm này.
                               </td>
                             </tr>
@@ -3924,27 +3995,32 @@ export default function TaiSanKhauHaoTab({
                                   onMouseOver={(e) => { e.currentTarget.style.background = '#f8fafc' }}
                                   onMouseOut={(e) => { e.currentTarget.style.background = '#ffffff' }}
                                 >
-                                  <td style={{ padding: '10px', textAlign: 'center', color: '#64748b', fontWeight: 600 }}>{idx + 1}</td>
-                                  <td style={{ padding: '10px', fontWeight: 700, color: '#1e3a8a' }}>{item.projectName}</td>
-                                  <td style={{ padding: '10px', textAlign: 'center', fontWeight: 600, color: '#475569' }}>{item.maSAP}</td>
-                                  <td style={{ padding: '10px', color: '#1e293b', fontWeight: 500 }}>{item.tenVatTu}</td>
-                                  <td style={{ padding: '10px', textAlign: 'center', color: '#64748b' }}>{item.dvt}</td>
-                                  <td style={{ padding: '10px', textAlign: 'right', fontWeight: 700, color: '#10b981' }}>{item.totalStock.toLocaleString('vi-VN', { maximumFractionDigits: 2 })}</td>
+                                  <td style={{ padding: '8px 10px', textAlign: 'center', color: '#64748b', fontWeight: 600, border: '1px solid #cbd5e1' }}>{idx + 1}</td>
+                                  <td style={{ padding: '8px 10px', fontWeight: 700, color: '#1e3a8a', border: '1px solid #cbd5e1' }}>{item.projectName}</td>
+                                  <td style={{ padding: '8px 10px', textAlign: 'center', fontWeight: 600, color: '#475569', border: '1px solid #cbd5e1' }}>{item.maSAP}</td>
+                                  <td style={{ padding: '8px 10px', color: '#1e293b', fontWeight: 500, border: '1px solid #cbd5e1' }}>{item.tenVatTu}</td>
+                                  <td style={{ padding: '8px 10px', textAlign: 'center', color: '#64748b', border: '1px solid #cbd5e1' }}>{item.dvt}</td>
+                                  <td style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 700, color: '#10b981', border: '1px solid #cbd5e1' }}>{item.totalStock.toLocaleString('vi-VN', { maximumFractionDigits: 2 })}</td>
                                   
+                                  {/* Unit price */}
+                                  <td style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 700, color: '#475569', border: '1px solid #cbd5e1' }}>
+                                    {item.unitPrice > 0 ? `${item.unitPrice.toLocaleString('vi-VN')} đ` : '-'}
+                                  </td>
+
+                                  {/* Quantity months */}
                                   {[...Array(12)].map((_, i) => {
                                     const m = i + 1
                                     const val = item.monthlyStock[`T${m}`] || 0
                                     return (
                                       <td 
-                                        key={m}
+                                        key={`qty_${m}`}
                                         style={{ 
-                                          padding: '10px 4px', 
+                                          padding: '8px 4px', 
                                           textAlign: 'right', 
                                           fontWeight: val !== 0 ? '600' : '400',
                                           color: val > 0 ? '#0f172a' : (val < 0 ? '#ef4444' : '#94a3b8'),
-                                          background: 'rgba(219, 234, 254, 0.25)',
-                                          borderLeft: '1px solid #cbd5e1',
-                                          borderRight: '1px solid #cbd5e1',
+                                          background: 'rgba(219, 234, 254, 0.15)',
+                                          border: '1px solid #cbd5e1',
                                           fontSize: '11px'
                                         }}
                                       >
@@ -3952,34 +4028,56 @@ export default function TaiSanKhauHaoTab({
                                       </td>
                                     )
                                   })}
- 
-                                  <td style={{ padding: '10px', textAlign: 'right', fontWeight: 700, color: '#475569' }}>
-                                    {item.totalValue > 0 ? `${item.totalValue.toLocaleString('vi-VN')} đ` : '-'}
-                                  </td>
+
+                                  {/* Amount months */}
+                                  {[...Array(12)].map((_, i) => {
+                                    const m = i + 1
+                                    const val = item.monthlyStock[`T${m}`] || 0
+                                    const amt = val * (item.unitPrice || 0)
+                                    return (
+                                      <td 
+                                        key={`amt_${m}`}
+                                        style={{ 
+                                          padding: '8px 4px', 
+                                          textAlign: 'right', 
+                                          fontWeight: amt !== 0 ? '600' : '400',
+                                          color: amt > 0 ? '#047857' : (amt < 0 ? '#ef4444' : '#94a3b8'),
+                                          background: 'rgba(209, 250, 229, 0.15)',
+                                          border: '1px solid #cbd5e1',
+                                          fontSize: '11px'
+                                        }}
+                                      >
+                                        {amt !== 0 ? `${Math.round(amt).toLocaleString('vi-VN')} đ` : '-'}
+                                      </td>
+                                    )
+                                  })}
                                 </tr>
                               )
                             })
                           )}
- 
+
                           <tr style={{ background: '#f8fafc', fontWeight: 700, borderBottom: '2px solid #cbd5e1', borderTop: '1px solid #cbd5e1' }}>
-                            <td colSpan="5" style={{ padding: '10px 14px', textTransform: 'none', color: '#1e3a8a', fontSize: '12.5px', fontWeight: 800 }}>
+                            <td colSpan="5" style={{ padding: '8px 14px', textTransform: 'none', color: '#1e3a8a', fontSize: '12px', fontWeight: 800, border: '1px solid #cbd5e1' }}>
                               CỘNG {group.id === 'I' ? 'KHO DỰ ÁN (A)' : 'NHẬP TỪ NCC (B)'}
                             </td>
-                            <td style={{ padding: '10px', textAlign: 'right', color: '#10b981' }}>{groupStock.toLocaleString('vi-VN', { maximumFractionDigits: 2 })}</td>
+                            <td style={{ padding: '8px 10px', textAlign: 'right', color: '#10b981', border: '1px solid #cbd5e1' }}>{groupStock.toLocaleString('vi-VN', { maximumFractionDigits: 2 })}</td>
                             
+                            <td style={{ padding: '8px 10px', textAlign: 'right', color: '#475569', border: '1px solid #cbd5e1' }}>
+                              -
+                            </td>
+
                             {[...Array(12)].map((_, i) => {
                               const m = i + 1
                               const val = groupMonthly[`T${m}`] || 0
                               return (
                                 <td 
-                                  key={m}
+                                  key={`group_qty_${m}`}
                                   style={{ 
-                                    padding: '10px 4px', 
+                                    padding: '8px 4px', 
                                     textAlign: 'right', 
                                     color: val > 0 ? '#0f172a' : (val < 0 ? '#ef4444' : '#64748b'),
-                                    background: 'rgba(219, 234, 254, 0.4)',
-                                    borderLeft: '1px solid #cbd5e1',
-                                    borderRight: '1px solid #cbd5e1',
+                                    background: 'rgba(219, 234, 254, 0.3)',
+                                    border: '1px solid #cbd5e1',
                                     fontSize: '11px'
                                   }}
                                 >
@@ -3987,36 +4085,55 @@ export default function TaiSanKhauHaoTab({
                                 </td>
                               )
                             })}
-                            
-                            <td style={{ padding: '10px', textAlign: 'right', color: '#475569' }}>
-                              {groupValue > 0 ? `${groupValue.toLocaleString('vi-VN')} đ` : '-'}
-                            </td>
+
+                            {[...Array(12)].map((_, i) => {
+                              const m = i + 1
+                              const val = groupMonthlyAmount[`T${m}`] || 0
+                              return (
+                                <td 
+                                  key={`group_amt_${m}`}
+                                  style={{ 
+                                    padding: '8px 4px', 
+                                    textAlign: 'right', 
+                                    color: val > 0 ? '#047857' : (val < 0 ? '#ef4444' : '#64748b'),
+                                    background: 'rgba(209, 250, 229, 0.3)',
+                                    border: '1px solid #cbd5e1',
+                                    fontSize: '11px'
+                                  }}
+                                >
+                                  {val !== 0 ? `${Math.round(val).toLocaleString('vi-VN')} đ` : '-'}
+                                </td>
+                              )
+                            })}
                           </tr>
                         </React.Fragment>
                       )
                     })}
                     
                     <tr style={{ background: '#ecfdf5', fontWeight: 800, borderTop: '2px solid #10b981', borderBottom: '2px solid #10b981' }}>
-                      <td colSpan="5" style={{ padding: '12px 10px', textAlign: 'center', color: '#047857' }}>
+                      <td colSpan="5" style={{ padding: '10px 10px', textAlign: 'center', color: '#047857', border: '1px solid #cbd5e1' }}>
                         ✓ CHÊNH LỆCH ĐỐI CHIẾU (A - B)
                       </td>
-                      <td style={{ padding: '12px 10px', textAlign: 'right', color: '#047857' }}>
+                      <td style={{ padding: '10px 10px', textAlign: 'right', color: '#047857', border: '1px solid #cbd5e1' }}>
                         {reconciliationMonthlyDifference.stockDiff.toLocaleString('vi-VN', { maximumFractionDigits: 2 })}
                       </td>
                       
+                      <td style={{ padding: '10px 10px', textAlign: 'right', color: '#047857', border: '1px solid #cbd5e1' }}>
+                        -
+                      </td>
+
                       {[...Array(12)].map((_, i) => {
                         const m = i + 1
                         const val = reconciliationMonthlyDifference.monthlyDiff[`T${m}`] || 0
                         return (
                           <td 
-                            key={m}
+                            key={`diff_qty_${m}`}
                             style={{ 
-                              padding: '12px 4px', 
+                              padding: '10px 4px', 
                               textAlign: 'right', 
                               color: val !== 0 ? (val < 0 ? '#ef4444' : '#047857') : '#047857',
                               background: '#ecfdf5',
-                              borderLeft: '1px solid #cbd5e1',
-                              borderRight: '1px solid #cbd5e1',
+                              border: '1px solid #cbd5e1',
                               fontSize: '11px'
                             }}
                           >
@@ -4025,9 +4142,25 @@ export default function TaiSanKhauHaoTab({
                         )
                       })}
                       
-                      <td style={{ padding: '12px 10px', textAlign: 'right', color: '#047857' }}>
-                        -
-                      </td>
+                      {[...Array(12)].map((_, i) => {
+                        const m = i + 1
+                        const val = reconciliationMonthlyDifference.monthlyAmtDiff[`T${m}`] || 0
+                        return (
+                          <td 
+                            key={`diff_amt_${m}`}
+                            style={{ 
+                              padding: '10px 4px', 
+                              textAlign: 'right', 
+                              color: val !== 0 ? (val < 0 ? '#ef4444' : '#047857') : '#047857',
+                              background: '#ecfdf5',
+                              border: '1px solid #cbd5e1',
+                              fontSize: '11px'
+                            }}
+                          >
+                            {val !== 0 ? `${Math.round(val).toLocaleString('vi-VN')} đ` : '-'}
+                          </td>
+                        )
+                      })}
                     </tr>
                   </>
                 )}
