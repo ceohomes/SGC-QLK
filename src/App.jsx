@@ -7892,7 +7892,10 @@ function PhanNhomVatTuTab({
   lastSyncedDepreciationOptions,
   setLastSyncedDepreciationOptions,
   lastSyncedMaterialPriceRows,
-  setLastSyncedMaterialPriceRows
+  setLastSyncedMaterialPriceRows,
+  isDbSchemaOutdated = false,
+  setIsDbSchemaOutdated = () => {},
+  setShowDbUpgradeModal = () => {}
 }) {
   const [priceSearchQuery, setPriceSearchQuery] = React.useState('')
   const [currentSubTab, setCurrentSubTab] = React.useState('classification') // 'classification' | 'depreciation_duration'
@@ -20219,6 +20222,9 @@ export default function App() {
                 setLastSyncedDepreciationOptions={setLastSyncedDepreciationOptions}
                 lastSyncedMaterialPriceRows={lastSyncedMaterialPriceRows}
                 setLastSyncedMaterialPriceRows={setLastSyncedMaterialPriceRows}
+                isDbSchemaOutdated={isDbSchemaOutdated}
+                setIsDbSchemaOutdated={setIsDbSchemaOutdated}
+                setShowDbUpgradeModal={setShowDbUpgradeModal}
               />
             )}
             {tab === 'inventory' && (
