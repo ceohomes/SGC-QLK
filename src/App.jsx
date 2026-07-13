@@ -7895,7 +7895,11 @@ function PhanNhomVatTuTab({
   setLastSyncedMaterialPriceRows,
   isDbSchemaOutdated = false,
   setIsDbSchemaOutdated = () => {},
-  setShowDbUpgradeModal = () => {}
+  setShowDbUpgradeModal = () => {},
+  depreciationOptions,
+  setDepreciationOptions,
+  saveDepreciationOptions,
+  loadDepreciationOptionsFromSupabase
 }) {
   const [priceSearchQuery, setPriceSearchQuery] = React.useState('')
   const [currentSubTab, setCurrentSubTab] = React.useState('classification') // 'classification' | 'depreciation_duration'
@@ -7906,51 +7910,7 @@ function PhanNhomVatTuTab({
   }, [customCategoryMap, materialClassifications])
 
   const [selectedMonthsGroup, setSelectedMonthsGroup] = React.useState({ months: 0, isApproved: false })
-  const [depreciationOptions, setDepreciationOptions] = React.useState(() => {
-    const saved = localStorage.getItem('sgc_depreciation_options_v2')
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved)
-        if (Array.isArray(parsed) && parsed.length > 0 && typeof parsed[0] === 'object' && parsed[0] !== null) {
-          const unique = []
-          const seen = new Set()
-          parsed.forEach(opt => {
-            const key = `${opt.months}-${!!opt.isApproved}`
-            if (!seen.has(key)) {
-              seen.add(key)
-              unique.push(opt)
-            }
-          })
-          return unique.sort((a, b) => a.months - b.months || (a.isApproved ? 1 : 0) - (b.isApproved ? 1 : 0))
-        }
-      } catch (e) {}
-    }
-    return [
-      { months: 0, isApproved: false },
-      { months: 12, isApproved: true },
-      { months: 24, isApproved: true },
-      { months: 36, isApproved: true },
-      { months: 48, isApproved: true },
-      { months: 60, isApproved: true },
-      { months: 72, isApproved: true },
-      { months: 120, isApproved: true }
-    ]
-  })
 
-  const saveDepreciationOptions = (newOpts) => {
-    const unique = []
-    const seen = new Set()
-    newOpts.forEach(opt => {
-      const key = `${opt.months}-${!!opt.isApproved}`
-      if (!seen.has(key)) {
-        seen.add(key)
-        unique.push(opt)
-      }
-    })
-    const sorted = unique.sort((a, b) => a.months - b.months || (a.isApproved ? 1 : 0) - (b.isApproved ? 1 : 0))
-    setDepreciationOptions(sorted)
-    localStorage.setItem('sgc_depreciation_options_v2', JSON.stringify(sorted))
-  }
 
   const allAvailableDurations = React.useMemo(() => {
     const set = new Set([12, 24, 36, 48, 60, 72, 120])
@@ -8151,79 +8111,8 @@ function PhanNhomVatTuTab({
     return false
   }, [depreciationOptions])
 
-  const loadDepreciationOptionsFromSupabase = React.useCallback(async () => {
-    if (!isSupabaseConfigured) return
-    try {
-      const { data, error } = await supabase
-        .from('cau_hinh_khau_hao')
-        .select('*')
-      
-      if (error) {
-        console.warn('Lỗi khi tải cấu hình khấu hao từ Supabase:', error.message)
-        const errMsg = error.message || ''
-        if (error.code === '42703' || error.code === '42P01' || errMsg.toLowerCase().includes('column') || errMsg.toLowerCase().includes('relation') || errMsg.toLowerCase().includes('does not exist')) {
-          setIsDbSchemaOutdated(true)
-        }
-        return
-      }
-      
-      if (data && data.length > 0) {
-        const unique = []
-        const seen = new Set()
-        // Chỉ lọc các cấu hình chung (không gắn với mã vật tư)
-        const globalConfigs = data.filter(item => !item.ma_sap)
-        globalConfigs.forEach(item => {
-          let itemApproved = item.is_approved !== undefined ? !!item.is_approved : true
-          let realMonths = item.months
-          if (realMonths < 0) {
-            realMonths = Math.abs(realMonths)
-            itemApproved = false
-          } else if (item.is_approved === false) {
-            itemApproved = false
-          }
-          const key = `${realMonths}-${itemApproved}`
-          if (!seen.has(key)) {
-            seen.add(key)
-            unique.push({
-              months: realMonths,
-              isApproved: itemApproved
-            })
-          }
-        })
-        if (!unique.some(o => o.months === 0)) {
-          unique.push({ months: 0, isApproved: false })
-        }
-        const sortedOpts = unique.sort((a, b) => a.months - b.months || (a.isApproved ? 1 : 0) - (b.isApproved ? 1 : 0))
-        saveDepreciationOptions(sortedOpts)
-        setLastSyncedDepreciationOptions(sortedOpts)
-        
-        // Align materialPriceRows
-        setMaterialPriceRows(prev => {
-          const aligned = alignMaterialDepreciationWithConfig(prev, sortedOpts)
-          localStorage.setItem('sgc_report_material_price_rows', JSON.stringify(aligned))
-          return aligned
-        })
-      } else {
-        const fetchedOpts = [{ months: 0, isApproved: false }]
-        saveDepreciationOptions(fetchedOpts)
-        setLastSyncedDepreciationOptions(fetchedOpts)
-        
-        setMaterialPriceRows(prev => {
-          const aligned = alignMaterialDepreciationWithConfig(prev, fetchedOpts)
-          localStorage.setItem('sgc_report_material_price_rows', JSON.stringify(aligned))
-          return aligned
-        })
-      }
-    } catch (err) {
-      console.error('Lỗi loadDepreciationOptionsFromSupabase:', err)
-    }
-  }, [])
+  // loadDepreciationOptionsFromSupabase is now passed as a prop from App
 
-  React.useEffect(() => {
-    if (isSupabaseConfigured) {
-      loadDepreciationOptionsFromSupabase()
-    }
-  }, [isSupabaseConfigured, loadDepreciationOptionsFromSupabase])
 
   const [isSyncingToSupabase, setIsSyncingToSupabase] = React.useState(false)
 
@@ -18364,7 +18253,119 @@ export default function App() {
   const [lastSyncedDepreciationOptions, setLastSyncedDepreciationOptions] = React.useState(null)
   const [lastSyncedMaterialPriceRows, setLastSyncedMaterialPriceRows] = React.useState(null)
 
-  const loadPricesFromSupabase = React.useCallback(async () => {
+  const [depreciationOptions, setDepreciationOptions] = React.useState(() => {
+    const saved = localStorage.getItem('sgc_depreciation_options_v2')
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved)
+        if (Array.isArray(parsed) && parsed.length > 0 && typeof parsed[0] === 'object' && parsed[0] !== null) {
+          const unique = []
+          const seen = new Set()
+          parsed.forEach(opt => {
+            const key = `${opt.months}-${!!opt.isApproved}`
+            if (!seen.has(key)) {
+              seen.add(key)
+              unique.push(opt)
+            }
+          })
+          return unique.sort((a, b) => a.months - b.months || (a.isApproved ? 1 : 0) - (b.isApproved ? 1 : 0))
+        }
+      } catch (e) {}
+    }
+    return [
+      { months: 0, isApproved: false },
+      { months: 12, isApproved: true },
+      { months: 24, isApproved: true },
+      { months: 36, isApproved: true },
+      { months: 48, isApproved: true },
+      { months: 60, isApproved: true },
+      { months: 72, isApproved: true },
+      { months: 120, isApproved: true }
+    ]
+  })
+
+  const saveDepreciationOptions = (newOpts) => {
+    const unique = []
+    const seen = new Set()
+    newOpts.forEach(opt => {
+      const key = `${opt.months}-${!!opt.isApproved}`
+      if (!seen.has(key)) {
+        seen.add(key)
+        unique.push(opt)
+      }
+    })
+    const sorted = unique.sort((a, b) => a.months - b.months || (a.isApproved ? 1 : 0) - (b.isApproved ? 1 : 0))
+    setDepreciationOptions(sorted)
+    localStorage.setItem('sgc_depreciation_options_v2', JSON.stringify(sorted))
+  }
+
+  const loadDepreciationOptionsFromSupabase = React.useCallback(async () => {
+    if (!isSupabaseConfigured) return
+    try {
+      const { data, error } = await supabase
+        .from('cau_hinh_khau_hao')
+        .select('*')
+      
+      if (error) {
+        console.warn('Lỗi khi tải cấu hình khấu hao từ Supabase:', error.message)
+        const errMsg = error.message || ''
+        if (error.code === '42703' || error.code === '42P01' || errMsg.toLowerCase().includes('column') || errMsg.toLowerCase().includes('relation') || errMsg.toLowerCase().includes('does not exist')) {
+          setIsDbSchemaOutdated(true)
+        }
+        return
+      }
+      
+      if (data && data.length > 0) {
+        const unique = []
+        const seen = new Set()
+        const globalConfigs = data.filter(item => !item.ma_sap)
+        globalConfigs.forEach(item => {
+          let itemApproved = item.is_approved !== undefined ? !!item.is_approved : true
+          let realMonths = item.months
+          if (realMonths < 0) {
+            realMonths = Math.abs(realMonths)
+            itemApproved = false
+          } else if (item.is_approved === false) {
+            itemApproved = false
+          }
+          const key = `${realMonths}-${itemApproved}`
+          if (!seen.has(key)) {
+            seen.add(key)
+            unique.push({
+              months: realMonths,
+              isApproved: itemApproved
+            })
+          }
+        })
+        if (!unique.some(o => o.months === 0)) {
+          unique.push({ months: 0, isApproved: false })
+        }
+        const sortedOpts = unique.sort((a, b) => a.months - b.months || (a.isApproved ? 1 : 0) - (b.isApproved ? 1 : 0))
+        saveDepreciationOptions(sortedOpts)
+        setLastSyncedDepreciationOptions(sortedOpts)
+        
+        setMaterialPriceRows(prev => {
+          const aligned = alignMaterialDepreciationWithConfig(prev, sortedOpts)
+          localStorage.setItem('sgc_report_material_price_rows', JSON.stringify(aligned))
+          return aligned
+        })
+      } else {
+        const fetchedOpts = [{ months: 0, isApproved: false }]
+        saveDepreciationOptions(fetchedOpts)
+        setLastSyncedDepreciationOptions(fetchedOpts)
+        
+        setMaterialPriceRows(prev => {
+          const aligned = alignMaterialDepreciationWithConfig(prev, fetchedOpts)
+          localStorage.setItem('sgc_report_material_price_rows', JSON.stringify(aligned))
+          return aligned
+        })
+      }
+    } catch (err) {
+      console.error('Lỗi loadDepreciationOptionsFromSupabase:', err)
+    }
+  }, [isSupabaseConfigured])
+
+  const loadPricesFromSupabase = React.useCallback(async (forceBypassCache = false) => {
     if (!isSupabaseConfigured) return
 
     // Read from cache first to render instantly
@@ -18392,15 +18393,68 @@ export default function App() {
     setLoadingDbPrices(true)
     try {
       // Fetch server count (uses almost zero egress) to check if we can skip download
-      const { count: serverCount, error: countErr } = await supabase
-        .from('don_gia_vat_tu')
-        .select('id', { count: 'exact', head: true })
+      if (!forceBypassCache) {
+        const { count: serverCount, error: countErr } = await supabase
+          .from('don_gia_vat_tu')
+          .select('id', { count: 'exact', head: true })
 
-      if (!countErr && serverCount !== null && cachedRows.length > 0 && serverCount === cachedRows.length) {
-        console.log('[Cache Tối Ưu] Đơn giá vật tư trùng khớp số lượng. Bỏ qua tải tải từ Supabase.')
-        setLoadingDbPrices(false)
-        setLastSyncedMaterialPriceRows(cachedRows)
-        return
+        if (!countErr && serverCount !== null && cachedRows.length > 0 && serverCount === cachedRows.length) {
+          console.log('[Cache Tối Ưu] Đơn giá vật tư trùng khớp số lượng. Đang đồng bộ cấu hình khấu hao chi tiết...')
+          const configMap = new Map()
+          try {
+            const { data: configData, error: configError } = await supabase
+              .from('cau_hinh_khau_hao')
+              .select('*')
+              .not('ma_sap', 'is', null)
+            
+            if (configError) {
+              console.warn('Lỗi khi tải cấu hình khấu hao chi tiết từ Supabase:', configError.message)
+              const errMsg = configError.message || ''
+              if (configError.code === '42703' || errMsg.toLowerCase().includes('column') || errMsg.toLowerCase().includes('relation') || errMsg.toLowerCase().includes('does not exist')) {
+                setIsDbSchemaOutdated(true)
+              }
+            } else if (configData) {
+              configData.forEach(item => {
+                if (item.ma_sap) {
+                  configMap.set(String(item.ma_sap).trim().toLowerCase(), {
+                    months: item.months || 0,
+                    isApproved: item.is_approved !== undefined ? !!item.is_approved : false
+                  })
+                }
+              })
+            }
+          } catch (e) {
+            console.warn('Lỗi khi tải cấu hình khấu hao chi tiết:', e)
+          }
+
+          const updatedRows = cachedRows.map(item => {
+            const sapKey = String(item.maSAP || '').trim().toLowerCase()
+            const config = configMap.get(sapKey)
+            return {
+              ...item,
+              isApprovedDepreciation: config ? config.isApproved : (item.isApprovedDepreciation !== undefined ? !!item.isApprovedDepreciation : false),
+              depreciationMonths: config ? config.months : (item.depreciationMonths || 0)
+            }
+          })
+
+          setMaterialPriceRows(updatedRows)
+          setLastSyncedMaterialPriceRows(updatedRows)
+          localStorage.setItem('sgc_report_material_price_rows', JSON.stringify(updatedRows))
+
+          const prices = {}
+          const classifications = {}
+          updatedRows.forEach(r => {
+            prices[r.maSAP] = r.donGiaTrungBinh
+            classifications[r.maSAP] = r.phanLoaiVatTu
+          })
+          setMaterialPrices(prices)
+          setMaterialClassifications(classifications)
+          localStorage.setItem('sgc_report_material_prices', JSON.stringify(prices))
+          localStorage.setItem('sgc_report_material_classifications', JSON.stringify(classifications))
+
+          setLoadingDbPrices(false)
+          return
+        }
       }
 
       const { data, error } = await supabase
@@ -18931,9 +18985,10 @@ export default function App() {
     if (!isSupabaseConfigured) return
     await Promise.all([
       loadProjectsFromSupabase(),
-      // loadTableFromSupabase('chung', forceBypassCache) is now disabled. don_chung is offline-first / manual upload only
+      loadPricesFromSupabase(true),
+      loadDepreciationOptionsFromSupabase()
     ])
-  }, [loadProjectsFromSupabase])
+  }, [loadProjectsFromSupabase, loadPricesFromSupabase, loadDepreciationOptionsFromSupabase])
 
   // Fetch initial data from Supabase if connected
   React.useEffect(() => {
@@ -18953,17 +19008,34 @@ export default function App() {
         const cachedNhan = await idbGet('sgc_nhan_rows')
         const cachedKho = await idbGet('sgc_kho_rows')
 
-        if (isMounted && Array.isArray(cachedChung) && cachedChung.length > 0) {
-          setChungRows(cachedChung)
-          setChungFileName('Report_Orders_Don_chung (Cached DB)')
-          
-          if (Array.isArray(cachedGiao)) setGiaoRows(cachedGiao)
-          if (Array.isArray(cachedNhan)) setNhanRows(cachedNhan)
-          if (Array.isArray(cachedKho)) setKhoRows(cachedKho)
+        if (isMounted) {
+          let loadedAny = false
+          if (Array.isArray(cachedChung) && cachedChung.length > 0) {
+            setChungRows(cachedChung)
+            setChungFileName('Report_Orders_Don_chung (Cached DB)')
+            loadedAny = true
+          }
+          if (Array.isArray(cachedGiao) && cachedGiao.length > 0) {
+            setGiaoRows(cachedGiao)
+            setGiaoFileName('Report_Orders_Giao (Cached DB)')
+            loadedAny = true
+          }
+          if (Array.isArray(cachedNhan) && cachedNhan.length > 0) {
+            setNhanRows(cachedNhan)
+            setNhanFileName('Report_Orders_Nhan (Cached DB)')
+            loadedAny = true
+          }
+          if (Array.isArray(cachedKho) && cachedKho.length > 0) {
+            setKhoRows(cachedKho)
+            setKhoFileName('Report_Orders_Kho (Cached DB)')
+            loadedAny = true
+          }
 
-          // TẮT LOADING NGAY LẬP TỨC! Người dùng không phải chờ đợi màn hình loading nữa
-          setIsInitialLoading(false)
-          console.log('[Offline-First Cache] Đã hiển thị dữ liệu từ IndexedDB, tiến hành đồng bộ ngầm dưới nền...')
+          if (loadedAny) {
+            // TẮT LOADING NGAY LẬP TỨC! Người dùng không phải chờ đợi màn hình loading nữa
+            setIsInitialLoading(false)
+            console.log('[Offline-First Cache] Đã hiển thị dữ liệu từ IndexedDB, tiến hành đồng bộ ngầm dưới nền...')
+          }
         }
       } catch (cacheErr) {
         console.warn('[Offline-First Cache] Không thể đọc cache ban đầu:', cacheErr)
@@ -20225,6 +20297,10 @@ export default function App() {
                 isDbSchemaOutdated={isDbSchemaOutdated}
                 setIsDbSchemaOutdated={setIsDbSchemaOutdated}
                 setShowDbUpgradeModal={setShowDbUpgradeModal}
+                depreciationOptions={depreciationOptions}
+                setDepreciationOptions={setDepreciationOptions}
+                saveDepreciationOptions={saveDepreciationOptions}
+                loadDepreciationOptionsFromSupabase={loadDepreciationOptionsFromSupabase}
               />
             )}
             {tab === 'inventory' && (
