@@ -8127,10 +8127,13 @@ function PhanNhomVatTuTab({
 
 
   const [isSyncingToSupabase, setIsSyncingToSupabase] = React.useState(false)
+  const [isDebouncingAutoSync, setIsDebouncingAutoSync] = React.useState(false)
 
-  const handleSaveAllToSupabase = async () => {
+  const handleSaveAllToSupabase = async (isAuto = false) => {
     if (!isSupabaseConfigured) {
-      showNotification('Vui lòng kết nối cơ sở dữ liệu Supabase trước.', 'error')
+      if (!isAuto) {
+        showNotification('Vui lòng kết nối cơ sở dữ liệu Supabase trước.', 'error')
+      }
       return
     }
 
@@ -8157,7 +8160,7 @@ function PhanNhomVatTuTab({
           seenKeys.add(key)
           uniquePayload.push({
             months: m.months,
-            isApproved: !!m.isApproved,
+            is_approved: !!m.isApproved,
             ma_sap: null
           })
         }
@@ -8223,34 +8226,66 @@ function PhanNhomVatTuTab({
 
       // 2. Sync don_gia_vat_tu
       if (materialPriceRows.length > 0) {
-        const payload = materialPriceRows
-          .filter(row => row && row.maSAP && String(row.maSAP).trim())
-          .map(row => ({
-            maSAP: String(row.maSAP).trim(),
-            khoiLuongTong: row.khoiLuongTong || 0,
-            thanhTien: row.thanhTien || 0,
-            donGiaTrungBinh: row.donGiaTrungBinh || 0,
-            donGiaTrungBinh1Ngay: row.donGiaTrungBinh1Ngay || 0,
-            phanLoaiVatTu: getClassification(row) || '',
-            isApprovedDepreciation: row.isApprovedDepreciation !== undefined ? !!row.isApprovedDepreciation : false,
-            depreciationMonths: row.depreciationMonths || 0
-          }))
+        const seenPayloadMaSap = new Set()
+        const payload = []
+        materialPriceRows.forEach(row => {
+          if (row && row.maSAP && String(row.maSAP).trim()) {
+            const sapKey = String(row.maSAP).trim().toLowerCase()
+            if (!seenPayloadMaSap.has(sapKey)) {
+              seenPayloadMaSap.add(sapKey)
+              payload.push({
+                ma_sap: String(row.maSAP).trim(),
+                khoi_luong_tong: row.khoiLuongTong || 0,
+                thanh_tien: row.thanhTien || 0,
+                don_gia_trung_binh: row.donGiaTrungBinh || 0,
+                don_gia_trung_binh_1_ngay: row.donGiaTrungBinh1Ngay || 0,
+                phan_loai_vat_tu: getClassification(row) || '',
+                is_approved_depreciation: row.isApprovedDepreciation !== undefined ? !!row.isApprovedDepreciation : false,
+                depreciation_months: row.depreciationMonths || 0
+              })
+            }
+          }
+        })
 
         if (payload.length > 0) {
-          await upsertWithFallback('don_gia_vat_tu', payload, 'maSAP')
+          await upsertWithFallback('don_gia_vat_tu', payload, 'ma_sap')
         }
       }
 
       setLastSyncedDepreciationOptions(depreciationOptions)
       setLastSyncedMaterialPriceRows(materialPriceRows)
-      showNotification('Đồng bộ dữ liệu thành công lên Supabase!', 'success')
+      showNotification(isAuto ? 'Đã tự động đồng bộ dữ liệu thành công lên Supabase!' : 'Đồng bộ dữ liệu thành công lên Supabase!', 'success')
     } catch (err) {
       console.error('Lỗi đồng bộ dữ liệu lên Supabase:', err)
-      showNotification('Đồng bộ thất bại: ' + (err.message || err), 'error')
+      showNotification((isAuto ? 'Tự động đồng bộ thất bại: ' : 'Đồng bộ thất bại: ') + (err.message || err), 'error')
     } finally {
       setIsSyncingToSupabase(false)
     }
   }
+
+  // Tự động đồng bộ dữ liệu (Realtime Sync) lên Supabase khi có thay đổi cục bộ sau 1.5 giây
+  React.useEffect(() => {
+    if (!isSupabaseConfigured || isDbSchemaOutdated) return
+    if (isDepreciationAndPricesSynced) {
+      setIsDebouncingAutoSync(false)
+      return
+    }
+
+    // Đánh dấu đang chờ hết thời gian chờ debounce (1.5s) để người dùng biết hệ thống sắp tự động lưu
+    setIsDebouncingAutoSync(true)
+    const timer = setTimeout(() => {
+      setIsDebouncingAutoSync(false)
+      handleSaveAllToSupabase(true)
+    }, 1500)
+
+    return () => clearTimeout(timer)
+  }, [
+    materialPriceRows,
+    depreciationOptions,
+    isDepreciationAndPricesSynced,
+    isSupabaseConfigured,
+    isDbSchemaOutdated
+  ])
 
   
 
@@ -8347,6 +8382,13 @@ function PhanNhomVatTuTab({
     if (selectedMaterials.size === 0) return
     if (targetMonths === undefined) return
     
+    // Check if the target option exists in depreciationOptions, if not, add it!
+    const exists = depreciationOptions.some(o => o.months === targetMonths && !!o.isApproved === !!targetApproved)
+    if (!exists && targetMonths > 0) {
+      const newOpts = [...depreciationOptions, { months: targetMonths, isApproved: targetApproved }]
+      saveDepreciationOptions(newOpts)
+    }
+
     const updatedRows = materialPriceRows.map(row => {
       if (selectedMaterials.has(row.maSAP)) {
         let newDaily = 0
@@ -8855,14 +8897,30 @@ function PhanNhomVatTuTab({
               </button>
             )}
 
-            {isDepreciationAndPricesSynced ? (
+            {isSyncingToSupabase ? (
               <span style={{
                 fontSize: '12px',
-                color: '#475569',
-                background: '#f1f5f9',
+                color: '#2563eb',
+                background: '#eff6ff',
                 padding: '4px 8px',
                 borderRadius: '6px',
-                border: '1px solid #cbd5e1',
+                border: '1px solid #bfdbfe',
+                fontWeight: 600,
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px'
+              }}>
+                <RefreshCw size={12} className="animate-spin text-blue-600" />
+                Đang đồng bộ...
+              </span>
+            ) : isDepreciationAndPricesSynced ? (
+              <span style={{
+                fontSize: '12px',
+                color: '#047857',
+                background: '#ecfdf5',
+                padding: '4px 8px',
+                borderRadius: '6px',
+                border: '1px solid #a7f3d0',
                 fontWeight: 600,
                 display: 'inline-flex',
                 alignItems: 'center',
@@ -8870,6 +8928,22 @@ function PhanNhomVatTuTab({
               }}>
                 <span className="animate-pulse" style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#10b981' }}></span>
                 Dữ liệu khớp (Đã đồng bộ)
+              </span>
+            ) : isDebouncingAutoSync ? (
+              <span style={{
+                fontSize: '12px',
+                color: '#d97706',
+                background: '#fffbeb',
+                padding: '4px 8px',
+                borderRadius: '6px',
+                border: '1px solid #fde047',
+                fontWeight: 600,
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px'
+              }}>
+                <span className="animate-pulse" style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#f59e0b' }}></span>
+                Đang tự động đồng bộ...
               </span>
             ) : (
               <span style={{
@@ -9761,27 +9835,19 @@ function PhanNhomVatTuTab({
                                 {count}
                               </span>
                               
-                              {/* Move to Tạm tính */}
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  handleToggleApproval(opt, false)
-                                }}
+                              {/* Status Icon Indicator */}
+                              <div
                                 style={{
-                                  background: 'transparent',
-                                  border: 'none',
-                                  color: '#eab308',
-                                  cursor: 'pointer',
+                                  color: '#16a34a',
                                   padding: 4,
-                                  borderRadius: 4,
                                   display: 'flex',
                                   alignItems: 'center',
                                   justifyContent: 'center'
                                 }}
-                                title="Chuyển sang nhóm Tạm tính"
+                                title="Đã duyệt"
                               >
-                                <Clock size={13} />
-                              </button>
+                                <CheckCircle2 size={13} />
+                              </div>
 
                               {/* Delete button */}
                               <button
@@ -9898,28 +9964,20 @@ function PhanNhomVatTuTab({
                                 {count}
                               </span>
                               
-                              {/* Move to Đã duyệt */}
+                              {/* Status Icon Indicator */}
                               {opt.months !== 0 && (
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation()
-                                    handleToggleApproval(opt, true)
-                                  }}
+                                <div
                                   style={{
-                                    background: 'transparent',
-                                    border: 'none',
-                                    color: '#16a34a',
-                                    cursor: 'pointer',
+                                    color: '#d97706',
                                     padding: 4,
-                                    borderRadius: 4,
                                     display: 'flex',
                                     alignItems: 'center',
                                     justifyContent: 'center'
                                   }}
-                                  title="Chuyển sang nhóm Đã duyệt"
+                                  title="Tạm tính"
                                 >
-                                  <CheckCircle2 size={13} />
-                                </button>
+                                  <Clock size={13} />
+                                </div>
                               )}
 
                               {/* Delete button */}
@@ -18381,7 +18439,7 @@ export default function App() {
   }
 
   const loadDepreciationOptionsFromSupabase = React.useCallback(async () => {
-    if (!isSupabaseConfigured) return
+    if (!isSupabaseConfigured) return []
     try {
       const { data, error } = await supabase
         .from('cau_hinh_khau_hao')
@@ -18393,7 +18451,7 @@ export default function App() {
         if (error.code === '42703' || error.code === '42P01' || errMsg.toLowerCase().includes('column') || errMsg.toLowerCase().includes('relation') || errMsg.toLowerCase().includes('does not exist')) {
           setIsDbSchemaOutdated(true)
         }
-        return
+        return []
       }
       
       if (data && data.length > 0) {
@@ -18430,6 +18488,7 @@ export default function App() {
           localStorage.setItem('sgc_report_material_price_rows', JSON.stringify(aligned))
           return aligned
         })
+        return sortedOpts
       } else {
         const fetchedOpts = [{ months: 0, isApproved: false }]
         saveDepreciationOptions(fetchedOpts)
@@ -18440,13 +18499,15 @@ export default function App() {
           localStorage.setItem('sgc_report_material_price_rows', JSON.stringify(aligned))
           return aligned
         })
+        return fetchedOpts
       }
     } catch (err) {
       console.error('Lỗi loadDepreciationOptionsFromSupabase:', err)
+      return []
     }
   }, [isSupabaseConfigured])
 
-  const loadPricesFromSupabase = React.useCallback(async (forceBypassCache = false) => {
+  const loadPricesFromSupabase = React.useCallback(async (forceBypassCache = false, passedOpts = null) => {
     if (!isSupabaseConfigured) return
 
     // Read from cache first to render instantly
@@ -18592,26 +18653,29 @@ export default function App() {
             depreciationMonths: config ? config.months : (item.depreciation_months || 0)
           }
         })
-        let localOptions = []
-        try {
-          const saved = localStorage.getItem('sgc_depreciation_options_v2')
-          if (saved) {
-            const parsed = JSON.parse(saved)
-            if (Array.isArray(parsed) && parsed.length > 0 && typeof parsed[0] === 'object' && parsed[0] !== null) {
-              const unique = []
-              const seen = new Set()
-              parsed.forEach(opt => {
-                const key = `${opt.months}-${!!opt.isApproved}`
-                if (!seen.has(key)) {
-                  seen.add(key)
-                  unique.push(opt)
-                }
-              })
-              localOptions = unique.sort((a, b) => a.months - b.months || (a.isApproved ? 1 : 0) - (b.isApproved ? 1 : 0))
+        let localOptions = passedOpts
+        if (!localOptions || localOptions.length === 0) {
+          localOptions = []
+          try {
+            const saved = localStorage.getItem('sgc_depreciation_options_v2')
+            if (saved) {
+              const parsed = JSON.parse(saved)
+              if (Array.isArray(parsed) && parsed.length > 0 && typeof parsed[0] === 'object' && parsed[0] !== null) {
+                const unique = []
+                const seen = new Set()
+                parsed.forEach(opt => {
+                  const key = `${opt.months}-${!!opt.isApproved}`
+                  if (!seen.has(key)) {
+                    seen.add(key)
+                    unique.push(opt)
+                  }
+                })
+                localOptions = unique.sort((a, b) => a.months - b.months || (a.isApproved ? 1 : 0) - (b.isApproved ? 1 : 0))
+              }
             }
-          }
-        } catch (e) {}
-        if (localOptions.length === 0) {
+          } catch (e) {}
+        }
+        if (!localOptions || localOptions.length === 0) {
           localOptions = [
             { months: 0, isApproved: false },
             { months: 12, isApproved: true },
@@ -19064,11 +19128,9 @@ export default function App() {
 
   const loadDataFromSupabase = React.useCallback(async (forceBypassCache = false) => {
     if (!isSupabaseConfigured) return
-    await Promise.all([
-      loadProjectsFromSupabase(),
-      loadPricesFromSupabase(true),
-      loadDepreciationOptionsFromSupabase()
-    ])
+    await loadProjectsFromSupabase()
+    const freshOpts = await loadDepreciationOptionsFromSupabase()
+    await loadPricesFromSupabase(true, freshOpts)
   }, [loadProjectsFromSupabase, loadPricesFromSupabase, loadDepreciationOptionsFromSupabase])
 
   // Fetch initial data from Supabase if connected
