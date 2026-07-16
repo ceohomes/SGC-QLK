@@ -7904,6 +7904,7 @@ function PhanNhomVatTuTab({
   const [priceSearchQuery, setPriceSearchQuery] = React.useState('')
   const [currentSubTab, setCurrentSubTab] = React.useState('classification') // 'classification' | 'depreciation_duration'
   const [syncNotification, setSyncNotification] = React.useState(null)
+  const [showConfirmClearPrices, setShowConfirmClearPrices] = React.useState(false)
 
   const showNotification = React.useCallback((message, type = 'success') => {
     setSyncNotification({ message, type })
@@ -8229,6 +8230,7 @@ function PhanNhomVatTuTab({
         const seenPayloadMaSap = new Set()
         const payload = []
         materialPriceRows.forEach(row => {
+          if (row.isDummyConfigOnly) return
           if (row && row.maSAP && String(row.maSAP).trim()) {
             const sapKey = String(row.maSAP).trim().toLowerCase()
             if (!seenPayloadMaSap.has(sapKey)) {
@@ -8413,6 +8415,74 @@ function PhanNhomVatTuTab({
     showNotification(`Đã chuyển thành công ${oldSize} vật tư sang nhóm khấu hao ${targetMonths > 0 ? `${targetMonths} tháng (${targetApproved ? 'Đã duyệt' : 'Tạm tính'})` : 'Chưa thiết lập'} cục bộ! Hãy bấm "Lưu dữ liệu" để đồng bộ lên Supabase.`, 'success')
   }
 
+  const handleDownloadTemplate = () => {
+    try {
+      const wb = XLSXStyle.utils.book_new()
+      
+      const headerStyle = {
+        fill: { patternType: 'solid', fgColor: { rgb: '0F766E' } },
+        font: { name: 'Segoe UI', sz: 11, bold: true, color: { rgb: 'FFFFFF' } },
+        alignment: { horizontal: 'center', vertical: 'center', wrapText: true },
+        border: {
+          top: { style: 'thin', color: { rgb: '0D5C56' } },
+          bottom: { style: 'thin', color: { rgb: '0D5C56' } },
+          left: { style: 'thin', color: { rgb: '0D5C56' } },
+          right: { style: 'thin', color: { rgb: '0D5C56' } }
+        }
+      }
+
+      const headers = [
+        "Mã SAP",
+        "KL Tổng",
+        "Thành Tiền",
+        "Đơn Giá Trung Bình",
+        "Phân Loại Vật Tư"
+      ]
+
+      const ws = {}
+      
+      ws['!cols'] = [
+        { wch: 15 },
+        { wch: 15 },
+        { wch: 18 },
+        { wch: 22 },
+        { wch: 25 }
+      ]
+
+      headers.forEach((h, colIdx) => {
+        const cellRef = XLSXStyle.utils.encode_cell({ r: 0, c: colIdx })
+        ws[cellRef] = { v: h, t: 's', s: headerStyle }
+      })
+
+      ws['!ref'] = XLSXStyle.utils.encode_range({
+        s: { r: 0, c: 0 },
+        e: { r: 0, c: 4 }
+      })
+
+      XLSXStyle.utils.book_append_sheet(wb, ws, "Template Đơn Giá")
+      
+      const wbout = XLSXStyle.write(wb, { bookType: 'xlsx', type: 'binary', compression: false })
+      const s2ab = (s) => {
+        const buf = new ArrayBuffer(s.length)
+        const view = new Uint8Array(buf)
+        for (let i = 0; i < s.length; i++) view[i] = s.charCodeAt(i) & 0xFF
+        return buf
+      }
+      const blob = new Blob([s2ab(wbout)], { type: 'application/octet-stream' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `Mau_File_Up_Don_Gia_Vat_Tu.xlsx`
+      a.click()
+      URL.revokeObjectURL(url)
+      
+      showNotification('Tải file mẫu thành công!', 'success')
+    } catch (err) {
+      console.error("Download template error:", err)
+      alert("Đã xảy ra lỗi khi tải file mẫu. Vui lòng thử lại.")
+    }
+  }
+
   const handleUploadPriceExcel = async (e) => {
     const file = e.target.files?.[0]
     if (!file) return
@@ -8445,8 +8515,8 @@ function PhanNhomVatTuTab({
         let colIdxKlTong = 1
         let colIdxThanhTien = 2
         let colIdxDonGiaTb = 3
-        let colIdxDonGiaTb1Ngay = 4
-        let colIdxPhanLoai = 5
+        let colIdxDonGiaTb1Ngay = -1
+        let colIdxPhanLoai = 4
 
         const headers = data[headerRowIdx] || []
         headers.forEach((cell, idx) => {
@@ -8454,7 +8524,7 @@ function PhanNhomVatTuTab({
           if (s.includes('sap') || s.includes('mã s')) colIdxSap = idx
           else if (s.includes('khối lượng') || s.includes('khoi luong') || s.includes('kl tổng') || s.includes('kl tong')) colIdxKlTong = idx
           else if (s.includes('thành tiền') || s.includes('thanh tien')) colIdxThanhTien = idx
-          else if (s.includes('trung bình') && !s.includes('1 ngày') && !s.includes('1 ngay') && !s.includes('1 ngày')) colIdxDonGiaTb = idx
+          else if (s.includes('trung bình') && !s.includes('1 ngày') && !s.includes('1 ngay')) colIdxDonGiaTb = idx
           else if (s.includes('1 ngày') || s.includes('1 ngay')) colIdxDonGiaTb1Ngay = idx
           else if (s.includes('phân loại') || s.includes('phan loai')) colIdxPhanLoai = idx
         })
@@ -8471,6 +8541,19 @@ function PhanNhomVatTuTab({
           return isNaN(parsed) ? 0 : parsed
         }
 
+        // Tạo map lưu giữ cấu hình khấu hao hiện tại của địa phương trước khi import
+        const existingConfigMap = new Map()
+        if (Array.isArray(materialPriceRows)) {
+          materialPriceRows.forEach(r => {
+            if (r.maSAP) {
+              existingConfigMap.set(String(r.maSAP).trim().toLowerCase(), {
+                months: r.depreciationMonths || 0,
+                isApproved: !!r.isApprovedDepreciation
+              })
+            }
+          })
+        }
+
         for (let i = headerRowIdx + 1; i < data.length; i++) {
           const row = data[i]
           if (!row || row.length === 0) continue
@@ -8481,8 +8564,27 @@ function PhanNhomVatTuTab({
           const klTong = parseNum(row[colIdxKlTong])
           const thanhTien = parseNum(row[colIdxThanhTien])
           const donGiaTb = parseNum(row[colIdxDonGiaTb])
-          const donGiaTb1Ngay = parseNum(row[colIdxDonGiaTb1Ngay])
-          const phanLoai = String(row[colIdxPhanLoai] || '').trim()
+          
+          let donGiaTb1Ngay = 0
+          if (colIdxDonGiaTb1Ngay !== -1) {
+            donGiaTb1Ngay = parseNum(row[colIdxDonGiaTb1Ngay])
+          }
+          
+          const phanLoai = colIdxPhanLoai !== -1 ? String(row[colIdxPhanLoai] || '').trim() : ''
+
+          const sapKey = sap.toLowerCase()
+          let depMonths = 0
+          let isApprDep = false
+
+          if (existingConfigMap.has(sapKey)) {
+            const cfg = existingConfigMap.get(sapKey)
+            depMonths = cfg.months
+            isApprDep = cfg.isApproved
+          }
+
+          if (depMonths > 0 && (!donGiaTb1Ngay || colIdxDonGiaTb1Ngay === -1)) {
+            donGiaTb1Ngay = Math.round(donGiaTb / (depMonths * 30.417))
+          }
 
           rows.push({
             maSAP: sap,
@@ -8490,7 +8592,9 @@ function PhanNhomVatTuTab({
             thanhTien: thanhTien,
             donGiaTrungBinh: donGiaTb,
             donGiaTrungBinh1Ngay: donGiaTb1Ngay,
-            phanLoaiVatTu: phanLoai
+            phanLoaiVatTu: phanLoai,
+            depreciationMonths: depMonths,
+            isApprovedDepreciation: isApprDep
           })
 
           newPrices[sap] = donGiaTb
@@ -8610,8 +8714,9 @@ function PhanNhomVatTuTab({
 
   const filteredPriceRows = React.useMemo(() => {
     const q = priceSearchQuery.toLowerCase().trim()
-    if (!q) return materialPriceRows
-    return materialPriceRows.filter(r => {
+    const activeRows = materialPriceRows.filter(r => !r.isDummyConfigOnly)
+    if (!q) return activeRows
+    return activeRows.filter(r => {
       const sap = String(r.maSAP || '').trim()
       const val = getClassification(r)
       const meta = materialMetadataMap.get(sap.toLowerCase()) || { tenVatTu: '' }
@@ -8627,7 +8732,7 @@ function PhanNhomVatTuTab({
     materialPriceRows.forEach(r => {
       const val = getClassification(r)
       const text = val.toLowerCase()
-      const isAsset = text.includes('khấu hao') || text.includes('tài sản') || text.includes('tskh')
+      const isAsset = text.includes('khấu hao') || text.includes('tài sản') || text.includes('tskh') || (r.depreciationMonths && r.depreciationMonths > 0)
       if (isAsset) {
         const sap = String(r.maSAP || '').trim()
         seenSaps.add(sap.toLowerCase())
@@ -9044,6 +9149,54 @@ function PhanNhomVatTuTab({
           
           <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
             <button
+              onClick={handleDownloadTemplate}
+              className="btn btn-secondary"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                cursor: 'pointer',
+                background: '#475569',
+                color: '#ffffff',
+                padding: '8px 16px',
+                borderRadius: 6,
+                fontSize: 13,
+                fontWeight: 600,
+                border: 'none',
+                boxShadow: 'var(--shadow-sm)',
+                transition: 'all 0.15s'
+              }}
+            >
+              <FileSpreadsheet size={14} />
+              <span>Tải Form</span>
+            </button>
+
+            <label className="btn btn-primary" style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
+              cursor: 'pointer',
+              background: 'var(--primary)',
+              color: '#ffffff',
+              padding: '8px 16px',
+              borderRadius: 6,
+              fontSize: 13,
+              fontWeight: 600,
+              border: 'none',
+              boxShadow: 'var(--shadow-sm)',
+              transition: 'all 0.15s'
+            }}>
+              <Upload size={14} />
+              <span>Up File Excel</span>
+              <input
+                type="file"
+                accept=".xlsx, .xls"
+                onChange={handleUploadPriceExcel}
+                style={{ display: 'none' }}
+              />
+            </label>
+
+            <button
               className="btn btn-success"
               style={{
                 display: 'inline-flex',
@@ -9097,56 +9250,9 @@ function PhanNhomVatTuTab({
               <span>Xuất Excel</span>
             </button>
 
-            <label className="btn btn-primary" style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 6,
-              cursor: 'pointer',
-              background: 'var(--primary)',
-              color: '#ffffff',
-              padding: '8px 16px',
-              borderRadius: 6,
-              fontSize: 13,
-              fontWeight: 600,
-              border: 'none',
-              boxShadow: 'var(--shadow-sm)',
-              transition: 'all 0.15s'
-            }}>
-              <Upload size={14} />
-              <span>Tải lên Excel đơn giá</span>
-              <input
-                type="file"
-                accept=".xlsx, .xls"
-                onChange={handleUploadPriceExcel}
-                style={{ display: 'none' }}
-              />
-            </label>
-
             <button
-              onClick={async () => {
-                if (window.confirm('Bạn có chắc chắn muốn xóa toàn bộ danh sách đơn giá vật tư này không?')) {
-                  setMaterialPriceRows([]);
-                  setMaterialPrices({});
-                  setMaterialClassifications({});
-                  localStorage.removeItem('sgc_report_material_price_rows');
-                  localStorage.removeItem('sgc_report_material_prices');
-                  localStorage.removeItem('sgc_report_material_classifications');
-                  if (isSupabaseConfigured) {
-                    try {
-                      const { error } = await supabase.from('don_gia_vat_tu').delete().neq('id', -999);
-                      if (error) alert('Lỗi xóa trên Supabase: ' + error.message);
-                      else {
-                        setLastSyncedMaterialPriceRows([]);
-                        alert('Đã xóa sạch dữ liệu trên cả cục bộ và Supabase!');
-                      }
-                    } catch (e) {
-                      alert('Lỗi kết nối Supabase: ' + e.message);
-                    }
-                  } else {
-                    setLastSyncedMaterialPriceRows([]);
-                    alert('Đã xóa sạch dữ liệu cục bộ!');
-                  }
-                }
+              onClick={() => {
+                setShowConfirmClearPrices(true);
               }}
               className="btn"
               style={{
@@ -9166,7 +9272,7 @@ function PhanNhomVatTuTab({
               }}
             >
               <Trash2 size={14} />
-              <span>Xóa sạch</span>
+              <span>Xóa dữ liệu</span>
             </button>
           </div>
         </div>
@@ -10671,6 +10777,127 @@ function PhanNhomVatTuTab({
           }}
           months={depreciationToDelete.months}
         />
+      )}
+
+      {/* Custom Confirmation Dialog for Clearing Prices */}
+      {showConfirmClearPrices && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(15, 23, 42, 0.65)',
+          backdropFilter: 'blur(6px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 99999,
+        }}>
+          <div style={{
+            background: '#ffffff',
+            borderRadius: 16,
+            padding: 24,
+            width: '100%',
+            maxWidth: 440,
+            boxShadow: '0 25px 50px -12px rgba(15, 23, 42, 0.25)',
+            border: '1px solid #fee2e2',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 20,
+            margin: '0 16px',
+            boxSizing: 'border-box'
+          }}>
+            <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start' }}>
+              <div style={{
+                width: 48,
+                height: 48,
+                borderRadius: 24,
+                background: '#fee2e2',
+                color: '#ef4444',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0
+              }}>
+                <Trash2 size={24} />
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flex: 1 }}>
+                <h3 style={{ fontSize: 18, fontWeight: 700, color: '#0f172a', margin: 0 }}>
+                  Xác nhận xóa dữ liệu
+                </h3>
+                <p style={{ fontSize: 14, color: '#475569', margin: 0, lineHeight: '1.5' }}>
+                  Bạn có thực sự muốn xóa toàn bộ danh sách đơn giá và phân loại vật tư ở tab <strong>Phân nhóm vật tư</strong>? Hành động này không thể hoàn tác và sẽ xóa vĩnh viễn dữ liệu đơn giá này trên cả cục bộ và cơ sở dữ liệu Supabase (nếu có kết nối).
+                </p>
+                <p style={{ fontSize: 13, color: '#0284c7', margin: '4px 0 0 0', lineHeight: '1.5', fontWeight: 500 }}>
+                  * Lưu ý: Cấu hình ở tab "Thời gian khấu hao" sẽ được giữ nguyên, không bị ảnh hưởng.
+                </p>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
+              <button
+                onClick={() => setShowConfirmClearPrices(false)}
+                style={{
+                  padding: '10px 20px',
+                  borderRadius: 8,
+                  fontSize: 14,
+                  fontWeight: 600,
+                  background: '#f1f5f9',
+                  color: '#334155',
+                  cursor: 'pointer',
+                  border: '1px solid #cbd5e1',
+                  transition: 'all 0.15s ease'
+                }}
+              >
+                Hủy (No)
+              </button>
+              <button
+                onClick={async () => {
+                  setShowConfirmClearPrices(false)
+                  setMaterialPriceRows([]);
+                  setMaterialPrices({});
+                  setMaterialClassifications({});
+                  localStorage.removeItem('sgc_report_material_price_rows');
+                  localStorage.removeItem('sgc_report_material_prices');
+                  localStorage.removeItem('sgc_report_material_classifications');
+                  if (isSupabaseConfigured) {
+                    try {
+                      const { error } = await supabase.from('don_gia_vat_tu').delete().neq('ma_sap', '_nonexistent_');
+                      if (error) {
+                        showNotification('Lỗi xóa trên Supabase: ' + error.message, 'error');
+                      } else {
+                        setLastSyncedMaterialPriceRows([]);
+                        showNotification('Đã xóa dữ liệu đơn giá & phân loại thành công trên cả cục bộ và Supabase!', 'success');
+                        // Tải lại để tự động phục hồi cấu hình khấu hao từ cau_hinh_khau_hao
+                        await loadPricesFromSupabase(true);
+                      }
+                    } catch (e) {
+                      showNotification('Lỗi kết nối Supabase: ' + e.message, 'error');
+                    }
+                  } else {
+                    setLastSyncedMaterialPriceRows([]);
+                    showNotification('Đã xóa dữ liệu đơn giá & phân loại cục bộ thành công!', 'success');
+                  }
+                }}
+                style={{
+                  padding: '10px 20px',
+                  borderRadius: 8,
+                  fontSize: 14,
+                  fontWeight: 700,
+                  background: '#dc2626',
+                  color: '#ffffff',
+                  cursor: 'pointer',
+                  boxShadow: '0 2px 4px rgba(220, 38, 38, 0.2)',
+                  border: 'none',
+                  transition: 'all 0.15s ease'
+                }}
+              >
+                Đồng ý (Yes)
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )
@@ -18651,6 +18878,24 @@ export default function App() {
             phanLoaiVatTu: item.phan_loai_vat_tu || '',
             isApprovedDepreciation: config ? config.isApproved : (item.is_approved_depreciation !== undefined ? !!item.is_approved_depreciation : false),
             depreciationMonths: config ? config.months : (item.depreciation_months || 0)
+          }
+        })
+
+        // Bổ sung cấu hình khấu hao riêng có trên Supabase nhưng chưa được định nghĩa trong đơn giá vật tư
+        const seenSapsInRows = new Set(rows.map(r => String(r.maSAP || '').trim().toLowerCase()))
+        configMap.forEach((config, sapKey) => {
+          if (!seenSapsInRows.has(sapKey.toLowerCase())) {
+            rows.push({
+              maSAP: sapKey.toUpperCase(),
+              khoiLuongTong: 0,
+              thanhTien: 0,
+              donGiaTrungBinh: 0,
+              donGiaTrungBinh1Ngay: 0,
+              phanLoaiVatTu: 'Vật tư khấu hao', // Gán phân loại mặc định là khấu hao để khớp logic hiển thị
+              isApprovedDepreciation: config.isApproved,
+              depreciationMonths: config.months,
+              isDummyConfigOnly: true
+            })
           }
         })
         let localOptions = passedOpts

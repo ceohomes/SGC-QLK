@@ -1246,7 +1246,7 @@ export const buildPhanNhomVatTuSheet = (materialPriceRows, materialMetadataMap, 
     }
   })
 
-  const rowsToUse = materialPriceRows || []
+  const rowsToUse = (materialPriceRows || []).filter(r => !r.isDummyConfigOnly)
   rowsToUse.forEach((row, rowIndex) => {
     pRowIdx++
     const isEven = (rowIndex % 2 === 1)
