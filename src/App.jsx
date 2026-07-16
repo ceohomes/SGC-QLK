@@ -8840,7 +8840,21 @@ function PhanNhomVatTuTab({
 
   const activeGroupRows = React.useMemo(() => {
     if (selectedMonthsGroup && selectedMonthsGroup.isAll) {
-      return assetRows
+      const rows = [...assetRows]
+      rows.sort((a, b) => {
+        const closestA = rowMonthsMap.get(a.maSAP)
+        const closestB = rowMonthsMap.get(b.maSAP)
+        const monthsA = closestA ? closestA.months : 0
+        const monthsB = closestB ? closestB.months : 0
+        if (monthsA !== monthsB) {
+          return monthsA - monthsB
+        }
+        // Fallback to alphabetical sorting of maSAP for stable sorting
+        const sapA = String(a.maSAP || '')
+        const sapB = String(b.maSAP || '')
+        return sapA.localeCompare(sapB)
+      })
+      return rows
     }
     return assetRows.filter(row => {
       const closest = rowMonthsMap.get(row.maSAP)
