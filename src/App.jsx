@@ -10944,6 +10944,22 @@ function BaoCaoXuatNhapTonTab({
 
   const [sqlCopied, setSqlCopied] = React.useState(false)
 
+  const getCategoryForUnit = React.useCallback((name) => {
+    if (!name) return 'chuaphanbo'
+    const normName = name.trim().replace(/\s+/g, ' ')
+    if (customCategoryMap && customCategoryMap[normName]) {
+      return customCategoryMap[normName]
+    }
+    if (customCategoryMap) {
+      const keys = Object.keys(customCategoryMap)
+      const foundKey = keys.find(k => k.toLowerCase() === normName.toLowerCase())
+      if (foundKey) {
+        return customCategoryMap[foundKey]
+      }
+    }
+    return getUnitCategory(normName)
+  }, [customCategoryMap])
+
   const handleCopySql = () => {
     navigator.clipboard.writeText(sqlQueryText)
     setSqlCopied(true)
@@ -11167,6 +11183,8 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
       ? [...chungRows, ...giaoRows, ...nhanRows]
       : ((chungRows && chungRows.length > 0) ? chungRows : [...giaoRows, ...nhanRows])
 
+    const isAllProj = proj === 'Tất cả kho BCH'
+
     sourceRows.forEach(r => {
       // Apply status filter
       if (!matchStatusFilter(r.trangThai)) {
@@ -11183,76 +11201,69 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
         }
       }
 
-      const nhanUnit = String(r.donViNhan || '').trim().toLowerCase()
-      const giaoUnit = String(r.donViGiao || '').trim().toLowerCase()
-
-      let isNhan = false
-      let isGiao = false
-
-      const isAllProj = proj === 'Tất cả kho BCH'
-
-      if (proj && !isAllProj) {
-        isNhan = nhanUnit === projLower
-        isGiao = giaoUnit === projLower
-        // If this row is not related to our selected warehouse, skip
-        if (!isNhan && !isGiao) return
-      } else {
-        isNhan = true
-        isGiao = true
-      }
-
-      // Use maSAP as grouping key (fallback to empty string if not present)
       const sap = String(r.maSAP || '').trim()
       if (!sap) return // Skip rows without SAP code as per requirement
 
-      // Initialize group if not exists
-      if (!groups[sap]) {
-        groups[sap] = {
-          maSAP: sap,
-          maVatTu: String(r.maVatTu || '').trim(),
-          tenVatTu: String(r.tenVatTu || '').trim(),
-          dvt: String(r.dvt || '').trim(),
-          thongSoKyThuat: String(r.thongSoKyThuat || '').trim(),
-          received: 0,
-          issued: 0,
-          latestReceivedDate: null,
-          latestIssuedDate: null
-        }
-      } else {
-        // Fallbacks for empty info
-        if (!groups[sap].maVatTu && r.maVatTu) groups[sap].maVatTu = String(r.maVatTu).trim()
-        if (!groups[sap].tenVatTu && r.tenVatTu) groups[sap].tenVatTu = String(r.tenVatTu).trim()
-        if (!groups[sap].dvt && r.dvt) groups[sap].dvt = String(r.dvt).trim()
-        if (!groups[sap].thongSoKyThuat && r.thongSoKyThuat) groups[sap].thongSoKyThuat = String(r.thongSoKyThuat).trim()
-      }
+      const nhanUnit = String(r.donViNhan || '').trim()
+      const giaoUnit = String(r.donViGiao || '').trim()
+      const nhanUnitLower = nhanUnit.toLowerCase()
+      const giaoUnitLower = giaoUnit.toLowerCase()
 
       const rowDate = parseRowDate(r.ngayXuatNhap)
 
-      // Add to received/issued
-      if (proj && !isAllProj) {
-        if (isNhan) {
-          // Receiving unit: add to received
-          groups[sap].received += parseVal(r.khoiLuongNhap) || parseVal(r.khoiLuongXuat)
-          if (rowDate && (!groups[sap].latestReceivedDate || rowDate > groups[sap].latestReceivedDate)) {
-            groups[sap].latestReceivedDate = rowDate
+      const addToGroup = (sapCode, projectUnit, isNhanType) => {
+        const groupKey = isAllProj ? `${sapCode}::${projectUnit}` : sapCode
+        if (!groups[groupKey]) {
+          groups[groupKey] = {
+            maSAP: sapCode,
+            maVatTu: String(r.maVatTu || '').trim(),
+            tenVatTu: String(r.tenVatTu || '').trim(),
+            dvt: String(r.dvt || '').trim(),
+            thongSoKyThuat: String(r.thongSoKyThuat || '').trim(),
+            received: 0,
+            issued: 0,
+            latestReceivedDate: null,
+            latestIssuedDate: null,
+            project: isAllProj ? projectUnit : undefined
+          }
+        } else {
+          // Fallbacks for empty info
+          if (!groups[groupKey].maVatTu && r.maVatTu) groups[groupKey].maVatTu = String(r.maVatTu).trim()
+          if (!groups[groupKey].tenVatTu && r.tenVatTu) groups[groupKey].tenVatTu = String(r.tenVatTu).trim()
+          if (!groups[groupKey].dvt && r.dvt) groups[groupKey].dvt = String(r.dvt).trim()
+          if (!groups[groupKey].thongSoKyThuat && r.thongSoKyThuat) groups[groupKey].thongSoKyThuat = String(r.thongSoKyThuat).trim()
+        }
+
+        if (isNhanType) {
+          groups[groupKey].received += parseVal(r.khoiLuongNhap) || parseVal(r.khoiLuongXuat)
+          if (rowDate && (!groups[groupKey].latestReceivedDate || rowDate > groups[groupKey].latestReceivedDate)) {
+            groups[groupKey].latestReceivedDate = rowDate
+          }
+        } else {
+          groups[groupKey].issued += parseVal(r.khoiLuongXuat) || parseVal(r.khoiLuongNhap)
+          if (rowDate && (!groups[groupKey].latestIssuedDate || rowDate > groups[groupKey].latestIssuedDate)) {
+            groups[groupKey].latestIssuedDate = rowDate
           }
         }
-        if (isGiao) {
-          // Issuing/delivery unit: add to issued
-          groups[sap].issued += parseVal(r.khoiLuongXuat) || parseVal(r.khoiLuongNhap)
-          if (rowDate && (!groups[sap].latestIssuedDate || rowDate > groups[sap].latestIssuedDate)) {
-            groups[sap].latestIssuedDate = rowDate
-          }
+      }
+
+      if (isAllProj) {
+        const isNhanBCH = getCategoryForUnit(nhanUnit) === 'kho'
+        const isGiaoBCH = getCategoryForUnit(giaoUnit) === 'kho'
+
+        if (isNhanBCH) {
+          addToGroup(sap, nhanUnit, true)
+        }
+        if (isGiaoBCH) {
+          addToGroup(sap, giaoUnit, false)
         }
       } else {
-        // Global aggregation
-        groups[sap].received += parseVal(r.khoiLuongNhap)
-        groups[sap].issued += parseVal(r.khoiLuongXuat)
-        if (parseVal(r.khoiLuongNhap) && rowDate && (!groups[sap].latestReceivedDate || rowDate > groups[sap].latestReceivedDate)) {
-          groups[sap].latestReceivedDate = rowDate
-        }
-        if (parseVal(r.khoiLuongXuat) && rowDate && (!groups[sap].latestIssuedDate || rowDate > groups[sap].latestIssuedDate)) {
-          groups[sap].latestIssuedDate = rowDate
+        const isNhan = nhanUnitLower === projLower
+        const isGiao = giaoUnitLower === projLower
+
+        if (isNhan || isGiao) {
+          if (isNhan) addToGroup(sap, proj, true)
+          if (isGiao) addToGroup(sap, proj, false)
         }
       }
     })
@@ -11300,7 +11311,7 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
     })
 
     return result
-  }, [chungRows, giaoRows, nhanRows, materialClassifications, materialPriceRows, materialPrices, matchStatusFilter, getUnusedStatus, isRealReport, localGiao, localNhan])
+  }, [chungRows, giaoRows, nhanRows, materialClassifications, materialPriceRows, materialPrices, matchStatusFilter, getUnusedStatus, isRealReport, localGiao, localNhan, getCategoryForUnit])
 
   // Process rows and group by maSAP
   const reportData = React.useMemo(() => {
@@ -11322,6 +11333,17 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
     // Sort
     filtered.sort((a, b) => {
       if (sortField === 'default') {
+        if (localProject === 'Tất cả kho BCH') {
+          const projA = String(a.project || '').toLowerCase()
+          const projB = String(b.project || '').toLowerCase()
+          if (projA !== projB) {
+            return sortDirection === 'asc' ? projA.localeCompare(projB) : projB.localeCompare(projA)
+          }
+          const nameA = String(a.tenVatTu || '').toLowerCase()
+          const nameB = String(b.tenVatTu || '').toLowerCase()
+          return sortDirection === 'asc' ? nameA.localeCompare(nameB) : nameB.localeCompare(nameA)
+        }
+
         const getStatusRank = (status) => {
           const sLower = String(status || '').trim().toLowerCase()
           if (sLower.includes('chưa sử dụng')) return 1
@@ -11368,6 +11390,9 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
       if (sortField === 'maSAP') {
         valA = a.maSAP.toLowerCase()
         valB = b.maSAP.toLowerCase()
+      } else if (sortField === 'project') {
+        valA = String(a.project || '').toLowerCase()
+        valB = String(b.project || '').toLowerCase()
       } else if (sortField === 'received') {
         valA = a.received
         valB = b.received
@@ -12223,6 +12248,22 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
             xuatList.push({ ...baseInfo, maDon: String(r.maDonXuatKho || r.maDonNhapKho || '').trim(), khoiLuong: soLuong })
           }
         }
+      } else if (localProject === 'Tất cả kho BCH') {
+        const isNhanBCH = getCategoryForUnit(r.donViNhan) === 'kho'
+        const isGiaoBCH = getCategoryForUnit(r.donViGiao) === 'kho'
+
+        if (isNhanBCH) {
+          const soLuong = parseVal(r.khoiLuongNhap) || parseVal(r.khoiLuongXuat)
+          if (soLuong) {
+            nhanList.push({ ...baseInfo, maDon: String(r.maDonNhapKho || r.maDonXuatKho || '').trim(), khoiLuong: soLuong })
+          }
+        }
+        if (isGiaoBCH) {
+          const soLuong = parseVal(r.khoiLuongXuat) || parseVal(r.khoiLuongNhap)
+          if (soLuong) {
+            xuatList.push({ ...baseInfo, maDon: String(r.maDonXuatKho || r.maDonNhapKho || '').trim(), khoiLuong: soLuong })
+          }
+        }
       } else {
         const soNhan = parseVal(r.khoiLuongNhap)
         if (soNhan) {
@@ -12236,7 +12277,7 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
     })
 
     return { nhanList, xuatList }
-  }, [chungRows, giaoRows, nhanRows, localProject, matchStatusFilter])
+  }, [chungRows, giaoRows, nhanRows, localProject, matchStatusFilter, getCategoryForUnit])
 
   // Metrics
   const metrics = React.useMemo(() => {
@@ -13229,6 +13270,7 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
       { key: 'STT', label: 'STT', wch: 6 },
       { key: 'maSAP', label: 'Mã SAP', wch: 14 },
       { key: 'maVatTu', label: 'Mã vật tư', wch: 12 },
+      ...(localProject === 'Tất cả kho BCH' ? [{ key: 'project', label: 'Kho dự án', wch: 25 }] : []),
       { key: 'tenVatTu', label: 'Tên vật tư', wch: 35 },
       { key: 'dvt', label: 'ĐVT', wch: 8 },
       { key: 'thongSoKyThuat', label: 'Thông số kỹ thuật', wch: 12 },
@@ -13244,6 +13286,16 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
       { key: 'valueOver30Days', label: isRealReport ? 'Thành tiền vật tư tồn thực tế >30 ngày' : 'Thành tiền vật tư tồn >30 ngày', wch: 20 },
       { key: 'materialClassification', label: 'Phân loại vật tư', wch: 18 }
     ]
+
+    const colKeys = cols.map(c => c.key)
+    const getColLetter = (key) => {
+      const idx = colKeys.indexOf(key)
+      if (idx === -1) return ''
+      return String.fromCharCode(65 + idx)
+    }
+
+    const firstValColIdx = colKeys.indexOf('received')
+
     // Quy đổi Date -> Excel serial number để dùng được trong công thức/định dạng ngày
     const toExcelSerial = (dateVal) => {
       const d = (dateVal instanceof Date) ? dateVal : parseRowDate(dateVal)
@@ -13306,52 +13358,85 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
     // sheet Don_Nhan / Don_Xuat theo Mã SAP để người dùng xem được cách tính ngay trên Excel.
     const donNhanLastRow = 4 + detailRows.nhanList.length
     const donXuatLastRow = 4 + detailRows.xuatList.length
+
+    const isAllProj = localProject === 'Tất cả kho BCH'
+
     reportData.forEach((item, idx) => {
       rowIdx++
-      const sapCell = `B${rowIdx}`
+      const sapCell = `${getColLetter('maSAP')}${rowIdx}`
+      const projectCell = isAllProj ? `${getColLetter('project')}${rowIdx}` : ''
+
       const cells = [
         idx + 1,
         item.maSAP,
         item.maVatTu,
+        ...(isAllProj ? [item.project] : []),
         item.tenVatTu,
         item.dvt,
         item.thongSoKyThuat,
         donNhanLastRow >= 5
-          ? { f: `SUMIFS(Don_Nhan!$J$5:$J$${donNhanLastRow},Don_Nhan!$C$5:$C$${donNhanLastRow},${sapCell})`, v: item.received }
+          ? {
+              f: isAllProj
+                ? `SUMIFS(Don_Nhan!$J$5:$J$${donNhanLastRow},Don_Nhan!$C$5:$C$${donNhanLastRow},${sapCell},Don_Nhan!$I$5:$I$${donNhanLastRow},${projectCell})`
+                : `SUMIFS(Don_Nhan!$J$5:$J$${donNhanLastRow},Don_Nhan!$C$5:$C$${donNhanLastRow},${sapCell})`,
+              v: item.received
+            }
           : 0,
         donXuatLastRow >= 5
-          ? { f: `SUMIFS(Don_Xuat!$J$5:$J$${donXuatLastRow},Don_Xuat!$C$5:$C$${donXuatLastRow},${sapCell})`, v: item.issued }
+          ? {
+              f: isAllProj
+                ? `SUMIFS(Don_Xuat!$J$5:$J$${donXuatLastRow},Don_Xuat!$C$5:$C$${donXuatLastRow},${sapCell},Don_Xuat!$H$5:$H$${donXuatLastRow},${projectCell})`
+                : `SUMIFS(Don_Xuat!$J$5:$J$${donXuatLastRow},Don_Xuat!$C$5:$C$${donXuatLastRow},${sapCell})`,
+              v: item.issued
+            }
           : 0,
-        { f: `G${rowIdx}-H${rowIdx}`, v: item.stock },
+        { f: `${getColLetter('received')}${rowIdx}-${getColLetter('issued')}${rowIdx}`, v: item.stock },
         donNhanLastRow >= 5
-          ? { f: `IF(MAX(INDEX((Don_Nhan!$C$5:$C$${donNhanLastRow}=${sapCell})*Don_Nhan!$B$5:$B$${donNhanLastRow},0))>0, MAX(INDEX((Don_Nhan!$C$5:$C$${donNhanLastRow}=${sapCell})*Don_Nhan!$B$5:$B$${donNhanLastRow},0)), "")`, v: toExcelSerial(item.latestReceivedDate), isDate: true }
+          ? {
+              f: isAllProj
+                ? `IF(MAX(INDEX((Don_Nhan!$C$5:$C$${donNhanLastRow}=${sapCell})*(Don_Nhan!$I$5:$I$${donNhanLastRow}=${projectCell})*Don_Nhan!$B$5:$B$${donNhanLastRow},0))>0, MAX(INDEX((Don_Nhan!$C$5:$C$${donNhanLastRow}=${sapCell})*(Don_Nhan!$I$5:$I$${donNhanLastRow}=${projectCell})*Don_Nhan!$B$5:$B$${donNhanLastRow},0)), "")`
+                : `IF(MAX(INDEX((Don_Nhan!$C$5:$C$${donNhanLastRow}=${sapCell})*Don_Nhan!$B$5:$B$${donNhanLastRow},0))>0, MAX(INDEX((Don_Nhan!$C$5:$C$${donNhanLastRow}=${sapCell})*Don_Nhan!$B$5:$B$${donNhanLastRow},0)), "")`,
+              v: toExcelSerial(item.latestReceivedDate),
+              isDate: true
+            }
           : { v: '', isDate: true },
         donNhanLastRow >= 5
-          ? { f: `IF(ISNUMBER(J${rowIdx}), TODAY()-J${rowIdx}, "")`, v: getDaysToToday(item.latestReceivedDate) }
+          ? { f: `IF(ISNUMBER(${getColLetter('latestReceivedDate')}${rowIdx}), TODAY()-${getColLetter('latestReceivedDate')}${rowIdx}, "")`, v: getDaysToToday(item.latestReceivedDate) }
           : '',
         donXuatLastRow >= 5
-          ? { f: `IF(MAX(INDEX((Don_Xuat!$C$5:$C$${donXuatLastRow}=${sapCell})*Don_Xuat!$B$5:$B$${donXuatLastRow},0))>0, MAX(INDEX((Don_Xuat!$C$5:$C$${donXuatLastRow}=${sapCell})*Don_Xuat!$B$5:$B$${donXuatLastRow},0)), "")`, v: toExcelSerial(item.latestIssuedDate), isDate: true }
+          ? {
+              f: isAllProj
+                ? `IF(MAX(INDEX((Don_Xuat!$C$5:$C$${donXuatLastRow}=${sapCell})*(Don_Xuat!$H$5:$H$${donXuatLastRow}=${projectCell})*Don_Xuat!$B$5:$B$${donXuatLastRow},0))>0, MAX(INDEX((Don_Xuat!$C$5:$C$${donXuatLastRow}=${sapCell})*(Don_Xuat!$H$5:$H$${donXuatLastRow}=${projectCell})*Don_Xuat!$B$5:$B$${donXuatLastRow},0)), "")`
+                : `IF(MAX(INDEX((Don_Xuat!$C$5:$C$${donXuatLastRow}=${sapCell})*Don_Xuat!$B$5:$B$${donXuatLastRow},0))>0, MAX(INDEX((Don_Xuat!$C$5:$C$${donXuatLastRow}=${sapCell})*Don_Xuat!$B$5:$B$${donXuatLastRow},0)), "")`,
+              v: toExcelSerial(item.latestIssuedDate),
+              isDate: true
+            }
           : { v: '', isDate: true },
         donXuatLastRow >= 5
-          ? { f: `IF(ISNUMBER(L${rowIdx}), TODAY()-L${rowIdx}, "")`, v: getDaysToToday(item.latestIssuedDate) }
+          ? { f: `IF(ISNUMBER(${getColLetter('latestIssuedDate')}${rowIdx}), TODAY()-${getColLetter('latestIssuedDate')}${rowIdx}, "")`, v: getDaysToToday(item.latestIssuedDate) }
           : '',
         item.unusedStatus,
         item.estimatedUnitPrice,
-        { f: `IF(N${rowIdx}="Chưa sử dụng (> 30 ngày)", ROUND(IF(OR(ISNUMBER(SEARCH("khấu hao", Q${rowIdx})), ISNUMBER(SEARCH("tài sản", Q${rowIdx}))), K${rowIdx}*I${rowIdx}*O${rowIdx}, I${rowIdx}*O${rowIdx}), 0), 0)`, v: item.valueOver30Days },
+        {
+          f: `IF(${getColLetter('unusedStatus')}${rowIdx}="Chưa sử dụng (> 30 ngày)", ROUND(IF(OR(ISNUMBER(SEARCH("khấu hao", ${getColLetter('materialClassification')}${rowIdx})), ISNUMBER(SEARCH("tài sản", ${getColLetter('materialClassification')}${rowIdx}))), ${getColLetter('daysSinceReceived')}${rowIdx}*${getColLetter('stock')}${rowIdx}*${getColLetter('estimatedUnitPrice')}${rowIdx}, ${getColLetter('stock')}${rowIdx}*${getColLetter('estimatedUnitPrice')}${rowIdx}), 0), 0)`,
+          v: item.valueOver30Days
+        },
         item.materialClassification
       ]
 
       cells.forEach((val, colIdx) => {
+        const col = cols[colIdx]
         const cellRef = `${String.fromCharCode(65 + colIdx)}${rowIdx}`
         const isFormula = val && typeof val === 'object' && 'f' in val
         const isDateCol = val && typeof val === 'object' && val.isDate
         const cellVal = isFormula || isDateCol ? val.v : val
         const isNum = isDateCol ? (cellVal !== null && cellVal !== '') : (isFormula ? true : typeof val === 'number')
 
+        const isLeftAligned = ['tenVatTu', 'thongSoKyThuat', 'materialClassification', 'project'].includes(col.key)
         const cellStyle = {
           font: { name: 'Segoe UI', sz: 9.5 },
           alignment: { 
-            horizontal: colIdx === 3 || colIdx === 5 || colIdx === 16 ? 'left' : (isNum ? 'right' : 'center'), 
+            horizontal: isLeftAligned ? 'left' : (isNum ? 'right' : 'center'), 
             vertical: 'center',
             wrapText: true
           },
@@ -13364,28 +13449,31 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
         }
 
         // Apply visual styling exactly matching the webapp's text colors and background fills
-        if (colIdx === 0) { // STT
+        if (col.key === 'STT') {
           cellStyle.font.color = { rgb: '475569' }
-        } else if (colIdx === 1) { // Mã SAP
+        } else if (col.key === 'maSAP') {
           cellStyle.font.color = { rgb: '0F172A' }
           cellStyle.font.bold = true
-        } else if (colIdx === 2) { // Mã vật tư
+        } else if (col.key === 'maVatTu') {
           cellStyle.font.color = { rgb: '475569' }
-        } else if (colIdx === 3) { // Tên vật tư
+        } else if (col.key === 'project') {
+          cellStyle.fill = { patternType: 'solid', fgColor: { rgb: 'E8F1FB' } }
+          cellStyle.font = { name: 'Segoe UI', sz: 9.5, bold: true, color: { rgb: '0A3D73' } }
+        } else if (col.key === 'tenVatTu') {
           cellStyle.font.color = { rgb: '0F172A' }
           cellStyle.font.bold = true
-        } else if (colIdx === 4) { // ĐVT badge-gray
+        } else if (col.key === 'dvt') {
           cellStyle.fill = { patternType: 'solid', fgColor: { rgb: 'F1F5F9' } }
           cellStyle.font.color = { rgb: '475569' }
-        } else if (colIdx === 5) { // Thông số kỹ thuật
+        } else if (col.key === 'thongSoKyThuat') {
           cellStyle.font.color = { rgb: '475569' }
-        } else if (colIdx === 6) { // Khối lượng nhận (Green)
+        } else if (col.key === 'received') {
           cellStyle.font.color = { rgb: '10B981' }
           cellStyle.font.bold = true
-        } else if (colIdx === 7) { // Khối lượng xuất (Orange/Amber)
+        } else if (col.key === 'issued') {
           cellStyle.font.color = { rgb: 'F97316' }
           cellStyle.font.bold = true
-        } else if (colIdx === 8) { // Khối lượng tồn kho
+        } else if (col.key === 'stock') {
           const isNegative = item.stock < 0
           const isZero = item.stock === 0
           if (isNegative) {
@@ -13397,12 +13485,12 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
             cellStyle.fill = { patternType: 'solid', fgColor: { rgb: 'E8F1FB' } }
             cellStyle.font = { name: 'Segoe UI', sz: 9.5, bold: true, color: { rgb: '0F58A7' } }
           }
-        } else if (colIdx === 9 || colIdx === 11) { // Ngày nhập muộn nhất / Ngày xuất muộn nhất
+        } else if (col.key === 'latestReceivedDate' || col.key === 'latestIssuedDate') {
           cellStyle.font.color = { rgb: '475569' }
-        } else if (colIdx === 10 || colIdx === 12) { // Số ngày đến hôm nay
+        } else if (col.key === 'daysSinceReceived' || col.key === 'daysSinceIssued') {
           cellStyle.font.color = { rgb: '475569' }
           cellStyle.font.bold = true
-        } else if (colIdx === 13) { // Trạng thái vật tư không sử dụng
+        } else if (col.key === 'unusedStatus') {
           const status = item.unusedStatus
           let bg = 'F1F5F9'
           let fg = '64748B'
@@ -13415,10 +13503,10 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
           }
           cellStyle.fill = { patternType: 'solid', fgColor: { rgb: bg } }
           cellStyle.font = { name: 'Segoe UI', sz: 9.5, bold: true, color: { rgb: fg } }
-        } else if (colIdx === 14) { // Đơn giá trung bình tạm tính
+        } else if (col.key === 'estimatedUnitPrice') {
           cellStyle.font.color = { rgb: '0F58A7' }
           cellStyle.font.bold = true
-        } else if (colIdx === 15) { // Thành tiền vật tư tồn >30 ngày
+        } else if (col.key === 'valueOver30Days') {
           if (item.valueOver30Days > 0) {
             cellStyle.fill = { patternType: 'solid', fgColor: { rgb: 'FFF5F5' } }
             cellStyle.font = { name: 'Segoe UI', sz: 9.5, bold: true, color: { rgb: 'B91C1C' } }
@@ -13426,16 +13514,16 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
             cellStyle.font.color = { rgb: '475569' }
             cellStyle.font.bold = true
           }
-        } else if (colIdx === 16) { // Phân loại vật tư
-          const val = materialClassifications[item.maSAP] || ''
-          const text = val.trim().toLowerCase()
+        } else if (col.key === 'materialClassification') {
+          const valClass = materialClassifications[item.maSAP] || ''
+          const textClass = valClass.trim().toLowerCase()
           let bg = 'F8FAFC'
           let fg = '64748B'
-          if (text) {
-            if (text.includes('tiêu hao')) {
+          if (textClass) {
+            if (textClass.includes('tiêu hao')) {
               bg = 'ECFDF5'
               fg = '047857'
-            } else if (text.includes('khấu hao') || text.includes('tài sản')) {
+            } else if (textClass.includes('khấu hao') || textClass.includes('tài sản')) {
               bg = 'FFF7ED'
               fg = 'EA580C'
             } else {
@@ -13457,8 +13545,8 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
         // Apply number format
         if (isDateCol) {
           if (isNum) ws[cellRef].z = 'dd/mm/yyyy'
-        } else if (isNum && colIdx >= 6) {
-          if (colIdx === 10 || colIdx === 12 || colIdx === 14 || colIdx === 15) {
+        } else if (isNum && colIdx >= firstValColIdx) {
+          if (col.key === 'daysSinceReceived' || col.key === 'daysSinceIssued' || col.key === 'estimatedUnitPrice' || col.key === 'valueOver30Days') {
             ws[cellRef].z = '#,##0;[Red]-#,##0;"-"'
           } else {
             ws[cellRef].z = '#,##0.00;[Red]-#,##0.00;"-"'
@@ -13486,13 +13574,13 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
       }
     }
 
-    // Merge cells for 'TỔNG CỘNG' label (columns A to F)
+    // Merge cells for 'TỔNG CỘNG' label
     ws['!merges'] = [
-      { s: { r: rowIdx - 1, c: 0 }, e: { r: rowIdx - 1, c: 5 } }
+      { s: { r: rowIdx - 1, c: 0 }, e: { r: rowIdx - 1, c: firstValColIdx - 1 } }
     ]
 
     // Style merged empty cells so they have the border/fill
-    for (let c = 1; c <= 5; c++) {
+    for (let c = 1; c < firstValColIdx; c++) {
       const cellRef = `${String.fromCharCode(65 + c)}${rowIdx}`
       ws[cellRef] = {
         v: '',
@@ -13509,10 +13597,10 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
       }
     }
 
-    // Sum cells for G, H, I
-    const totalReceivedCell = `${String.fromCharCode(65 + 6)}${rowIdx}`
-    const totalIssuedCell = `${String.fromCharCode(65 + 7)}${rowIdx}`
-    const totalStockCell = `${String.fromCharCode(65 + 8)}${rowIdx}`
+    // Sum cells for received, issued, stock
+    const totalReceivedCell = `${getColLetter('received')}${rowIdx}`
+    const totalIssuedCell = `${getColLetter('issued')}${rowIdx}`
+    const totalStockCell = `${getColLetter('stock')}${rowIdx}`
 
     ws[totalReceivedCell] = {
       v: metrics.totalReceived,
@@ -13565,10 +13653,10 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
       }
     }
 
-    // Total for Column P: Thành tiền vật tư tồn >30 ngày (column index 15)
-    const totalValueOver30DaysCell = `P${rowIdx}`
+    // Total for Column valueOver30Days
+    const totalValueOver30DaysCell = `${getColLetter('valueOver30Days')}${rowIdx}`
     ws[totalValueOver30DaysCell] = {
-      f: `SUM(P6:P${rowIdx - 1})`,
+      f: `SUM(${getColLetter('valueOver30Days')}6:${getColLetter('valueOver30Days')}${rowIdx - 1})`,
       v: metrics.totalValueOver30Days,
       t: 'n',
       z: '#,##0;[Red]-#,##0;"-"',
@@ -13585,10 +13673,12 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
       }
     }
 
-    // Style other columns J to N (9 to 13), O (14), Q (16) in total row to match styling
-    const emptyCols = [9, 10, 11, 12, 13, 14, 16] // J, K, L, M, N, O, Q
-    emptyCols.forEach(c => {
-      const cellRef = `${String.fromCharCode(65 + c)}${rowIdx}`
+    // Style other columns in total row to match styling
+    cols.forEach((col, cIdx) => {
+      if (cIdx < firstValColIdx) return
+      if (['received', 'issued', 'stock', 'valueOver30Days'].includes(col.key)) return
+
+      const cellRef = `${getColLetter(col.key)}${rowIdx}`
       ws[cellRef] = {
         v: '',
         t: 's',
@@ -13605,7 +13695,7 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
     })
 
     // Set sheet range bounds
-    ws['!ref'] = `A1:Q${rowIdx}`
+    ws['!ref'] = `A1:${getColLetter(cols[cols.length - 1].key)}${rowIdx}`
 
     XLSXStyle.utils.book_append_sheet(wb, ws, isRealReport ? "Xuat_Nhap_Thuc" : "Xuat_Nhap_Ton")
 
@@ -14933,6 +15023,17 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
                   <th style={{ width: 75, minWidth: 75, fontSize: '12px', padding: '8px 10px', textAlign: 'center', verticalAlign: 'middle' }}>
                     Mã vật tư
                   </th>
+                  {localProject === 'Tất cả kho BCH' && (
+                    <th 
+                      onClick={() => toggleSort('project')}
+                      style={{ width: 150, minWidth: 150, cursor: 'pointer', fontSize: '12px', padding: '8px 10px', textAlign: 'center', verticalAlign: 'middle' }}
+                    >
+                      <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4, justifyContent: 'center', width: '100%' }}>
+                        <span>Kho dự án</span>
+                        <ArrowUpDown size={12} style={{ opacity: 0.7 }} />
+                      </div>
+                    </th>
+                  )}
                   <th style={{ minWidth: 200, fontSize: '12px', padding: '8px 10px', textAlign: 'center', verticalAlign: 'middle' }}>
                     Tên vật tư
                   </th>
@@ -15020,7 +15121,7 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
                   const isZero = item.stock === 0
 
                   return (
-                    <tr key={item.maSAP}>
+                    <tr key={`${item.maSAP}::${item.project || ''}::${index}`}>
                       <td style={{ width: 50, minWidth: 50, maxWidth: 50, textAlign: 'center', fontSize: '12px', color: 'var(--text-muted)', padding: '6px 10px' }}>
                         {stt}
                       </td>
@@ -15030,6 +15131,19 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
                       <td style={{ width: 75, minWidth: 75, fontSize: '13px', fontFamily: "'Roboto', sans-serif", color: 'var(--text-muted)', padding: '6px 10px' }}>
                         {item.maVatTu || '—'}
                       </td>
+                      {localProject === 'Tất cả kho BCH' && (
+                        <td style={{ 
+                          width: 150, 
+                          minWidth: 150, 
+                          fontSize: '13px', 
+                          fontWeight: 600, 
+                          color: 'var(--primary-dark)', 
+                          background: 'var(--primary-light)', 
+                          padding: '6px 10px' 
+                        }}>
+                          {item.project || '—'}
+                        </td>
+                      )}
                       <td style={{ minWidth: 200, fontSize: '13px', fontWeight: 600, color: 'var(--text)', whiteSpace: 'normal', wordBreak: 'break-word', padding: '6px 10px' }}>
                         {item.tenVatTu || '—'}
                       </td>
@@ -15046,12 +15160,12 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
                         {item.issued > 0 ? item.issued.toLocaleString('vi-VN', { maximumFractionDigits: 2 }) : '0'}
                       </td>
                       <td style={{
-                        width: 85, minWidth: 85, textAlign: 'right', fontSize: '13px', fontWeight: 800,
+                        width: 85, minWidth: 85, textAlign: isZero ? 'center' : 'right', fontSize: '13px', fontWeight: 800,
                         color: isNegative ? '#ef4444' : (isZero ? 'var(--text-muted)' : 'var(--primary)'),
                         background: isNegative ? '#fef2f2' : (isZero ? 'transparent' : 'var(--primary-light)'),
                         padding: '6px 10px'
                       }}>
-                        {item.stock.toLocaleString('vi-VN', { maximumFractionDigits: 2 })}
+                        {isZero ? '—' : item.stock.toLocaleString('vi-VN', { maximumFractionDigits: 2 })}
                       </td>
                       <td style={{ width: 95, minWidth: 95, textAlign: 'center', fontSize: '13px', color: 'var(--text-muted)', padding: '6px 10px' }}>
                         {formatDate(item.latestReceivedDate)}
