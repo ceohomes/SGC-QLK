@@ -11189,7 +11189,9 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
       let isNhan = false
       let isGiao = false
 
-      if (proj) {
+      const isAllProj = proj === 'Tất cả kho BCH'
+
+      if (proj && !isAllProj) {
         isNhan = nhanUnit === projLower
         isGiao = giaoUnit === projLower
         // If this row is not related to our selected warehouse, skip
@@ -11227,7 +11229,7 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
       const rowDate = parseRowDate(r.ngayXuatNhap)
 
       // Add to received/issued
-      if (proj) {
+      if (proj && !isAllProj) {
         if (isNhan) {
           // Receiving unit: add to received
           groups[sap].received += parseVal(r.khoiLuongNhap) || parseVal(r.khoiLuongXuat)
@@ -11400,7 +11402,7 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
     let list = chungRows
 
     // 1. Kho / Dự án filter
-    if (localProject) {
+    if (localProject && localProject !== 'Tất cả kho BCH') {
       const p = localProject.trim().toLowerCase()
       list = list.filter(row => {
         const g = (row.donViGiao || '').trim().toLowerCase()
@@ -11499,11 +11501,15 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
       const xuat = parseNum(row.khoiLuongXuat)
       
       const normProject = String(localProject || '').trim().toLowerCase()
-      const normGiao = String(row.donViGiao || '').trim().toLowerCase()
-      const normNhan = String(row.donViNhan || '').trim().toLowerCase()
+      const normGiao = String(row.donViGiao || '').trim()
+      const normNhan = String(row.donViNhan || '').trim()
 
-      const isGiaoProject = (normGiao === normProject)
-      const isNhanProject = (normNhan === normProject)
+      const isGiaoProject = localProject === 'Tất cả kho BCH'
+        ? getCategoryForUnit(normGiao) === 'kho'
+        : (normGiao.toLowerCase() === normProject)
+      const isNhanProject = localProject === 'Tất cả kho BCH'
+        ? getCategoryForUnit(normNhan) === 'kho'
+        : (normNhan.toLowerCase() === normProject)
 
       let logicTongHopVal = 0
 
@@ -11567,7 +11573,7 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
 
     let list = chungRows
 
-    if (localProject) {
+    if (localProject && localProject !== 'Tất cả kho BCH') {
       const p = localProject.trim().toLowerCase()
       list = list.filter(row => {
         const g = (row.donViGiao || '').trim().toLowerCase()
@@ -11659,11 +11665,15 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
       const xuatVal = parseNum(row.khoiLuongXuat)
 
       const normProject = String(localProject || '').trim().toLowerCase()
-      const normGiao = String(row.donViGiao || '').trim().toLowerCase()
-      const normNhan = String(row.donViNhan || '').trim().toLowerCase()
+      const normGiao = String(row.donViGiao || '').trim()
+      const normNhan = String(row.donViNhan || '').trim()
 
-      const isGiaoProject = (normGiao === normProject)
-      const isNhanProject = (normNhan === normProject)
+      const isGiaoProject = localProject === 'Tất cả kho BCH'
+        ? getCategoryForUnit(normGiao) === 'kho'
+        : (normGiao.toLowerCase() === normProject)
+      const isNhanProject = localProject === 'Tất cả kho BCH'
+        ? getCategoryForUnit(normNhan) === 'kho'
+        : (normNhan.toLowerCase() === normProject)
 
       let logicNhapVal = 0
       let explainNhap = ''
@@ -12175,7 +12185,7 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
 
       let isNhan = false
       let isGiao = false
-      if (localProject) {
+      if (localProject && localProject !== 'Tất cả kho BCH') {
         isNhan = nhanUnit === projLower
         isGiao = giaoUnit === projLower
         if (!isNhan && !isGiao) return
@@ -12200,7 +12210,7 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
         ghiChu: String(r.ghiChu || '').trim()
       }
 
-      if (localProject) {
+      if (localProject && localProject !== 'Tất cả kho BCH') {
         if (isNhan) {
           const soLuong = parseVal(r.khoiLuongNhap) || parseVal(r.khoiLuongXuat)
           if (soLuong) {
@@ -14541,7 +14551,7 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
             <SearchableSelect
               value={localProject}
               onChange={(val) => setLocalProject(val)}
-              options={uniqueWarehouses}
+              options={['Tất cả kho BCH', ...uniqueWarehouses]}
               placeholder="-- Chọn Kho / Dự án --"
               searchPlaceholder="Tìm tên Kho / Dự án..."
               variant="form"
