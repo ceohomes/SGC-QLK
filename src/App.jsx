@@ -8103,7 +8103,6 @@ function PhanNhomVatTuTab({
 
 
   const [isSyncingToSupabase, setIsSyncingToSupabase] = React.useState(false)
-  const [isDebouncingAutoSync, setIsDebouncingAutoSync] = React.useState(false)
 
   const handleSaveAllToSupabase = async (isAuto = false) => {
     if (!isSupabaseConfigured) {
@@ -8259,29 +8258,7 @@ function PhanNhomVatTuTab({
     }
   }
 
-  // Tự động đồng bộ dữ liệu (Realtime Sync) lên Supabase khi có thay đổi cục bộ sau 1.5 giây
-  React.useEffect(() => {
-    if (!isSupabaseConfigured || isDbSchemaOutdated) return
-    if (isDepreciationAndPricesSynced) {
-      setIsDebouncingAutoSync(false)
-      return
-    }
 
-    // Đánh dấu đang chờ hết thời gian chờ debounce (1.5s) để người dùng biết hệ thống sắp tự động lưu
-    setIsDebouncingAutoSync(true)
-    const timer = setTimeout(() => {
-      setIsDebouncingAutoSync(false)
-      handleSaveAllToSupabase(true)
-    }, 1500)
-
-    return () => clearTimeout(timer)
-  }, [
-    materialPriceRows,
-    depreciationOptions,
-    isDepreciationAndPricesSynced,
-    isSupabaseConfigured,
-    isDbSchemaOutdated
-  ])
 
   
 
@@ -9030,22 +9007,6 @@ function PhanNhomVatTuTab({
               }}>
                 <span className="animate-pulse" style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#10b981' }}></span>
                 Dữ liệu khớp (Đã đồng bộ)
-              </span>
-            ) : isDebouncingAutoSync ? (
-              <span style={{
-                fontSize: '12px',
-                color: '#d97706',
-                background: '#fffbeb',
-                padding: '4px 8px',
-                borderRadius: '6px',
-                border: '1px solid #fde047',
-                fontWeight: 600,
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '6px'
-              }}>
-                <span className="animate-pulse" style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#f59e0b' }}></span>
-                Đang tự động đồng bộ...
               </span>
             ) : (
               <span style={{
