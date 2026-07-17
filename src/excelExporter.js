@@ -1300,19 +1300,30 @@ export const buildPhanNhomVatTuSheet = (materialPriceRows, materialMetadataMap, 
         numFormat = '#,##0'
         customCellBold = true
       } else if (col.key === 'donGiaTrungBinh') {
-        val = Number(row.donGiaTrungBinh) || 0
+        const klTong = Number(row.khoiLuongTong) || 0
+        const thanhTien = Number(row.thanhTien) || 0
+        val = klTong > 0 ? Math.round(thanhTien / klTong) : 0
         cellType = 'n'
         numFormat = '#,##0'
         customCellFg = '0F58A7' // Matching primary color
         customCellBold = true
       } else if (col.key === 'donGia1Thang') {
-        val = Number(row.donGiaTrungBinh1Ngay) ? Math.round(row.donGiaTrungBinh1Ngay * 30.417) : 0
+        const klTong = Number(row.khoiLuongTong) || 0
+        const thanhTien = Number(row.thanhTien) || 0
+        const computedAvg = klTong > 0 ? Math.round(thanhTien / klTong) : 0
+        const months = isAsset ? currentMonths.months : 0
+        val = months > 0 ? Math.round(computedAvg / months) : 0
         cellType = 'n'
         numFormat = '#,##0'
         customCellFg = '2563EB' // blue-600
         customCellBold = true
       } else if (col.key === 'donGiaTrungBinh1Ngay') {
-        val = Number(row.donGiaTrungBinh1Ngay) || 0
+        const klTong = Number(row.khoiLuongTong) || 0
+        const thanhTien = Number(row.thanhTien) || 0
+        const computedAvg = klTong > 0 ? Math.round(thanhTien / klTong) : 0
+        const months = isAsset ? currentMonths.months : 0
+        const computedMonthly = months > 0 ? Math.round(computedAvg / months) : 0
+        val = months > 0 ? Math.round(computedMonthly / 30) : 0
         cellType = 'n'
         numFormat = '#,##0'
       } else if (col.key === 'phanLoaiVatTu') {

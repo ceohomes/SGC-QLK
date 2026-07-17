@@ -7919,13 +7919,14 @@ function PhanNhomVatTuTab({
         const finalMonths = targetOption ? targetOption.months : targetMonths;
         const finalApproved = targetOption ? targetOption.isApproved : currentApproved;
         
-        let newDaily = 0;
-        if (finalMonths > 0) {
-          newDaily = Math.round(row.donGiaTrungBinh / (finalMonths * 30.417));
-        }
+        const computedAvgPrice = row.khoiLuongTong > 0 ? Math.round(row.thanhTien / row.khoiLuongTong) : 0;
+        const computedMonthlyPrice = finalMonths > 0 ? Math.round(computedAvgPrice / finalMonths) : 0;
+        const computedDailyPrice = finalMonths > 0 ? Math.round(computedMonthlyPrice / 30) : 0;
+        
         return { 
           ...row, 
-          donGiaTrungBinh1Ngay: newDaily,
+          donGiaTrungBinh: computedAvgPrice,
+          donGiaTrungBinh1Ngay: computedDailyPrice,
           isApprovedDepreciation: finalApproved,
           depreciationMonths: finalMonths
         }
@@ -8162,40 +8163,50 @@ function PhanNhomVatTuTab({
       }
 
       // 1b. Đồng bộ cấu hình khấu hao theo từng vật tư (ma_sap) sang bảng cau_hinh_khau_hao
-      // Đầu tiên, xóa các cấu hình riêng cũ (ma_sap không null) để làm sạch các cấu hình đã bị đưa về "Chưa thiết lập" (months = 0)
-      const { error: delIndivErr } = await supabase
-        .from('cau_hinh_khau_hao')
-        .delete()
-        .not('ma_sap', 'is', null)
-      
-      if (delIndivErr) {
-        console.warn('Lỗi khi dọn dẹp cấu hình khấu hao riêng biệt cũ:', delIndivErr.message)
-      }
+      // Chỉ thực hiện dọn dẹp và đồng bộ khi có dữ liệu vật tư trong danh sách để tránh vô tình xóa sạch cấu hình riêng khi danh sách trống
+      if (materialPriceRows.length > 0) {
+        const currentMaSaps = materialPriceRows
+          .filter(row => row && row.maSAP && String(row.maSAP).trim() && !row.isDummyConfigOnly)
+          .map(row => String(row.maSAP).trim());
 
-      // Chỉ lọc ra các vật tư có thiết lập thời gian khấu hao thực sự (> 0 tháng) để lưu/chèn mới vào cau_hinh_khau_hao
-      const seenMaSap = new Set()
-      const materialConfigsPayload = []
-      materialPriceRows.forEach(row => {
-        if (row && row.maSAP && String(row.maSAP).trim()) {
-          const maSapTrimmed = String(row.maSAP).trim()
-          const key = maSapTrimmed.toLowerCase()
-          const months = row.depreciationMonths || 0
-          if (months > 0 && !seenMaSap.has(key)) {
-            seenMaSap.add(key)
-            materialConfigsPayload.push({
-              ma_sap: maSapTrimmed,
-              months: months,
-              is_approved: !!row.isApprovedDepreciation
-            })
+        if (currentMaSaps.length > 0) {
+          // Chỉ xóa cấu hình cũ của các mã SAP đang có mặt trong danh sách xử lý để dọn dẹp các cấu hình bị thay đổi về 0 (Chưa thiết lập)
+          const { error: delIndivErr } = await supabase
+            .from('cau_hinh_khau_hao')
+            .delete()
+            .in('ma_sap', currentMaSaps)
+          
+          if (delIndivErr) {
+            console.warn('Lỗi khi dọn dẹp cấu hình khấu hao riêng biệt cũ:', delIndivErr.message)
           }
         }
-      })
 
-      if (materialConfigsPayload.length > 0) {
-        try {
-          await upsertWithFallback('cau_hinh_khau_hao', materialConfigsPayload, 'ma_sap')
-        } catch (confErr) {
-          console.warn('Lỗi đồng bộ cấu hình khấu hao riêng của vật tư lên bảng cau_hinh_khau_hao:', confErr.message || confErr)
+        // Chỉ lọc ra các vật tư có thiết lập thời gian khấu hao thực sự (> 0 tháng) để lưu/chèn mới vào cau_hinh_khau_hao
+        const seenMaSap = new Set()
+        const materialConfigsPayload = []
+        materialPriceRows.forEach(row => {
+          if (row.isDummyConfigOnly) return
+          if (row && row.maSAP && String(row.maSAP).trim()) {
+            const maSapTrimmed = String(row.maSAP).trim()
+            const key = maSapTrimmed.toLowerCase()
+            const months = row.depreciationMonths || 0
+            if (months > 0 && !seenMaSap.has(key)) {
+              seenMaSap.add(key)
+              materialConfigsPayload.push({
+                ma_sap: maSapTrimmed,
+                months: months,
+                is_approved: !!row.isApprovedDepreciation
+              })
+            }
+          }
+        })
+
+        if (materialConfigsPayload.length > 0) {
+          try {
+            await upsertWithFallback('cau_hinh_khau_hao', materialConfigsPayload, 'ma_sap')
+          } catch (confErr) {
+            console.warn('Lỗi đồng bộ cấu hình khấu hao riêng của vật tư lên bảng cau_hinh_khau_hao:', confErr.message || confErr)
+          }
         }
       }
 
@@ -8209,15 +8220,24 @@ function PhanNhomVatTuTab({
             const sapKey = String(row.maSAP).trim().toLowerCase()
             if (!seenPayloadMaSap.has(sapKey)) {
               seenPayloadMaSap.add(sapKey)
+              const val = getClassification(row)
+              const isAsset = val.trim().toLowerCase().includes('khấu hao') || val.trim().toLowerCase().includes('tài sản') || val.trim().toLowerCase().includes('tskh')
+              const currentMonthsObj = getClosestMonthsGroup(row, depreciationOptions)
+              const months = isAsset ? (currentMonthsObj ? currentMonthsObj.months : 0) : 0
+              
+              const computedAvgPrice = row.khoiLuongTong > 0 ? Math.round(row.thanhTien / row.khoiLuongTong) : 0
+              const computedMonthlyPrice = months > 0 ? Math.round(computedAvgPrice / months) : 0
+              const computedDailyPrice = months > 0 ? Math.round(computedMonthlyPrice / 30) : 0
+
               payload.push({
                 ma_sap: String(row.maSAP).trim(),
                 khoi_luong_tong: row.khoiLuongTong || 0,
                 thanh_tien: row.thanhTien || 0,
-                don_gia_trung_binh: row.donGiaTrungBinh || 0,
-                don_gia_trung_binh_1_ngay: row.donGiaTrungBinh1Ngay || 0,
-                phan_loai_vat_tu: getClassification(row) || '',
+                don_gia_trung_binh: computedAvgPrice,
+                don_gia_trung_binh_1_ngay: computedDailyPrice,
+                phan_loai_vat_tu: val || '',
                 is_approved_depreciation: row.isApprovedDepreciation !== undefined ? !!row.isApprovedDepreciation : false,
-                depreciation_months: row.depreciationMonths || 0
+                depreciation_months: months
               })
             }
           }
@@ -8409,7 +8429,6 @@ function PhanNhomVatTuTab({
         "Mã SAP",
         "KL Tổng",
         "Thành Tiền",
-        "Đơn Giá Trung Bình",
         "Phân Loại Vật Tư"
       ]
 
@@ -8419,7 +8438,6 @@ function PhanNhomVatTuTab({
         { wch: 15 },
         { wch: 15 },
         { wch: 18 },
-        { wch: 22 },
         { wch: 25 }
       ]
 
@@ -8430,7 +8448,7 @@ function PhanNhomVatTuTab({
 
       ws['!ref'] = XLSXStyle.utils.encode_range({
         s: { r: 0, c: 0 },
-        e: { r: 0, c: 4 }
+        e: { r: 0, c: 3 }
       })
 
       XLSXStyle.utils.book_append_sheet(wb, ws, "Template Đơn Giá")
@@ -8482,9 +8500,9 @@ function PhanNhomVatTuTab({
         let colIdxSap = 0
         let colIdxKlTong = 1
         let colIdxThanhTien = 2
-        let colIdxDonGiaTb = 3
+        let colIdxDonGiaTb = -1
         let colIdxDonGiaTb1Ngay = -1
-        let colIdxPhanLoai = 4
+        let colIdxPhanLoai = 3
 
         const headers = data[headerRowIdx] || []
         headers.forEach((cell, idx) => {
@@ -8531,12 +8549,6 @@ function PhanNhomVatTuTab({
 
           const klTong = parseNum(row[colIdxKlTong])
           const thanhTien = parseNum(row[colIdxThanhTien])
-          const donGiaTb = parseNum(row[colIdxDonGiaTb])
-          
-          let donGiaTb1Ngay = 0
-          if (colIdxDonGiaTb1Ngay !== -1) {
-            donGiaTb1Ngay = parseNum(row[colIdxDonGiaTb1Ngay])
-          }
           
           const phanLoai = colIdxPhanLoai !== -1 ? String(row[colIdxPhanLoai] || '').trim() : ''
 
@@ -8550,22 +8562,25 @@ function PhanNhomVatTuTab({
             isApprDep = cfg.isApproved
           }
 
-          if (depMonths > 0 && (!donGiaTb1Ngay || colIdxDonGiaTb1Ngay === -1)) {
-            donGiaTb1Ngay = Math.round(donGiaTb / (depMonths * 30.417))
-          }
+          const isAsset = phanLoai.toLowerCase().includes('khấu hao') || phanLoai.toLowerCase().includes('tài sản')
+          const months = isAsset ? depMonths : 0
+
+          const computedAvgPrice = klTong > 0 ? Math.round(thanhTien / klTong) : 0
+          const computedMonthlyPrice = months > 0 ? Math.round(computedAvgPrice / months) : 0
+          const computedDailyPrice = months > 0 ? Math.round(computedMonthlyPrice / 30) : 0
 
           rows.push({
             maSAP: sap,
             khoiLuongTong: klTong,
             thanhTien: thanhTien,
-            donGiaTrungBinh: donGiaTb,
-            donGiaTrungBinh1Ngay: donGiaTb1Ngay,
+            donGiaTrungBinh: computedAvgPrice,
+            donGiaTrungBinh1Ngay: computedDailyPrice,
             phanLoaiVatTu: phanLoai,
-            depreciationMonths: depMonths,
+            depreciationMonths: months,
             isApprovedDepreciation: isApprDep
           })
 
-          newPrices[sap] = donGiaTb
+          newPrices[sap] = computedAvgPrice
           newClassifications[sap] = phanLoai
         }
 
@@ -8596,10 +8611,13 @@ function PhanNhomVatTuTab({
                   const cfg = configMap.get(sapKey)
                   r.depreciationMonths = cfg.months
                   r.isApprovedDepreciation = cfg.isApproved
-                  if (cfg.months > 0) {
-                    r.donGiaTrungBinh1Ngay = Math.round((r.donGiaTrungBinh || 0) / (cfg.months * 30.417))
-                  }
                 }
+                const isAsset = String(r.phanLoaiVatTu || '').toLowerCase().includes('khấu hao') || String(r.phanLoaiVatTu || '').toLowerCase().includes('tài sản')
+                const months = isAsset ? (r.depreciationMonths || 0) : 0
+                const avgPrice = r.khoiLuongTong > 0 ? Math.round(r.thanhTien / r.khoiLuongTong) : 0
+                const monthlyPrice = months > 0 ? Math.round(avgPrice / months) : 0
+                r.donGiaTrungBinh = avgPrice
+                r.donGiaTrungBinh1Ngay = months > 0 ? Math.round(monthlyPrice / 30) : 0
               })
             }
           } catch (confErr) {
@@ -9336,6 +9354,16 @@ function PhanNhomVatTuTab({
                   ) : (
                     filteredPriceRows.map((row, idx) => {
                       const meta = materialMetadataMap.get(String(row.maSAP || '').trim().toLowerCase()) || { tenVatTu: '—', dvt: '—' }
+                      
+                      const val = getClassification(row)
+                      const isAsset = val.trim().toLowerCase().includes('khấu hao') || val.trim().toLowerCase().includes('tài sản') || val.trim().toLowerCase().includes('tskh')
+                      const currentMonthsObj = getClosestMonthsGroup(row, depreciationOptions)
+                      const months = isAsset ? (currentMonthsObj ? currentMonthsObj.months : 0) : 0
+                      
+                      const computedAvgPrice = row.khoiLuongTong > 0 ? Math.round(row.thanhTien / row.khoiLuongTong) : 0
+                      const computedMonthlyPrice = months > 0 ? Math.round(computedAvgPrice / months) : 0
+                      const computedDailyPrice = months > 0 ? Math.round(computedMonthlyPrice / 30) : 0
+
                       return (
                         <tr key={row.maSAP + idx} style={{ borderBottom: '1px solid #f1f5f9', background: idx % 2 === 0 ? '#ffffff' : '#f8fafc' }}>
                           <td style={{ textAlign: 'center', padding: '10px', fontSize: 13, color: 'var(--text-muted)' }}>{idx + 1}</td>
@@ -9349,13 +9377,13 @@ function PhanNhomVatTuTab({
                             {row.thanhTien ? row.thanhTien.toLocaleString('vi-VN') : '0'}
                           </td>
                           <td style={{ textAlign: 'right', padding: '10px', fontSize: 13, color: 'var(--primary)', fontWeight: 700 }}>
-                            {row.donGiaTrungBinh ? row.donGiaTrungBinh.toLocaleString('vi-VN') : '0'}
+                            {computedAvgPrice ? computedAvgPrice.toLocaleString('vi-VN') : '0'}
                           </td>
                           <td style={{ textAlign: 'right', padding: '10px', fontSize: 13, color: '#2563eb', fontWeight: 600 }}>
-                            {row.donGiaTrungBinh1Ngay ? Math.round(row.donGiaTrungBinh1Ngay * 30.417).toLocaleString('vi-VN') : '0'}
+                            {computedMonthlyPrice ? computedMonthlyPrice.toLocaleString('vi-VN') : '0'}
                           </td>
                           <td style={{ textAlign: 'right', padding: '10px', fontSize: 13, color: 'var(--text-muted)' }}>
-                            {row.donGiaTrungBinh1Ngay ? row.donGiaTrungBinh1Ngay.toLocaleString('vi-VN') : '0'}
+                            {computedDailyPrice ? computedDailyPrice.toLocaleString('vi-VN') : '0'}
                           </td>
                           <td style={{ textAlign: 'center', padding: '10px 18px 10px 10px', fontSize: 13 }}>
                             {(() => {
@@ -18900,10 +18928,25 @@ export default function App() {
           const updatedRows = cachedRows.map(item => {
             const sapKey = String(item.maSAP || '').trim().toLowerCase()
             const config = configMap.get(sapKey)
+            
+            const klTong = item.khoiLuongTong || 0
+            const thanhTien = item.thanhTien || 0
+            const phanLoai = item.phanLoaiVatTu || ''
+            
+            const isAsset = phanLoai.toLowerCase().includes('khấu hao') || phanLoai.toLowerCase().includes('tài sản')
+            const depMonths = config ? config.months : (item.depreciationMonths || 0)
+            const months = isAsset ? depMonths : 0
+            
+            const computedAvgPrice = klTong > 0 ? Math.round(thanhTien / klTong) : 0
+            const computedMonthlyPrice = months > 0 ? Math.round(computedAvgPrice / months) : 0
+            const computedDailyPrice = months > 0 ? Math.round(computedMonthlyPrice / 30) : 0
+
             return {
               ...item,
+              donGiaTrungBinh: computedAvgPrice,
+              donGiaTrungBinh1Ngay: computedDailyPrice,
               isApprovedDepreciation: config ? config.isApproved : (item.isApprovedDepreciation !== undefined ? !!item.isApprovedDepreciation : false),
-              depreciationMonths: config ? config.months : (item.depreciationMonths || 0)
+              depreciationMonths: months
             }
           })
 
@@ -18965,15 +19008,28 @@ export default function App() {
         const rows = data.map(item => {
           const sapKey = String(item.ma_sap || '').trim().toLowerCase()
           const config = configMap.get(sapKey)
+          
+          const klTong = item.khoi_luong_tong || 0
+          const thanhTien = item.thanh_tien || 0
+          const phanLoai = item.phan_loai_vat_tu || ''
+          
+          const isAsset = phanLoai.toLowerCase().includes('khấu hao') || phanLoai.toLowerCase().includes('tài sản')
+          const depMonths = config ? config.months : (item.depreciation_months || 0)
+          const months = isAsset ? depMonths : 0
+          
+          const computedAvgPrice = klTong > 0 ? Math.round(thanhTien / klTong) : 0
+          const computedMonthlyPrice = months > 0 ? Math.round(computedAvgPrice / months) : 0
+          const computedDailyPrice = months > 0 ? Math.round(computedMonthlyPrice / 30) : 0
+
           return {
             maSAP: item.ma_sap,
-            khoiLuongTong: item.khoi_luong_tong || 0,
-            thanhTien: item.thanh_tien || 0,
-            donGiaTrungBinh: item.don_gia_trung_binh || 0,
-            donGiaTrungBinh1Ngay: item.don_gia_trung_binh_1_ngay || 0,
-            phanLoaiVatTu: item.phan_loai_vat_tu || '',
+            khoiLuongTong: klTong,
+            thanhTien: thanhTien,
+            donGiaTrungBinh: computedAvgPrice,
+            donGiaTrungBinh1Ngay: computedDailyPrice,
+            phanLoaiVatTu: phanLoai,
             isApprovedDepreciation: config ? config.isApproved : (item.is_approved_depreciation !== undefined ? !!item.is_approved_depreciation : false),
-            depreciationMonths: config ? config.months : (item.depreciation_months || 0)
+            depreciationMonths: months
           }
         })
 
@@ -19070,12 +19126,12 @@ export default function App() {
     setMaterialPriceRows(prev => {
       const copy = prev.map(r => {
         if (r.maSAP === maSAP) {
-          const months = r.depreciationMonths || 0
-          let newDaily = 0
-          if (months > 0) {
-            newDaily = Math.round(numVal / (months * 30.417))
-          }
-          return { ...r, donGiaTrungBinh: numVal, donGiaTrungBinh1Ngay: newDaily }
+          const classification = r.phanLoaiVatTu || ''
+          const isAsset = classification.toLowerCase().includes('khấu hao') || classification.toLowerCase().includes('tài sản')
+          const months = isAsset ? (r.depreciationMonths || 0) : 0
+          const computedMonthlyPrice = months > 0 ? Math.round(numVal / months) : 0
+          const computedDailyPrice = months > 0 ? Math.round(computedMonthlyPrice / 30) : 0
+          return { ...r, donGiaTrungBinh: numVal, donGiaTrungBinh1Ngay: computedDailyPrice }
         }
         return r
       })
@@ -19092,7 +19148,22 @@ export default function App() {
     })
 
     setMaterialPriceRows(prev => {
-      const copy = prev.map(r => r.maSAP === maSAP ? { ...r, phanLoaiVatTu: value } : r)
+      const copy = prev.map(r => {
+        if (r.maSAP === maSAP) {
+          const isAsset = value.toLowerCase().includes('khấu hao') || value.toLowerCase().includes('tài sản')
+          const months = isAsset ? (r.depreciationMonths || 0) : 0
+          const computedAvgPrice = r.khoiLuongTong > 0 ? Math.round(r.thanhTien / r.khoiLuongTong) : 0
+          const computedMonthlyPrice = months > 0 ? Math.round(computedAvgPrice / months) : 0
+          const computedDailyPrice = months > 0 ? Math.round(computedMonthlyPrice / 30) : 0
+          return {
+            ...r,
+            phanLoaiVatTu: value,
+            donGiaTrungBinh: computedAvgPrice,
+            donGiaTrungBinh1Ngay: computedDailyPrice
+          }
+        }
+        return r
+      })
       localStorage.setItem('sgc_report_material_price_rows', JSON.stringify(copy))
       return copy
     })
