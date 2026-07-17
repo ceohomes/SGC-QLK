@@ -8610,32 +8610,7 @@ function PhanNhomVatTuTab({
         localStorage.setItem('sgc_report_material_prices', JSON.stringify(newPrices))
         localStorage.setItem('sgc_report_material_classifications', JSON.stringify(newClassifications))
 
-        showNotification(`Đã tải lên thành công ${rows.length} đơn giá vật tư cục bộ!`, 'success')
-
-        if (isSupabaseConfigured) {
-          try {
-            const payload = rows
-              .filter(r => r && r.maSAP && String(r.maSAP).trim())
-              .map(r => ({
-                maSAP: String(r.maSAP).trim(),
-                khoiLuongTong: r.khoiLuongTong,
-                thanhTien: r.thanhTien,
-                donGiaTrungBinh: r.donGiaTrungBinh,
-                donGiaTrungBinh1Ngay: r.donGiaTrungBinh1Ngay,
-                phanLoaiVatTu: r.phanLoaiVatTu
-              }))
-
-            if (payload.length > 0) {
-              await upsertWithFallback('don_gia_vat_tu', payload, 'maSAP')
-              showNotification('Đã đồng bộ thành công dữ liệu đơn giá vật tư lên Supabase!', 'success')
-            } else {
-              showNotification('Không tìm thấy bản ghi đơn giá hợp lệ có mã SAP để đồng bộ lên Supabase.', 'error')
-            }
-          } catch (upsertErr) {
-            console.error('Lỗi kết nối Supabase:', upsertErr)
-            showNotification('Đã lưu cục bộ thành công nhưng lỗi đồng bộ lên Supabase: ' + (upsertErr.message || upsertErr), 'error')
-          }
-        }
+        showNotification(`Đã tải lên thành công ${rows.length} đơn giá vật tư cục bộ! Hãy bấm "Lưu dữ liệu" để đồng bộ lên Supabase.`, 'success')
       } catch (err) {
         showNotification('Lỗi đọc file Excel: ' + err.message, 'error')
       }
