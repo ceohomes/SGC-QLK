@@ -2184,15 +2184,8 @@ function RealReportSummaryTable({ summaryRows = [], customCategoryMap = {}, loca
       XLSXStyle.utils.book_append_sheet(wb, wsThucXuat, xuatSheetName)
     })
 
-    const wbout = XLSXStyle.write(wb, { bookType: 'xlsx', type: 'binary', compression: false })
-    const s2ab = (s) => {
-      const buf = new ArrayBuffer(s.length)
-      const view = new Uint8Array(buf)
-      for (let j = 0; j < s.length; j++) view[j] = s.charCodeAt(j) & 0xFF
-      return buf
-    }
-
-    const blob = new Blob([s2ab(wbout)], { type: 'application/octet-stream' })
+    const wbout = XLSXStyle.write(wb, { bookType: 'xlsx', type: 'array' })
+    const blob = new Blob([wbout], { type: 'application/octet-stream' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
@@ -3293,15 +3286,8 @@ function RealReportSummaryTable({ summaryRows = [], customCategoryMap = {}, loca
     XLSXStyle.utils.book_append_sheet(wb, wsThucXuat, "Chi tiết Thực xuất")
 
     // Generate output
-    const wbout = XLSXStyle.write(wb, { bookType: 'xlsx', type: 'binary', compression: false })
-    const s2ab = (s) => {
-      const buf = new ArrayBuffer(s.length)
-      const view = new Uint8Array(buf)
-      for (let j = 0; j < s.length; j++) view[j] = s.charCodeAt(j) & 0xFF
-      return buf
-    }
-
-    const blob = new Blob([s2ab(wbout)], { type: 'application/octet-stream' })
+    const wbout = XLSXStyle.write(wb, { bookType: 'xlsx', type: 'array' })
+    const blob = new Blob([wbout], { type: 'application/octet-stream' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
@@ -5171,14 +5157,8 @@ function OrderTab({
     XLSXStyle.utils.book_append_sheet(wb, ws, sheetName)
     
     // Save
-    const wbout = XLSXStyle.write(wb, { bookType: 'xlsx', type: 'binary', compression: false })
-    function s2ab(s) {
-      const buf = new ArrayBuffer(s.length)
-      const view = new Uint8Array(buf)
-      for (let i = 0; i < s.length; i++) view[i] = s.charCodeAt(i) & 0xFF
-      return buf
-    }
-    const blob = new Blob([s2ab(wbout)], { type: 'application/octet-stream' })
+    const wbout = XLSXStyle.write(wb, { bookType: 'xlsx', type: 'array' })
+    const blob = new Blob([wbout], { type: 'application/octet-stream' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
@@ -5635,14 +5615,8 @@ function KhoDuAnTab({ chungRows, selectedProject, setSelectedProject, allProject
     createSheetForList(categorizedUnits.todoi, 'Tổ đội', '059669')
 
     // Save
-    const wbout = XLSXStyle.write(wb, { bookType: 'xlsx', type: 'binary', compression: false })
-    function s2ab(s) {
-      const buf = new ArrayBuffer(s.length)
-      const view = new Uint8Array(buf)
-      for (let i = 0; i < s.length; i++) view[i] = s.charCodeAt(i) & 0xFF
-      return buf
-    }
-    const blob = new Blob([s2ab(wbout)], { type: 'application/octet-stream' })
+    const wbout = XLSXStyle.write(wb, { bookType: 'xlsx', type: 'array' })
+    const blob = new Blob([wbout], { type: 'application/octet-stream' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
@@ -8461,14 +8435,8 @@ function PhanNhomVatTuTab({
 
       XLSXStyle.utils.book_append_sheet(wb, ws, "Template Đơn Giá")
       
-      const wbout = XLSXStyle.write(wb, { bookType: 'xlsx', type: 'binary', compression: false })
-      const s2ab = (s) => {
-        const buf = new ArrayBuffer(s.length)
-        const view = new Uint8Array(buf)
-        for (let i = 0; i < s.length; i++) view[i] = s.charCodeAt(i) & 0xFF
-        return buf
-      }
-      const blob = new Blob([s2ab(wbout)], { type: 'application/octet-stream' })
+      const wbout = XLSXStyle.write(wb, { bookType: 'xlsx', type: 'array' })
+      const blob = new Blob([wbout], { type: 'application/octet-stream' })
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
@@ -8609,10 +8577,7 @@ function PhanNhomVatTuTab({
         // Tự động khôi phục cấu hình khấu hao đã được lưu từ Supabase (nếu có) vào các dòng vừa import
         if (isSupabaseConfigured) {
           try {
-            const { data: configData } = await supabase
-              .from('cau_hinh_khau_hao')
-              .select('*')
-              .not('ma_sap', 'is', null)
+            const { data: configData } = await fetchAllFromSupabaseTable('cau_hinh_khau_hao', q => q.not('ma_sap', 'is', null))
             
             if (configData && configData.length > 0) {
               const configMap = new Map()
@@ -9240,14 +9205,8 @@ function PhanNhomVatTuTab({
                   )
                   XLSXStyle.utils.book_append_sheet(wb, phanNhomSheet, "Phân nhóm Vật tư")
                   
-                  const wbout = XLSXStyle.write(wb, { bookType: 'xlsx', type: 'binary', compression: false })
-                  const s2ab = (s) => {
-                    const buf = new ArrayBuffer(s.length)
-                    const view = new Uint8Array(buf)
-                    for (let i = 0; i < s.length; i++) view[i] = s.charCodeAt(i) & 0xFF
-                    return buf
-                  }
-                  const blob = new Blob([s2ab(wbout)], { type: 'application/octet-stream' })
+                  const wbout = XLSXStyle.write(wb, { bookType: 'xlsx', type: 'array' })
+                  const blob = new Blob([wbout], { type: 'application/octet-stream' })
                   const url = URL.createObjectURL(blob)
                   const a = document.createElement('a')
                   a.href = url
@@ -12878,15 +12837,8 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
           XLSXStyle.utils.book_append_sheet(wb, phanNhomSheet, "Phân nhóm Vật tư")
         }
 
-        const wbout = XLSXStyle.write(wb, { bookType: 'xlsx', type: 'binary', compression: false })
-        const s2ab = (s) => {
-          const buf = new ArrayBuffer(s.length)
-          const view = new Uint8Array(buf)
-          for (let i = 0; i < s.length; i++) view[i] = s.charCodeAt(i) & 0xFF
-          return buf
-        }
-
-        const blob = new Blob([s2ab(wbout)], { type: 'application/octet-stream' })
+        const wbout = XLSXStyle.write(wb, { bookType: 'xlsx', type: 'array' })
+        const blob = new Blob([wbout], { type: 'application/octet-stream' })
         const url = URL.createObjectURL(blob)
         const a = document.createElement('a')
         a.href = url
@@ -13239,15 +13191,8 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
         XLSXStyle.utils.book_append_sheet(wb, phanNhomSheet, "Phân nhóm Vật tư")
       }
 
-      const wbout = XLSXStyle.write(wb, { bookType: 'xlsx', type: 'binary', compression: false })
-      const s2ab = (s) => {
-        const buf = new ArrayBuffer(s.length)
-        const view = new Uint8Array(buf)
-        for (let i = 0; i < s.length; i++) view[i] = s.charCodeAt(i) & 0xFF
-        return buf
-      }
-
-      const blob = new Blob([s2ab(wbout)], { type: 'application/octet-stream' })
+      const wbout = XLSXStyle.write(wb, { bookType: 'xlsx', type: 'array' })
+      const blob = new Blob([wbout], { type: 'application/octet-stream' })
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
@@ -13844,16 +13789,8 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
       XLSXStyle.utils.book_append_sheet(wb, phanNhomSheet, "Phân nhóm Vật tư")
     }
 
-    const wbout = XLSXStyle.write(wb, { bookType: 'xlsx', type: 'binary', compression: false })
-
-    const s2ab = (s) => {
-      const buf = new ArrayBuffer(s.length)
-      const view = new Uint8Array(buf)
-      for (let i = 0; i < s.length; i++) view[i] = s.charCodeAt(i) & 0xFF
-      return buf
-    }
-
-    const blob = new Blob([s2ab(wbout)], { type: 'application/octet-stream' })
+    const wbout = XLSXStyle.write(wb, { bookType: 'xlsx', type: 'array' })
+    const blob = new Blob([wbout], { type: 'application/octet-stream' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
@@ -16128,12 +16065,8 @@ function SummaryCompilationTab({ giaoRows, nhanRows, configs = [], selectedProje
     XLSXStyle.utils.book_append_sheet(wb, wsSummary, "Tổng hợp")
     XLSXStyle.utils.book_append_sheet(wb, ws, "Tổng hợp thông tin")
 
-    const wbout = XLSXStyle.write(wb, { bookType: 'xlsx', type: 'binary', compression: false })
-    const buf = new ArrayBuffer(wbout.length)
-    const view = new Uint8Array(buf)
-    for (let i = 0; i < wbout.length; i++) view[i] = wbout.charCodeAt(i) & 0xFF
-    
-    const blob = new Blob([buf], { type: 'application/octet-stream' })
+    const wbout = XLSXStyle.write(wb, { bookType: 'xlsx', type: 'array' })
+    const blob = new Blob([wbout], { type: 'application/octet-stream' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
@@ -18803,12 +18736,45 @@ export default function App() {
     localStorage.setItem('sgc_depreciation_options_v2', JSON.stringify(sorted))
   }
 
+  // Helper to fetch ALL records from a Supabase table with pagination (bypasses default 1000 limit)
+  const fetchAllFromSupabaseTable = React.useCallback(async (tableName, buildQueryFn) => {
+    let allData = []
+    let fromIdx = 0
+    const PAGE_SIZE = 1000
+    let hasMore = true
+    let errorObj = null
+
+    while (hasMore) {
+      let query = supabase.from(tableName).select('*')
+      if (buildQueryFn) {
+        query = buildQueryFn(query)
+      }
+      query = query.order('id', { ascending: true })
+      query = query.range(fromIdx, fromIdx + PAGE_SIZE - 1)
+
+      const { data, error } = await query
+
+      if (error) {
+        errorObj = error
+        break
+      }
+
+      if (data && data.length > 0) {
+        allData = [...allData, ...data]
+        hasMore = data.length === PAGE_SIZE
+        fromIdx += PAGE_SIZE
+      } else {
+        hasMore = false
+      }
+    }
+
+    return { data: errorObj ? null : allData, error: errorObj }
+  }, [])
+
   const loadDepreciationOptionsFromSupabase = React.useCallback(async () => {
     if (!isSupabaseConfigured) return []
     try {
-      const { data, error } = await supabase
-        .from('cau_hinh_khau_hao')
-        .select('*')
+      const { data, error } = await fetchAllFromSupabaseTable('cau_hinh_khau_hao')
       
       if (error) {
         console.warn('Lỗi khi tải cấu hình khấu hao từ Supabase:', error.message)
@@ -18909,10 +18875,7 @@ export default function App() {
           console.log('[Cache Tối Ưu] Đơn giá vật tư trùng khớp số lượng. Đang đồng bộ cấu hình khấu hao chi tiết...')
           const configMap = new Map()
           try {
-            const { data: configData, error: configError } = await supabase
-              .from('cau_hinh_khau_hao')
-              .select('*')
-              .not('ma_sap', 'is', null)
+            const { data: configData, error: configError } = await fetchAllFromSupabaseTable('cau_hinh_khau_hao', q => q.not('ma_sap', 'is', null))
             
             if (configError) {
               console.warn('Lỗi khi tải cấu hình khấu hao chi tiết từ Supabase:', configError.message)
@@ -18964,9 +18927,7 @@ export default function App() {
         }
       }
 
-      const { data, error } = await supabase
-        .from('don_gia_vat_tu')
-        .select('*')
+      const { data, error } = await fetchAllFromSupabaseTable('don_gia_vat_tu')
       
       if (error) {
         console.error('Lỗi khi tải đơn giá từ Supabase:', error)
@@ -18979,10 +18940,7 @@ export default function App() {
         // Tải các cấu hình khấu hao riêng của từng vật tư từ cau_hinh_khau_hao làm nguồn chính bền vững
         const configMap = new Map()
         try {
-          const { data: configData, error: configError } = await supabase
-            .from('cau_hinh_khau_hao')
-            .select('*')
-            .not('ma_sap', 'is', null)
+          const { data: configData, error: configError } = await fetchAllFromSupabaseTable('cau_hinh_khau_hao', q => q.not('ma_sap', 'is', null))
           
           if (configError) {
             console.warn('Lỗi khi tải cấu hình khấu hao chi tiết từ Supabase:', configError.message)
