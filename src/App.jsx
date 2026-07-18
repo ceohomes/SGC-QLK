@@ -12577,10 +12577,10 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
     let totalStock = 0
     let totalValueOver30Days = 0
     reportData.forEach(item => {
-      totalReceived += item.received
-      totalIssued += item.issued
-      totalStock += item.stock
-      totalValueOver30Days += item.valueOver30Days || 0
+      totalReceived += Number(item.received) || 0
+      totalIssued += Number(item.issued) || 0
+      totalStock += Number(item.stock) || 0
+      totalValueOver30Days += Number(item.valueOver30Days) || 0
     })
     return {
       totalReceived,
@@ -13575,9 +13575,11 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
 
     // Quy đổi Date -> Excel serial number để dùng được trong công thức/định dạng ngày
     const toExcelSerial = (dateVal) => {
+      if (!dateVal) return null
       const d = (dateVal instanceof Date) ? dateVal : parseRowDate(dateVal)
       if (!d || isNaN(d.getTime())) return null
-      return Math.round(d.getTime() / 86400000) + 25569
+      const val = Math.round(d.getTime() / 86400000) + 25569
+      return isNaN(val) ? null : val
     }
     ws['!cols'] = cols.map(c => ({ wch: c.wch }))
 
@@ -13707,7 +13709,9 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
         const isFormula = val && typeof val === 'object' && 'f' in val
         const isDateCol = val && typeof val === 'object' && val.isDate
         const cellVal = isFormula || isDateCol ? val.v : val
-        const isNum = isDateCol ? (cellVal !== null && cellVal !== '') : (isFormula ? true : typeof val === 'number')
+        
+        const isNumVal = typeof cellVal === 'number' && !isNaN(cellVal) && isFinite(cellVal)
+        const isNum = isDateCol ? (cellVal !== null && cellVal !== '' && isNumVal) : isNumVal
 
         const isLeftAligned = ['tenVatTu', 'thongSoKyThuat', 'materialClassification', 'project'].includes(col.key)
         const cellStyle = {
@@ -13852,9 +13856,10 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
     }
 
     // Merge cells for 'TỔNG CỘNG' label
-    ws['!merges'] = [
+    if (!ws['!merges']) ws['!merges'] = []
+    ws['!merges'].push(
       { s: { r: rowIdx - 1, c: 0 }, e: { r: rowIdx - 1, c: firstValColIdx - 1 } }
-    ]
+    )
 
     // Style merged empty cells so they have the border/fill
     for (let c = 1; c < firstValColIdx; c++) {
