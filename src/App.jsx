@@ -7875,7 +7875,8 @@ function PhanNhomVatTuTab({
   saveDepreciationOptions,
   loadDepreciationOptionsFromSupabase
 }) {
-  const [priceSearchQuery, setPriceSearchQuery] = React.useState('')
+  const [classificationSearchQuery, setClassificationSearchQuery] = React.useState('')
+  const [depreciationSearchQuery, setDepreciationSearchQuery] = React.useState('')
   const [currentSubTab, setCurrentSubTab] = React.useState('classification') // 'classification' | 'depreciation_duration'
   const [syncNotification, setSyncNotification] = React.useState(null)
   const [showConfirmClearPrices, setShowConfirmClearPrices] = React.useState(false)
@@ -7936,6 +7937,88 @@ function PhanNhomVatTuTab({
     setMaterialPriceRows(updatedRows);
     localStorage.setItem('sgc_report_material_price_rows', JSON.stringify(updatedRows));
   }, [materialPriceRows, depreciationOptions, setMaterialPriceRows]);
+
+  const saveDepreciationConfigsToSupabase = React.useCallback(async (sapCodes, months, isApproved) => {
+    if (!isSupabaseConfigured) return;
+    try {
+      const upperSaps = sapCodes.map(s => String(s).trim().toUpperCase());
+      
+      if (months > 0) {
+        const payload = upperSaps.map(sap => ({
+          ma_sap: sap,
+          months: months,
+          is_approved: !!isApproved
+        }));
+        
+        await upsertWithFallback('cau_hinh_khau_hao', payload, 'ma_sap');
+      } else {
+        const { error } = await supabase
+          .from('cau_hinh_khau_hao')
+          .delete()
+          .in('ma_sap', upperSaps);
+          
+        if (error) {
+          throw error;
+        }
+      }
+    } catch (err) {
+      console.error('Lỗi khi đồng bộ cấu hình khấu hao riêng biệt:', err);
+      throw err;
+    }
+  }, [isSupabaseConfigured]);
+
+  const handleDropOnGroup = React.useCallback(async (maSAP, targetOption) => {
+    const sapUpper = String(maSAP || '').trim().toUpperCase();
+    const existingIdx = materialPriceRows.findIndex(row => String(row.maSAP || '').trim().toUpperCase() === sapUpper);
+    
+    let updatedRows = [...materialPriceRows];
+    
+    if (existingIdx >= 0) {
+      const row = materialPriceRows[existingIdx];
+      const computedAvgPrice = row.khoiLuongTong > 0 ? Math.round(row.thanhTien / row.khoiLuongTong) : 0;
+      const computedMonthlyPrice = targetOption.months > 0 ? Math.round(computedAvgPrice / targetOption.months) : 0;
+      const computedDailyPrice = targetOption.months > 0 ? Math.round(computedMonthlyPrice / 30.417) : 0;
+      
+      updatedRows[existingIdx] = {
+        ...row,
+        donGiaTrungBinh: computedAvgPrice,
+        donGiaTrungBinh1Ngay: computedDailyPrice,
+        isApprovedDepreciation: targetOption.isApproved,
+        depreciationMonths: targetOption.months,
+        phanLoaiVatTu: row.phanLoaiVatTu || 'Vật tư khấu hao'
+      };
+    } else {
+      updatedRows.push({
+        maSAP: sapUpper,
+        khoiLuongTong: 0,
+        thanhTien: 0,
+        donGiaTrungBinh: 0,
+        donGiaTrungBinh1Ngay: 0,
+        phanLoaiVatTu: 'Vật tư khấu hao',
+        isApprovedDepreciation: targetOption.isApproved,
+        depreciationMonths: targetOption.months,
+        isDummyConfigOnly: true
+      });
+    }
+
+    setMaterialPriceRows(updatedRows);
+    localStorage.setItem('sgc_report_material_price_rows', JSON.stringify(updatedRows));
+
+    if (isSupabaseConfigured) {
+      showNotification('Đang tự động đồng bộ cấu hình khấu hao mới lên Supabase...', 'info');
+      try {
+        await saveDepreciationConfigsToSupabase([sapUpper], targetOption.months, targetOption.isApproved);
+        showNotification('Đã tự động đồng bộ cấu hình khấu hao mới lên Supabase thành công!', 'success');
+        setLastSyncedMaterialPriceRows(updatedRows);
+        setLastSyncedDepreciationOptions(depreciationOptions);
+      } catch (err) {
+        console.error('Lỗi khi tự động đồng bộ cấu hình khấu hao:', err);
+        showNotification('Lỗi đồng bộ Supabase: ' + (err.message || err), 'error');
+      }
+    } else {
+      showNotification('Đã lưu cấu hình khấu hao cục bộ thành công!', 'success');
+    }
+  }, [materialPriceRows, setMaterialPriceRows, showNotification, isSupabaseConfigured, saveDepreciationConfigsToSupabase, setLastSyncedMaterialPriceRows, setLastSyncedDepreciationOptions, depreciationOptions]);
 
   const handleSingleGroupStatusChange = React.useCallback((maSAP, targetApproved) => {
     const updatedRows = materialPriceRows.map(row => {
@@ -8071,6 +8154,7 @@ function PhanNhomVatTuTab({
         row.donGiaTrungBinh !== lastRow.donGiaTrungBinh ||
         row.donGiaTrungBinh1Ngay !== lastRow.donGiaTrungBinh1Ngay ||
         row.phanLoaiVatTu !== lastRow.phanLoaiVatTu ||
+        row.depreciationMonths !== lastRow.depreciationMonths ||
         !!row.isApprovedDepreciation !== !!lastRow.isApprovedDepreciation
       ) {
         return false
@@ -8104,7 +8188,7 @@ function PhanNhomVatTuTab({
 
   const [isSyncingToSupabase, setIsSyncingToSupabase] = React.useState(false)
 
-  const handleSaveAllToSupabase = async (isAuto = false) => {
+  const handleSaveAllToSupabase = async (isAuto = false, customRows = null) => {
     if (!isSupabaseConfigured) {
       if (!isAuto) {
         showNotification('Vui lòng kết nối cơ sở dữ liệu Supabase trước.', 'error')
@@ -8112,6 +8196,7 @@ function PhanNhomVatTuTab({
       return
     }
 
+    const rowsToUse = customRows || materialPriceRows;
     setIsSyncingToSupabase(true)
     try {
       // 1. Sync cau_hinh_khau_hao (Cấu hình chung và Cấu hình riêng theo vật tư)
@@ -8163,9 +8248,9 @@ function PhanNhomVatTuTab({
 
       // 1b. Đồng bộ cấu hình khấu hao theo từng vật tư (ma_sap) sang bảng cau_hinh_khau_hao
       // Chỉ thực hiện dọn dẹp và đồng bộ khi có dữ liệu vật tư trong danh sách để tránh vô tình xóa sạch cấu hình riêng khi danh sách trống
-      if (materialPriceRows.length > 0) {
-        const currentMaSaps = materialPriceRows
-          .filter(row => row && row.maSAP && String(row.maSAP).trim() && !row.isDummyConfigOnly)
+      if (rowsToUse.length > 0) {
+        const currentMaSaps = rowsToUse
+          .filter(row => row && row.maSAP && String(row.maSAP).trim())
           .map(row => String(row.maSAP).trim());
 
         if (currentMaSaps.length > 0) {
@@ -8183,8 +8268,7 @@ function PhanNhomVatTuTab({
         // Chỉ lọc ra các vật tư có thiết lập thời gian khấu hao thực sự (> 0 tháng) để lưu/chèn mới vào cau_hinh_khau_hao
         const seenMaSap = new Set()
         const materialConfigsPayload = []
-        materialPriceRows.forEach(row => {
-          if (row.isDummyConfigOnly) return
+        rowsToUse.forEach(row => {
           if (row && row.maSAP && String(row.maSAP).trim()) {
             const maSapTrimmed = String(row.maSAP).trim()
             const key = maSapTrimmed.toLowerCase()
@@ -8204,16 +8288,17 @@ function PhanNhomVatTuTab({
           try {
             await upsertWithFallback('cau_hinh_khau_hao', materialConfigsPayload, 'ma_sap')
           } catch (confErr) {
-            console.warn('Lỗi đồng bộ cấu hình khấu hao riêng của vật tư lên bảng cau_hinh_khau_hao:', confErr.message || confErr)
+            console.error('Lỗi đồng bộ cấu hình khấu hao riêng của vật tư lên bảng cau_hinh_khau_hao:', confErr)
+            throw new Error('Lỗi đồng bộ cấu hình khấu hao riêng lên Supabase: ' + (confErr.message || confErr))
           }
         }
       }
 
       // 2. Sync don_gia_vat_tu
-      if (materialPriceRows.length > 0) {
+      if (rowsToUse.length > 0) {
         const seenPayloadMaSap = new Set()
         const payload = []
-        materialPriceRows.forEach(row => {
+        rowsToUse.forEach(row => {
           if (row.isDummyConfigOnly) return
           if (row && row.maSAP && String(row.maSAP).trim()) {
             const sapKey = String(row.maSAP).trim().toLowerCase()
@@ -8248,7 +8333,7 @@ function PhanNhomVatTuTab({
       }
 
       setLastSyncedDepreciationOptions(depreciationOptions)
-      setLastSyncedMaterialPriceRows(materialPriceRows)
+      setLastSyncedMaterialPriceRows(rowsToUse)
       showNotification(isAuto ? 'Đã tự động đồng bộ dữ liệu thành công lên Supabase!' : 'Đồng bộ dữ liệu thành công lên Supabase!', 'success')
     } catch (err) {
       console.error('Lỗi đồng bộ dữ liệu lên Supabase:', err)
@@ -8351,31 +8436,56 @@ function PhanNhomVatTuTab({
     showNotification(`Đã chuyển thành công ${oldSize} vật tư sang nhóm "${targetApproved ? 'Đã duyệt' : 'Tạm tính'}" cục bộ! Hãy bấm "Lưu dữ liệu" để đồng bộ lên Supabase.`, 'success')
   }
 
-  const handleApplyBatchChanges = (targetMonths, targetApproved) => {
+  const handleApplyBatchChanges = async (targetMonths, targetApproved) => {
     if (selectedMaterials.size === 0) return
     if (targetMonths === undefined) return
     
     // Check if the target option exists in depreciationOptions, if not, add it!
     const exists = depreciationOptions.some(o => o.months === targetMonths && !!o.isApproved === !!targetApproved)
+    let currentOpts = depreciationOptions
     if (!exists && targetMonths > 0) {
-      const newOpts = [...depreciationOptions, { months: targetMonths, isApproved: targetApproved }]
+      const newOpts = [...depreciationOptions, { months: targetMonths, isApproved: targetApproved }].sort((a, b) => a.months - b.months || (a.isApproved ? 1 : 0) - (b.isApproved ? 1 : 0))
       saveDepreciationOptions(newOpts)
+      currentOpts = newOpts
     }
 
-    const updatedRows = materialPriceRows.map(row => {
-      if (selectedMaterials.has(row.maSAP)) {
+    const existingSaps = new Set(materialPriceRows.map(r => String(r.maSAP || '').trim().toUpperCase()))
+    
+    // Copy existing rows and update them if selected
+    let updatedRows = materialPriceRows.map(row => {
+      const sap = String(row.maSAP || '').trim().toUpperCase()
+      if (selectedMaterials.has(sap)) {
         let newDaily = 0
         if (targetMonths > 0) {
-          newDaily = Math.round(row.donGiaTrungBinh / (targetMonths * 30.417))
+          newDaily = Math.round((row.donGiaTrungBinh || 0) / (targetMonths * 30.417))
         }
         return { 
           ...row, 
           donGiaTrungBinh1Ngay: newDaily,
           isApprovedDepreciation: targetApproved,
-          depreciationMonths: targetMonths
+          depreciationMonths: targetMonths,
+          phanLoaiVatTu: row.phanLoaiVatTu || 'Vật tư khấu hao'
         }
       }
       return row
+    })
+
+    // Now, for any selected materials that are NOT in existingSaps, append them as dummy config rows!
+    const selectedSapsList = Array.from(selectedMaterials).map(s => String(s).toUpperCase())
+    selectedSapsList.forEach(sap => {
+      if (!existingSaps.has(sap)) {
+        updatedRows.push({
+          maSAP: sap,
+          khoiLuongTong: 0,
+          thanhTien: 0,
+          donGiaTrungBinh: 0,
+          donGiaTrungBinh1Ngay: 0,
+          phanLoaiVatTu: 'Vật tư khấu hao',
+          isApprovedDepreciation: targetApproved,
+          depreciationMonths: targetMonths,
+          isDummyConfigOnly: true
+        })
+      }
     })
     
     setMaterialPriceRows(updatedRows)
@@ -8383,7 +8493,21 @@ function PhanNhomVatTuTab({
     
     const oldSize = selectedMaterials.size
     setSelectedMaterials(new Set())
-    showNotification(`Đã chuyển thành công ${oldSize} vật tư sang nhóm khấu hao ${targetMonths > 0 ? `${targetMonths} tháng (${targetApproved ? 'Đã duyệt' : 'Tạm tính'})` : 'Chưa thiết lập'} cục bộ! Hãy bấm "Lưu dữ liệu" để đồng bộ lên Supabase.`, 'success')
+    
+    if (isSupabaseConfigured) {
+      showNotification(`Đang tự động đồng bộ cấu hình cho ${oldSize} vật tư lên Supabase...`, 'info')
+      try {
+        await saveDepreciationConfigsToSupabase(selectedSapsList, targetMonths, targetApproved)
+        showNotification(`Đã đồng bộ thành công cấu hình khấu hao cho ${oldSize} vật tư lên Supabase!`, 'success')
+        setLastSyncedMaterialPriceRows(updatedRows)
+        setLastSyncedDepreciationOptions(currentOpts)
+      } catch (err) {
+        console.error('Lỗi khi tự động đồng bộ cấu hình khấu hao:', err)
+        showNotification('Lỗi đồng bộ Supabase: ' + (err.message || err), 'error')
+      }
+    } else {
+      showNotification(`Đã chuyển thành công ${oldSize} vật tư sang nhóm khấu hao ${targetMonths > 0 ? `${targetMonths} tháng (${targetApproved ? 'Đã duyệt' : 'Tạm tính'})` : 'Chưa thiết lập'} cục bộ!`, 'success')
+    }
   }
 
   const handleDownloadTemplate = () => {
@@ -8648,7 +8772,7 @@ function PhanNhomVatTuTab({
   }, [chungRows, giaoRows, nhanRows])
 
   const filteredPriceRows = React.useMemo(() => {
-    const q = priceSearchQuery.toLowerCase().trim()
+    const q = classificationSearchQuery.toLowerCase().trim()
     const activeRows = materialPriceRows.filter(r => !r.isDummyConfigOnly)
     if (!q) return activeRows
     return activeRows.filter(r => {
@@ -8658,50 +8782,52 @@ function PhanNhomVatTuTab({
       const name = String(meta.tenVatTu || '').toLowerCase()
       return sap.toLowerCase().includes(q) || val.toLowerCase().includes(q) || name.includes(q)
     })
-  }, [materialPriceRows, priceSearchQuery, getClassification, materialMetadataMap])
+  }, [materialPriceRows, classificationSearchQuery, getClassification, materialMetadataMap])
 
   const assetRows = React.useMemo(() => {
     const seenSaps = new Set()
     const list = []
 
+    // 1. Add all rows from materialPriceRows first
     materialPriceRows.forEach(r => {
-      const val = getClassification(r)
-      const text = val.toLowerCase()
-      const isAsset = text.includes('khấu hao') || text.includes('tài sản') || text.includes('tskh') || (r.depreciationMonths && r.depreciationMonths > 0)
-      if (isAsset) {
-        const sap = String(r.maSAP || '').trim()
+      const sap = String(r.maSAP || '').trim().toUpperCase()
+      if (sap && !seenSaps.has(sap.toLowerCase())) {
         seenSaps.add(sap.toLowerCase())
         list.push(r)
       }
     })
 
+    // 2. Add any other materials from transaction metadata map
     materialMetadataMap.forEach((meta, sapKey) => {
-      const classification = String(materialClassifications[sapKey] || '').trim()
-      const text = classification.toLowerCase()
-      const isAsset = text.includes('khấu hao') || text.includes('tài sản') || text.includes('tskh')
-      if (isAsset && !seenSaps.has(sapKey.toLowerCase())) {
-        seenSaps.add(sapKey.toLowerCase())
-        const existingRow = materialPriceRows.find(r => String(r.maSAP || '').trim().toLowerCase() === sapKey.toLowerCase())
+      const sap = sapKey.toUpperCase()
+      if (!seenSaps.has(sap.toLowerCase())) {
+        seenSaps.add(sap.toLowerCase())
+        const existingRow = materialPriceRows.find(r => String(r.maSAP || '').trim().toUpperCase() === sap)
         if (existingRow) {
           list.push(existingRow)
         } else {
           list.push({
-            maSAP: sapKey.toUpperCase(),
+            maSAP: sap,
             khoiLuongTong: 0,
             thanhTien: 0,
-            donGiaTrungBinh: materialPrices[sapKey.toUpperCase()] || materialPrices[sapKey] || 0,
+            donGiaTrungBinh: materialPrices[sap] || 0,
             donGiaTrungBinh1Ngay: 0,
-            phanLoaiVatTu: classification
+            phanLoaiVatTu: materialClassifications[sap] || 'Vật tư'
           })
         }
       }
     })
 
-    return list
-  }, [materialPriceRows, getClassification, materialMetadataMap, materialClassifications, materialPrices])
+    // Filter to only include rows with classification containing 'khấu hao' or 'tài sản'
+    return list.filter(row => {
+      const sap = String(row.maSAP || '').trim()
+      const phanLoai = String(customCategoryMap[sap] || materialClassifications[sap] || row.phanLoaiVatTu || '').trim().toLowerCase()
+      return phanLoai.includes('khấu hao') || phanLoai.includes('tài sản')
+    })
+  }, [materialPriceRows, materialMetadataMap, materialClassifications, materialPrices, customCategoryMap])
 
   const filteredDepreciationRows = React.useMemo(() => {
-    const q = priceSearchQuery.toLowerCase().trim()
+    const q = depreciationSearchQuery.toLowerCase().trim()
     if (!q) return assetRows
     return assetRows.filter(r => {
       const sap = String(r.maSAP || '').trim()
@@ -8710,7 +8836,7 @@ function PhanNhomVatTuTab({
       const name = String(meta.tenVatTu || '').toLowerCase()
       return sap.toLowerCase().includes(q) || val.toLowerCase().includes(q) || name.includes(q)
     })
-  }, [assetRows, priceSearchQuery, getClassification, materialMetadataMap])
+  }, [assetRows, depreciationSearchQuery, getClassification, materialMetadataMap])
 
   const rowMonthsMap = React.useMemo(() => {
     const map = new Map()
@@ -8728,7 +8854,7 @@ function PhanNhomVatTuTab({
       counts[key] = 0
     })
 
-    const q = priceSearchQuery.toLowerCase().trim()
+    const q = depreciationSearchQuery.toLowerCase().trim()
     const filteredRows = q
       ? assetRows.filter(row => {
           const meta = materialMetadataMap.get(String(row.maSAP || '').trim().toLowerCase()) || { tenVatTu: '' }
@@ -8747,31 +8873,31 @@ function PhanNhomVatTuTab({
       }
     })
     return counts
-  }, [assetRows, depreciationOptions, rowMonthsMap, priceSearchQuery, materialMetadataMap])
+  }, [assetRows, depreciationOptions, rowMonthsMap, depreciationSearchQuery, materialMetadataMap])
 
   const sidebarChuaThietLap = React.useMemo(() => {
     return depreciationOptions.filter(o => o.months === 0).filter(opt => {
-      if (!priceSearchQuery.trim()) return true
+      if (!depreciationSearchQuery.trim()) return true
       const count = groupCounts[`${opt.months}-${opt.isApproved}`] || 0
       return count > 0
     })
-  }, [depreciationOptions, priceSearchQuery, groupCounts])
+  }, [depreciationOptions, depreciationSearchQuery, groupCounts])
 
   const sidebarDaDuyet = React.useMemo(() => {
     return depreciationOptions.filter(o => o.isApproved && o.months !== 0).filter(opt => {
-      if (!priceSearchQuery.trim()) return true
+      if (!depreciationSearchQuery.trim()) return true
       const count = groupCounts[`${opt.months}-${opt.isApproved}`] || 0
       return count > 0
     })
-  }, [depreciationOptions, priceSearchQuery, groupCounts])
+  }, [depreciationOptions, depreciationSearchQuery, groupCounts])
 
   const sidebarTamTinh = React.useMemo(() => {
     return depreciationOptions.filter(o => !o.isApproved && o.months !== 0).filter(opt => {
-      if (!priceSearchQuery.trim()) return true
+      if (!depreciationSearchQuery.trim()) return true
       const count = groupCounts[`${opt.months}-${opt.isApproved}`] || 0
       return count > 0
     })
-  }, [depreciationOptions, priceSearchQuery, groupCounts])
+  }, [depreciationOptions, depreciationSearchQuery, groupCounts])
 
   const activeGroupRows = React.useMemo(() => {
     if (selectedMonthsGroup && selectedMonthsGroup.isAll) {
@@ -8799,7 +8925,7 @@ function PhanNhomVatTuTab({
   }, [assetRows, rowMonthsMap, selectedMonthsGroup])
 
   const searchedActiveRows = React.useMemo(() => {
-    const q = priceSearchQuery.toLowerCase().trim()
+    const q = depreciationSearchQuery.toLowerCase().trim()
     if (!q) return activeGroupRows
     return activeGroupRows.filter(row => {
       const meta = materialMetadataMap.get(String(row.maSAP || '').trim().toLowerCase()) || { tenVatTu: '' }
@@ -8808,7 +8934,7 @@ function PhanNhomVatTuTab({
         String(meta.tenVatTu || '').toLowerCase().includes(q)
       )
     })
-  }, [activeGroupRows, priceSearchQuery, materialMetadataMap])
+  }, [activeGroupRows, depreciationSearchQuery, materialMetadataMap])
 
   const btnBase = {
     padding: '4px 8px',
@@ -9004,6 +9130,7 @@ function PhanNhomVatTuTab({
             <button
               onClick={handleSaveAllToSupabase}
               disabled={isSyncingToSupabase || isDepreciationAndPricesSynced}
+              title={isDepreciationAndPricesSynced ? "Tất cả dữ liệu phân nhóm và khấu hao đã đồng bộ khớp với Supabase" : "Nhấp để lưu tất cả dữ liệu phân nhóm và khấu hao mới lên Supabase"}
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
@@ -9217,11 +9344,11 @@ function PhanNhomVatTuTab({
                 <input
                   type="text"
                   placeholder="Tìm kiếm theo mã SAP hoặc phân loại..."
-                  value={priceSearchQuery}
-                  onChange={(e) => setPriceSearchQuery(e.target.value)}
+                  value={classificationSearchQuery}
+                  onChange={(e) => setClassificationSearchQuery(e.target.value)}
                   style={{
                     width: '100%',
-                    padding: priceSearchQuery ? '6px 32px 6px 32px' : '6px 10px 6px 32px',
+                    padding: classificationSearchQuery ? '6px 32px 6px 32px' : '6px 10px 6px 32px',
                     fontSize: '13px',
                     border: '1px solid var(--border)',
                     borderRadius: 6,
@@ -9230,9 +9357,9 @@ function PhanNhomVatTuTab({
                     color: 'var(--text)'
                   }}
                 />
-                {priceSearchQuery && (
+                {classificationSearchQuery && (
                   <button
-                    onClick={() => setPriceSearchQuery('')}
+                    onClick={() => setClassificationSearchQuery('')}
                     style={{
                       position: 'absolute',
                       right: 10,
@@ -9733,6 +9860,24 @@ function PhanNhomVatTuTab({
                               setSelectedMonthsGroup(opt)
                               setSelectedMaterials(new Set()) // clear selection
                             }}
+                            onDragOver={(e) => {
+                              e.preventDefault();
+                              e.currentTarget.style.transform = 'scale(1.02)';
+                              e.currentTarget.style.borderColor = colors.fg;
+                            }}
+                            onDragLeave={(e) => {
+                              e.currentTarget.style.transform = 'none';
+                              e.currentTarget.style.borderColor = isActive ? colors.fg : colors.border;
+                            }}
+                            onDrop={async (e) => {
+                              e.preventDefault();
+                              e.currentTarget.style.transform = 'none';
+                              e.currentTarget.style.borderColor = isActive ? colors.fg : colors.border;
+                              const maSAP = e.dataTransfer.getData('text/plain');
+                              if (maSAP) {
+                                await handleDropOnGroup(maSAP, opt);
+                              }
+                            }}
                             style={{
                               padding: '10px 12px',
                               borderRadius: '10px',
@@ -9825,6 +9970,24 @@ function PhanNhomVatTuTab({
                             onClick={() => {
                               setSelectedMonthsGroup(opt)
                               setSelectedMaterials(new Set()) // clear selection
+                            }}
+                            onDragOver={(e) => {
+                              e.preventDefault();
+                              e.currentTarget.style.transform = 'scale(1.02)';
+                              e.currentTarget.style.borderColor = colors.fg;
+                            }}
+                            onDragLeave={(e) => {
+                              e.currentTarget.style.transform = 'none';
+                              e.currentTarget.style.borderColor = isActive ? colors.fg : colors.border;
+                            }}
+                            onDrop={async (e) => {
+                              e.preventDefault();
+                              e.currentTarget.style.transform = 'none';
+                              e.currentTarget.style.borderColor = isActive ? colors.fg : colors.border;
+                              const maSAP = e.dataTransfer.getData('text/plain');
+                              if (maSAP) {
+                                await handleDropOnGroup(maSAP, opt);
+                              }
                             }}
                             style={{
                               padding: '10px 12px',
@@ -9955,6 +10118,24 @@ function PhanNhomVatTuTab({
                               setSelectedMonthsGroup(opt)
                               setSelectedMaterials(new Set()) // clear selection
                             }}
+                            onDragOver={(e) => {
+                              e.preventDefault();
+                              e.currentTarget.style.transform = 'scale(1.02)';
+                              e.currentTarget.style.borderColor = colors.fg;
+                            }}
+                            onDragLeave={(e) => {
+                              e.currentTarget.style.transform = 'none';
+                              e.currentTarget.style.borderColor = isActive ? colors.fg : colors.border;
+                            }}
+                            onDrop={async (e) => {
+                              e.preventDefault();
+                              e.currentTarget.style.transform = 'none';
+                              e.currentTarget.style.borderColor = isActive ? colors.fg : colors.border;
+                              const maSAP = e.dataTransfer.getData('text/plain');
+                              if (maSAP) {
+                                await handleDropOnGroup(maSAP, opt);
+                              }
+                            }}
                             style={{
                               padding: '10px 12px',
                               borderRadius: '10px',
@@ -10083,8 +10264,8 @@ function PhanNhomVatTuTab({
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <h3 style={{ margin: 0, fontSize: '14px', fontWeight: 800, color: 'var(--text)' }}>
                     {selectedMonthsGroup?.isAll
-                      ? (priceSearchQuery.trim() ? 'KẾT QUẢ TÌM KIẾM TOÀN BỘ VẬT TƯ' : 'TẤT CẢ VẬT TƯ KHẤU HAO')
-                      : priceSearchQuery.trim()
+                      ? (depreciationSearchQuery.trim() ? 'KẾT QUẢ TÌM KIẾM TOÀN BỘ VẬT TƯ' : 'TẤT CẢ VẬT TƯ KHẤU HAO')
+                      : depreciationSearchQuery.trim()
                         ? `KẾT QUẢ TÌM KIẾM TRONG: ${
                             selectedMonthsGroup?.months === 0 
                               ? 'VẬT TƯ CHƯA THIẾT LẬP' 
@@ -10174,11 +10355,11 @@ function PhanNhomVatTuTab({
                   <input
                     type="text"
                     placeholder="Tìm theo mã SAP hoặc tên vật tư..."
-                    value={priceSearchQuery}
-                    onChange={(e) => setPriceSearchQuery(e.target.value)}
+                    value={depreciationSearchQuery}
+                    onChange={(e) => setDepreciationSearchQuery(e.target.value)}
                     style={{
                       width: '100%',
-                      padding: priceSearchQuery ? '6px 32px 6px 32px' : '6px 10px 6px 32px',
+                      padding: depreciationSearchQuery ? '6px 32px 6px 32px' : '6px 10px 6px 32px',
                       fontSize: '13px',
                       border: '1px solid var(--border)',
                       borderRadius: 6,
@@ -10187,9 +10368,9 @@ function PhanNhomVatTuTab({
                       color: 'var(--text)'
                     }}
                   />
-                  {priceSearchQuery && (
+                  {depreciationSearchQuery && (
                     <button
-                      onClick={() => setPriceSearchQuery('')}
+                      onClick={() => setDepreciationSearchQuery('')}
                       style={{
                         position: 'absolute',
                         right: 10,
@@ -10549,6 +10730,16 @@ function PhanNhomVatTuTab({
                     return (
                       <div
                         key={row.maSAP}
+                        draggable={true}
+                        onDragStart={(e) => {
+                          e.dataTransfer.setData('text/plain', row.maSAP);
+                          e.dataTransfer.effectAllowed = 'move';
+                          e.currentTarget.style.opacity = '0.4';
+                        }}
+                        onDragEnd={(e) => {
+                          e.currentTarget.style.opacity = '1';
+                        }}
+                        title="Kéo thả vật tư này vào nhóm khấu hao ở thanh bên trái"
                         onClick={() => {
                           const newSelection = new Set(selectedMaterials)
                           if (newSelection.has(row.maSAP)) {
@@ -10577,7 +10768,7 @@ function PhanNhomVatTuTab({
                           alignItems: 'center',
                           justifyContent: 'space-between',
                           gap: '12px',
-                          cursor: 'pointer',
+                          cursor: 'grab',
                           transition: 'all 0.15s',
                           position: 'relative',
                           boxShadow: isSelected ? '0 4px 10px -2px rgba(15, 88, 167, 0.1)' : 'var(--shadow-xs)'
@@ -10792,29 +10983,53 @@ function PhanNhomVatTuTab({
               <button
                 onClick={async () => {
                   setShowConfirmClearPrices(false)
-                  setMaterialPriceRows([]);
+                  
+                  // Keep only rows that are dummy configurations or have positive depreciation months
+                  const remainingRows = materialPriceRows
+                    .filter(r => r.depreciationMonths && r.depreciationMonths > 0)
+                    .map(r => ({
+                      maSAP: r.maSAP,
+                      khoiLuongTong: 0,
+                      thanhTien: 0,
+                      donGiaTrungBinh: 0,
+                      donGiaTrungBinh1Ngay: 0,
+                      phanLoaiVatTu: 'Vật tư khấu hao',
+                      isApprovedDepreciation: r.isApprovedDepreciation,
+                      depreciationMonths: r.depreciationMonths,
+                      isDummyConfigOnly: true
+                    }));
+                  
+                  setMaterialPriceRows(remainingRows);
                   setMaterialPrices({});
                   setMaterialClassifications({});
-                  localStorage.removeItem('sgc_report_material_price_rows');
+
+                  localStorage.setItem('sgc_report_material_price_rows', JSON.stringify(remainingRows));
                   localStorage.removeItem('sgc_report_material_prices');
                   localStorage.removeItem('sgc_report_material_classifications');
+
                   if (isSupabaseConfigured) {
                     try {
-                      const { error } = await supabase.from('don_gia_vat_tu').delete().neq('ma_sap', '_nonexistent_');
-                      if (error) {
-                        showNotification('Lỗi xóa trên Supabase: ' + error.message, 'error');
+                      // Delete all material classification rows from don_gia_vat_tu table on Supabase
+                      const { error: delErr } = await supabase
+                        .from('don_gia_vat_tu')
+                        .delete()
+                        .not('ma_sap', 'is', null);
+
+                      if (delErr) {
+                        showNotification('Lỗi xóa trên Supabase: ' + delErr.message, 'error');
                       } else {
-                        setLastSyncedMaterialPriceRows([]);
-                        showNotification('Đã xóa dữ liệu đơn giá & phân loại thành công trên cả cục bộ và Supabase!', 'success');
-                        // Tải lại để tự động phục hồi cấu hình khấu hao từ cau_hinh_khau_hao
+                        setLastSyncedMaterialPriceRows(remainingRows);
+                        showNotification('Đã xóa dữ liệu đơn giá & phân loại thành công! Cấu hình khấu hao được giữ nguyên hoàn toàn.', 'success');
+                        
+                        // Reload to ensure state is in sync with database
                         await loadPricesFromSupabase(true);
                       }
                     } catch (e) {
                       showNotification('Lỗi kết nối Supabase: ' + e.message, 'error');
                     }
                   } else {
-                    setLastSyncedMaterialPriceRows([]);
-                    showNotification('Đã xóa dữ liệu đơn giá & phân loại cục bộ thành công!', 'success');
+                    setLastSyncedMaterialPriceRows(remainingRows);
+                    showNotification('Đã xóa dữ liệu đơn giá & phân loại cục bộ thành công! Cấu hình khấu hao được giữ nguyên.', 'success');
                   }
                 }}
                 style={{
@@ -18869,9 +19084,7 @@ export default function App() {
             const thanhTien = item.thanhTien || 0
             const phanLoai = item.phanLoaiVatTu || ''
             
-            const isAsset = phanLoai.toLowerCase().includes('khấu hao') || phanLoai.toLowerCase().includes('tài sản')
-            const depMonths = config ? config.months : (item.depreciationMonths || 0)
-            const months = isAsset ? depMonths : 0
+            const months = config ? config.months : (item.depreciationMonths || 0)
             
             const computedAvgPrice = klTong > 0 ? Math.round(thanhTien / klTong) : 0
             const computedMonthlyPrice = months > 0 ? Math.round(computedAvgPrice / months) : 0
@@ -18949,9 +19162,7 @@ export default function App() {
           const thanhTien = item.thanh_tien || 0
           const phanLoai = item.phan_loai_vat_tu || ''
           
-          const isAsset = phanLoai.toLowerCase().includes('khấu hao') || phanLoai.toLowerCase().includes('tài sản')
-          const depMonths = config ? config.months : (item.depreciation_months || 0)
-          const months = isAsset ? depMonths : 0
+          const months = config ? config.months : (item.depreciation_months || 0)
           
           const computedAvgPrice = klTong > 0 ? Math.round(thanhTien / klTong) : 0
           const computedMonthlyPrice = months > 0 ? Math.round(computedAvgPrice / months) : 0
