@@ -8,7 +8,7 @@ import {
   ChevronDown, ChevronRight, Download, Truck, PackageCheck, Settings, BarChart3,
   AlertCircle, CheckCircle2, Filter, ArrowUpDown, Clock, CloudUpload, Database, Save,
   Pencil, Trash2, Lock, ClipboardList, Warehouse, Building2, Users, HelpCircle,
-  Calendar, AlertTriangle, DollarSign, Copy, Terminal, LogOut, User as UserIcon, CheckSquare, ArrowRight
+  Calendar, AlertTriangle, DollarSign, Copy, Check, Terminal, LogOut, User as UserIcon, CheckSquare, ArrowRight
 } from 'lucide-react'
 import { COLS_GIAO_NHAN, parseXlsxToRows, formatVal, getTrangThaiColor, isApprovedStatus, isPendingStatus, isRejectedStatus } from './constants.js'
 import { supabase, isSupabaseConfigured, supabaseUrl, supabaseAnonKey } from './supabaseClient.js'
@@ -5306,20 +5306,62 @@ function OrderTab({
 
 // Helper function to classify unit name into 4 categories
 function getUnitCategory(name) {
-  const upper = (name || '').toUpperCase();
+  const upper = (name || '').toUpperCase().trim();
   
-  // 1. Nhà cung cấp: contains "CÔNG TY", "CONG TY", "CTY", "DNTN"
-  if (upper.includes('CÔNG TY') || upper.includes('CONG TY') || upper.includes('CTY') || upper.includes('DNTN')) {
+  // 1. Nhà cung cấp: contains "CÔNG TY", "CONG TY", "CTY", "DNTN", "TNHH", "CỔ PHẦN", "CO PHAN", "TẬP ĐOÀN", "TAP DOAN", "COOP", "CO.OP", "HTX", "HỢP TÁC XÃ", "XÍ NGHIỆP", "XI NGHIEP", "NHÀ MÁY", "NHA MAY"
+  // Also check abbreviations like "CT " at the start or " CT " or "CP " or " CP"
+  const isNcc = 
+    upper.includes('CÔNG TY') || 
+    upper.includes('CONG TY') || 
+    upper.includes('CTY') || 
+    upper.includes('C.TY') ||
+    upper.includes('DNTN') ||
+    upper.includes('TNHH') ||
+    upper.includes('CỔ PHẦN') ||
+    upper.includes('CO PHAN') ||
+    upper.includes('TẬP ĐOÀN') ||
+    upper.includes('TAP DOAN') ||
+    upper.includes('COOP') ||
+    upper.includes('CO.OP') ||
+    upper.includes('HTX') ||
+    upper.includes('HỢP TÁC XÃ') ||
+    upper.includes('XÍ NGHIỆP') ||
+    upper.includes('XI NGHIEP') ||
+    upper.includes('NHÀ MÁY') ||
+    upper.includes('NHA MAY') ||
+    upper.includes('TMDV') ||
+    upper.includes('XNK') ||
+    upper.startsWith('CT ') ||
+    upper.includes(' CT ') ||
+    upper.startsWith('CP ') ||
+    upper.includes(' CP ') ||
+    upper.includes('TRẠM BÊ TÔNG') ||
+    upper.includes('TRAM BE TONG') ||
+    upper.includes('CỬA HÀNG') ||
+    upper.includes('CUA HANG') ||
+    upper.includes('ĐẠI LÝ') ||
+    upper.includes('DAI LY');
+
+  if (isNcc) {
     return 'ncc';
   }
   
-  // 2. Tổ đội: has "TỔ ĐỘI" or "TO DOI"
-  if (upper.includes('TỔ ĐỘI') || upper.includes('TO DOI')) {
+  // 2. Tổ đội: has "TỔ ĐỘI" or "TO DOI" or "ĐỘI" (as separate word or start) or "DOI " at start
+  const hasToDoi = 
+    upper.includes('TỔ ĐỘI') || 
+    upper.includes('TO DOI') || 
+    upper.startsWith('ĐỘI ') || 
+    upper.startsWith('DOI ') ||
+    upper.includes(' ĐỘI ') || 
+    upper.includes(' DOI ') ||
+    upper.startsWith('TỔ ') ||
+    upper.includes(' TỔ ');
+    
+  if (hasToDoi) {
     return 'todoi';
   }
   
   // 3. Kho BCH: contains "KHO" (as a separate word), "SGC", or "BCH"
-  // Split by non-letter characters to extract exact words/tokens
   const tokens = upper.split(/[^A-ZÁÀẢÃẠĂẮẰẲẴẶÂẤẦẨẪẬÉÈẺẼẸÊẾỀỂỄỆÍÌỈĨỊÓÒỎÕỌÔỐỒỔỖỘƠỚỜỞỠỢÚÙỦŨỤƯỨỪỬỮỰÝỲỶỸYĐ]/);
   const hasKho = tokens.includes('KHO');
   const hasSgc = tokens.includes('SGC');
@@ -5371,6 +5413,8 @@ function KhoDuAnTab({ chungRows, selectedProject, setSelectedProject, allProject
   // Drag and drop / Custom classifications state
   const [draggedItemName, setDraggedItemName] = useState(null)
   const [dragOverCol, setDragOverCol] = useState(null)
+  const [copiedSql, setCopiedSql] = useState(false)
+  const [showRlsGuide, setShowRlsGuide] = useState(false)
 
   // Drag & drop handlers
   const handleDragStart = (e, name) => {
@@ -5388,9 +5432,10 @@ function KhoDuAnTab({ chungRows, selectedProject, setSelectedProject, allProject
     const name = e.dataTransfer.getData('text/plain') || draggedItemName
     if (!name) return
 
+    const normName = name.trim().normalize('NFC').replace(/\s+/g, ' ')
     setCustomCategoryMap(prev => ({
       ...prev,
-      [name]: targetColKey
+      [normName]: targetColKey
     }))
     setDraggedItemName(null)
     setDragOverCol(null)
@@ -5400,7 +5445,7 @@ function KhoDuAnTab({ chungRows, selectedProject, setSelectedProject, allProject
   // Chuẩn hóa tên (gộp khoảng trắng thừa + không phân biệt hoa/thường) để gộp các
   // bản ghi trùng lặp do lệch hoa/thường hoặc dư khoảng trắng trong dữ liệu gốc,
   // tránh hiển thị trùng trên webapp và tránh đẩy dữ liệu trùng lên Supabase.
-  const normalizeUnitName = (s) => (s || '').trim().replace(/\s+/g, ' ')
+  const normalizeUnitName = (s) => (s || '').trim().normalize('NFC').replace(/\s+/g, ' ')
   const uniqueDonVi = useMemo(() => {
     const counts = {}
     chungRows.forEach(r => {
@@ -5425,15 +5470,37 @@ function KhoDuAnTab({ chungRows, selectedProject, setSelectedProject, allProject
       .sort((a, b) => b.totalCount - a.totalCount)
   }, [chungRows])
 
+  // Normalized Maps for case-insensitive, space-normalized, and NFC-normalized O(1) lookups
+  const normCustomMap = useMemo(() => {
+    const map = {}
+    Object.entries(customCategoryMap || {}).forEach(([k, v]) => {
+      if (k) {
+        map[k.trim().normalize('NFC').replace(/\s+/g, ' ').toLowerCase()] = v
+      }
+    })
+    return map
+  }, [customCategoryMap])
+
+  const normDbMap = useMemo(() => {
+    const map = {}
+    Object.entries(dbCategoryMap || {}).forEach(([k, v]) => {
+      if (k) {
+        map[k.trim().normalize('NFC').replace(/\s+/g, ' ').toLowerCase()] = v
+      }
+    })
+    return map
+  }, [dbCategoryMap])
+
   // Check if current classifications match database state exactly
   const isSynchronized = useMemo(() => {
     if (uniqueDonVi.length === 0) return true
     return uniqueDonVi.every(item => {
-      const dbCat = dbCategoryMap[item.name]
-      const currentCat = customCategoryMap[item.name] || getUnitCategory(item.name)
+      const lookupKey = item.name.trim().normalize('NFC').replace(/\s+/g, ' ').toLowerCase()
+      const dbCat = normDbMap[lookupKey]
+      const currentCat = normCustomMap[lookupKey] || getUnitCategory(item.name)
       return dbCat !== undefined && dbCat === currentCat
     })
-  }, [uniqueDonVi, customCategoryMap, dbCategoryMap])
+  }, [uniqueDonVi, normCustomMap, normDbMap])
 
   // 2. Filter list by search query
   const filteredDonVi = useMemo(() => {
@@ -5452,17 +5519,20 @@ function KhoDuAnTab({ chungRows, selectedProject, setSelectedProject, allProject
       todoi: []
     }
     filteredDonVi.forEach(item => {
-      const cat = customCategoryMap[item.name] || getUnitCategory(item.name)
+      const lookupKey = item.name.trim().normalize('NFC').replace(/\s+/g, ' ').toLowerCase()
+      const cat = normCustomMap[lookupKey] || getUnitCategory(item.name)
       groups[cat].push(item)
     })
     
     // Sắp xếp từng nhóm: các đơn vị chưa được lưu trên Supabase (hoặc bị đổi nhóm chưa lưu) lên trên cùng, sau đó sắp xếp theo bảng chữ cái tiếng Việt (A, b, c,...)
     Object.keys(groups).forEach(key => {
       groups[key].sort((a, b) => {
-        const catA = customCategoryMap[a.name] || getUnitCategory(a.name)
-        const catB = customCategoryMap[b.name] || getUnitCategory(b.name)
-        const isUnsavedA = dbCategoryMap[a.name] === undefined || dbCategoryMap[a.name] !== catA
-        const isUnsavedB = dbCategoryMap[b.name] === undefined || dbCategoryMap[b.name] !== catB
+        const lookupKeyA = a.name.trim().normalize('NFC').replace(/\s+/g, ' ').toLowerCase()
+        const lookupKeyB = b.name.trim().normalize('NFC').replace(/\s+/g, ' ').toLowerCase()
+        const catA = normCustomMap[lookupKeyA] || getUnitCategory(a.name)
+        const catB = normCustomMap[lookupKeyB] || getUnitCategory(b.name)
+        const isUnsavedA = normDbMap[lookupKeyA] === undefined || normDbMap[lookupKeyA] !== catA
+        const isUnsavedB = normDbMap[lookupKeyB] === undefined || normDbMap[lookupKeyB] !== catB
         
         if (isUnsavedA && !isUnsavedB) return -1
         if (!isUnsavedA && isUnsavedB) return 1
@@ -5471,7 +5541,7 @@ function KhoDuAnTab({ chungRows, selectedProject, setSelectedProject, allProject
     })
     
     return groups
-  }, [filteredDonVi, customCategoryMap, dbCategoryMap])
+  }, [filteredDonVi, normCustomMap, normDbMap])
 
   const handleSaveToSupabase = useCallback(async () => {
     if (!isSupabaseConfigured) {
@@ -5485,8 +5555,9 @@ function KhoDuAnTab({ chungRows, selectedProject, setSelectedProject, allProject
     try {
       // Find items that have been customized or modified compared to the DB state
       const changedItems = uniqueDonVi.filter(item => {
-        const dbCat = dbCategoryMap[item.name]
-        const currentCat = customCategoryMap[item.name] || getUnitCategory(item.name)
+        const lookupKey = item.name.trim().normalize('NFC').replace(/\s+/g, ' ').toLowerCase()
+        const dbCat = normDbMap[lookupKey]
+        const currentCat = normCustomMap[lookupKey] || getUnitCategory(item.name)
         return dbCat === undefined || dbCat !== currentCat
       })
 
@@ -5505,10 +5576,13 @@ function KhoDuAnTab({ chungRows, selectedProject, setSelectedProject, allProject
         }
 
         // Chunk inserts
-        const insertPayload = changedItems.map(item => ({
-          ten_don_vi: item.name,
-          nhom_don_vi: customCategoryMap[item.name] || getUnitCategory(item.name)
-        }))
+        const insertPayload = changedItems.map(item => {
+          const lookupKey = item.name.trim().normalize('NFC').replace(/\s+/g, ' ').toLowerCase()
+          return {
+            ten_don_vi: item.name.trim().normalize('NFC').replace(/\s+/g, ' '),
+            nhom_don_vi: normCustomMap[lookupKey] || getUnitCategory(item.name)
+          }
+        })
 
         const insertChunkSize = 200
         for (let i = 0; i < insertPayload.length; i += insertChunkSize) {
@@ -5524,8 +5598,10 @@ function KhoDuAnTab({ chungRows, selectedProject, setSelectedProject, allProject
       setDbCategoryMap(prev => {
         const next = { ...prev }
         changedItems.forEach(item => {
-          const cat = customCategoryMap[item.name] || getUnitCategory(item.name)
-          next[item.name] = cat
+          const lookupKey = item.name.trim().normalize('NFC').replace(/\s+/g, ' ').toLowerCase()
+          const cat = normCustomMap[lookupKey] || getUnitCategory(item.name)
+          const normKey = item.name.trim().normalize('NFC').replace(/\s+/g, ' ')
+          next[normKey] = cat
         })
         return next
       })
@@ -5537,7 +5613,7 @@ function KhoDuAnTab({ chungRows, selectedProject, setSelectedProject, allProject
       setSaveStatus('error')
       setErrorMessage(err.message || String(err))
     }
-  }, [uniqueDonVi, customCategoryMap, dbCategoryMap])
+  }, [uniqueDonVi, normCustomMap, normDbMap])
 
   // 5. Excel export handler for categorized units list (Multi-sheet export)
   const handleExportExcel = useCallback(() => {
@@ -5752,6 +5828,82 @@ function KhoDuAnTab({ chungRows, selectedProject, setSelectedProject, allProject
         </div>
       </div>
 
+      {/* Supabase RLS Troubleshooting Card */}
+      {isSupabaseConfigured && Object.keys(dbCategoryMap || {}).length === 0 && (
+        <div style={{
+          background: '#fffbeb',
+          border: '1px solid #fef3c7',
+          borderRadius: 10,
+          padding: '14px 16px',
+          marginBottom: 16,
+          boxShadow: '0 2px 5px rgba(217, 119, 6, 0.05)',
+          textAlign: 'left',
+          flexShrink: 0
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#b45309', fontWeight: 700, fontSize: '14px' }}>
+            <AlertTriangle size={18} />
+            <span>Chưa tải được phân loại từ Supabase (Có thể do chưa phân quyền RLS)</span>
+          </div>
+          <p style={{ margin: '6px 0 12px 0', fontSize: '13px', color: '#78350f', lineHeight: 1.5 }}>
+            Ứng dụng đã kết nối tới Supabase nhưng danh sách phân loại đơn vị trống (hoặc trả về 0 bản ghi). 
+            Nếu bảng <code style={{ background: '#fef3c7', padding: '1px 5px', borderRadius: 4, fontFamily: 'monospace' }}>phan_loai_don_vi</code> của bạn đã có dữ liệu (như trong trang quản trị Supabase), nguyên nhân chính là do <strong>Row Level Security (RLS)</strong> đang chặn quyền đọc công khai.
+          </p>
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+            <button
+              onClick={() => {
+                const sql = `-- Tạo bảng phan_loai_don_vi nếu chưa có\nCREATE TABLE IF NOT EXISTS public.phan_loai_don_vi (\n    id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,\n    ten_don_vi text NOT NULL UNIQUE,\n    nhom_don_vi text NOT NULL,\n    created_at timestamp with time zone DEFAULT timezone('utc'::text, now())\n);\n\n-- Bật Row Level Security (RLS)\nALTER TABLE public.phan_loai_don_vi ENABLE ROW LEVEL SECURITY;\n\n-- Tạo chính sách cho phép đọc/ghi công khai\nDROP POLICY IF EXISTS "Allow public read" ON public.phan_loai_don_vi;\nCREATE POLICY "Allow public read" ON public.phan_loai_don_vi FOR SELECT USING (true);\n\nDROP POLICY IF EXISTS "Allow public insert" ON public.phan_loai_don_vi;\nCREATE POLICY "Allow public insert" ON public.phan_loai_don_vi FOR INSERT WITH CHECK (true);\n\nDROP POLICY IF EXISTS "Allow public update" ON public.phan_loai_don_vi;\nCREATE POLICY "Allow public update" ON public.phan_loai_don_vi FOR UPDATE USING (true);\n\nDROP POLICY IF EXISTS "Allow public delete" ON public.phan_loai_don_vi;\nCREATE POLICY "Allow public delete" ON public.phan_loai_don_vi FOR DELETE USING (true);`;
+                navigator.clipboard.writeText(sql)
+                setCopiedSql(true)
+                setTimeout(() => setCopiedSql(false), 2000)
+              }}
+              style={{
+                background: '#d97706',
+                color: '#ffffff',
+                border: 'none',
+                borderRadius: '6px',
+                padding: '8px 14px',
+                fontSize: '12.5px',
+                fontWeight: 700,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                boxShadow: '0 2px 4px rgba(217,119,6,0.15)'
+              }}
+            >
+              {copiedSql ? <Check size={14} /> : <Copy size={14} />}
+              {copiedSql ? 'Đã copy mã SQL!' : 'Copy mã SQL cấu hình RLS bảng phân loại'}
+            </button>
+            <button
+              onClick={() => setShowRlsGuide(!showRlsGuide)}
+              style={{
+                background: 'transparent',
+                color: '#b45309',
+                border: '1px solid #d97706',
+                borderRadius: '6px',
+                padding: '8px 14px',
+                fontSize: '12.5px',
+                fontWeight: 600,
+                cursor: 'pointer'
+              }}
+            >
+              {showRlsGuide ? 'Ẩn hướng dẫn' : 'Xem hướng dẫn chi tiết'}
+            </button>
+          </div>
+          {showRlsGuide && (
+            <div style={{ marginTop: 12, padding: 12, background: '#fffbeb', borderLeft: '3px solid #d97706', borderRadius: '0 6px 6px 0', fontSize: '12.5px', color: '#78350f', lineHeight: 1.5 }}>
+              <ol style={{ margin: 0, paddingLeft: 16, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <li>Bấm nút <strong>Copy mã SQL cấu hình RLS bảng phân loại</strong> ở trên.</li>
+                <li>Truy cập vào <a href="https://supabase.com/dashboard" target="_blank" rel="noreferrer" style={{ color: '#2563eb', textDecoration: 'underline', fontWeight: 600 }}>Supabase Dashboard</a>, chọn đúng dự án của bạn.</li>
+                <li>Vào mục <strong>SQL Editor</strong> ở thanh menu bên trái, bấm <strong>New query</strong>.</li>
+                <li>Dán (Paste) câu lệnh SQL vừa copy vào rồi bấm <strong>RUN</strong>.</li>
+                <li>Sau khi chạy thành công, quay lại đây và tải lại trang web để kết nối thông suốt vĩnh viễn!</li>
+              </ol>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Search Input Filter */}
       <div style={{
         background: '#ffffff',
@@ -5948,8 +6100,9 @@ function KhoDuAnTab({ chungRows, selectedProject, setSelectedProject, allProject
                       </div>
                     ) : (
                       col.list.map((item, idx) => {
-                        const currentCat = customCategoryMap[item.name] || getUnitCategory(item.name)
-                        const isUnsaved = dbCategoryMap[item.name] === undefined || dbCategoryMap[item.name] !== currentCat
+                        const lookupKey = item.name.trim().normalize('NFC').replace(/\s+/g, ' ').toLowerCase()
+                        const currentCat = normCustomMap[lookupKey] || getUnitCategory(item.name)
+                        const isUnsaved = normDbMap[lookupKey] === undefined || normDbMap[lookupKey] !== currentCat
 
                         return (
                           <div 
@@ -11084,13 +11237,13 @@ function BaoCaoXuatNhapTonTab({
 
   const getCategoryForUnit = React.useCallback((name) => {
     if (!name) return 'chuaphanbo'
-    const normName = name.trim().replace(/\s+/g, ' ')
+    const normName = name.trim().normalize('NFC').replace(/\s+/g, ' ')
     if (customCategoryMap && customCategoryMap[normName]) {
       return customCategoryMap[normName]
     }
     if (customCategoryMap) {
       const keys = Object.keys(customCategoryMap)
-      const foundKey = keys.find(k => k.toLowerCase() === normName.toLowerCase())
+      const foundKey = keys.find(k => k.trim().normalize('NFC').replace(/\s+/g, ' ').toLowerCase() === normName.toLowerCase())
       if (foundKey) {
         return customCategoryMap[foundKey]
       }
@@ -11645,13 +11798,13 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
 
     const getCategoryForUnit = (name) => {
       if (!name) return 'chuaphanbo'
-      const normName = name.trim().replace(/\s+/g, ' ')
+      const normName = name.trim().normalize('NFC').replace(/\s+/g, ' ')
       if (customCategoryMap && customCategoryMap[normName]) {
         return customCategoryMap[normName]
       }
       if (customCategoryMap) {
         const keys = Object.keys(customCategoryMap)
-        const foundKey = keys.find(k => k.toLowerCase() === normName.toLowerCase())
+        const foundKey = keys.find(k => k.trim().normalize('NFC').replace(/\s+/g, ' ').toLowerCase() === normName.toLowerCase())
         if (foundKey) {
           return customCategoryMap[foundKey]
         }
@@ -11791,13 +11944,13 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
 
     const getCategoryForUnit = (name) => {
       if (!name) return 'chuaphanbo'
-      const normName = name.trim().replace(/\s+/g, ' ')
+      const normName = name.trim().normalize('NFC').replace(/\s+/g, ' ')
       if (customCategoryMap && customCategoryMap[normName]) {
         return customCategoryMap[normName]
       }
       if (customCategoryMap) {
         const keys = Object.keys(customCategoryMap)
-        const foundKey = keys.find(k => k.toLowerCase() === normName.toLowerCase())
+        const foundKey = keys.find(k => k.trim().normalize('NFC').replace(/\s+/g, ' ').toLowerCase() === normName.toLowerCase())
         if (foundKey) {
           return customCategoryMap[foundKey]
         }
@@ -18730,42 +18883,38 @@ export default function App() {
   const [customCategoryMap, setCustomCategoryMap] = useState({})
   const [dbCategoryMap, setDbCategoryMap] = useState({})
 
-  React.useEffect(() => {
-    let isMounted = true
-    const loadCustomClassifications = async () => {
-      if (!isSupabaseConfigured) {
-        if (isMounted) {
-          setCustomCategoryMap({})
-          setDbCategoryMap({})
-        }
-        return
-      }
-      try {
-        const { data, error } = await supabase
-          .from('phan_loai_don_vi')
-          .select('ten_don_vi, nhom_don_vi')
-          
-        if (error) throw error
-        
-        if (data && isMounted) {
-          const map = {}
-          data.forEach(row => {
-            if (row.ten_don_vi) {
-              map[row.ten_don_vi] = row.nhom_don_vi
-            }
-          })
-          setCustomCategoryMap(map)
-          setDbCategoryMap(map)
-        }
-      } catch (err) {
-        console.error('Error loading custom classifications in App:', err)
-      }
+  const loadCustomClassifications = React.useCallback(async () => {
+    if (!isSupabaseConfigured) {
+      setCustomCategoryMap({})
+      setDbCategoryMap({})
+      return
     }
-    loadCustomClassifications()
-    return () => {
-      isMounted = false
+    try {
+      const { data, error } = await supabase
+        .from('phan_loai_don_vi')
+        .select('ten_don_vi, nhom_don_vi')
+        
+      if (error) throw error
+      
+      if (data) {
+        const map = {}
+        data.forEach(row => {
+          if (row.ten_don_vi) {
+            const normKey = row.ten_don_vi.trim().normalize('NFC').replace(/\s+/g, ' ')
+            map[normKey] = row.nhom_don_vi
+          }
+        })
+        setCustomCategoryMap(map)
+        setDbCategoryMap(map)
+      }
+    } catch (err) {
+      console.error('Error loading custom classifications in App:', err)
     }
   }, [])
+
+  React.useEffect(() => {
+    loadCustomClassifications()
+  }, [loadCustomClassifications])
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
   const [isSidebarPinned, setIsSidebarPinned] = useState(() => {
@@ -19690,7 +19839,8 @@ export default function App() {
     await loadProjectsFromSupabase()
     const freshOpts = await loadDepreciationOptionsFromSupabase()
     await loadPricesFromSupabase(true, freshOpts)
-  }, [loadProjectsFromSupabase, loadPricesFromSupabase, loadDepreciationOptionsFromSupabase])
+    await loadCustomClassifications()
+  }, [loadProjectsFromSupabase, loadPricesFromSupabase, loadDepreciationOptionsFromSupabase, loadCustomClassifications])
 
   // Fetch initial data from Supabase if connected
   React.useEffect(() => {
