@@ -865,6 +865,11 @@ export default function TaiSanKhauHaoTab({
         const isKhauHao = classification && (cLower.includes('khấu hao') || cLower.includes('tài sản') || cLower.includes('tskh'))
         if (!isKhauHao) return
 
+        // Restrict Monthly Report to items belonging to the Depreciation Group (Nhóm khấu hao) in Phân nhóm vật tư
+        const priceRow = materialPriceRows.find(pr => String(pr.maSAP || '').trim().toLowerCase() === sap.toLowerCase())
+        if (!priceRow) return
+        if (!priceRow.depreciationMonths || priceRow.depreciationMonths <= 0) return
+
         const rowRes = processRow(r)
         if (!rowRes.isRelated) return
 
@@ -914,8 +919,16 @@ export default function TaiSanKhauHaoTab({
         }
 
         const priceRow = materialPriceRows.find(pr => String(pr.maSAP || '').trim().toLowerCase() === g.maSAP.toLowerCase())
-        const averageUnitPrice = priceRow ? (priceRow.donGiaTrungBinh || 0) : (materialPrices[g.maSAP] || 0)
-        const totalValue = Math.round(stock * averageUnitPrice)
+        let monthlyUnitPrice = 0
+        if (priceRow) {
+          const classification = String(customCategoryMap[g.maSAP] || materialClassifications[g.maSAP] || priceRow.phanLoaiVatTu || '').trim()
+          const cLower = classification.toLowerCase()
+          const isAsset = cLower.includes('khấu hao') || cLower.includes('tài sản') || cLower.includes('tskh')
+          const months = isAsset ? (priceRow.depreciationMonths || 0) : 0
+          const avgPrice = priceRow.donGiaTrungBinh || 0
+          monthlyUnitPrice = months > 0 ? Math.round(avgPrice / months) : 0
+        }
+        const totalValue = Math.round(stock * monthlyUnitPrice)
 
         const hasActivity = stock !== 0 || Object.values(monthlyStockSum).some(v => v !== 0)
         if (hasActivity) {
@@ -926,7 +939,7 @@ export default function TaiSanKhauHaoTab({
             dvt: g.dvt,
             totalStock: Math.round(stock * 1000) / 1000,
             totalValue,
-            unitPrice: averageUnitPrice,
+            unitPrice: monthlyUnitPrice,
             monthlyStock: monthlyStockSum
           })
         }
@@ -1991,7 +2004,16 @@ export default function TaiSanKhauHaoTab({
         XLSXStyle.utils.book_append_sheet(wb, wsMismatch, 'Chi tiết lệch dòng đối chiếu')
       }
 
-      XLSXStyle.writeFile(wb, `SGC_TongHop_TaiSan_KhauHao_ToanCongTy_${selectedYear}.xlsx`)
+      const wbout = XLSXStyle.write(wb, { bookType: 'xlsx', type: 'array' })
+      const blob = new Blob([wbout], { type: 'application/octet-stream' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `SGC_TongHop_TaiSan_KhauHao_ToanCongTy_${selectedYear}.xlsx`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
       return
     }
 
@@ -2062,9 +2084,9 @@ export default function TaiSanKhauHaoTab({
         { s: { r: 4, c: 3 }, e: { r: 5, c: 3 } }, // Tên vật tư
         { s: { r: 4, c: 4 }, e: { r: 5, c: 4 } }, // Đvt
         { s: { r: 4, c: 5 }, e: { r: 5, c: 5 } }, // Tổng tồn kho
-        { s: { r: 4, c: 6 }, e: { r: 5, c: 6 } }, // Đơn giá tháng
-        { s: { r: 4, c: 7 }, e: { r: 4, c: 18 } }, // KHỐI LƯỢNG
-        { s: { r: 4, c: 19 }, e: { r: 4, c: 30 } }, // THÀNH TIỀN
+        { s: { r: 4, c: 6 }, e: { r: 4, c: 17 } }, // KHỐI LƯỢNG (columns G to R, index 6 to 17)
+        { s: { r: 4, c: 18 }, e: { r: 5, c: 18 } }, // Đơn giá tháng (column S, index 18)
+        { s: { r: 4, c: 19 }, e: { r: 4, c: 30 } }, // THÀNH TIỀN (columns T to AE, index 19 to 30)
       ]
 
       let excelRowIdx = 5
@@ -2323,7 +2345,16 @@ export default function TaiSanKhauHaoTab({
       ws['!ref'] = `A1:${getColLabel(maxColIdx)}${excelRowIdx}`
       XLSXStyle.utils.book_append_sheet(wb, ws, 'Tổng hợp tháng')
 
-      XLSXStyle.writeFile(wb, `SGC_TongHop_TaiSan_KhauHao_Nam_${selectedYear}.xlsx`)
+      const wbout = XLSXStyle.write(wb, { bookType: 'xlsx', type: 'array' })
+      const blob = new Blob([wbout], { type: 'application/octet-stream' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `SGC_TongHop_TaiSan_KhauHao_Nam_${selectedYear}.xlsx`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
       return
     }
 
@@ -2533,7 +2564,16 @@ export default function TaiSanKhauHaoTab({
       XLSXStyle.utils.book_append_sheet(wb, ws, 'Thống kê Vật tư')
 
       const fileProjName = 'Tat_ca'
-      XLSXStyle.writeFile(wb, `SGC_ThongKe_VatTu_Nam_${selectedYear}_${fileProjName}.xlsx`)
+      const wbout = XLSXStyle.write(wb, { bookType: 'xlsx', type: 'array' })
+      const blob = new Blob([wbout], { type: 'application/octet-stream' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `SGC_ThongKe_VatTu_Nam_${selectedYear}_${fileProjName}.xlsx`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
       return
     }
 
@@ -3057,7 +3097,16 @@ export default function TaiSanKhauHaoTab({
     XLSXStyle.utils.book_append_sheet(wb, giaoSheet, 'Don_Giao')
 
     const fileProjName = localProject ? String(localProject).replace(/[^a-zA-Z0-9_đĐâÂêÊôÔ]/g, '_') : 'Tat_ca'
-    XLSXStyle.writeFile(wb, `SGC_ThongKe_TaiSan_KhauHao_TheoThang_${selectedYear}_${fileProjName}.xlsx`)
+    const wbout = XLSXStyle.write(wb, { bookType: 'xlsx', type: 'array' })
+    const blob = new Blob([wbout], { type: 'application/octet-stream' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `SGC_ThongKe_TaiSan_KhauHao_TheoThang_${selectedYear}_${fileProjName}.xlsx`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
   }
 
   return (
