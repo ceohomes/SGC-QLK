@@ -8,7 +8,7 @@ import {
   Layers, Package, AlertTriangle, Calendar, Info, CheckCircle2, Database
 } from 'lucide-react'
 
-import { isApprovedStatus } from '../constants.js'
+import { isApprovedStatus, normalizeBchName, getStandardizedBchList } from '../constants.js'
 
 // Simple styled SearchableSelect for use inside the Tab
 function LocalSearchableSelect({ value, onChange, options, placeholder = 'Tất cả', searchPlaceholder = 'Tìm kiếm...' }) {
@@ -152,12 +152,41 @@ export default function TaiSanKhauHaoTab({
   nhanRows = [], 
   allProjects = [],
   customCategoryMap = {},
+  dbCategoryMap = {},
   materialPriceRows: propMaterialPriceRows,
   materialPrices: propMaterialPrices,
   materialClassifications: propMaterialClassifications,
   isDbSchemaOutdated = false,
-  onOpenDbUpgradeModal = () => {}
+  onOpenDbUpgradeModal = () => {},
+  bchAliasMap = {},
+  bchAliasRules = []
 }) {
+  const normChungRows = useMemo(() => {
+    if (!bchAliasMap || Object.keys(bchAliasMap).length === 0) return chungRows
+    return chungRows.map(r => ({
+      ...r,
+      donViGiao: normalizeBchName(r.donViGiao, bchAliasMap),
+      donViNhan: normalizeBchName(r.donViNhan, bchAliasMap)
+    }))
+  }, [chungRows, bchAliasMap])
+
+  const normGiaoRows = useMemo(() => {
+    if (!bchAliasMap || Object.keys(bchAliasMap).length === 0) return giaoRows
+    return giaoRows.map(r => ({
+      ...r,
+      donViGiao: normalizeBchName(r.donViGiao, bchAliasMap),
+      donViNhan: normalizeBchName(r.donViNhan, bchAliasMap)
+    }))
+  }, [giaoRows, bchAliasMap])
+
+  const normNhanRows = useMemo(() => {
+    if (!bchAliasMap || Object.keys(bchAliasMap).length === 0) return nhanRows
+    return nhanRows.map(r => ({
+      ...r,
+      donViGiao: normalizeBchName(r.donViGiao, bchAliasMap),
+      donViNhan: normalizeBchName(r.donViNhan, bchAliasMap)
+    }))
+  }, [nhanRows, bchAliasMap])
   const [localProject, setLocalProject] = useState('')
   const [selectedYear, setSelectedYear] = useState(2026)
   const [statusFilter, setStatusFilter] = useState('all') // 'all' | 'khauhao' | 'active'
@@ -190,6 +219,9 @@ export default function TaiSanKhauHaoTab({
     const norm = String(name).trim().replace(/\s+/g, ' ')
     if (customCategoryMap && customCategoryMap[norm]) {
       return customCategoryMap[norm]
+    }
+    if (dbCategoryMap && dbCategoryMap[norm]) {
+      return dbCategoryMap[norm]
     }
     const upper = norm.toUpperCase();
     if (upper.includes('CÔNG TY') || upper.includes('CONG TY') || upper.includes('CTY') || upper.includes('DNTN')) {
@@ -305,7 +337,8 @@ export default function TaiSanKhauHaoTab({
     const seen = new Set()
     const addName = (name) => {
       if (!name) return
-      const norm = name.trim()
+      const normalized = normalizeBchName(name, bchAliasMap)
+      const norm = normalized.trim()
       const lower = norm.toLowerCase()
       if (!seen.has(lower)) {
         seen.add(lower)
@@ -313,33 +346,43 @@ export default function TaiSanKhauHaoTab({
       }
     }
     allProjects.forEach(p => { if (p) addName(p) })
-    chungRows.forEach(r => {
+    if (Array.isArray(bchAliasRules)) {
+      bchAliasRules.forEach(r => {
+        const std = r && (r.ten_chuan || r.canonical_name)
+        if (std) addName(std)
+      })
+    }
+    normChungRows.forEach(r => {
       addName(r.donViGiao)
       addName(r.donViNhan)
     })
-    giaoRows.forEach(r => {
+    normGiaoRows.forEach(r => {
       addName(r.donViGiao)
       addName(r.donViNhan)
     })
-    nhanRows.forEach(r => {
+    normNhanRows.forEach(r => {
       addName(r.donViGiao)
       addName(r.donViNhan)
     })
     return [...list].sort()
-  }, [allProjects, chungRows, giaoRows, nhanRows])
+  }, [allProjects, normChungRows, normGiaoRows, normNhanRows, bchAliasRules, bchAliasMap])
 
-  // Extract all physical warehouses (excluding suppliers and crews) for dropdown selection
+  // Extract all physical warehouses (BCH chuẩn hóa) for dropdown selection
   const uniquePhysicalWarehouses = useMemo(() => {
-    return uniqueWarehouses.filter(name => {
-      const cat = getCategory(name)
-      return cat !== 'ncc' && cat !== 'todoi'
+    const sourceRows = (normChungRows && normChungRows.length > 0) ? normChungRows : [...normGiaoRows, ...normNhanRows]
+    return getStandardizedBchList({
+      sourceRows,
+      bchAliasRules,
+      bchAliasMap,
+      customCategoryMap,
+      dbCategoryMap
     })
-  }, [uniqueWarehouses, getCategory])
+  }, [normChungRows, normGiaoRows, normNhanRows, bchAliasRules, bchAliasMap, customCategoryMap, dbCategoryMap])
 
   // Extract all unique years
   const uniqueYears = useMemo(() => {
     const years = new Set()
-    const sourceRows = (chungRows && chungRows.length > 0) ? chungRows : [...giaoRows, ...nhanRows]
+    const sourceRows = (normChungRows && normChungRows.length > 0) ? normChungRows : [...normGiaoRows, ...normNhanRows]
     sourceRows.forEach(r => {
       const d = parseRowDate(r.ngayXuatNhap)
       if (d) {
@@ -350,7 +393,7 @@ export default function TaiSanKhauHaoTab({
       years.add(new Date().getFullYear())
     }
     return [...years].sort((a, b) => b - a)
-  }, [chungRows, giaoRows, nhanRows])
+  }, [normChungRows, normGiaoRows, normNhanRows])
 
   // Set default selected year
   useEffect(() => {
@@ -421,7 +464,7 @@ export default function TaiSanKhauHaoTab({
       return { receivedVal, issuedVal, isRelated: true }
     }
 
-    const sourceRows = (chungRows && chungRows.length > 0) ? chungRows : [...giaoRows, ...nhanRows]
+    const sourceRows = (normChungRows && normChungRows.length > 0) ? normChungRows : [...normGiaoRows, ...normNhanRows]
 
     sourceRows.forEach(r => {
       // Filter out non-completed/non-approved orders
@@ -530,7 +573,7 @@ export default function TaiSanKhauHaoTab({
     })
 
     return list
-  }, [chungRows, giaoRows, nhanRows, localProject, selectedYear, customCategoryMap, materialClassifications, materialPriceRows, materialPrices])
+  }, [normChungRows, normGiaoRows, normNhanRows, localProject, selectedYear, customCategoryMap, materialClassifications, materialPriceRows, materialPrices])
 
   // Apply client-side filtering on report data in a fast, decoupled useMemo
   const filteredAssetReportData = useMemo(() => {
@@ -649,7 +692,7 @@ export default function TaiSanKhauHaoTab({
         return { receivedVal, issuedVal, isRelated: true }
       }
 
-      const sourceRows = (chungRows && chungRows.length > 0) ? chungRows : [...giaoRows, ...nhanRows]
+      const sourceRows = (normChungRows && normChungRows.length > 0) ? normChungRows : [...normGiaoRows, ...normNhanRows]
 
       sourceRows.forEach(r => {
         // Filter out non-completed/non-approved orders
@@ -752,7 +795,7 @@ export default function TaiSanKhauHaoTab({
     })
 
     return summaries
-  }, [uniqueWarehouses, selectedYear, chungRows, giaoRows, nhanRows, customCategoryMap, materialClassifications, materialPriceRows, materialPrices])
+  }, [uniqueWarehouses, selectedYear, normChungRows, normGiaoRows, normNhanRows, customCategoryMap, materialClassifications, materialPriceRows, materialPrices])
 
   const companyProjectSummaries = useMemo(() => {
     // Filter projects with actual data

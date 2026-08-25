@@ -8,13 +8,18 @@ import {
   ChevronDown, ChevronRight, Download, Truck, PackageCheck, Settings, BarChart3,
   AlertCircle, CheckCircle2, Filter, ArrowUpDown, Clock, CloudUpload, Database, Save,
   Pencil, Trash2, Lock, ClipboardList, Warehouse, Building2, Users, HelpCircle,
-  Calendar, AlertTriangle, DollarSign, Copy, Check, Terminal, LogOut, User as UserIcon, CheckSquare, ArrowRight
+  Calendar, AlertTriangle, DollarSign, Copy, Check, Terminal, LogOut, User as UserIcon, CheckSquare, ArrowRight,
+  Sparkles, Layers, Zap, Package, FileCheck
 } from 'lucide-react'
-import { COLS_GIAO_NHAN, parseXlsxToRows, formatVal, getTrangThaiColor, isApprovedStatus, isPendingStatus, isRejectedStatus } from './constants.js'
+import { COLS_GIAO_NHAN, parseXlsxToRows, normalizeBchName, formatVal, getTrangThaiColor, isApprovedStatus, isPendingStatus, isRejectedStatus, getStandardizedBchList } from './constants.js'
 import { supabase, isSupabaseConfigured, supabaseUrl, supabaseAnonKey } from './supabaseClient.js'
 import LoginPage from './components/LoginPage.jsx'
 import QuanLyTaiKhoanTab from './components/QuanLyTaiKhoanTab.jsx'
 import TaiSanKhauHaoTab from './components/TaiSanKhauHaoTab.jsx'
+import ThongKeTheoVatTuTab from './components/ThongKeTheoVatTuTab.jsx'
+import ChuanHoaBchModal from './components/ChuanHoaBchModal.jsx'
+import ChuanHoaBchTab from './components/ChuanHoaBchTab.jsx'
+import TinhTrangDonVatTuTab from './components/TinhTrangDonVatTuTab.jsx'
 
 const KEYS_TO_REMOVE_FOR_REAL_REPORT = [
   'tenNguon', 'maNguon', 'lo', 'hangMuc', 'soHopDong', 'thuKho', 
@@ -312,14 +317,20 @@ function Header({ selectedProject, setSelectedProject, duAnOptions, onOpenAddPro
     switch (tab) {
       case 'chung':
         return 'SGC | ĐƠN CHUNG'
+      case 'tinh_trang_don':
+        return 'SGC | TÌNH TRẠNG ĐƠN VẬT TƯ'
       case 'kho':
         return 'SGC | KHO DỰ ÁN'
+      case 'chuan_hoa_bch':
+        return 'SGC | CHUẨN HÓA TÊN BCH'
       case 'inventory':
         return 'SGC | BÁO CÁO XUẤT NHẬP TỒN'
       case 'inventory_real':
         return 'SGC | BÁO CÁO XUẤT NHẬP THỰC'
       case 'depreciation_assets':
         return 'SGC | THỐNG KÊ TÀI SẢN KHẤU HAO'
+      case 'material_stats':
+        return 'SGC | THỐNG KÊ THEO VẬT TƯ'
       case 'dongia':
         return 'SGC | PHÂN NHÓM VẬT TƯ'
       case 'accounts':
@@ -1011,40 +1022,15 @@ function RealReportSummaryTable({ summaryRows = [], customCategoryMap = {}, loca
   const [pageSize, setPageSize] = React.useState(100)
   const [currentPage, setCurrentPage] = React.useState(1)
   const [detailRow, setDetailRow] = React.useState(null)
-  const [selectedSaps, setSelectedSaps] = React.useState(new Set())
   const tableWrapRef = React.useRef(null)
   const mirrorRef = React.useRef(null)
 
-  const toggleSelectAll = () => {
-    if (selectedSaps.size === summaryRows.length) {
-      setSelectedSaps(new Set())
-    } else {
-      setSelectedSaps(new Set(summaryRows.map(r => r.maSAP)))
-    }
-  }
-
-  const toggleSelectRow = (maSAP) => {
-    const next = new Set(selectedSaps)
-    if (next.has(maSAP)) {
-      next.delete(maSAP)
-    } else {
-      next.add(maSAP)
-    }
-    setSelectedSaps(next)
-  }
-
-  const handleExportSelectedExcel = () => {
-    if (selectedSaps.size === 0) return
-    const selectedRows = summaryRows.filter(r => selectedSaps.has(r.maSAP))
-    exportConsolidatedExcel(selectedRows, localProject, customCategoryMap, getUnitCategory, materialPriceRows, materialMetadataMap)
-  }
-
   // eslint-disable-next-line no-unused-vars
   const old_handleExportSelectedExcel = () => {
-    if (selectedSaps.size === 0) return
+    if (selectedKeys.size === 0) return
 
     const wb = XLSXStyle.utils.book_new()
-    const selectedRows = summaryRows.filter(r => selectedSaps.has(r.maSAP))
+    const selectedRows = summaryRows.filter((r, idx) => selectedKeys.has(r.id || `${r.maSAP}_${idx}`))
 
     const titleStyle = {
       font: { name: 'Segoe UI', sz: 16, bold: true, color: { rgb: '1E3A8A' } },
@@ -3301,7 +3287,6 @@ function RealReportSummaryTable({ summaryRows = [], customCategoryMap = {}, loca
   React.useEffect(() => {
     setCurrentPage(1)
     setDetailRow(null)
-    setSelectedSaps(new Set())
   }, [summaryRows])
 
   React.useEffect(() => {
@@ -3339,11 +3324,12 @@ function RealReportSummaryTable({ summaryRows = [], customCategoryMap = {}, loca
   const pageRows = summaryRows.slice(startIdx, endIdx)
 
   const columns = [
-    { key: 'maVatTu', label: 'Mã vật tư', width: 100 },
+    { key: 'maVatTu', label: 'Mã vật tư', width: 90 },
     { key: 'maSAP', label: 'Mã SAP', width: 100 },
-    { key: 'thongSoKyThuat', label: 'Thông số kỹ thuật', width: 150 },
-    { key: 'tenVatTu', label: 'Tên vật tư', width: 300 },
-    { key: 'dvt', label: 'ĐVT', width: 80 },
+    { key: 'thongSoKyThuat', label: 'Thông số kỹ thuật', width: 160 },
+    { key: 'tenVatTu', label: 'Tên vật tư', width: 280 },
+    { key: 'khoBCH', label: 'Kho BCH', width: 200 },
+    { key: 'dvt', label: 'ĐVT', width: 70 },
     { key: 'thucNhap', label: 'Thực nhập', width: 130 },
     { key: 'thucXuat', label: 'Thực xuất', width: 130 },
     { key: 'tonKho', label: 'Tồn kho', width: 130 }
@@ -3380,47 +3366,8 @@ function RealReportSummaryTable({ summaryRows = [], customCategoryMap = {}, loca
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 14px', background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '6px', marginBottom: '10px', fontSize: '12.5px', color: '#1e40af' }}>
         <Info size={16} className="text-blue-600" style={{ flexShrink: 0 }} />
         <span>
-          <strong>Hướng dẫn:</strong> Có thể tích chọn các dòng vật tư bằng ô checkbox để xuất gộp hàng loạt bằng nút phía dưới, hoặc Nhấp đúp (double-click) vào bất kỳ dòng vật tư nào để xem <strong>Bảng giải trình cấu thành số liệu chi tiết</strong>.
+          <strong>Hướng dẫn:</strong> Nhấp đúp (double-click) vào bất kỳ dòng vật tư nào để xem <strong>Bảng giải trình cấu thành số liệu chi tiết</strong>.
         </span>
-      </div>
-
-      {/* Selection Control Bar */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '6px', marginBottom: '10px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', fontSize: '13px', color: '#334155', fontWeight: 500 }}>
-          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-teal-100 text-teal-800">
-            Đã chọn {selectedSaps.size} / {summaryRows.length} vật tư
-          </span>
-          {selectedSaps.size > 0 && (
-            <button
-              onClick={() => setSelectedSaps(new Set())}
-              style={{ fontSize: '12.5px', color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer', padding: 0, textDecoration: 'underline' }}
-            >
-              Bỏ chọn tất cả
-            </button>
-          )}
-        </div>
-        <button
-          onClick={handleExportSelectedExcel}
-          disabled={selectedSaps.size === 0}
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '6px',
-            backgroundColor: selectedSaps.size === 0 ? '#cbd5e1' : '#0f766e',
-            color: '#ffffff',
-            padding: '8px 16px',
-            fontSize: '13px',
-            fontWeight: '600',
-            borderRadius: '6px',
-            border: 'none',
-            cursor: selectedSaps.size === 0 ? 'not-allowed' : 'pointer',
-            boxShadow: selectedSaps.size === 0 ? 'none' : '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
-            transition: 'background-color 0.15s'
-          }}
-        >
-          <Download size={15} />
-          Xuất Báo cáo Giải trình gộp {selectedSaps.size > 0 ? `(${selectedSaps.size} vật tư)` : ''}
-        </button>
       </div>
 
       {/* Table wrapper */}
@@ -3428,23 +3375,17 @@ function RealReportSummaryTable({ summaryRows = [], customCategoryMap = {}, loca
         <table>
           <thead>
             <tr>
-              <th style={{ width: 40, minWidth: 40, maxWidth: 40, textAlign: 'center', verticalAlign: 'middle', fontSize: '12px', padding: '8px' }}>
-                <input
-                  type="checkbox"
-                  className="cursor-pointer rounded border-slate-300 text-teal-600 focus:ring-teal-500 w-4 h-4"
-                  checked={selectedSaps.size === summaryRows.length && summaryRows.length > 0}
-                  onChange={toggleSelectAll}
-                />
-              </th>
-              <th style={{ width: 50, minWidth: 50, maxWidth: 50, textAlign: 'center', verticalAlign: 'middle', fontSize: '12px', padding: '8px 10px' }}>
+              <th style={{ width: 50, minWidth: 50, maxWidth: 50, textAlign: 'center', verticalAlign: 'middle', fontSize: '12px', padding: '8px 10px', background: '#0f58a7', borderBottom: '2px solid #0a3d73', color: '#ffffff' }}>
                 STT
               </th>
               {columns.map(c => {
                 const isThucNhap = c.key === 'thucNhap'
                 const isThucXuat = c.key === 'thucXuat'
                 const isTonKho = c.key === 'tonKho'
-                const thBg = isThucNhap ? '#0d9488' : isThucXuat ? '#ea580c' : isTonKho ? '#0f58a7' : undefined
-                const thBorderBottom = isThucNhap ? '2px solid #0f766e' : isThucXuat ? '2px solid #c2410c' : isTonKho ? '2px solid #0a3d73' : undefined
+                const isKhoBCH = c.key === 'khoBCH'
+
+                const thBg = isThucNhap ? '#0d9488' : isThucXuat ? '#ea580c' : isTonKho ? '#0f58a7' : isKhoBCH ? '#1e3a8a' : '#0f58a7'
+                const thBorderBottom = isThucNhap ? '2px solid #0f766e' : isThucXuat ? '2px solid #c2410c' : isTonKho ? '2px solid #0a3d73' : isKhoBCH ? '2px solid #1e293b' : '2px solid #0a3d73'
 
                 return (
                   <th
@@ -3455,7 +3396,8 @@ function RealReportSummaryTable({ summaryRows = [], customCategoryMap = {}, loca
                       fontSize: '12px', padding: '8px 10px',
                       whiteSpace: 'normal', wordBreak: 'break-word', lineHeight: '1.2',
                       background: thBg,
-                      borderBottom: thBorderBottom
+                      borderBottom: thBorderBottom,
+                      color: '#ffffff'
                     }}
                   >
                     {c.label}
@@ -3466,9 +3408,10 @@ function RealReportSummaryTable({ summaryRows = [], customCategoryMap = {}, loca
           </thead>
           <tbody>
             {pageRows.map((row, i) => {
+              const rowKey = row.id || `${row.maSAP}_${i}`
               return (
                 <tr
-                  key={row.maSAP}
+                  key={rowKey}
                   onDoubleClick={() => setDetailRow(row)}
                   style={{
                     cursor: 'pointer',
@@ -3477,14 +3420,6 @@ function RealReportSummaryTable({ summaryRows = [], customCategoryMap = {}, loca
                   title="Nhấp đúp để xem bảng giải trình chi tiết"
                   className="hover:bg-sky-50"
                 >
-                  <td style={{ width: 40, minWidth: 40, maxWidth: 40, textAlign: 'center', padding: '6px' }} onClick={(e) => e.stopPropagation()}>
-                    <input
-                      type="checkbox"
-                      className="cursor-pointer rounded border-slate-300 text-teal-600 focus:ring-teal-500 w-4 h-4"
-                      checked={selectedSaps.has(row.maSAP)}
-                      onChange={() => toggleSelectRow(row.maSAP)}
-                    />
-                  </td>
                   <td style={{ width: 50, minWidth: 50, maxWidth: 50, textAlign: 'center', fontSize: '12px', color: '#1b1919', padding: '6px 10px', fontWeight: 500 }}>
                     {startIdx + i + 1}
                   </td>
@@ -3501,8 +3436,8 @@ function RealReportSummaryTable({ summaryRows = [], customCategoryMap = {}, loca
                       const numVal = Number(row[col.key])
                       const isNegative = numVal < 0
                       const isZero = numVal === 0
-                      cellBg = isNegative ? '#fef2f2' : (isZero ? undefined : 'var(--primary-light)')
-                      cellTextColor = isNegative ? '#ef4444' : (isZero ? 'var(--text-muted)' : 'var(--primary)')
+                      cellBg = isNegative ? '#fef2f2' : (isZero ? undefined : '#eff6ff')
+                      cellTextColor = isNegative ? '#ef4444' : (isZero ? 'var(--text-muted)' : '#1e40af')
                       cellFontWeight = '800'
                     } else if (col.key === 'thucNhap' || col.key === 'thucXuat') {
                       const numVal = Number(row[col.key])
@@ -3515,6 +3450,12 @@ function RealReportSummaryTable({ summaryRows = [], customCategoryMap = {}, loca
                         cellTextColor = '#475569' // dark gray
                         cellFontWeight = '500'
                       }
+                    } else if (col.key === 'khoBCH') {
+                      cellFontWeight = '500'
+                      cellTextColor = '#1e3a8a'
+                    } else if (col.key === 'tenVatTu') {
+                      cellFontWeight = '600'
+                      cellTextColor = '#0f172a'
                     }
 
                     let displayVal = row[col.key]
@@ -4814,7 +4755,8 @@ function OrderTab({
   projectOptions,
   onImportFile,
   onDeleteFile,
-  customCategoryMap = {}
+  customCategoryMap = {},
+  bchAliasMap = {}
 }) {
   const [loading, setLoading] = useState(false)
   const [search, setSearch] = useState('')
@@ -4841,7 +4783,7 @@ function OrderTab({
         let allParsedRows = []
         let combinedNames = []
         resultsOrData.forEach(item => {
-          const parsed = parseXlsxToRows(item.data)
+          const parsed = parseXlsxToRows(item.data, bchAliasMap)
           allParsedRows = allParsedRows.concat(parsed)
           combinedNames.push(item.name)
         })
@@ -4854,7 +4796,7 @@ function OrderTab({
         }
       } else {
         // Single file uploaded
-        const parsed = parseXlsxToRows(resultsOrData)
+        const parsed = parseXlsxToRows(resultsOrData, bchAliasMap)
         if (onImportFile) {
           onImportFile(parsed, name, false)
         } else {
@@ -4864,7 +4806,7 @@ function OrderTab({
       }
       setLoading(false)
     }, 80)
-  }, [setRows, setFileName, onImportFile])
+  }, [setRows, setFileName, onImportFile, bchAliasMap])
 
   const handleAppendFile = useCallback((resultsOrData, name) => {
     setLoading(true)
@@ -4874,7 +4816,7 @@ function OrderTab({
         let allParsedRows = []
         let combinedNames = []
         resultsOrData.forEach(item => {
-          const parsed = parseXlsxToRows(item.data)
+          const parsed = parseXlsxToRows(item.data, bchAliasMap)
           allParsedRows = allParsedRows.concat(parsed)
           combinedNames.push(item.name)
         })
@@ -4887,7 +4829,7 @@ function OrderTab({
         }
       } else {
         // Single file appended
-        const parsed = parseXlsxToRows(resultsOrData)
+        const parsed = parseXlsxToRows(resultsOrData, bchAliasMap)
         if (onImportFile) {
           onImportFile(parsed, name, true)
         } else {
@@ -4897,7 +4839,7 @@ function OrderTab({
       }
       setLoading(false)
     }, 80)
-  }, [setRows, setFileName, onImportFile])
+  }, [setRows, setFileName, onImportFile, bchAliasMap])
 
   const trangThaiOptions = useMemo(() =>
     [...new Set(rows.map(r => r.trangThai).filter(Boolean))].sort(), [rows])
@@ -5405,7 +5347,20 @@ function getUnitCategory(name) {
 }
 
 // ─── Kho Du An Tab (Auto-compiled from Don Chung) ───────────────────────────
-function KhoDuAnTab({ chungRows, selectedProject, setSelectedProject, allProjects = [], customCategoryMap = {}, setCustomCategoryMap, dbCategoryMap = {}, setDbCategoryMap }) {
+function KhoDuAnTab({
+  chungRows,
+  selectedProject,
+  setSelectedProject,
+  allProjects = [],
+  customCategoryMap = {},
+  setCustomCategoryMap,
+  dbCategoryMap = {},
+  setDbCategoryMap,
+  bchAliasRules = [],
+  bchAliasMap = {},
+  onOpenChuanHoaBchModal,
+  onNavigateToTab
+}) {
   const [search, setSearch] = useState('')
   const [saveStatus, setSaveStatus] = useState('idle') // 'idle' | 'saving' | 'success' | 'error'
   const [errorMessage, setErrorMessage] = useState('')
@@ -5415,6 +5370,19 @@ function KhoDuAnTab({ chungRows, selectedProject, setSelectedProject, allProject
   const [dragOverCol, setDragOverCol] = useState(null)
   const [copiedSql, setCopiedSql] = useState(false)
   const [showRlsGuide, setShowRlsGuide] = useState(false)
+
+  // Map of canonical name -> list of merged old names
+  const mergedAliasesMap = useMemo(() => {
+    const map = {}
+    bchAliasRules.forEach(r => {
+      if (r.ten_chuan) {
+        const k = r.ten_chuan.trim().normalize('NFC').replace(/\s+/g, ' ').toLowerCase()
+        if (!map[k]) map[k] = []
+        map[k].push(r.ten_cu)
+      }
+    })
+    return map
+  }, [bchAliasRules])
 
   // Drag & drop handlers
   const handleDragStart = (e, name) => {
@@ -5717,6 +5685,49 @@ function KhoDuAnTab({ chungRows, selectedProject, setSelectedProject, allProject
           </p>
         </div>
         <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+          {(onNavigateToTab || onOpenChuanHoaBchModal) && (
+            <button
+              className="btn"
+              onClick={() => {
+                if (onNavigateToTab) onNavigateToTab('chuan_hoa_bch')
+                else if (onOpenChuanHoaBchModal) onOpenChuanHoaBchModal()
+              }}
+              style={{
+                background: 'linear-gradient(135deg, #4f46e5 0%, #6366f1 100%)',
+                color: '#ffffff',
+                border: 'none',
+                boxShadow: '0 2px 4px rgba(79,70,229,0.25)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                padding: '8px 16px',
+                fontSize: 13.5,
+                fontWeight: 600,
+                borderRadius: 8,
+                cursor: 'pointer',
+                transition: 'all 0.15s ease'
+              }}
+              title="Chuẩn hóa và gộp các tên Ban Chỉ Huy (Kho BCH) cũ/mới về cùng một tên chuẩn duy nhất"
+            >
+              <Sparkles size={15} /> Chuẩn hóa tên BCH
+              {bchAliasRules && bchAliasRules.length > 0 && (
+                <span
+                  style={{
+                    background: 'rgba(255,255,255,0.25)',
+                    color: '#ffffff',
+                    fontSize: 11,
+                    fontWeight: 700,
+                    padding: '1px 6px',
+                    borderRadius: 10,
+                    marginLeft: 2
+                  }}
+                >
+                  {bchAliasRules.length}
+                </span>
+              )}
+            </button>
+          )}
+
           {isSupabaseConfigured && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               {/* Status text badge to clearly inform user */}
@@ -6090,6 +6101,31 @@ function KhoDuAnTab({ chungRows, selectedProject, setSelectedProject, allProject
                       {col.icon}
                       {col.title} ({col.list.length})
                     </span>
+                    {col.key === 'kho' && (onNavigateToTab || onOpenChuanHoaBchModal) && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          if (onNavigateToTab) onNavigateToTab('chuan_hoa_bch')
+                          else if (onOpenChuanHoaBchModal) onOpenChuanHoaBchModal()
+                        }}
+                        style={{
+                          background: 'rgba(37,99,235,0.12)',
+                          border: '1px solid rgba(37,99,235,0.25)',
+                          color: '#1e40af',
+                          borderRadius: 6,
+                          padding: '2px 8px',
+                          fontSize: 11.5,
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 4
+                        }}
+                        title="Mở bảng chuẩn hóa & gộp tên BCH"
+                      >
+                        <Sparkles size={12} /> Chuẩn hóa
+                      </button>
+                    )}
                   </div>
                   
                   {/* Column Scrollable Content */}
@@ -6103,6 +6139,7 @@ function KhoDuAnTab({ chungRows, selectedProject, setSelectedProject, allProject
                         const lookupKey = item.name.trim().normalize('NFC').replace(/\s+/g, ' ').toLowerCase()
                         const currentCat = normCustomMap[lookupKey] || getUnitCategory(item.name)
                         const isUnsaved = normDbMap[lookupKey] === undefined || normDbMap[lookupKey] !== currentCat
+                        const mergedOldList = col.key === 'kho' ? (mergedAliasesMap[lookupKey] || []) : []
 
                         return (
                           <div 
@@ -6148,6 +6185,26 @@ function KhoDuAnTab({ chungRows, selectedProject, setSelectedProject, allProject
                               {item.name}
                             </div>
                           </div>
+
+                          {/* Merged Old Aliases Pill */}
+                          {mergedOldList.length > 0 && (
+                            <span
+                              title={`Đã gộp từ ${mergedOldList.length} tên cũ: \n• ${mergedOldList.join('\n• ')}`}
+                              style={{
+                                fontSize: 10.5,
+                                fontWeight: 700,
+                                padding: '1px 6px',
+                                borderRadius: 4,
+                                background: '#dbeafe',
+                                color: '#1e40af',
+                                border: '1px solid #bfdbfe',
+                                flexShrink: 0,
+                                cursor: 'help'
+                              }}
+                            >
+                              +{mergedOldList.length} tên cũ
+                            </span>
+                          )}
                         </div>
                       )
                     })
@@ -11218,12 +11275,52 @@ function BaoCaoXuatNhapTonTab({
   allProjects = [],
   isRealReport = false,
   customCategoryMap = {},
+  dbCategoryMap = {},
   materialPriceRows = [],
   materialPrices = {},
   materialClassifications = {},
   handleClassificationChange,
-  handlePriceChange
+  handlePriceChange,
+  bchAliasMap = {},
+  bchAliasRules = []
 }) {
+  // Chuẩn hóa tên Đơn vị giao và Đơn vị nhận theo danh sách BCH chuẩn hóa
+  const normChungRows = React.useMemo(() => {
+    if (!bchAliasMap || Object.keys(bchAliasMap).length === 0) return chungRows
+    return chungRows.map(r => {
+      const g = r.donViGiao ? normalizeBchName(r.donViGiao, bchAliasMap) : r.donViGiao
+      const n = r.donViNhan ? normalizeBchName(r.donViNhan, bchAliasMap) : r.donViNhan
+      if (g !== r.donViGiao || n !== r.donViNhan) {
+        return { ...r, donViGiao: g, donViNhan: n }
+      }
+      return r
+    })
+  }, [chungRows, bchAliasMap])
+
+  const normGiaoRows = React.useMemo(() => {
+    if (!bchAliasMap || Object.keys(bchAliasMap).length === 0) return giaoRows
+    return giaoRows.map(r => {
+      const g = r.donViGiao ? normalizeBchName(r.donViGiao, bchAliasMap) : r.donViGiao
+      const n = r.donViNhan ? normalizeBchName(r.donViNhan, bchAliasMap) : r.donViNhan
+      if (g !== r.donViGiao || n !== r.donViNhan) {
+        return { ...r, donViGiao: g, donViNhan: n }
+      }
+      return r
+    })
+  }, [giaoRows, bchAliasMap])
+
+  const normNhanRows = React.useMemo(() => {
+    if (!bchAliasMap || Object.keys(bchAliasMap).length === 0) return nhanRows
+    return nhanRows.map(r => {
+      const g = r.donViGiao ? normalizeBchName(r.donViGiao, bchAliasMap) : r.donViGiao
+      const n = r.donViNhan ? normalizeBchName(r.donViNhan, bchAliasMap) : r.donViNhan
+      if (g !== r.donViGiao || n !== r.donViNhan) {
+        return { ...r, donViGiao: g, donViNhan: n }
+      }
+      return r
+    })
+  }, [nhanRows, bchAliasMap])
+
   // Bộ lọc Kho/Dự án của tab này hoàn toàn độc lập (local), không lấy theo
   // và không đồng bộ ngược lại selectedProject toàn cục — tránh ảnh hưởng
   // tới các tab/sheet khác như Đơn chung, Kho dự án.
@@ -11237,19 +11334,37 @@ function BaoCaoXuatNhapTonTab({
 
   const getCategoryForUnit = React.useCallback((name) => {
     if (!name) return 'chuaphanbo'
-    const normName = name.trim().normalize('NFC').replace(/\s+/g, ' ')
+    const normBch = normalizeBchName(name, bchAliasMap)
+    const normName = normBch.trim().normalize('NFC').replace(/\s+/g, ' ')
     if (customCategoryMap && customCategoryMap[normName]) {
       return customCategoryMap[normName]
     }
+    const origNorm = name.trim().normalize('NFC').replace(/\s+/g, ' ')
+    if (customCategoryMap && customCategoryMap[origNorm]) {
+      return customCategoryMap[origNorm]
+    }
+    if (dbCategoryMap && dbCategoryMap[normName]) {
+      return dbCategoryMap[normName]
+    }
+    if (dbCategoryMap && dbCategoryMap[origNorm]) {
+      return dbCategoryMap[origNorm]
+    }
     if (customCategoryMap) {
       const keys = Object.keys(customCategoryMap)
-      const foundKey = keys.find(k => k.trim().normalize('NFC').replace(/\s+/g, ' ').toLowerCase() === normName.toLowerCase())
+      const foundKey = keys.find(k => k.trim().normalize('NFC').replace(/\s+/g, ' ').toLowerCase() === normName.toLowerCase() || k.trim().normalize('NFC').replace(/\s+/g, ' ').toLowerCase() === origNorm.toLowerCase())
       if (foundKey) {
         return customCategoryMap[foundKey]
       }
     }
+    if (dbCategoryMap) {
+      const keys = Object.keys(dbCategoryMap)
+      const foundKey = keys.find(k => k.trim().normalize('NFC').replace(/\s+/g, ' ').toLowerCase() === normName.toLowerCase() || k.trim().normalize('NFC').replace(/\s+/g, ' ').toLowerCase() === origNorm.toLowerCase())
+      if (foundKey) {
+        return dbCategoryMap[foundKey]
+      }
+    }
     return getUnitCategory(normName)
-  }, [customCategoryMap])
+  }, [customCategoryMap, dbCategoryMap, bchAliasMap])
 
   const handleCopySql = () => {
     navigator.clipboard.writeText(sqlQueryText)
@@ -11259,24 +11374,24 @@ function BaoCaoXuatNhapTonTab({
 
   const materialMetadataMap = React.useMemo(() => {
     const map = new Map()
-    if (nhanRows && Array.isArray(nhanRows)) {
-      nhanRows.forEach(r => {
+    if (normNhanRows && Array.isArray(normNhanRows)) {
+      normNhanRows.forEach(r => {
         const sap = String(r.maSAP || '').trim().toLowerCase()
         if (sap) {
           map.set(sap, { tenVatTu: r.tenVatTu || '', dvt: r.dvt || '' })
         }
       })
     }
-    if (giaoRows && Array.isArray(giaoRows)) {
-      giaoRows.forEach(r => {
+    if (normGiaoRows && Array.isArray(normGiaoRows)) {
+      normGiaoRows.forEach(r => {
         const sap = String(r.maSAP || '').trim().toLowerCase()
         if (sap) {
           map.set(sap, { tenVatTu: r.tenVatTu || '', dvt: r.dvt || '' })
         }
       })
     }
-    if (chungRows && Array.isArray(chungRows)) {
-      chungRows.forEach(r => {
+    if (normChungRows && Array.isArray(normChungRows)) {
+      normChungRows.forEach(r => {
         const sap = String(r.maSAP || '').trim().toLowerCase()
         if (sap) {
           map.set(sap, { tenVatTu: r.tenVatTu || '', dvt: r.dvt || '' })
@@ -11284,7 +11399,7 @@ function BaoCaoXuatNhapTonTab({
       })
     }
     return map
-  }, [chungRows, giaoRows, nhanRows])
+  }, [normChungRows, normGiaoRows, normNhanRows])
 
   const sqlQueryText = `-- Bảng lưu Đơn giá vật tư
 CREATE TABLE IF NOT EXISTS public.don_gia_vat_tu (
@@ -11405,55 +11520,66 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
   // Extract all unique warehouses
   const uniqueWarehouses = React.useMemo(() => {
     const list = new Set()
-    allProjects.forEach(p => { if (p) list.add(p.trim()) })
-    chungRows.forEach(r => {
-      const g = (r.donViGiao || '').trim()
-      const n = (r.donViNhan || '').trim()
-      if (g) list.add(g)
-      if (n) list.add(n)
+    const seen = new Set()
+    const addName = (name) => {
+      if (!name) return
+      const normalized = normalizeBchName(name, bchAliasMap).trim()
+      if (!normalized) return
+      const lower = normalized.toLowerCase()
+      if (!seen.has(lower)) {
+        seen.add(lower)
+        list.add(normalized)
+      }
+    }
+    allProjects.forEach(p => { if (p) addName(p) })
+    if (bchAliasRules && Array.isArray(bchAliasRules)) {
+      bchAliasRules.forEach(r => {
+        const std = r.ten_chuan || r.canonical_name
+        if (std) addName(std)
+      })
+    }
+    normChungRows.forEach(r => {
+      addName(r.donViGiao)
+      addName(r.donViNhan)
     })
-    giaoRows.forEach(r => {
-      const g = (r.donViGiao || '').trim()
-      const n = (r.donViNhan || '').trim()
-      if (g) list.add(g)
-      if (n) list.add(n)
+    normGiaoRows.forEach(r => {
+      addName(r.donViGiao)
+      addName(r.donViNhan)
     })
-    nhanRows.forEach(r => {
-      const g = (r.donViGiao || '').trim()
-      const n = (r.donViNhan || '').trim()
-      if (g) list.add(g)
-      if (n) list.add(n)
+    normNhanRows.forEach(r => {
+      addName(r.donViGiao)
+      addName(r.donViNhan)
     })
-    return [...list].sort()
-  }, [allProjects, chungRows, giaoRows, nhanRows])
+    return [...list].sort((a, b) => a.localeCompare(b, 'vi'))
+  }, [allProjects, normChungRows, normGiaoRows, normNhanRows, bchAliasMap, bchAliasRules])
 
   // Extract unique delivery units (Đơn vị giao)
   const uniqueGiaoUnits = React.useMemo(() => {
     const list = new Set()
     const source = isRealReport 
-      ? [...chungRows, ...giaoRows, ...nhanRows]
-      : ((chungRows && chungRows.length > 0) ? chungRows : [...giaoRows, ...nhanRows])
+      ? [...normChungRows, ...normGiaoRows, ...normNhanRows]
+      : ((normChungRows && normChungRows.length > 0) ? normChungRows : [...normGiaoRows, ...normNhanRows])
     
     source.forEach(r => {
       const g = (r.donViGiao || '').trim()
       if (g) list.add(g)
     })
-    return [...list].sort()
-  }, [chungRows, giaoRows, nhanRows, isRealReport])
+    return [...list].sort((a, b) => a.localeCompare(b, 'vi'))
+  }, [normChungRows, normGiaoRows, normNhanRows, isRealReport])
 
   // Extract unique receiving units (Đơn vị nhận)
   const uniqueNhanUnits = React.useMemo(() => {
     const list = new Set()
     const source = isRealReport 
-      ? [...chungRows, ...giaoRows, ...nhanRows]
-      : ((chungRows && chungRows.length > 0) ? chungRows : [...giaoRows, ...nhanRows])
+      ? [...normChungRows, ...normGiaoRows, ...normNhanRows]
+      : ((normChungRows && normChungRows.length > 0) ? normChungRows : [...normGiaoRows, ...normNhanRows])
     
     source.forEach(r => {
       const n = (r.donViNhan || '').trim()
       if (n) list.add(n)
     })
-    return [...list].sort()
-  }, [chungRows, giaoRows, nhanRows, isRealReport])
+    return [...list].sort((a, b) => a.localeCompare(b, 'vi'))
+  }, [normChungRows, normGiaoRows, normNhanRows, isRealReport])
 
   // Process raw rows and group by maSAP for a given project/warehouse
   const computeProjectReportData = React.useCallback((proj) => {
@@ -11471,8 +11597,8 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
     }
 
     const sourceRows = isRealReport
-      ? [...chungRows, ...giaoRows, ...nhanRows]
-      : ((chungRows && chungRows.length > 0) ? chungRows : [...giaoRows, ...nhanRows])
+      ? [...normChungRows, ...normGiaoRows, ...normNhanRows]
+      : ((normChungRows && normChungRows.length > 0) ? normChungRows : [...normGiaoRows, ...normNhanRows])
 
     const isAllProj = proj === 'Tất cả kho BCH'
 
@@ -11602,7 +11728,7 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
     })
 
     return result
-  }, [chungRows, giaoRows, nhanRows, materialClassifications, materialPriceRows, materialPrices, matchStatusFilter, getUnusedStatus, isRealReport, localGiao, localNhan, getCategoryForUnit])
+  }, [normChungRows, normGiaoRows, normNhanRows, materialClassifications, materialPriceRows, materialPrices, matchStatusFilter, getUnusedStatus, isRealReport, localGiao, localNhan, getCategoryForUnit])
 
   // Process rows and group by maSAP
   const reportData = React.useMemo(() => {
@@ -11715,7 +11841,7 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
   const realReportRows = React.useMemo(() => {
     if (!isRealReport) return []
     if (!localProject) return [] // If no project is selected, return an empty array to prevent lag!
-    let list = chungRows
+    let list = normChungRows
 
     // 1. Kho / Dự án filter
     if (localProject && localProject !== 'Tất cả kho BCH') {
@@ -11796,22 +11922,6 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
       return dateB.getTime() - dateA.getTime()
     })
 
-    const getCategoryForUnit = (name) => {
-      if (!name) return 'chuaphanbo'
-      const normName = name.trim().normalize('NFC').replace(/\s+/g, ' ')
-      if (customCategoryMap && customCategoryMap[normName]) {
-        return customCategoryMap[normName]
-      }
-      if (customCategoryMap) {
-        const keys = Object.keys(customCategoryMap)
-        const foundKey = keys.find(k => k.trim().normalize('NFC').replace(/\s+/g, ' ').toLowerCase() === normName.toLowerCase())
-        if (foundKey) {
-          return customCategoryMap[foundKey]
-        }
-      }
-      return getUnitCategory(normName)
-    }
-
     return sorted.map(row => {
       const nhap = parseNum(row.khoiLuongNhap)
       const xuat = parseNum(row.khoiLuongXuat)
@@ -11881,13 +11991,13 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
         khoiLuongThuc
       }
     })
-  }, [chungRows, isRealReport, localProject, localGiao, localNhan, searchTerm, statusFilter, startDate, endDate, matchStatusFilter, realReportSubTab, customCategoryMap])
+  }, [normChungRows, isRealReport, localProject, localGiao, localNhan, searchTerm, statusFilter, startDate, endDate, matchStatusFilter, realReportSubTab, customCategoryMap, getCategoryForUnit])
 
   const realReportSummaryRows = React.useMemo(() => {
     if (!isRealReport) return []
     if (!localProject) return []
 
-    let list = chungRows
+    let list = normChungRows
 
     if (localProject && localProject !== 'Tất cả kho BCH') {
       const p = localProject.trim().toLowerCase()
@@ -11942,40 +12052,11 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
       return isNaN(num) ? 0 : num
     }
 
-    const getCategoryForUnit = (name) => {
-      if (!name) return 'chuaphanbo'
-      const normName = name.trim().normalize('NFC').replace(/\s+/g, ' ')
-      if (customCategoryMap && customCategoryMap[normName]) {
-        return customCategoryMap[normName]
-      }
-      if (customCategoryMap) {
-        const keys = Object.keys(customCategoryMap)
-        const foundKey = keys.find(k => k.trim().normalize('NFC').replace(/\s+/g, ' ').toLowerCase() === normName.toLowerCase())
-        if (foundKey) {
-          return customCategoryMap[foundKey]
-        }
-      }
-      return getUnitCategory(normName)
-    }
-
     const groups = {}
 
     list.forEach(row => {
       const maSAP = String(row.maSAP || '').trim()
       if (!maSAP) return
-
-      if (!groups[maSAP]) {
-        groups[maSAP] = {
-          maVatTu: String(row.maVatTu || '').trim(),
-          maSAP,
-          tenVatTu: String(row.tenVatTu || '').trim(),
-          thongSoKyThuat: String(row.thongSoKyThuat || '').trim(),
-          dvt: String(row.dvt || '').trim(),
-          thucNhap: 0,
-          thucXuat: 0,
-          transactions: []
-        }
-      }
 
       const nhapVal = parseNum(row.khoiLuongNhap)
       const xuatVal = parseNum(row.khoiLuongXuat)
@@ -11990,6 +12071,36 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
       const isNhanProject = localProject === 'Tất cả kho BCH'
         ? getCategoryForUnit(normNhan) === 'kho'
         : (normNhan.toLowerCase() === normProject)
+
+      let khoBCH = '—'
+      if (localProject && localProject !== 'Tất cả kho BCH') {
+        khoBCH = localProject
+      } else {
+        if (isGiaoProject && normGiao) khoBCH = normGiao
+        else if (isNhanProject && normNhan) khoBCH = normNhan
+      }
+
+      // Group strictly by Material (Mã SAP + Kho BCH)
+      const groupKey = `${maSAP}__${khoBCH}`
+
+      if (!groups[groupKey]) {
+        groups[groupKey] = {
+          maVatTu: String(row.maVatTu || '').trim(),
+          maSAP,
+          tenVatTu: String(row.tenVatTu || '').trim(),
+          thongSoKyThuat: String(row.thongSoKyThuat || '').trim(),
+          dvt: String(row.dvt || '').trim(),
+          khoBCH,
+          thucNhap: 0,
+          thucXuat: 0,
+          transactions: []
+        }
+      } else {
+        if (!groups[groupKey].maVatTu && row.maVatTu) groups[groupKey].maVatTu = String(row.maVatTu).trim()
+        if (!groups[groupKey].thongSoKyThuat && row.thongSoKyThuat) groups[groupKey].thongSoKyThuat = String(row.thongSoKyThuat).trim()
+        if (!groups[groupKey].tenVatTu && row.tenVatTu) groups[groupKey].tenVatTu = String(row.tenVatTu).trim()
+        if (!groups[groupKey].dvt && row.dvt) groups[groupKey].dvt = String(row.dvt).trim()
+      }
 
       let logicNhapVal = 0
       let explainNhap = ''
@@ -12014,7 +12125,25 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
             explainNhap = `Nhận từ nguồn khác (${row.donViGiao}) - Không tính`
           }
         }
-        groups[maSAP].thucNhap += nhapVal * logicNhapVal
+      }
+
+      if (nhapVal > 0 && logicNhapVal !== 0) {
+        groups[groupKey].thucNhap += nhapVal * logicNhapVal
+        groups[groupKey].transactions.push({
+          ngayXuatNhap: row.ngayXuatNhap,
+          maDonNhapKho: row.maDonNhapKho,
+          maDonXuatKho: row.maDonXuatKho,
+          donViGiao: row.donViGiao,
+          donViNhan: row.donViNhan,
+          nhapVal,
+          logicNhapVal,
+          explainNhap,
+          detailTypeNhap,
+          xuatVal: 0,
+          logicXuatVal: 0,
+          explainXuat: '',
+          detailTypeXuat: ''
+        })
       }
 
       let logicXuatVal = 0
@@ -12040,20 +12169,20 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
             explainXuat = `Nhận lại từ nguồn khác (${row.donViGiao}) - Không tính`
           }
         }
-        groups[maSAP].thucXuat += xuatVal * logicXuatVal
       }
 
-      if (nhapVal > 0 || xuatVal > 0) {
-        groups[maSAP].transactions.push({
+      if (xuatVal > 0 && logicXuatVal !== 0) {
+        groups[groupKey].thucXuat += xuatVal * logicXuatVal
+        groups[groupKey].transactions.push({
           ngayXuatNhap: row.ngayXuatNhap,
           maDonNhapKho: row.maDonNhapKho,
           maDonXuatKho: row.maDonXuatKho,
           donViGiao: row.donViGiao,
           donViNhan: row.donViNhan,
-          nhapVal,
-          logicNhapVal,
-          explainNhap,
-          detailTypeNhap,
+          nhapVal: 0,
+          logicNhapVal: 0,
+          explainNhap: '',
+          detailTypeNhap: '',
           xuatVal,
           logicXuatVal,
           explainXuat,
@@ -12064,23 +12193,36 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
 
     return Object.values(groups)
       .filter(g => g.thucNhap !== 0 || g.thucXuat !== 0)
-      .map(g => {
+      .sort((a, b) => {
+        // 1. Tên vật tư (Tiếng Việt)
+        const nameA = (a.tenVatTu || '').trim()
+        const nameB = (b.tenVatTu || '').trim()
+        const compName = nameA.localeCompare(nameB, 'vi', { sensitivity: 'base' })
+        if (compName !== 0) return compName
+
+        // 2. Mã SAP
+        const sapA = (a.maSAP || '').trim()
+        const sapB = (b.maSAP || '').trim()
+        return sapA.localeCompare(sapB, 'vi', { sensitivity: 'base' })
+      })
+      .map((g, idx) => {
         const thucNhap = Math.max(0, g.thucNhap)
         const thucXuat = Math.max(0, g.thucXuat)
         return {
           ...g,
+          id: `${g.maSAP}_${g.khoBCH}_${idx}`,
           thucNhap,
           thucXuat,
           tonKho: thucNhap - thucXuat
         }
       })
-  }, [chungRows, isRealReport, localProject, localGiao, localNhan, searchTerm, statusFilter, startDate, endDate, matchStatusFilter, customCategoryMap])
+  }, [normChungRows, isRealReport, localProject, localGiao, localNhan, searchTerm, statusFilter, startDate, endDate, matchStatusFilter, customCategoryMap, getCategoryForUnit])
 
   const realReportMetrics = React.useMemo(() => {
     if (!isRealReport) return []
 
     if (realReportSubTab === 'tonghop') {
-      let totalItems = realReportSummaryRows.length
+      let totalItems = new Set(realReportSummaryRows.map(r => r.maSAP)).size
       let totalReceivedSum = realReportSummaryRows.reduce((sum, r) => sum + r.thucNhap, 0)
       let totalIssuedSum = realReportSummaryRows.reduce((sum, r) => sum + r.thucXuat, 0)
 
@@ -12226,14 +12368,20 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
     }
   }, [realReportRows, realReportSummaryRows, isRealReport, realReportSubTab])
 
-  // Extract and group dashboard statistics specifically for BCH warehouses
+  // Extract and group dashboard statistics specifically for BCH warehouses (Chuẩn hóa tên BCH)
   const bchWarehouses = React.useMemo(() => {
-    const bchList = uniqueWarehouses.filter(w => {
-      const lower = String(w || '').trim().toLowerCase()
-      return lower.includes('bch')
+    const sourceRows = isRealReport
+      ? [...normChungRows, ...normGiaoRows, ...normNhanRows]
+      : ((normChungRows && normChungRows.length > 0) ? normChungRows : [...normGiaoRows, ...normNhanRows])
+
+    return getStandardizedBchList({
+      sourceRows,
+      bchAliasRules,
+      bchAliasMap,
+      customCategoryMap,
+      dbCategoryMap
     })
-    return bchList.length > 0 ? bchList : uniqueWarehouses
-  }, [uniqueWarehouses])
+  }, [normChungRows, normGiaoRows, normNhanRows, isRealReport, bchAliasRules, bchAliasMap, customCategoryMap, dbCategoryMap])
 
   // TỐI ƯU HIỆU NĂNG: Trước đây dashboardStats gọi computeProjectReportData() riêng cho TỪNG kho BCH
   // (68 kho) → quét toàn bộ 145.515 dòng 68 LẦN (~9.9 triệu lượt duyệt), gây khựng ~5s khi mở tab
@@ -12261,14 +12409,15 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
     bchNormToOriginal.forEach((_, norm) => groupsByProject.set(norm, {}))
 
     const sourceRows = isRealReport
-      ? [...chungRows, ...giaoRows, ...nhanRows]
-      : ((chungRows && chungRows.length > 0) ? chungRows : [...giaoRows, ...nhanRows])
+      ? [...normChungRows, ...normGiaoRows, ...normNhanRows]
+      : ((normChungRows && normChungRows.length > 0) ? normChungRows : [...normGiaoRows, ...normNhanRows])
 
     sourceRows.forEach(r => {
       if (!matchStatusFilter(r.trangThai)) return
 
-      const nhanUnit = String(r.donViNhan || '').trim().toLowerCase()
-      const giaoUnit = String(r.donViGiao || '').trim().toLowerCase()
+      // Chuẩn hóa đơn vị nhận & giao qua bchAliasMap để gom nhóm chính xác về BCH chuẩn
+      const nhanUnit = normalizeBchName(r.donViNhan, bchAliasMap).trim().toLowerCase()
+      const giaoUnit = normalizeBchName(r.donViGiao, bchAliasMap).trim().toLowerCase()
 
       const nhanGroups = groupsByProject.get(nhanUnit)
       const giaoGroups = groupsByProject.get(giaoUnit)
@@ -12360,6 +12509,8 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
       let unusedCount = 0
       let unusedQty = 0
       let unusedValue = 0
+      let inUseCount = 0
+      let depletedCount = 0
 
       items.forEach(item => {
         if (item.received > 0 || item.issued > 0) {
@@ -12373,7 +12524,11 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
             unusedCount++
             unusedQty += item.stock
             unusedValue += item.valueOver30Days || 0
+          } else if (item.unusedStatus === 'Đang sử dụng') {
+            inUseCount++
           }
+        } else {
+          depletedCount++
         }
       })
 
@@ -12413,17 +12568,20 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
         unusedQty,
         unusedValue,
         unusedRatio,
+        inUseCount,
+        depletedCount,
         alarmLevel,
         alarmColor,
         alarmBg,
         alarmBorder,
         topStagnant,
-        allItems: items
+        allItems: items,
+        items
       })
     })
 
     return results.sort((a, b) => b.unusedValue - a.unusedValue)
-  }, [bchWarehouses, chungRows, giaoRows, nhanRows, materialClassifications, materialPriceRows, materialPrices, matchStatusFilter, getUnusedStatus])
+  }, [bchWarehouses, normChungRows, normGiaoRows, normNhanRows, materialClassifications, materialPriceRows, materialPrices, matchStatusFilter, getUnusedStatus])
 
   // Cho phép người dùng chọn 1 kho dự án BCH cụ thể để xem báo cáo Dashboard,
   // thay vì luôn cộng dồn/hiển thị toàn bộ các kho.
@@ -12484,8 +12642,8 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
     }
 
     const sourceRows = isRealReport
-      ? [...giaoRows, ...nhanRows]
-      : ((chungRows && chungRows.length > 0) ? chungRows : [...giaoRows, ...nhanRows])
+      ? [...normGiaoRows, ...normNhanRows]
+      : ((normChungRows && normChungRows.length > 0) ? normChungRows : [...normGiaoRows, ...normNhanRows])
 
     const nhanList = []
     const xuatList = []
@@ -12568,7 +12726,7 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
     })
 
     return { nhanList, xuatList }
-  }, [chungRows, giaoRows, nhanRows, localProject, matchStatusFilter, getCategoryForUnit])
+  }, [normChungRows, normGiaoRows, normNhanRows, localProject, matchStatusFilter, getCategoryForUnit])
 
   // Metrics
   const metrics = React.useMemo(() => {
@@ -12610,19 +12768,6 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
         if (realReportSummaryRows.length === 0) return
 
         const wb = XLSXStyle.utils.book_new()
-        const ws = {}
-
-        const columns = [
-          { key: 'STT', label: 'STT', width: 50 },
-          { key: 'maVatTu', label: 'Mã vật tư', width: 100 },
-          { key: 'maSAP', label: 'Mã SAP', width: 100 },
-          { key: 'thongSoKyThuat', label: 'Thông số kỹ thuật', width: 150 },
-          { key: 'tenVatTu', label: 'Tên vật tư', width: 300 },
-          { key: 'dvt', label: 'ĐVT', width: 80 },
-          { key: 'thucNhap', label: 'Thực nhập (SUMIFS)', width: 130 },
-          { key: 'thucXuat', label: 'Thực xuất (SUMIFS)', width: 130 },
-          { key: 'tonKho', label: 'Tồn kho (Formula)', width: 130 }
-        ]
 
         function getColLabel(index) {
           let label = ''
@@ -12634,12 +12779,335 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
           return label
         }
 
+        // ═════════════════════════════════════════════════════════════════════
+        // SHEET 1: TỔNG HỢP THEO MÃ VẬT TƯ (Aggregated by Material)
+        // ═════════════════════════════════════════════════════════════════════
+        const wsTongHop = {}
+        const columnsTongHop = [
+          { key: 'STT', label: 'STT', width: 50 },
+          { key: 'maVatTu', label: 'Mã vật tư', width: 100 },
+          { key: 'maSAP', label: 'Mã SAP', width: 100 },
+          { key: 'thongSoKyThuat', label: 'Thông số kỹ thuật', width: 160 },
+          { key: 'tenVatTu', label: 'Tên vật tư', width: 280 },
+          { key: 'khoBCH', label: 'Kho BCH', width: 180 },
+          { key: 'dvt', label: 'ĐVT', width: 70 },
+          { key: 'thucNhap', label: 'Thực nhập', width: 130 },
+          { key: 'thucXuat', label: 'Thực xuất', width: 130 },
+          { key: 'tonKho', label: 'Tồn kho', width: 130 }
+        ]
+
+        wsTongHop['!cols'] = columnsTongHop.map(c => ({ wpx: c.width }))
+
+        wsTongHop['A1'] = {
+          v: `BÁO CÁO TỔNG HỢP KHỐI LƯỢNG THỰC NHẬP THỰC XUẤT THEO MÃ VẬT TƯ`,
+          t: 's',
+          s: {
+            font: { name: 'Segoe UI', sz: 14, bold: true, color: { rgb: '0B2545' } },
+            alignment: { horizontal: 'left', vertical: 'center' }
+          }
+        }
+        wsTongHop['A2'] = {
+          v: `Kho / Dự án: ${localProject || 'Tất cả'} | Đơn vị giao: ${localGiao || 'Tất cả'} | Đơn vị nhận: ${localNhan || 'Tất cả'} | Ngày xuất: ${new Date().toLocaleDateString('vi-VN')}`,
+          t: 's',
+          s: {
+            font: { name: 'Segoe UI', sz: 10, italic: true },
+            alignment: { horizontal: 'left', vertical: 'center' }
+          }
+        }
+
+        let thRowIdx = 4
+        columnsTongHop.forEach((col, colIdx) => {
+          const colChar = getColLabel(colIdx)
+          const cellRef = `${colChar}${thRowIdx}`
+          
+          const isThucNhap = col.key === 'thucNhap'
+          const isThucXuat = col.key === 'thucXuat'
+          const isKhoBCH = col.key === 'khoBCH'
+
+          const excelBgColor = isThucNhap ? '0D9488' : isThucXuat ? 'EA580C' : isKhoBCH ? '1E3A8A' : '0F58A7'
+          const excelBorderColor = isThucNhap ? '0F766E' : isThucXuat ? 'C2410C' : isKhoBCH ? '1E293B' : '0A3D73'
+
+          wsTongHop[cellRef] = {
+            v: col.label,
+            t: 's',
+            s: {
+              fill: { patternType: 'solid', fgColor: { rgb: excelBgColor } },
+              font: { name: 'Segoe UI', sz: 9.5, bold: true, color: { rgb: 'FFFFFF' } },
+              alignment: { horizontal: 'center', vertical: 'center', wrapText: true },
+              border: {
+                top: { style: 'thin', color: { rgb: excelBorderColor } },
+                bottom: { style: 'medium', color: { rgb: excelBorderColor } },
+                left: { style: 'thin', color: { rgb: excelBorderColor } },
+                right: { style: 'thin', color: { rgb: excelBorderColor } }
+              }
+            }
+          }
+        })
+
+        // Group rows by Material (maSAP + khoBCH)
+        const materialSummaryMap = {}
+        realReportSummaryRows.forEach(row => {
+          const key = `${(row.maSAP || '').trim()}__${(row.khoBCH || '').trim()}`
+          if (!materialSummaryMap[key]) {
+            materialSummaryMap[key] = {
+              maVatTu: row.maVatTu || '',
+              maSAP: row.maSAP || '',
+              thongSoKyThuat: row.thongSoKyThuat || '',
+              tenVatTu: row.tenVatTu || '',
+              khoBCH: row.khoBCH || '',
+              dvt: row.dvt || '',
+              thucNhap: 0,
+              thucXuat: 0
+            }
+          }
+          materialSummaryMap[key].thucNhap += Number(row.thucNhap) || 0
+          materialSummaryMap[key].thucXuat += Number(row.thucXuat) || 0
+        })
+
+        const materialSummaryList = Object.values(materialSummaryMap).sort((a, b) => {
+          const nameA = (a.tenVatTu || '').trim()
+          const nameB = (b.tenVatTu || '').trim()
+          const compName = nameA.localeCompare(nameB, 'vi', { sensitivity: 'base' })
+          if (compName !== 0) return compName
+          return (a.maSAP || '').localeCompare(b.maSAP || '', 'vi', { sensitivity: 'base' })
+        })
+
+        materialSummaryList.forEach((row, rowIndex) => {
+          thRowIdx++
+          const isEvenNum = (rowIndex % 2 === 1)
+          const rowBgColor = isEvenNum ? 'F8FAFC' : 'FFFFFF'
+
+          columnsTongHop.forEach((col, colIdx) => {
+            const colChar = getColLabel(colIdx)
+            const cellRef = `${colChar}${thRowIdx}`
+
+            let val = ''
+            let cellType = 's'
+            let numFormat = undefined
+            let isFormula = false
+            let formulaStr = ''
+
+            if (col.key === 'STT') {
+              val = rowIndex + 1
+              cellType = 'n'
+            } else if (col.key === 'thucNhap') {
+              val = Number(row.thucNhap)
+              cellType = 'n'
+              numFormat = '#,##0.00;[Red]-#,##0.00;"-"'
+            } else if (col.key === 'thucXuat') {
+              val = Number(row.thucXuat)
+              cellType = 'n'
+              numFormat = '#,##0.00;[Red]-#,##0.00;"-"'
+            } else if (col.key === 'tonKho') {
+              isFormula = true
+              formulaStr = `H${thRowIdx}-I${thRowIdx}`
+              val = Number(row.thucNhap) - Number(row.thucXuat)
+              cellType = 'n'
+              numFormat = '#,##0.00;[Red]-#,##0.00;"-"'
+            } else {
+              val = String(row[col.key] || '')
+            }
+
+            const isCenteredCol = ['STT', 'maVatTu', 'maSAP', 'dvt'].includes(col.key)
+            const isRightAligned = ['thucNhap', 'thucXuat', 'tonKho'].includes(col.key)
+
+            let cellBg = rowBgColor
+            let fontColor = '1A1A1A'
+            let isBold = false
+
+            if (col.key === 'tonKho') {
+              const numVal = Number(row.thucNhap) - Number(row.thucXuat)
+              const isNegative = numVal < 0
+              const isZero = numVal === 0
+              if (isNegative) {
+                cellBg = 'FEF2F2'
+                fontColor = 'EF4444'
+                isBold = true
+              } else if (!isZero) {
+                cellBg = 'EFF6FF'
+                fontColor = '1E40AF'
+                isBold = true
+              } else {
+                cellBg = 'F1F5F9'
+                fontColor = '475569'
+                isBold = false
+              }
+            } else if (col.key === 'thucNhap') {
+              const numVal = Number(row.thucNhap)
+              if (numVal > 0) {
+                cellBg = 'ECFDF5'
+                fontColor = '065F46'
+                isBold = true
+              } else {
+                cellBg = 'F1F5F9'
+                fontColor = '475569'
+                isBold = false
+              }
+            } else if (col.key === 'thucXuat') {
+              const numVal = Number(row.thucXuat)
+              if (numVal > 0) {
+                cellBg = 'FFF7ED'
+                fontColor = 'C2410C'
+                isBold = true
+              } else {
+                cellBg = 'F1F5F9'
+                fontColor = '475569'
+                isBold = false
+              }
+            } else if (col.key === 'khoBCH') {
+              fontColor = '1E3A8A'
+              isBold = true
+            } else if (col.key === 'tenVatTu') {
+              isBold = true
+            }
+
+            const cellStyle = {
+              font: { name: 'Segoe UI', sz: 9, color: { rgb: fontColor }, bold: isBold },
+              alignment: {
+                horizontal: isCenteredCol ? 'center' : (isRightAligned ? 'right' : 'left'),
+                vertical: 'center',
+                wrapText: true
+              },
+              fill: { patternType: 'solid', fgColor: { rgb: cellBg } },
+              border: {
+                top: { style: 'thin', color: { rgb: 'E2E8F0' } },
+                bottom: { style: 'thin', color: { rgb: 'E2E8F0' } },
+                left: { style: 'thin', color: { rgb: 'E2E8F0' } },
+                right: { style: 'thin', color: { rgb: 'E2E8F0' } }
+              }
+            }
+
+            const cellObj = { v: val, t: cellType, s: cellStyle }
+            if (isFormula) cellObj.f = formulaStr
+            if (numFormat) cellObj.z = numFormat
+            wsTongHop[cellRef] = cellObj
+          })
+        })
+
+        // Sum row for Tong Hop Sheet
+        thRowIdx++
+        const lastThDataRow = thRowIdx - 1
+
+        wsTongHop['!merges'] = [
+          { s: { r: thRowIdx - 1, c: 0 }, e: { r: thRowIdx - 1, c: 6 } }
+        ]
+
+        wsTongHop[`A${thRowIdx}`] = {
+          v: 'TỔNG CỘNG',
+          t: 's',
+          s: {
+            font: { name: 'Segoe UI', sz: 10, bold: true, color: { rgb: '0F172A' } },
+            alignment: { horizontal: 'center', vertical: 'center' },
+            fill: { patternType: 'solid', fgColor: { rgb: 'F1F5F9' } },
+            border: {
+              top: { style: 'medium', color: { rgb: '0F58A7' } },
+              bottom: { style: 'medium', color: { rgb: '0F58A7' } },
+              left: { style: 'thin', color: { rgb: 'E2E8F0' } },
+              right: { style: 'thin', color: { rgb: 'E2E8F0' } }
+            }
+          }
+        }
+
+        for (let c = 1; c <= 6; c++) {
+          wsTongHop[`${getColLabel(c)}${thRowIdx}`] = {
+            v: '',
+            t: 's',
+            s: {
+              fill: { patternType: 'solid', fgColor: { rgb: 'F1F5F9' } },
+              border: {
+                top: { style: 'medium', color: { rgb: '0F58A7' } },
+                bottom: { style: 'medium', color: { rgb: '0F58A7' } },
+                left: { style: 'thin', color: { rgb: 'E2E8F0' } },
+                right: { style: 'thin', color: { rgb: 'E2E8F0' } }
+              }
+            }
+          }
+        }
+
+        const totalThucNhapSum = materialSummaryList.reduce((s, r) => s + (Number(r.thucNhap) || 0), 0)
+        const totalThucXuatSum = materialSummaryList.reduce((s, r) => s + (Number(r.thucXuat) || 0), 0)
+
+        wsTongHop[`H${thRowIdx}`] = {
+          f: `SUM(H5:H${lastThDataRow})`,
+          v: totalThucNhapSum,
+          t: 'n',
+          s: {
+            font: { name: 'Segoe UI', sz: 10, bold: true, color: { rgb: '065F46' } },
+            alignment: { horizontal: 'right', vertical: 'center' },
+            fill: { patternType: 'solid', fgColor: { rgb: 'ECFDF5' } },
+            border: {
+              top: { style: 'medium', color: { rgb: '0F58A7' } },
+              bottom: { style: 'medium', color: { rgb: '0F58A7' } },
+              left: { style: 'thin', color: { rgb: 'E2E8F0' } },
+              right: { style: 'thin', color: { rgb: 'E2E8F0' } }
+            }
+          },
+          z: '#,##0.00;[Red]-#,##0.00;"-"'
+        }
+
+        wsTongHop[`I${thRowIdx}`] = {
+          f: `SUM(I5:I${lastThDataRow})`,
+          v: totalThucXuatSum,
+          t: 'n',
+          s: {
+            font: { name: 'Segoe UI', sz: 10, bold: true, color: { rgb: 'C2410C' } },
+            alignment: { horizontal: 'right', vertical: 'center' },
+            fill: { patternType: 'solid', fgColor: { rgb: 'FFF7ED' } },
+            border: {
+              top: { style: 'medium', color: { rgb: '0F58A7' } },
+              bottom: { style: 'medium', color: { rgb: '0F58A7' } },
+              left: { style: 'thin', color: { rgb: 'E2E8F0' } },
+              right: { style: 'thin', color: { rgb: 'E2E8F0' } }
+            }
+          },
+          z: '#,##0.00;[Red]-#,##0.00;"-"'
+        }
+
+        wsTongHop[`J${thRowIdx}`] = {
+          f: `H${thRowIdx}-I${thRowIdx}`,
+          v: totalThucNhapSum - totalThucXuatSum,
+          t: 'n',
+          s: {
+            font: { name: 'Segoe UI', sz: 10, bold: true, color: { rgb: '1E3A8A' } },
+            alignment: { horizontal: 'right', vertical: 'center' },
+            fill: { patternType: 'solid', fgColor: { rgb: 'EFF6FF' } },
+            border: {
+              top: { style: 'medium', color: { rgb: '0F58A7' } },
+              bottom: { style: 'medium', color: { rgb: '0F58A7' } },
+              left: { style: 'thin', color: { rgb: 'E2E8F0' } },
+              right: { style: 'thin', color: { rgb: 'E2E8F0' } }
+            }
+          },
+          z: '#,##0.00;[Red]-#,##0.00;"-"'
+        }
+
+        wsTongHop['!ref'] = `A1:J${thRowIdx}`
+
+        // ═════════════════════════════════════════════════════════════════════
+        // SHEET 2: CHI TIẾT THEO ĐƠN VỊ (Detailed by Delivery/Receiving Unit)
+        // ═════════════════════════════════════════════════════════════════════
+        const ws = {}
+        const columns = [
+          { key: 'STT', label: 'STT', width: 50 },
+          { key: 'maVatTu', label: 'Mã vật tư', width: 90 },
+          { key: 'maSAP', label: 'Mã SAP', width: 100 },
+          { key: 'thongSoKyThuat', label: 'Thông số kỹ thuật', width: 150 },
+          { key: 'tenVatTu', label: 'Tên vật tư', width: 280 },
+          { key: 'khoBCH', label: 'Kho BCH', width: 180 },
+          { key: 'dvt', label: 'ĐVT', width: 70 },
+          { key: 'donViGiao', label: 'Đơn vị giao', width: 200 },
+          { key: 'thucNhap', label: 'Thực nhập', width: 120 },
+          { key: 'donViNhan', label: 'Đơn vị nhận', width: 200 },
+          { key: 'thucXuat', label: 'Thực xuất', width: 120 },
+          { key: 'tonKho', label: 'Tồn kho', width: 120 }
+        ]
+
         ws['!cols'] = columns.map(c => ({ wpx: c.width }))
 
         let excelRowIdx = 1
 
         ws['A1'] = {
-          v: `BÁO CÁO TỔNG HỢP KHỐI LƯỢNG THỰC NHẬP THỰC XUẤT`,
+          v: `BÁO CÁO CHI TIẾT KHỐI LƯỢNG THỰC NHẬP THỰC XUẤT`,
           t: 's',
           s: {
             font: { name: 'Segoe UI', sz: 14, bold: true, color: { rgb: '0B2545' } },
@@ -12647,7 +13115,7 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
           }
         }
         ws['A2'] = {
-          v: `Kho / Dự án: ${localProject || 'Tất cả'} | Đơn vị giao: ${localGiao || 'Tất cả'} | Đơn vị nhận: ${localNhan || 'Tất cả'}`,
+          v: `Kho / Dự án: ${localProject || 'Tất cả'} | Đơn vị giao: ${localGiao || 'Tất cả'} | Đơn vị nhận: ${localNhan || 'Tất cả'} | Ngày xuất: ${new Date().toLocaleDateString('vi-VN')}`,
           t: 's',
           s: {
             font: { name: 'Segoe UI', sz: 10, italic: true },
@@ -12660,11 +13128,12 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
           const colChar = getColLabel(colIdx)
           const cellRef = `${colChar}${excelRowIdx}`
           
-          const isThucNhap = col.key === 'thucNhap'
-          const isThucXuat = col.key === 'thucXuat'
-          const isTonKho = col.key === 'tonKho'
-          const excelBgColor = isThucNhap ? '0D9488' : isThucXuat ? 'EA580C' : isTonKho ? '0F58A7' : '0F58A7'
-          const excelBorderColor = isThucNhap ? '0F766E' : isThucXuat ? 'C2410C' : isTonKho ? '0A3D73' : '0A3D73'
+          const isThucNhap = col.key === 'thucNhap' || col.key === 'donViGiao'
+          const isThucXuat = col.key === 'thucXuat' || col.key === 'donViNhan'
+          const isKhoBCH = col.key === 'khoBCH'
+
+          const excelBgColor = isThucNhap ? '0D9488' : isThucXuat ? 'EA580C' : isKhoBCH ? '1E3A8A' : '0F58A7'
+          const excelBorderColor = isThucNhap ? '0F766E' : isThucXuat ? 'C2410C' : isKhoBCH ? '1E293B' : '0A3D73'
 
           ws[cellRef] = {
             v: col.label,
@@ -12683,7 +13152,48 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
           }
         })
 
-        realReportSummaryRows.forEach((row, rowIndex) => {
+        // Build unit-level breakdown for Sheet 2: Chi tiết
+        const detailUnitRows = []
+        realReportSummaryRows.forEach(row => {
+          const nhapByGiao = {}
+          const xuatByNhan = {}
+          ;(row.transactions || []).forEach(tx => {
+            if (tx.nhapVal > 0 && tx.logicNhapVal !== 0) {
+              const g = tx.donViGiao || '—'
+              if (!nhapByGiao[g]) nhapByGiao[g] = 0
+              nhapByGiao[g] += tx.nhapVal * tx.logicNhapVal
+            }
+            if (tx.xuatVal > 0 && tx.logicXuatVal !== 0) {
+              const n = tx.donViNhan || '—'
+              if (!xuatByNhan[n]) xuatByNhan[n] = 0
+              xuatByNhan[n] += tx.xuatVal * tx.logicXuatVal
+            }
+          })
+          const giaoEntries = Object.entries(nhapByGiao)
+          const nhanEntries = Object.entries(xuatByNhan)
+          const maxEntries = Math.max(1, giaoEntries.length, nhanEntries.length)
+          for (let k = 0; k < maxEntries; k++) {
+            const [giao, nhapVal] = giaoEntries[k] || ['—', 0]
+            const [nhan, xuatVal] = nhanEntries[k] || ['—', 0]
+            if (nhapVal !== 0 || xuatVal !== 0 || (k === 0 && (row.thucNhap > 0 || row.thucXuat > 0))) {
+              detailUnitRows.push({
+                maVatTu: row.maVatTu,
+                maSAP: row.maSAP,
+                thongSoKyThuat: row.thongSoKyThuat,
+                tenVatTu: row.tenVatTu,
+                khoBCH: row.khoBCH,
+                dvt: row.dvt,
+                donViGiao: giao,
+                thucNhap: Math.max(0, nhapVal || (k === 0 ? row.thucNhap : 0)),
+                donViNhan: nhan,
+                thucXuat: Math.max(0, xuatVal || (k === 0 ? row.thucXuat : 0)),
+                tonKho: Math.max(0, nhapVal || (k === 0 ? row.thucNhap : 0)) - Math.max(0, xuatVal || (k === 0 ? row.thucXuat : 0))
+              })
+            }
+          }
+        })
+
+        detailUnitRows.forEach((row, rowIndex) => {
           excelRowIdx++
           const isEvenNum = (rowIndex % 2 === 1)
           const rowBgColor = isEvenNum ? 'F8FAFC' : 'FFFFFF'
@@ -12702,20 +13212,16 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
               val = rowIndex + 1
               cellType = 'n'
             } else if (col.key === 'thucNhap') {
-              isFormula = true
-              formulaStr = `SUMIFS(Thuc_Nhap!L:L,Thuc_Nhap!C:C,C${excelRowIdx})`
               val = Number(row.thucNhap)
               cellType = 'n'
               numFormat = '#,##0.00;[Red]-#,##0.00;"-"'
             } else if (col.key === 'thucXuat') {
-              isFormula = true
-              formulaStr = `SUMIFS(Thuc_Xuat!L:L,Thuc_Xuat!C:C,C${excelRowIdx})`
               val = Number(row.thucXuat)
               cellType = 'n'
               numFormat = '#,##0.00;[Red]-#,##0.00;"-"'
             } else if (col.key === 'tonKho') {
               isFormula = true
-              formulaStr = `G${excelRowIdx}-H${excelRowIdx}`
+              formulaStr = `I${excelRowIdx}-K${excelRowIdx}`
               val = Number(row.tonKho)
               cellType = 'n'
               numFormat = '#,##0.00;[Red]-#,##0.00;"-"'
@@ -12726,49 +13232,77 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
             const isCenteredCol = ['STT', 'maVatTu', 'maSAP', 'dvt'].includes(col.key)
             const isRightAligned = ['thucNhap', 'thucXuat', 'tonKho'].includes(col.key)
 
-            const cellStyle = {
-              font: { name: 'Segoe UI', sz: 9, color: { rgb: '1A1A1A' } },
-              alignment: {
-                horizontal: isCenteredCol ? 'center' : (isRightAligned ? 'right' : 'left'),
-                vertical: 'center',
-                wrapText: true
-              },
-              fill: { patternType: 'solid', fgColor: { rgb: rowBgColor } },
-              border: {
-                top: { style: 'thin', color: { rgb: 'E2E8F0' } },
-                bottom: { style: 'thin', color: { rgb: 'E2E8F0' } },
-                left: { style: 'thin', color: { rgb: 'E2E8F0' } },
-                right: { style: 'thin', color: { rgb: 'E2E8F0' } }
-              }
-            }
+            let cellBg = rowBgColor
+            let fontColor = '1A1A1A'
+            let isBold = false
 
             if (col.key === 'tonKho') {
               const numVal = Number(row[col.key])
               const isNegative = numVal < 0
               const isZero = numVal === 0
               if (isNegative) {
-                cellStyle.fill = { patternType: 'solid', fgColor: { rgb: 'FEF2F2' } }
-                cellStyle.font.color = { rgb: 'EF4444' }
-                cellStyle.font.bold = true
+                cellBg = 'FEF2F2'
+                fontColor = 'EF4444'
+                isBold = true
               } else if (!isZero) {
-                cellStyle.fill = { patternType: 'solid', fgColor: { rgb: 'EFF6FF' } }
-                cellStyle.font.color = { rgb: '1E40AF' }
-                cellStyle.font.bold = true
+                cellBg = 'EFF6FF'
+                fontColor = '1E40AF'
+                isBold = true
               } else {
-                cellStyle.fill = { patternType: 'solid', fgColor: { rgb: 'F1F5F9' } }
-                cellStyle.font.color = { rgb: '475569' }
-                cellStyle.font.bold = false
+                cellBg = 'F1F5F9'
+                fontColor = '475569'
+                isBold = false
               }
-            } else if (col.key === 'thucNhap' || col.key === 'thucXuat') {
+            } else if (col.key === 'thucNhap') {
               const numVal = Number(row[col.key])
               if (numVal > 0) {
-                cellStyle.fill = { patternType: 'solid', fgColor: { rgb: col.key === 'thucNhap' ? 'ECFDF5' : 'FFF7ED' } }
-                cellStyle.font.color = { rgb: col.key === 'thucNhap' ? '065F46' : 'C2410C' }
-                cellStyle.font.bold = true
+                cellBg = 'ECFDF5'
+                fontColor = '065F46'
+                isBold = true
               } else {
-                cellStyle.fill = { patternType: 'solid', fgColor: { rgb: 'F1F5F9' } }
-                cellStyle.font.color = { rgb: '475569' }
-                cellStyle.font.bold = false
+                cellBg = 'F1F5F9'
+                fontColor = '475569'
+                isBold = false
+              }
+            } else if (col.key === 'thucXuat') {
+              const numVal = Number(row[col.key])
+              if (numVal > 0) {
+                cellBg = 'FFF7ED'
+                fontColor = 'C2410C'
+                isBold = true
+              } else {
+                cellBg = 'F1F5F9'
+                fontColor = '475569'
+                isBold = false
+              }
+            } else if (col.key === 'khoBCH') {
+              fontColor = '1E3A8A'
+              isBold = true
+            } else if (col.key === 'donViGiao') {
+              fontColor = '047857'
+              if (row.donViGiao && row.donViGiao !== '—') {
+                cellBg = 'F0FDF4'
+              }
+            } else if (col.key === 'donViNhan') {
+              fontColor = 'C2410C'
+              if (row.donViNhan && row.donViNhan !== '—') {
+                cellBg = 'FFF7ED'
+              }
+            }
+
+            const cellStyle = {
+              font: { name: 'Segoe UI', sz: 9, color: { rgb: fontColor }, bold: isBold },
+              alignment: {
+                horizontal: isCenteredCol ? 'center' : (isRightAligned ? 'right' : 'left'),
+                vertical: 'center',
+                wrapText: true
+              },
+              fill: { patternType: 'solid', fgColor: { rgb: cellBg } },
+              border: {
+                top: { style: 'thin', color: { rgb: 'E2E8F0' } },
+                bottom: { style: 'thin', color: { rgb: 'E2E8F0' } },
+                left: { style: 'thin', color: { rgb: 'E2E8F0' } },
+                right: { style: 'thin', color: { rgb: 'E2E8F0' } }
               }
             }
 
@@ -12779,14 +13313,19 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
           })
         })
 
-        // Sum row
+        // Sum row for Chi Tiet Sheet
         excelRowIdx++
         const lastDataRow = excelRowIdx - 1
+
+        ws['!merges'] = [
+          { s: { r: excelRowIdx - 1, c: 0 }, e: { r: excelRowIdx - 1, c: 7 } }
+        ]
+
         ws[`A${excelRowIdx}`] = {
           v: 'TỔNG CỘNG',
           t: 's',
           s: {
-            font: { name: 'Segoe UI', sz: 10, bold: true },
+            font: { name: 'Segoe UI', sz: 10, bold: true, color: { rgb: '0F172A' } },
             alignment: { horizontal: 'center', vertical: 'center' },
             fill: { patternType: 'solid', fgColor: { rgb: 'F1F5F9' } },
             border: {
@@ -12798,11 +13337,7 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
           }
         }
 
-        ws['!merges'] = [
-          { s: { r: excelRowIdx - 1, c: 0 }, e: { r: excelRowIdx - 1, c: 5 } }
-        ]
-
-        for (let c = 1; c <= 5; c++) {
+        for (let c = 1; c <= 7; c++) {
           ws[`${getColLabel(c)}${excelRowIdx}`] = {
             v: '',
             t: 's',
@@ -12819,26 +13354,53 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
         }
 
         columns.forEach((col, colIdx) => {
-          if (colIdx <= 5) return
+          if (colIdx <= 7) return
           const colChar = getColLabel(colIdx)
           const cellRef = `${colChar}${excelRowIdx}`
 
           let sumFormula = ''
-          if (col.key === 'tonKho') {
-            sumFormula = `G${excelRowIdx}-H${excelRowIdx}`
-          } else {
-            sumFormula = `SUM(${colChar}5:${colChar}${lastDataRow})`
+          let bg = 'F1F5F9'
+          let txtColor = '0F172A'
+
+          if (col.key === 'thucNhap') {
+            sumFormula = `SUM(I5:I${lastDataRow})`
+            bg = 'ECFDF5'
+            txtColor = '065F46'
+          } else if (col.key === 'donViNhan') {
+            ws[cellRef] = {
+              v: '',
+              t: 's',
+              s: {
+                fill: { patternType: 'solid', fgColor: { rgb: 'F1F5F9' } },
+                border: {
+                  top: { style: 'medium', color: { rgb: '0F58A7' } },
+                  bottom: { style: 'medium', color: { rgb: '0F58A7' } },
+                  left: { style: 'thin', color: { rgb: 'E2E8F0' } },
+                  right: { style: 'thin', color: { rgb: 'E2E8F0' } }
+                }
+              }
+            }
+            return
+          } else if (col.key === 'thucXuat') {
+            sumFormula = `SUM(K5:K${lastDataRow})`
+            bg = 'FFF7ED'
+            txtColor = 'C2410C'
+          } else if (col.key === 'tonKho') {
+            sumFormula = `I${excelRowIdx}-K${excelRowIdx}`
+            bg = 'EFF6FF'
+            txtColor = '1E3A8A'
           }
-          const sumVal = realReportSummaryRows.reduce((sum, r) => sum + (Number(r[col.key]) || 0), 0)
+
+          const sumVal = detailUnitRows.reduce((sum, r) => sum + (Number(r[col.key]) || 0), 0)
           
           ws[cellRef] = {
             f: sumFormula,
             v: sumVal,
             t: 'n',
             s: {
-              font: { name: 'Segoe UI', sz: 10, bold: true },
+              font: { name: 'Segoe UI', sz: 10, bold: true, color: { rgb: txtColor } },
               alignment: { horizontal: 'right', vertical: 'center' },
-              fill: { patternType: 'solid', fgColor: { rgb: 'F1F5F9' } },
+              fill: { patternType: 'solid', fgColor: { rgb: bg } },
               border: {
                 top: { style: 'medium', color: { rgb: '0F58A7' } },
                 bottom: { style: 'medium', color: { rgb: '0F58A7' } },
@@ -12902,7 +13464,7 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
           })
         })
 
-        // Sheet 2: Thuc_Nhap
+        // Sheet 3: Thuc_Nhap
         const thucNhapCols = [
           { key: 'STT', label: 'STT', width: 50 },
           { key: 'ngayXuatNhap', label: 'Ngày', width: 100 },
@@ -13031,7 +13593,7 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
         })
         wsThucNhap['!ref'] = `A1:${getColLabel(thucNhapCols.length - 1)}${thucNhapRowIdx}`
 
-        // Sheet 3: Thuc_Xuat
+        // Sheet 4: Thuc_Xuat
         const thucXuatCols = [
           { key: 'STT', label: 'STT', width: 50 },
           { key: 'ngayXuatNhap', label: 'Ngày', width: 100 },
@@ -13160,7 +13722,9 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
         })
         wsThucXuat['!ref'] = `A1:${getColLabel(thucXuatCols.length - 1)}${thucXuatRowIdx}`
 
-        XLSXStyle.utils.book_append_sheet(wb, ws, "Tổng hợp")
+        // Append sheets in order: Tổng hợp -> Chi tiết -> Thuc_Nhap -> Thuc_Xuat -> Phân nhóm Vật tư
+        XLSXStyle.utils.book_append_sheet(wb, wsTongHop, "Tổng hợp")
+        XLSXStyle.utils.book_append_sheet(wb, ws, "Chi tiết")
         XLSXStyle.utils.book_append_sheet(wb, wsThucNhap, "Thuc_Nhap")
         XLSXStyle.utils.book_append_sheet(wb, wsThucXuat, "Thuc_Xuat")
 
@@ -14140,6 +14704,340 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
     URL.revokeObjectURL(url)
   }
 
+  // ─── Export Excel for Dashboard ───────────────────────────────────────────
+  const handleExportDashboardExcel = () => {
+    try {
+      if (!filteredDashboardStats || filteredDashboardStats.length === 0) {
+        alert('Không có dữ liệu Dashboard để xuất Excel!')
+        return
+      }
+
+      const wb = XLSXStyle.utils.book_new()
+      const ws = {}
+
+      function getColLabel(index) {
+        let label = ''
+        let temp = index
+        while (temp >= 0) {
+          label = String.fromCharCode((temp % 26) + 65) + label
+          temp = Math.floor(temp / 26) - 1
+        }
+        return label
+      }
+
+      const titleStyle = {
+        font: { name: 'Segoe UI', sz: 14, bold: true, color: { rgb: '0A3D73' } },
+        alignment: { horizontal: 'left', vertical: 'center' }
+      }
+      const subtitleStyle = {
+        font: { name: 'Segoe UI', sz: 10, italic: true, color: { rgb: '475569' } },
+        alignment: { horizontal: 'left', vertical: 'center' }
+      }
+      const kpiBoxHeaderStyle = {
+        fill: { patternType: 'solid', fgColor: { rgb: '0F58A7' } },
+        font: { name: 'Segoe UI', sz: 10, bold: true, color: { rgb: 'FFFFFF' } },
+        alignment: { horizontal: 'center', vertical: 'center' },
+        border: {
+          top: { style: 'thin', color: { rgb: '0A3D73' } },
+          bottom: { style: 'thin', color: { rgb: '0A3D73' } },
+          left: { style: 'thin', color: { rgb: '0A3D73' } },
+          right: { style: 'thin', color: { rgb: '0A3D73' } }
+        }
+      }
+      const kpiBoxValueStyle = {
+        fill: { patternType: 'solid', fgColor: { rgb: 'F0F9FF' } },
+        font: { name: 'Segoe UI', sz: 12, bold: true, color: { rgb: '0369A1' } },
+        alignment: { horizontal: 'center', vertical: 'center' },
+        border: {
+          top: { style: 'thin', color: { rgb: 'BAE6FD' } },
+          bottom: { style: 'thin', color: { rgb: 'BAE6FD' } },
+          left: { style: 'thin', color: { rgb: 'BAE6FD' } },
+          right: { style: 'thin', color: { rgb: 'BAE6FD' } }
+        }
+      }
+      const kpiBoxRedValueStyle = {
+        ...kpiBoxValueStyle,
+        fill: { patternType: 'solid', fgColor: { rgb: 'FEF2F2' } },
+        font: { name: 'Segoe UI', sz: 12, bold: true, color: { rgb: 'DC2626' } },
+        border: {
+          top: { style: 'thin', color: { rgb: 'FECACA' } },
+          bottom: { style: 'thin', color: { rgb: 'FECACA' } },
+          left: { style: 'thin', color: { rgb: 'FECACA' } },
+          right: { style: 'thin', color: { rgb: 'FECACA' } }
+        }
+      }
+      const tblHeaderStyle = {
+        fill: { patternType: 'solid', fgColor: { rgb: '0F58A7' } },
+        font: { name: 'Segoe UI', sz: 10, bold: true, color: { rgb: 'FFFFFF' } },
+        alignment: { horizontal: 'center', vertical: 'center', wrapText: true },
+        border: {
+          top: { style: 'thin', color: { rgb: '0A3D73' } },
+          bottom: { style: 'medium', color: { rgb: '0A3D73' } },
+          left: { style: 'thin', color: { rgb: '0A3D73' } },
+          right: { style: 'thin', color: { rgb: '0A3D73' } }
+        }
+      }
+      const tblSubHeaderStyle = {
+        font: { name: 'Segoe UI', sz: 11, bold: true, color: { rgb: '1E3A8A' } },
+        alignment: { horizontal: 'left', vertical: 'center' }
+      }
+
+      const colsOverview = [
+        { key: 'stt', label: 'STT', width: 50 },
+        { key: 'projectName', label: 'Kho Ban Chỉ Huy (BCH)', width: 260 },
+        { key: 'totalItems', label: 'Tổng mặt hàng tồn', width: 150 },
+        { key: 'unusedCount', label: 'Chưa sử dụng (> 30 ngày)', width: 170 },
+        { key: 'unusedRatio', label: 'Tỷ lệ Chưa SD (%)', width: 140 },
+        { key: 'inUseCount', label: 'Đang sử dụng', width: 130 },
+        { key: 'depletedCount', label: 'Đã dùng hết', width: 120 },
+        { key: 'unusedValue', label: 'Giá trị chưa SD (VNĐ)', width: 180 }
+      ]
+      ws['!cols'] = colsOverview.map(c => ({ wpx: c.width }))
+
+      ws['A1'] = { v: 'BÁO CÁO DASHBOARD QUẢN LÝ TỒN KHO BAN CHỈ HUY (BCH)', t: 's', s: titleStyle }
+      ws['A2'] = {
+        v: `Kho chọn: ${dashboardWarehouseFilter === 'all' ? 'Tất cả kho Ban Chỉ Huy' : dashboardWarehouseFilter} | Loại báo cáo: ${isRealReport ? 'Báo cáo Thực Tế' : 'Báo cáo Sổ Sách'} | Ngày xuất: ${new Date().toLocaleDateString('vi-VN')}`,
+        t: 's',
+        s: subtitleStyle
+      }
+
+      ws['A4'] = { v: 'Tổng số kho BCH', t: 's', s: kpiBoxHeaderStyle }
+      ws['B4'] = { v: '', t: 's', s: kpiBoxHeaderStyle }
+      ws['A5'] = { v: filteredDashboardStats.length, t: 'n', s: kpiBoxValueStyle, z: '#,##0' }
+      ws['B5'] = { v: '', t: 's', s: kpiBoxValueStyle }
+
+      ws['C4'] = { v: 'Tổng giá trị chưa SD (>30 ngày)', t: 's', s: kpiBoxHeaderStyle }
+      ws['D4'] = { v: '', t: 's', s: kpiBoxHeaderStyle }
+      ws['C5'] = { v: dashboardSummary.grandUnusedValue || 0, t: 'n', s: kpiBoxRedValueStyle, z: '#,##0' }
+      ws['D5'] = { v: '', t: 's', s: kpiBoxRedValueStyle }
+
+      ws['E4'] = { v: 'Mặt hàng chưa SD / Tổng tồn', t: 's', s: kpiBoxHeaderStyle }
+      ws['F4'] = { v: '', t: 's', s: kpiBoxHeaderStyle }
+      ws['E5'] = { v: `${dashboardSummary.grandUnusedCount || 0} / ${dashboardSummary.grandTotalItems || 0} (${(dashboardSummary.averageUnusedRatio || 0).toFixed(1)}%)`, t: 's', s: kpiBoxValueStyle }
+      ws['F5'] = { v: '', t: 's', s: kpiBoxValueStyle }
+
+      ws['G4'] = { v: 'Kho tồn đọng chưa SD cao nhất', t: 's', s: kpiBoxHeaderStyle }
+      ws['H4'] = { v: '', t: 's', s: kpiBoxHeaderStyle }
+      ws['G5'] = { v: dashboardSummary.highestUnusedWarehouse || '—', t: 's', s: kpiBoxValueStyle }
+      ws['H5'] = { v: '', t: 's', s: kpiBoxValueStyle }
+
+      ws['!merges'] = [
+        { s: { r: 0, c: 0 }, e: { r: 0, c: 7 } },
+        { s: { r: 1, c: 0 }, e: { r: 1, c: 7 } },
+        { s: { r: 3, c: 0 }, e: { r: 3, c: 1 } },
+        { s: { r: 4, c: 0 }, e: { r: 4, c: 1 } },
+        { s: { r: 3, c: 2 }, e: { r: 3, c: 3 } },
+        { s: { r: 4, c: 2 }, e: { r: 4, c: 3 } },
+        { s: { r: 3, c: 4 }, e: { r: 3, c: 5 } },
+        { s: { r: 4, c: 4 }, e: { r: 4, c: 5 } },
+        { s: { r: 3, c: 6 }, e: { r: 3, c: 7 } },
+        { s: { r: 4, c: 6 }, e: { r: 4, c: 7 } }
+      ]
+
+      ws['A7'] = { v: '1. BẢNG TỔNG HỢP THEO TỪNG KHO BAN CHỈ HUY (BCH)', t: 's', s: tblSubHeaderStyle }
+
+      let rIdx = 8
+      colsOverview.forEach((col, cIdx) => {
+        const cellRef = `${getColLabel(cIdx)}${rIdx}`
+        ws[cellRef] = { v: col.label, t: 's', s: tblHeaderStyle }
+      })
+
+      const dataStartRow = rIdx + 1
+      filteredDashboardStats.forEach((stat, idx) => {
+        rIdx++
+        const isEven = idx % 2 === 1
+        const bg = isEven ? 'F8FAFC' : 'FFFFFF'
+        const baseCellStyle = {
+          font: { name: 'Segoe UI', sz: 9.5, color: { rgb: '1E293B' } },
+          fill: { patternType: 'solid', fgColor: { rgb: bg } },
+          border: {
+            top: { style: 'thin', color: { rgb: 'E2E8F0' } },
+            bottom: { style: 'thin', color: { rgb: 'E2E8F0' } },
+            left: { style: 'thin', color: { rgb: 'E2E8F0' } },
+            right: { style: 'thin', color: { rgb: 'E2E8F0' } }
+          },
+          alignment: { vertical: 'center' }
+        }
+
+        ws[`A${rIdx}`] = { v: idx + 1, t: 'n', s: { ...baseCellStyle, alignment: { horizontal: 'center', vertical: 'center' } } }
+        ws[`B${rIdx}`] = { v: stat.projectName, t: 's', s: { ...baseCellStyle, font: { name: 'Segoe UI', sz: 9.5, bold: true, color: { rgb: '0F58A7' } } } }
+        ws[`C${rIdx}`] = { v: stat.totalItemsInStock || 0, t: 'n', z: '#,##0', s: { ...baseCellStyle, alignment: { horizontal: 'right', vertical: 'center' } } }
+        ws[`D${rIdx}`] = { v: stat.unusedCount || 0, t: 'n', z: '#,##0', s: { ...baseCellStyle, font: { name: 'Segoe UI', sz: 9.5, bold: (stat.unusedCount || 0) > 0, color: { rgb: (stat.unusedCount || 0) > 0 ? 'DC2626' : '64748B' } }, alignment: { horizontal: 'right', vertical: 'center' } } }
+        ws[`E${rIdx}`] = { v: (stat.unusedRatio || 0) / 100, t: 'n', z: '0.0%', s: { ...baseCellStyle, font: { name: 'Segoe UI', sz: 9.5, bold: (stat.unusedRatio || 0) > 0, color: { rgb: (stat.unusedRatio || 0) > 30 ? 'DC2626' : (stat.unusedRatio || 0) > 0 ? 'D97706' : '64748B' } }, alignment: { horizontal: 'right', vertical: 'center' } } }
+        ws[`F${rIdx}`] = { v: stat.inUseCount || 0, t: 'n', z: '#,##0', s: { ...baseCellStyle, font: { name: 'Segoe UI', sz: 9.5, color: { rgb: '059669' } }, alignment: { horizontal: 'right', vertical: 'center' } } }
+        ws[`G${rIdx}`] = { v: stat.depletedCount || 0, t: 'n', z: '#,##0', s: { ...baseCellStyle, alignment: { horizontal: 'right', vertical: 'center' } } }
+        ws[`H${rIdx}`] = { v: stat.unusedValue || 0, t: 'n', z: '#,##0;[Red]-#,##0;"-"', s: { ...baseCellStyle, font: { name: 'Segoe UI', sz: 9.5, bold: (stat.unusedValue || 0) > 0, color: { rgb: (stat.unusedValue || 0) > 0 ? 'DC2626' : '64748B' } }, alignment: { horizontal: 'right', vertical: 'center' } } }
+      })
+
+      rIdx++
+      const totalRowIdx = rIdx
+      const totalRowStyle = {
+        font: { name: 'Segoe UI', sz: 10, bold: true, color: { rgb: '0F172A' } },
+        fill: { patternType: 'solid', fgColor: { rgb: 'F1F5F9' } },
+        border: {
+          top: { style: 'medium', color: { rgb: '0F58A7' } },
+          bottom: { style: 'medium', color: { rgb: '0F58A7' } },
+          left: { style: 'thin', color: { rgb: 'E2E8F0' } },
+          right: { style: 'thin', color: { rgb: 'E2E8F0' } }
+        },
+        alignment: { vertical: 'center' }
+      }
+
+      ws[`A${totalRowIdx}`] = { v: 'TỔNG CỘNG', t: 's', s: { ...totalRowStyle, alignment: { horizontal: 'center', vertical: 'center' } } }
+      ws[`B${totalRowIdx}`] = { v: '', t: 's', s: totalRowStyle }
+      ws['!merges'].push({ s: { r: totalRowIdx - 1, c: 0 }, e: { r: totalRowIdx - 1, c: 1 } })
+
+      ws[`C${totalRowIdx}`] = { f: `SUM(C${dataStartRow}:C${totalRowIdx - 1})`, v: dashboardSummary.grandTotalItems || 0, t: 'n', z: '#,##0', s: { ...totalRowStyle, alignment: { horizontal: 'right', vertical: 'center' } } }
+      ws[`D${totalRowIdx}`] = { f: `SUM(D${dataStartRow}:D${totalRowIdx - 1})`, v: dashboardSummary.grandUnusedCount || 0, t: 'n', z: '#,##0', s: { ...totalRowStyle, font: { name: 'Segoe UI', sz: 10, bold: true, color: { rgb: 'DC2626' } }, alignment: { horizontal: 'right', vertical: 'center' } } }
+      ws[`E${totalRowIdx}`] = { f: `D${totalRowIdx}/C${totalRowIdx}`, v: (dashboardSummary.averageUnusedRatio || 0) / 100, t: 'n', z: '0.0%', s: { ...totalRowStyle, alignment: { horizontal: 'right', vertical: 'center' } } }
+      ws[`F${totalRowIdx}`] = { f: `SUM(F${dataStartRow}:F${totalRowIdx - 1})`, v: filteredDashboardStats.reduce((s, x) => s + (x.inUseCount || 0), 0), t: 'n', z: '#,##0', s: { ...totalRowStyle, font: { name: 'Segoe UI', sz: 10, bold: true, color: { rgb: '059669' } }, alignment: { horizontal: 'right', vertical: 'center' } } }
+      ws[`G${totalRowIdx}`] = { f: `SUM(G${dataStartRow}:G${totalRowIdx - 1})`, v: filteredDashboardStats.reduce((s, x) => s + (x.depletedCount || 0), 0), t: 'n', z: '#,##0', s: { ...totalRowStyle, alignment: { horizontal: 'right', vertical: 'center' } } }
+      ws[`H${totalRowIdx}`] = { f: `SUM(H${dataStartRow}:H${totalRowIdx - 1})`, v: dashboardSummary.grandUnusedValue || 0, t: 'n', z: '#,##0;[Red]-#,##0;"-"', s: { ...totalRowStyle, font: { name: 'Segoe UI', sz: 10, bold: true, color: { rgb: 'DC2626' } }, alignment: { horizontal: 'right', vertical: 'center' } } }
+
+      ws['!ref'] = `A1:H${totalRowIdx}`
+      XLSXStyle.utils.book_append_sheet(wb, ws, "Tong_Quan_Dashboard")
+
+      // Sheet 2: Chi tiết danh sách vật tư
+      const dws = {}
+      const detailCols = [
+        { key: 'stt', label: 'STT', width: 50 },
+        { key: 'project', label: 'Kho Ban Chỉ Huy (BCH)', width: 220 },
+        { key: 'maSAP', label: 'Mã SAP', width: 100 },
+        { key: 'maVatTu', label: 'Mã vật tư', width: 100 },
+        { key: 'tenVatTu', label: 'Tên vật tư', width: 240 },
+        { key: 'dvt', label: 'ĐVT', width: 70 },
+        { key: 'thongSoKyThuat', label: 'Thông số kỹ thuật', width: 160 },
+        { key: 'materialClassification', label: 'Phân loại vật tư', width: 160 },
+        { key: 'stock', label: 'Tồn kho', width: 110 },
+        { key: 'unusedStatus', label: 'Trạng thái sử dụng', width: 180 },
+        { key: 'estimatedUnitPrice', label: 'Đơn giá tạm tính (VNĐ)', width: 160 },
+        { key: 'valueOver30Days', label: 'Thành tiền chưa SD (VNĐ)', width: 180 }
+      ]
+      dws['!cols'] = detailCols.map(c => ({ wpx: c.width }))
+
+      const totalItemsCount = filteredDashboardStats.reduce((s, x) => s + ((x.allItems || x.items || []).length), 0)
+
+      dws['A1'] = { v: 'DANH SÁCH CHI TIẾT VẬT TƯ THIẾT BỊ TỒN KHO DASHBOARD', t: 's', s: titleStyle }
+      dws['A2'] = {
+        v: `Kho chọn: ${dashboardWarehouseFilter === 'all' ? 'Tất cả kho Ban Chỉ Huy' : dashboardWarehouseFilter} | Tổng số mặt hàng: ${totalItemsCount}`,
+        t: 's',
+        s: subtitleStyle
+      }
+
+      let dRowIdx = 4
+      detailCols.forEach((col, cIdx) => {
+        const cellRef = `${getColLabel(cIdx)}${dRowIdx}`
+        dws[cellRef] = { v: col.label, t: 's', s: tblHeaderStyle }
+      })
+
+      let itemStt = 1
+      filteredDashboardStats.forEach(stat => {
+        const statItems = stat.allItems || stat.items || []
+        statItems.forEach(item => {
+          dRowIdx++
+          const isEven = itemStt % 2 === 0
+          const bg = isEven ? 'F8FAFC' : 'FFFFFF'
+          const baseCellStyle = {
+            font: { name: 'Segoe UI', sz: 9, color: { rgb: '1E293B' } },
+            fill: { patternType: 'solid', fgColor: { rgb: bg } },
+            border: {
+              top: { style: 'thin', color: { rgb: 'E2E8F0' } },
+              bottom: { style: 'thin', color: { rgb: 'E2E8F0' } },
+              left: { style: 'thin', color: { rgb: 'E2E8F0' } },
+              right: { style: 'thin', color: { rgb: 'E2E8F0' } }
+            },
+            alignment: { vertical: 'center' }
+          }
+
+          const isUnused = item.unusedStatus === 'Chưa sử dụng (> 30 ngày)'
+          const isInUse = item.unusedStatus === 'Đang sử dụng'
+
+          dws[`A${dRowIdx}`] = { v: itemStt, t: 'n', s: { ...baseCellStyle, alignment: { horizontal: 'center', vertical: 'center' } } }
+          dws[`B${dRowIdx}`] = { v: item.project || stat.projectName, t: 's', s: { ...baseCellStyle, font: { name: 'Segoe UI', sz: 9, bold: true, color: { rgb: '0F58A7' } } } }
+          dws[`C${dRowIdx}`] = { v: item.maSAP || '', t: 's', s: { ...baseCellStyle, alignment: { horizontal: 'center', vertical: 'center' } } }
+          dws[`D${dRowIdx}`] = { v: item.maVatTu || '', t: 's', s: { ...baseCellStyle, alignment: { horizontal: 'center', vertical: 'center' } } }
+          dws[`E${dRowIdx}`] = { v: item.tenVatTu || '', t: 's', s: { ...baseCellStyle, font: { name: 'Segoe UI', sz: 9, bold: true } } }
+          dws[`F${dRowIdx}`] = { v: item.dvt || '', t: 's', s: { ...baseCellStyle, alignment: { horizontal: 'center', vertical: 'center' } } }
+          dws[`G${dRowIdx}`] = { v: item.thongSoKyThuat || '', t: 's', s: baseCellStyle }
+          dws[`H${dRowIdx}`] = { v: item.materialClassification || '—', t: 's', s: baseCellStyle }
+          dws[`I${dRowIdx}`] = { v: item.stock || 0, t: 'n', z: '#,##0.00', s: { ...baseCellStyle, alignment: { horizontal: 'right', vertical: 'center' }, font: { name: 'Segoe UI', sz: 9, bold: true } } }
+          dws[`J${dRowIdx}`] = {
+            v: item.unusedStatus || '',
+            t: 's',
+            s: {
+              ...baseCellStyle,
+              font: { name: 'Segoe UI', sz: 9, bold: true, color: { rgb: isUnused ? 'D97706' : isInUse ? '059669' : '64748B' } },
+              fill: { patternType: 'solid', fgColor: { rgb: isUnused ? 'FFFBEB' : isInUse ? 'ECFDF5' : bg } }
+            }
+          }
+          dws[`K${dRowIdx}`] = { v: item.estimatedUnitPrice || 0, t: 'n', z: '#,##0', s: { ...baseCellStyle, alignment: { horizontal: 'right', vertical: 'center' } } }
+          dws[`L${dRowIdx}`] = {
+            v: item.valueOver30Days || 0,
+            t: 'n',
+            z: '#,##0;[Red]-#,##0;"-"',
+            s: {
+              ...baseCellStyle,
+              alignment: { horizontal: 'right', vertical: 'center' },
+              font: { name: 'Segoe UI', sz: 9, bold: (item.valueOver30Days || 0) > 0, color: { rgb: (item.valueOver30Days || 0) > 0 ? 'DC2626' : '64748B' } },
+              fill: { patternType: 'solid', fgColor: { rgb: (item.valueOver30Days || 0) > 0 ? 'FEF2F2' : bg } }
+            }
+          }
+
+          itemStt++
+        })
+      })
+
+      dRowIdx++
+      const detailTotalRow = dRowIdx
+      dws[`A${detailTotalRow}`] = { v: 'TỔNG CỘNG', t: 's', s: { ...totalRowStyle, alignment: { horizontal: 'center', vertical: 'center' } } }
+      for (let c = 1; c < 8; c++) {
+        dws[`${getColLabel(c)}${detailTotalRow}`] = { v: '', t: 's', s: totalRowStyle }
+      }
+      if (!dws['!merges']) dws['!merges'] = []
+      dws['!merges'].push(
+        { s: { r: 0, c: 0 }, e: { r: 0, c: 11 } },
+        { s: { r: 1, c: 0 }, e: { r: 1, c: 11 } },
+        { s: { r: detailTotalRow - 1, c: 0 }, e: { r: detailTotalRow - 1, c: 7 } }
+      )
+
+      if (detailTotalRow > 5) {
+        dws[`I${detailTotalRow}`] = { f: `SUM(I5:I${detailTotalRow - 1})`, t: 'n', z: '#,##0.00', s: { ...totalRowStyle, alignment: { horizontal: 'right', vertical: 'center' } } }
+        dws[`J${detailTotalRow}`] = { v: '', t: 's', s: totalRowStyle }
+        dws[`K${detailTotalRow}`] = { v: '', t: 's', s: totalRowStyle }
+        dws[`L${detailTotalRow}`] = { f: `SUM(L5:L${detailTotalRow - 1})`, t: 'n', z: '#,##0;[Red]-#,##0;"-"', s: { ...totalRowStyle, font: { name: 'Segoe UI', sz: 10, bold: true, color: { rgb: 'DC2626' } }, alignment: { horizontal: 'right', vertical: 'center' } } }
+      } else {
+        dws[`I${detailTotalRow}`] = { v: 0, t: 'n', z: '#,##0.00', s: { ...totalRowStyle, alignment: { horizontal: 'right', vertical: 'center' } } }
+        dws[`J${detailTotalRow}`] = { v: '', t: 's', s: totalRowStyle }
+        dws[`K${detailTotalRow}`] = { v: '', t: 's', s: totalRowStyle }
+        dws[`L${detailTotalRow}`] = { v: 0, t: 'n', z: '#,##0;[Red]-#,##0;"-"', s: { ...totalRowStyle, font: { name: 'Segoe UI', sz: 10, bold: true, color: { rgb: 'DC2626' } }, alignment: { horizontal: 'right', vertical: 'center' } } }
+      }
+
+      dws['!ref'] = `A1:L${detailTotalRow}`
+      XLSXStyle.utils.book_append_sheet(wb, dws, "Chi_Tiet_Vat_Tu")
+
+      if (materialPriceRows && materialPriceRows.length > 0) {
+        const phanNhomSheet = buildPhanNhomVatTuSheet(materialPriceRows, materialMetadataMap)
+        XLSXStyle.utils.book_append_sheet(wb, phanNhomSheet, "Phân nhóm Vật tư")
+      }
+
+      const wbout = XLSXStyle.write(wb, { bookType: 'xlsx', type: 'array' })
+      const blob = new Blob([wbout], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `Bao_Cao_Dashboard_Ton_Kho_${(dashboardWarehouseFilter === 'all' ? 'Tat_Ca_BCH' : dashboardWarehouseFilter).replace(/[\s/\\:*?"<>|]+/g, '_')}_${new Date().toISOString().slice(0, 10)}.xlsx`
+      document.body.appendChild(a)
+      a.click()
+      setTimeout(() => {
+        document.body.removeChild(a)
+        window.URL.revokeObjectURL(url)
+      }, 200)
+    } catch (err) {
+      console.error('Lỗi khi xuất file Excel Dashboard:', err)
+      alert('Có lỗi xảy ra khi xuất file Excel Dashboard: ' + (err.message || err))
+    }
+  }
+
   const handleWarehouseChange = (e) => {
     const val = e.target.value
     setLocalProject(val)
@@ -14383,6 +15281,29 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
                 ? 'Đang hiển thị báo cáo tổng hợp của tất cả kho dự án BCH.'
                 : `Đang hiển thị báo cáo riêng cho kho: ${dashboardWarehouseFilter}`}
             </div>
+            <button
+              onClick={handleExportDashboardExcel}
+              style={{
+                marginLeft: 'auto',
+                background: 'linear-gradient(135deg, #059669 0%, #10b981 100%)',
+                color: '#ffffff',
+                border: 'none',
+                boxShadow: '0 2px 4px rgba(16,185,129,0.2)',
+                height: 36,
+                padding: '0 16px',
+                borderRadius: 6,
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                fontWeight: 600,
+                fontSize: '13px',
+                cursor: 'pointer',
+                transition: 'all 0.15s ease'
+              }}
+              title="Xuất báo cáo tổng quan và chi tiết Dashboard ra Excel"
+            >
+              <Download size={14} /> Xuất Excel Báo cáo
+            </button>
           </div>
 
           {/* Summary Cards Row */}
@@ -15081,105 +16002,103 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
                 </button>
               </div>
             </div>
+
+            {/* Unit Classification Legend */}
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 12,
+              padding: '0 12px',
+              height: 38,
+              background: '#f8fafc',
+              borderRadius: 8,
+              border: '1px solid #e2e8f0',
+              fontSize: '12.5px',
+              flexWrap: 'wrap',
+              flexShrink: 0
+            }}>
+              <span style={{ fontWeight: 700, color: 'var(--text-muted)', fontSize: '12px' }}>Chú giải phân loại đơn vị:</span>
+              <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ width: 12, height: 12, borderRadius: 3, background: '#eff6ff', border: '1px solid #bfdbfe', display: 'inline-block' }} />
+                  <span style={{ fontWeight: 600, color: '#1e3a8a', fontSize: '12px' }}>Kho dự án / Ban điều hành</span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ width: 12, height: 12, borderRadius: 3, background: '#fffbeb', border: '1px solid #fde68a', display: 'inline-block' }} />
+                  <span style={{ fontWeight: 600, color: '#78350f', fontSize: '12px' }}>Nhà cung cấp (NCC)</span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ width: 12, height: 12, borderRadius: 3, background: '#f0fdf4', border: '1px solid #bbf7d0', display: 'inline-block' }} />
+                  <span style={{ fontWeight: 600, color: '#065f46', fontSize: '12px' }}>Tổ đội thi công</span>
+                </div>
+              </div>
+            </div>
           </>
         )}
 
-        {isRealReport && (
-          <button
-            id="btn-show-logic-explain"
-            onClick={() => {
-              setExplainModalSubTab(realReportSubTab);
-              setShowLogicExplainModal(true);
-            }}
-            className="btn"
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 6,
-              height: 38,
-              padding: '0 14px',
-              borderRadius: 6,
-              fontWeight: 600,
-              fontSize: '13px',
-              border: '1px solid #cbd5e1',
-              color: '#0369a1',
-              background: '#f0f9ff',
-              borderColor: '#bae6fd',
-              cursor: 'pointer',
-              marginLeft: ((isRealReport ? (realReportSubTab === 'tonghop' ? realReportSummaryRows.length : realReportRows.length) : reportData.length) > 0) ? 'auto' : undefined,
-              transition: 'all 0.15s ease'
-            }}
-            onMouseOver={e => {
-              e.currentTarget.style.background = '#e0f2fe';
-              e.currentTarget.style.borderColor = '#7dd3fc';
-            }}
-            onMouseOut={e => {
-              e.currentTarget.style.background = '#f0f9ff';
-              e.currentTarget.style.borderColor = '#bae6fd';
-            }}
-          >
-            <HelpCircle size={14} />
-            <span>Xem Giải thích Logic</span>
-          </button>
-        )}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginLeft: 'auto', flexShrink: 0 }}>
+          {isRealReport && (
+            <button
+              id="btn-show-logic-explain"
+              onClick={() => {
+                setExplainModalSubTab(realReportSubTab);
+                setShowLogicExplainModal(true);
+              }}
+              className="btn"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                height: 38,
+                padding: '0 14px',
+                borderRadius: 6,
+                fontWeight: 600,
+                fontSize: '13px',
+                border: '1px solid #bae6fd',
+                color: '#0369a1',
+                background: '#f0f9ff',
+                cursor: 'pointer',
+                transition: 'all 0.15s ease'
+              }}
+              onMouseOver={e => {
+                e.currentTarget.style.background = '#e0f2fe';
+                e.currentTarget.style.borderColor = '#7dd3fc';
+              }}
+              onMouseOut={e => {
+                e.currentTarget.style.background = '#f0f9ff';
+                e.currentTarget.style.borderColor = '#bae6fd';
+              }}
+            >
+              <HelpCircle size={14} />
+              <span>Xem Giải thích Logic</span>
+            </button>
+          )}
 
-        {((isRealReport ? (realReportSubTab === 'tonghop' ? realReportSummaryRows.length : realReportRows.length) : reportData.length) > 0) && (
-          <button
-            id="btn-export-inventory"
-            onClick={handleExportExcel}
-            className="btn btn-success"
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 6,
-              height: 38,
-              padding: '0 16px',
-              borderRadius: 6,
-              fontWeight: 600,
-              fontSize: '13px',
-              background: '#10b981',
-              color: '#ffffff',
-              border: 'none',
-              cursor: 'pointer',
-              boxShadow: '0 2px 4px rgba(16, 185, 129, 0.2)',
-              marginLeft: isRealReport ? undefined : 'auto'
-            }}
-          >
-            <Download size={14} />
-            <span>Xuất Excel</span>
-          </button>
-        )}
-      </div>
-
-      {/* Unit Classification Legend */}
-      <div style={{
-        background: '#ffffff',
-        border: '1px solid var(--border)',
-        borderRadius: 8,
-        padding: '10px 16px',
-        marginBottom: 12,
-        display: 'flex',
-        alignItems: 'center',
-        gap: 16,
-        flexWrap: 'wrap',
-        boxShadow: 'var(--shadow-sm)',
-        fontSize: '13px',
-        flexShrink: 0
-      }}>
-        <span style={{ fontWeight: 700, color: 'var(--text)' }}>Chú giải phân loại đơn vị:</span>
-        <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <span style={{ width: 14, height: 14, borderRadius: 4, background: '#eff6ff', border: '1px solid #bfdbfe', display: 'inline-block' }} />
-            <span style={{ fontWeight: 600, color: '#1e3a8a' }}>Kho dự án / Ban điều hành</span>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <span style={{ width: 14, height: 14, borderRadius: 4, background: '#fffbeb', border: '1px solid #fde68a', display: 'inline-block' }} />
-            <span style={{ fontWeight: 600, color: '#78350f' }}>Nhà cung cấp (NCC)</span>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <span style={{ width: 14, height: 14, borderRadius: 4, background: '#f0fdf4', border: '1px solid #bbf7d0', display: 'inline-block' }} />
-            <span style={{ fontWeight: 600, color: '#065f46' }}>Tổ đội thi công</span>
-          </div>
+          {((isRealReport ? (realReportSubTab === 'tonghop' ? realReportSummaryRows.length : realReportRows.length) : reportData.length) > 0) && (
+            <button
+              id="btn-export-inventory"
+              onClick={handleExportExcel}
+              className="btn btn-success"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                height: 38,
+                padding: '0 16px',
+                borderRadius: 6,
+                fontWeight: 600,
+                fontSize: '13px',
+                background: '#10b981',
+                color: '#ffffff',
+                border: 'none',
+                cursor: 'pointer',
+                boxShadow: '0 2px 4px rgba(16, 185, 129, 0.2)'
+              }}
+            >
+              <Download size={14} />
+              <span>Xuất Excel</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -18967,6 +19886,82 @@ export default function App() {
   const [projectToEdit, setProjectToEdit] = useState('')
   const [projectToDelete, setProjectToDelete] = useState('')
 
+  // BCH Name Normalization Modal state & rules
+  const [showChuanHoaBchModal, setShowChuanHoaBchModal] = useState(false)
+  const [bchAliasRules, setBchAliasRules] = useState(() => {
+    try {
+      const saved = localStorage.getItem('sgc_chuan_hoa_bch')
+      return saved ? JSON.parse(saved) : []
+    } catch (e) {
+      return []
+    }
+  })
+
+  // Fast lookup map: old_name_lowercase -> standard_name
+  const bchAliasMap = useMemo(() => {
+    const map = {}
+    bchAliasRules.forEach(r => {
+      if (r.ten_cu && r.ten_chuan) {
+        const k = r.ten_cu.trim().normalize('NFC').replace(/\s+/g, ' ').toLowerCase()
+        map[k] = r.ten_chuan.trim().normalize('NFC').replace(/\s+/g, ' ')
+      }
+    })
+    return map
+  }, [bchAliasRules])
+
+  // Load from Supabase on startup
+  const loadBchAliasRules = React.useCallback(async () => {
+    if (!isSupabaseConfigured) return
+    try {
+      const { data, error } = await supabase
+        .from('chuan_hoa_bch')
+        .select('id, ten_cu, ten_chuan, ghi_chu')
+        .order('id', { ascending: true })
+
+      if (error) {
+        // Table may not have been created yet, keep local state
+        return
+      }
+      if (data && Array.isArray(data)) {
+        setBchAliasRules(data)
+        try {
+          localStorage.setItem('sgc_chuan_hoa_bch', JSON.stringify(data))
+        } catch (e) {}
+      }
+    } catch (err) {
+      console.warn('[BCH Alias] Lỗi tải dữ liệu bảng chuan_hoa_bch:', err)
+    }
+  }, [])
+
+  React.useEffect(() => {
+    loadBchAliasRules()
+  }, [loadBchAliasRules])
+
+  // Apply new rules to current memory rows immediately
+  const handleApplyRulesToCurrentData = (newRules) => {
+    const map = {}
+    newRules.forEach(r => {
+      if (r.ten_cu && r.ten_chuan) {
+        const k = r.ten_cu.trim().normalize('NFC').replace(/\s+/g, ' ').toLowerCase()
+        map[k] = r.ten_chuan.trim().normalize('NFC').replace(/\s+/g, ' ')
+      }
+    })
+
+    const updateRow = (r) => {
+      const g = r.donViGiao ? normalizeBchName(r.donViGiao, map) : r.donViGiao
+      const n = r.donViNhan ? normalizeBchName(r.donViNhan, map) : r.donViNhan
+      if (g !== r.donViGiao || n !== r.donViNhan) {
+        return { ...r, donViGiao: g, donViNhan: n }
+      }
+      return r
+    }
+
+    setGiaoRows(prev => prev.map(updateRow))
+    setNhanRows(prev => prev.map(updateRow))
+    setChungRows(prev => prev.map(updateRow))
+    setKhoRows(prev => prev.map(updateRow))
+  }
+
   // Preview import modal state
   const [previewModal, setPreviewModal] = useState(null) // { type, rows, fileName }
 
@@ -18989,8 +19984,28 @@ export default function App() {
   const [chungRows, setChungRows] = useState([])
   const [chungFileName, setChungFileName] = useState('')
 
+  const [tinhTrangDonRows, setTinhTrangDonRows] = useState([])
+  const [tinhTrangDonFileName, setTinhTrangDonFileName] = useState('')
+
   const [khoRows, setKhoRows] = useState([])
   const [khoFileName, setKhoFileName] = useState('')
+
+  // Unique list of all unit names across all datasets for autocomplete/suggestions
+  const allSystemUnitNames = useMemo(() => {
+    const set = new Set()
+    const add = (name) => {
+      if (!name) return
+      const n = String(name).trim().normalize('NFC').replace(/\s+/g, ' ')
+      if (n) set.add(n)
+    }
+    chungRows.forEach(r => { add(r.donViGiao); add(r.donViNhan); })
+    giaoRows.forEach(r => { add(r.donViGiao); add(r.donViNhan); })
+    nhanRows.forEach(r => { add(r.donViGiao); add(r.donViNhan); })
+    khoRows.forEach(r => { add(r.donViGiao); add(r.donViNhan); })
+    Object.keys(customCategoryMap || {}).forEach(add)
+    Object.keys(dbCategoryMap || {}).forEach(add)
+    return Array.from(set).sort((a, b) => a.localeCompare(b, 'vi'))
+  }, [chungRows, giaoRows, nhanRows, khoRows, customCategoryMap, dbCategoryMap])
 
   const [materialPriceRows, setMaterialPriceRows] = React.useState(() => {
     try {
@@ -19486,6 +20501,10 @@ export default function App() {
   }, [chungRows])
 
   React.useEffect(() => {
+    idbSet('sgc_tinh_trang_don_rows', tinhTrangDonRows || [])
+  }, [tinhTrangDonRows])
+
+  React.useEffect(() => {
     idbSet('sgc_kho_rows', khoRows || [])
   }, [khoRows])
 
@@ -19841,11 +20860,16 @@ export default function App() {
 
   const loadDataFromSupabase = React.useCallback(async (forceBypassCache = false) => {
     if (!isSupabaseConfigured) return
-    await loadProjectsFromSupabase()
-    const freshOpts = await loadDepreciationOptionsFromSupabase()
-    await loadPricesFromSupabase(true, freshOpts)
-    await loadCustomClassifications()
-  }, [loadProjectsFromSupabase, loadPricesFromSupabase, loadDepreciationOptionsFromSupabase, loadCustomClassifications])
+    try {
+      await loadProjectsFromSupabase()
+      const freshOpts = await loadDepreciationOptionsFromSupabase()
+      await loadPricesFromSupabase(true, freshOpts)
+      await loadCustomClassifications()
+      await loadTableFromSupabase('chung', forceBypassCache)
+    } catch (err) {
+      console.warn('Lỗi loadDataFromSupabase:', err)
+    }
+  }, [loadProjectsFromSupabase, loadPricesFromSupabase, loadDepreciationOptionsFromSupabase, loadCustomClassifications, loadTableFromSupabase])
 
   // Fetch initial data from Supabase if connected
   React.useEffect(() => {
@@ -19861,6 +20885,7 @@ export default function App() {
       // Đọc nhanh từ IndexedDB và hiển thị lên UI NGAY LẬP TỨC (mất ~0.05s) giúp người dùng truy cập phát được luôn!
       try {
         const cachedChung = await idbGet('sgc_chung_rows')
+        const cachedTinhTrangDon = await idbGet('sgc_tinh_trang_don_rows')
         const cachedGiao = await idbGet('sgc_giao_rows')
         const cachedNhan = await idbGet('sgc_nhan_rows')
         const cachedKho = await idbGet('sgc_kho_rows')
@@ -19870,6 +20895,11 @@ export default function App() {
           if (Array.isArray(cachedChung) && cachedChung.length > 0) {
             setChungRows(cachedChung)
             setChungFileName('Report_Orders_Don_chung (Cached DB)')
+            loadedAny = true
+          }
+          if (Array.isArray(cachedTinhTrangDon) && cachedTinhTrangDon.length > 0) {
+            setTinhTrangDonRows(cachedTinhTrangDon)
+            setTinhTrangDonFileName('Report_Tinh_Trang_Don_Vat_Tu (Cached DB)')
             loadedAny = true
           }
           if (Array.isArray(cachedGiao) && cachedGiao.length > 0) {
@@ -19899,11 +20929,15 @@ export default function App() {
       }
 
       // Tiếp tục kiểm tra/đồng bộ ngầm với Supabase để lấy cập nhật mới nhất
-      loadDataFromSupabase().finally(() => {
+      try {
+        await loadDataFromSupabase()
+      } catch (err) {
+        console.warn('Lỗi initData loadDataFromSupabase:', err)
+      } finally {
         if (isMounted) {
           setIsInitialLoading(false)
         }
-      })
+      }
     }
 
     initData()
@@ -20497,11 +21531,14 @@ export default function App() {
 
   const tabs = [
     { id: 'chung', label: 'Đơn chung', icon: <ClipboardList size={15} /> },
+    { id: 'tinh_trang_don', label: 'Tình trạng đơn vật tư', icon: <FileCheck size={15} /> },
     { id: 'kho', label: 'Kho dự án', icon: <Warehouse size={15} /> },
+    { id: 'chuan_hoa_bch', label: 'Chuẩn hóa tên BCH', icon: <Building2 size={15} /> },
     { id: 'dongia', label: 'Phân nhóm vật tư', icon: <PackageCheck size={15} /> },
     { id: 'inventory', label: 'Báo cáo xuất nhập tồn', icon: <Database size={15} /> },
     { id: 'inventory_real', label: 'Báo cáo xuất nhập thực', icon: <BarChart3 size={15} /> },
     { id: 'depreciation_assets', label: 'Báo cáo tài sản khấu hao', icon: <DollarSign size={15} /> },
+    { id: 'material_stats', label: 'Thống kê theo vật tư', icon: <Package size={15} /> },
     { id: 'accounts', label: 'Quản lý tài khoản', icon: <Users size={15} /> },
   ]
 
@@ -20659,9 +21696,9 @@ export default function App() {
                 <div style={{ flex: 1, height: '1px', background: 'rgba(255, 255, 255, 0.15)' }} />
               </div>
  
-              {tabs.filter(t => t.id === 'giao' || t.id === 'nhan' || t.id === 'chung' || t.id === 'kho' || t.id === 'dongia').map(t => {
+              {tabs.filter(t => t.id === 'giao' || t.id === 'nhan' || t.id === 'chung' || t.id === 'tinh_trang_don' || t.id === 'kho' || t.id === 'chuan_hoa_bch' || t.id === 'dongia').map(t => {
                 const isSelected = tab === t.id
-                const count = t.id === 'giao' ? giaoRows.length : t.id === 'nhan' ? nhanRows.length : t.id === 'kho' ? khoRows.length : t.id === 'chung' ? chungRows.length : t.id === 'dongia' ? materialPriceRows.length : null
+                const count = t.id === 'giao' ? giaoRows.length : t.id === 'nhan' ? nhanRows.length : t.id === 'kho' ? khoRows.length : t.id === 'chung' ? chungRows.length : t.id === 'tinh_trang_don' ? tinhTrangDonRows.length : t.id === 'dongia' ? materialPriceRows.length : t.id === 'chuan_hoa_bch' ? bchAliasRules.length : null
  
                 return (
                   <button
@@ -20756,7 +21793,7 @@ export default function App() {
                 <div style={{ flex: 1, height: '1px', background: 'rgba(255, 255, 255, 0.15)' }} />
               </div>
  
-              {tabs.filter(t => t.id === 'inventory' || t.id === 'inventory_real' || t.id === 'depreciation_assets' || (t.id === 'accounts' && currentUser?.quyen === 'Admin')).map(t => {
+              {tabs.filter(t => t.id === 'inventory' || t.id === 'inventory_real' || t.id === 'depreciation_assets' || t.id === 'material_stats' || (t.id === 'accounts' && currentUser?.quyen === 'Admin')).map(t => {
                 const isSelected = tab === t.id
  
                 return (
@@ -20926,7 +21963,7 @@ export default function App() {
                 Xử lý & Tổng hợp
               </div>
 
-              {tabs.filter(t => t.id === 'inventory' || t.id === 'inventory_real' || t.id === 'depreciation_assets').map(t => {
+              {tabs.filter(t => t.id === 'inventory' || t.id === 'inventory_real' || t.id === 'depreciation_assets' || t.id === 'material_stats').map(t => {
                 const isSelected = tab === t.id
 
                 return (
@@ -21073,6 +22110,7 @@ export default function App() {
                 onImportFile={(rows, name, isAppend) => handleImportFile('giao', rows, name, isAppend)}
                 onDeleteFile={() => handleDeleteFile('giao')}
                 customCategoryMap={customCategoryMap}
+                bchAliasMap={bchAliasMap}
               />
             )}
             {tab === 'nhan' && (
@@ -21095,6 +22133,7 @@ export default function App() {
                 onImportFile={(rows, name, isAppend) => handleImportFile('nhan', rows, name, isAppend)}
                 onDeleteFile={() => handleDeleteFile('nhan')}
                 customCategoryMap={customCategoryMap}
+                bchAliasMap={bchAliasMap}
               />
             )}
             {tab === 'chung' && (
@@ -21117,6 +22156,17 @@ export default function App() {
                 onImportFile={(rows, name, isAppend) => handleImportFile('chung', rows, name, isAppend)}
                 onDeleteFile={() => handleDeleteFile('chung')}
                 customCategoryMap={customCategoryMap}
+                bchAliasMap={bchAliasMap}
+              />
+            )}
+            {tab === 'tinh_trang_don' && (
+              <TinhTrangDonVatTuTab
+                rows={tinhTrangDonRows}
+                setRows={setTinhTrangDonRows}
+                fileName={tinhTrangDonFileName}
+                setFileName={setTinhTrangDonFileName}
+                selectedProject={selectedProject}
+                bchAliasMap={bchAliasMap}
               />
             )}
             {tab === 'kho' && (
@@ -21129,6 +22179,22 @@ export default function App() {
                 setCustomCategoryMap={setCustomCategoryMap}
                 dbCategoryMap={dbCategoryMap}
                 setDbCategoryMap={setDbCategoryMap}
+                bchAliasRules={bchAliasRules}
+                bchAliasMap={bchAliasMap}
+                onOpenChuanHoaBchModal={() => setShowChuanHoaBchModal(true)}
+                onNavigateToTab={setTab}
+              />
+            )}
+            {tab === 'chuan_hoa_bch' && (
+              <ChuanHoaBchTab
+                chungRows={chungRows}
+                customCategoryMap={customCategoryMap}
+                dbCategoryMap={dbCategoryMap}
+                bchAliasRules={bchAliasRules}
+                setBchAliasRules={setBchAliasRules}
+                bchAliasMap={bchAliasMap}
+                onApplyRulesToCurrentData={handleApplyRulesToCurrentData}
+                onReloadRulesFromSupabase={loadBchAliasRules}
               />
             )}
             {tab === 'dongia' && (
@@ -21170,11 +22236,14 @@ export default function App() {
                 allProjects={allProjects}
                 isRealReport={false}
                 customCategoryMap={customCategoryMap}
+                dbCategoryMap={dbCategoryMap}
                 materialPriceRows={materialPriceRows}
                 materialPrices={materialPrices}
                 materialClassifications={materialClassifications}
                 handleClassificationChange={handleClassificationChange}
                 handlePriceChange={handlePriceChange}
+                bchAliasMap={bchAliasMap}
+                bchAliasRules={bchAliasRules}
               />
             )}
             {tab === 'inventory_real' && (
@@ -21187,11 +22256,14 @@ export default function App() {
                 allProjects={allProjects}
                 isRealReport={true}
                 customCategoryMap={customCategoryMap}
+                dbCategoryMap={dbCategoryMap}
                 materialPriceRows={materialPriceRows}
                 materialPrices={materialPrices}
                 materialClassifications={materialClassifications}
                 handleClassificationChange={handleClassificationChange}
                 handlePriceChange={handlePriceChange}
+                bchAliasMap={bchAliasMap}
+                bchAliasRules={bchAliasRules}
               />
             )}
             {tab === 'depreciation_assets' && (
@@ -21201,11 +22273,30 @@ export default function App() {
                 nhanRows={nhanRows}
                 allProjects={allProjects}
                 customCategoryMap={customCategoryMap}
+                dbCategoryMap={dbCategoryMap}
                 materialPriceRows={materialPriceRows}
                 materialPrices={materialPrices}
                 materialClassifications={materialClassifications}
                 isDbSchemaOutdated={isDbSchemaOutdated}
                 onOpenDbUpgradeModal={() => setShowDbUpgradeModal(true)}
+                bchAliasMap={bchAliasMap}
+                bchAliasRules={bchAliasRules}
+              />
+            )}
+            {tab === 'material_stats' && (
+              <ThongKeTheoVatTuTab
+                chungRows={chungRows}
+                giaoRows={giaoRows}
+                nhanRows={nhanRows}
+                allProjects={allProjects}
+                customCategoryMap={customCategoryMap}
+                dbCategoryMap={dbCategoryMap}
+                materialPriceRows={materialPriceRows}
+                materialPrices={materialPrices}
+                materialClassifications={materialClassifications}
+                depreciationOptions={depreciationOptions}
+                bchAliasMap={bchAliasMap}
+                bchAliasRules={bchAliasRules}
               />
             )}
             {tab === 'accounts' && (
@@ -21285,6 +22376,20 @@ export default function App() {
         giaoRows={giaoRows}
         nhanRows={nhanRows}
         khoRows={khoRows}
+      />
+
+      <ChuanHoaBchModal
+        isOpen={showChuanHoaBchModal}
+        onClose={() => setShowChuanHoaBchModal(false)}
+        existingRules={bchAliasRules}
+        onRulesChange={(newRules) => {
+          setBchAliasRules(newRules)
+          try {
+            localStorage.setItem('sgc_chuan_hoa_bch', JSON.stringify(newRules))
+          } catch (e) {}
+          handleApplyRulesToCurrentData(newRules)
+        }}
+        allUnitNames={allSystemUnitNames}
       />
 
       <style>{`
