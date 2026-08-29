@@ -530,8 +530,13 @@ export default function TaiSanKhauHaoTab({
     // Map and calculate stock, days unused, depreciation pricing
     const list = Object.values(groups).map(g => {
       const stock = g.received - g.issued
-      const daysUnused = getDaysToToday(g.latestReceivedDate)
-      const unusedStatus = (stock > 0 && daysUnused > 30) ? 'Chưa sử dụng (> 30 ngày)' : 'Đang sử dụng'
+      const daysIss = getDaysToToday(g.latestIssuedDate)
+      const numDaysIss = (typeof daysIss === 'number' && daysIss > 0) ? daysIss : 0
+      const daysRec = getDaysToToday(g.latestReceivedDate)
+      const numDaysRec = (typeof daysRec === 'number' && daysRec > 0) ? daysRec : 0
+      const activeDays = numDaysIss > 0 ? numDaysIss : numDaysRec
+      const daysUnused = activeDays
+      const unusedStatus = (stock > 0 && activeDays > 30) ? 'Chưa sử dụng (> 30 ngày)' : 'Đang sử dụng'
 
       // Pricing details
       const priceRow = materialPriceRows.find(r => String(r.maSAP || '').trim().toLowerCase() === g.maSAP.toLowerCase())
@@ -554,7 +559,7 @@ export default function TaiSanKhauHaoTab({
       // Accumulated Depreciation Value for over 30 days unused items
       let valueOver30Days = 0
       if (unusedStatus === 'Chưa sử dụng (> 30 ngày)' && stock > 0) {
-        valueOver30Days = Math.round(daysUnused * stock * estimatedUnitPrice)
+        valueOver30Days = Math.round(activeDays * stock * estimatedUnitPrice)
       }
 
       const totalAssetValue = Math.round(stock * averageUnitPrice)
@@ -753,12 +758,17 @@ export default function TaiSanKhauHaoTab({
 
         const totalAssetValue = Math.round(stock * averageUnitPrice)
         
-        const daysUnused = getDaysToToday(g.latestReceivedDate)
-        const unusedStatus = (stock > 0 && daysUnused > 30) ? 'Chưa sử dụng (> 30 ngày)' : 'Đang sử dụng'
+        const daysIss = getDaysToToday(g.latestIssuedDate)
+        const numDaysIss = (typeof daysIss === 'number' && daysIss > 0) ? daysIss : 0
+        const daysRec = getDaysToToday(g.latestReceivedDate)
+        const numDaysRec = (typeof daysRec === 'number' && daysRec > 0) ? daysRec : 0
+        const activeDays = numDaysIss > 0 ? numDaysIss : numDaysRec
+        const daysUnused = activeDays
+        const unusedStatus = (stock > 0 && activeDays > 30) ? 'Chưa sử dụng (> 30 ngày)' : 'Đang sử dụng'
 
         let valueOver30Days = 0
         if (unusedStatus === 'Chưa sử dụng (> 30 ngày)' && stock > 0) {
-          valueOver30Days = Math.round(daysUnused * stock * estimatedUnitPrice)
+          valueOver30Days = Math.round(activeDays * stock * estimatedUnitPrice)
         }
 
         if (stock !== 0 || valueOver30Days > 0) {

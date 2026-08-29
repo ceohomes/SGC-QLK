@@ -9,7 +9,7 @@ import {
   AlertCircle, CheckCircle2, Filter, ArrowUpDown, Clock, CloudUpload, Database, Save,
   Pencil, Trash2, Lock, ClipboardList, Warehouse, Building2, Users, HelpCircle,
   Calendar, AlertTriangle, DollarSign, Copy, Check, Terminal, LogOut, User as UserIcon, CheckSquare, ArrowRight,
-  Sparkles, Layers, Zap, Package, FileCheck
+  Sparkles, Layers, Zap, Package, FileCheck, Ban, SlidersHorizontal
 } from 'lucide-react'
 import { COLS_GIAO_NHAN, parseXlsxToRows, normalizeBchName, formatVal, getTrangThaiColor, isApprovedStatus, isPendingStatus, isRejectedStatus, getStandardizedBchList } from './constants.js'
 import { supabase, isSupabaseConfigured, supabaseUrl, supabaseAnonKey } from './supabaseClient.js'
@@ -304,6 +304,400 @@ function SearchableSelect({ value, onChange, options, placeholder = 'Tất cả 
                 Không tìm thấy kết quả
               </div>
             )}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ─── DashboardExcludeBchSelector (Bộ công cụ chọn bỏ qua Ban Chỉ Huy) ─────────
+function DashboardExcludeBchSelector({
+  bchWarehouses = [],
+  dashboardExcludedBch = [],
+  setDashboardExcludedBch,
+  dashboardStats = []
+}) {
+  const [isOpen, setIsOpen] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
+  const containerRef = useRef(null)
+
+  // Click outside to close
+  React.useEffect(() => {
+    function handleClickOutside(e) {
+      if (containerRef.current && !containerRef.current.contains(e.target)) {
+        setIsOpen(false)
+      }
+    }
+    if (isOpen) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [isOpen])
+
+  // Clear query on close
+  React.useEffect(() => {
+    if (!isOpen) setSearchQuery('')
+  }, [isOpen])
+
+  // Map each BCH to its stats for rich context in selector
+  const statMap = useMemo(() => {
+    const map = new Map()
+    if (dashboardStats && dashboardStats.length > 0) {
+      dashboardStats.forEach(s => {
+        map.set(s.projectName, s)
+      })
+    }
+    return map
+  }, [dashboardStats])
+
+  const filteredBchs = useMemo(() => {
+    const q = searchQuery.toLowerCase().trim()
+    if (!q) return bchWarehouses
+    return bchWarehouses.filter(w => w.toLowerCase().includes(q))
+  }, [bchWarehouses, searchQuery])
+
+  const isExcluded = useCallback((bch) => {
+    return dashboardExcludedBch.includes(bch)
+  }, [dashboardExcludedBch])
+
+  const toggleBch = useCallback((bch) => {
+    setDashboardExcludedBch(prev => {
+      if (prev.includes(bch)) {
+        return prev.filter(x => x !== bch)
+      } else {
+        return [...prev, bch]
+      }
+    })
+  }, [setDashboardExcludedBch])
+
+  const clearAllExclusions = useCallback(() => {
+    setDashboardExcludedBch([])
+  }, [setDashboardExcludedBch])
+
+  const hasExclusions = dashboardExcludedBch.length > 0
+
+  return (
+    <div ref={containerRef} style={{ position: 'relative', display: 'inline-block' }}>
+      {/* Trigger Button */}
+      <button
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        style={{
+          height: 36,
+          padding: '0 12px',
+          borderRadius: 6,
+          border: hasExclusions ? '1.5px solid #f87171' : '1px solid var(--border)',
+          background: hasExclusions ? '#fef2f2' : '#ffffff',
+          color: hasExclusions ? '#dc2626' : 'var(--text)',
+          fontSize: 13,
+          fontWeight: 600,
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 6,
+          cursor: 'pointer',
+          boxShadow: hasExclusions ? '0 1px 3px rgba(239, 68, 68, 0.15)' : 'var(--shadow-sm)',
+          transition: 'all 0.15s ease',
+          userSelect: 'none'
+        }}
+        title="Chọn các kho Ban Chỉ Huy cần loại trừ khỏi báo cáo & xuất Excel"
+      >
+        <Ban size={15} color={hasExclusions ? '#dc2626' : '#64748b'} />
+        <span>Bỏ qua BCH</span>
+        {hasExclusions ? (
+          <span style={{
+            background: '#ef4444',
+            color: '#ffffff',
+            fontSize: 11,
+            fontWeight: 700,
+            padding: '1px 6px',
+            borderRadius: 10,
+            marginLeft: 2
+          }}>
+            {dashboardExcludedBch.length}
+          </span>
+        ) : (
+          <span style={{
+            background: '#f1f5f9',
+            color: '#64748b',
+            fontSize: 11,
+            fontWeight: 600,
+            padding: '1px 6px',
+            borderRadius: 10,
+            marginLeft: 2
+          }}>
+            0
+          </span>
+        )}
+        <ChevronDown size={14} color={hasExclusions ? '#dc2626' : '#64748b'} />
+      </button>
+
+      {/* Popover Dropdown Panel */}
+      {isOpen && (
+        <div style={{
+          position: 'absolute',
+          top: 'calc(100% + 6px)',
+          left: 0,
+          zIndex: 9999,
+          background: '#ffffff',
+          borderRadius: 8,
+          boxShadow: '0 10px 25px -5px rgba(0,0,0,0.15), 0 8px 10px -6px rgba(0,0,0,0.1)',
+          border: '1px solid #cbd5e1',
+          width: 400,
+          maxWidth: '90vw',
+          padding: 12,
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 10
+        }}>
+          {/* Header */}
+          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', borderBottom: '1px solid #f1f5f9', paddingBottom: 8 }}>
+            <div>
+              <div style={{ fontSize: 13.5, fontWeight: 700, color: '#0f172a', display: 'flex', alignItems: 'center', gap: 6 }}>
+                <Ban size={15} color="#ef4444" />
+                Chọn kho BCH cần bỏ qua
+              </div>
+              <div style={{ fontSize: 11.5, color: '#64748b', marginTop: 2 }}>
+                Kho được chọn sẽ không xuất hiện trong số liệu và file Excel xuất ra.
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setIsOpen(false)}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                cursor: 'pointer',
+                color: '#94a3b8',
+                padding: 4,
+                borderRadius: 4
+              }}
+            >
+              <X size={16} />
+            </button>
+          </div>
+
+          {/* Search Box */}
+          <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+            <Search size={14} style={{ position: 'absolute', left: 9, color: '#94a3b8' }} />
+            <input
+              type="text"
+              placeholder="Tìm kiếm nhanh kho BCH..."
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              style={{
+                width: '100%',
+                padding: '6px 8px 6px 30px',
+                fontSize: 12.5,
+                border: '1px solid #cbd5e1',
+                borderRadius: 6,
+                outline: 'none',
+                background: '#f8fafc',
+                color: '#0f172a'
+              }}
+              autoFocus
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery('')}
+                style={{
+                  position: 'absolute',
+                  right: 6,
+                  background: 'transparent',
+                  border: 'none',
+                  color: '#94a3b8',
+                  cursor: 'pointer',
+                  padding: 2
+                }}
+              >
+                <X size={13} />
+              </button>
+            )}
+          </div>
+
+          {/* Quick Actions & Status */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 12, color: '#475569' }}>
+            <span>
+              Đã bỏ qua: <strong style={{ color: hasExclusions ? '#dc2626' : '#475569' }}>{dashboardExcludedBch.length}</strong> / {bchWarehouses.length} kho
+            </span>
+            {hasExclusions && (
+              <button
+                type="button"
+                onClick={clearAllExclusions}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  color: '#0284c7',
+                  fontSize: 12,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  padding: 0,
+                  textDecoration: 'underline'
+                }}
+              >
+                Bỏ chọn tất cả (Khôi phục)
+              </button>
+            )}
+          </div>
+
+          {/* Excluded Badges Chips */}
+          {hasExclusions && (
+            <div style={{
+              display: 'flex',
+              flexWrap: 'wrap',
+              gap: 4,
+              maxHeight: 70,
+              overflowY: 'auto',
+              background: '#fef2f2',
+              border: '1px solid #fee2e2',
+              padding: 6,
+              borderRadius: 6
+            }}>
+              {dashboardExcludedBch.map(bch => (
+                <span
+                  key={bch}
+                  style={{
+                    background: '#ffffff',
+                    border: '1px solid #fca5a5',
+                    color: '#b91c1c',
+                    fontSize: 11,
+                    fontWeight: 600,
+                    padding: '2px 6px',
+                    borderRadius: 4,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 4
+                  }}
+                >
+                  <span style={{ maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{bch}</span>
+                  <X
+                    size={12}
+                    style={{ cursor: 'pointer', opacity: 0.8 }}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      toggleBch(bch)
+                    }}
+                  />
+                </span>
+              ))}
+            </div>
+          )}
+
+          {/* BCH List with checkboxes */}
+          <div style={{
+            maxHeight: 220,
+            overflowY: 'auto',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 2,
+            border: '1px solid #e2e8f0',
+            borderRadius: 6,
+            padding: 4,
+            background: '#ffffff'
+          }}>
+            {filteredBchs.length === 0 ? (
+              <div style={{ padding: '16px 8px', textAlign: 'center', color: '#94a3b8', fontSize: 12 }}>
+                Không tìm thấy kho BCH nào phù hợp
+              </div>
+            ) : (
+              filteredBchs.map(bch => {
+                const excluded = isExcluded(bch)
+                const stat = statMap.get(bch)
+                const unusedVal = stat ? stat.unusedValue : 0
+
+                return (
+                  <div
+                    key={bch}
+                    onClick={() => toggleBch(bch)}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 8,
+                      padding: '6px 8px',
+                      borderRadius: 4,
+                      cursor: 'pointer',
+                      background: excluded ? '#fef2f2' : 'transparent',
+                      border: excluded ? '1px solid #fecaca' : '1px solid transparent',
+                      transition: 'background 0.1s'
+                    }}
+                    onMouseOver={e => {
+                      if (!excluded) e.currentTarget.style.background = '#f8fafc'
+                    }}
+                    onMouseOut={e => {
+                      if (!excluded) e.currentTarget.style.background = 'transparent'
+                    }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={excluded}
+                      onChange={() => {}} // Handled by parent div click
+                      style={{ cursor: 'pointer', accentColor: '#ef4444', width: 14, height: 14 }}
+                    />
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{
+                        fontSize: 12.5,
+                        fontWeight: excluded ? 700 : 500,
+                        color: excluded ? '#dc2626' : '#1e293b',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap'
+                      }}>
+                        {bch}
+                      </div>
+                      {stat && (
+                        <div style={{ fontSize: 11, color: excluded ? '#ef4444' : '#64748b', display: 'flex', gap: 8, marginTop: 1 }}>
+                          <span>{stat.totalItemsInStock || 0} mặt hàng</span>
+                          {unusedVal > 0 && (
+                            <span style={{ color: '#ef4444', fontWeight: 600 }}>
+                              Tồn chưa SD: {unusedVal.toLocaleString('vi-VN')} đ
+                            </span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                    {excluded && (
+                      <span style={{
+                        fontSize: 10.5,
+                        fontWeight: 700,
+                        color: '#dc2626',
+                        background: '#fee2e2',
+                        padding: '1px 6px',
+                        borderRadius: 4,
+                        whiteSpace: 'nowrap'
+                      }}>
+                        Bỏ qua
+                      </span>
+                    )}
+                  </div>
+                )
+              })
+            )}
+          </div>
+
+          {/* Footer */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: 4 }}>
+            <span style={{ fontSize: 11.5, color: '#64748b' }}>
+              {hasExclusions ? `Đang loại trừ ${dashboardExcludedBch.length} kho` : 'Chưa chọn bỏ qua kho nào'}
+            </span>
+            <button
+              type="button"
+              onClick={() => setIsOpen(false)}
+              style={{
+                padding: '6px 14px',
+                borderRadius: 6,
+                background: '#0f58a7',
+                color: '#ffffff',
+                border: 'none',
+                fontSize: 12.5,
+                fontWeight: 600,
+                cursor: 'pointer'
+              }}
+            >
+              Hoàn tất
+            </button>
           </div>
         </div>
       )}
@@ -11703,9 +12097,12 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
         // Đơn giá tạm tính lấy theo cột đơn giá 1 ngày
         estimatedUnitPrice = priceRow ? (priceRow.donGiaTrungBinh1Ngay || 0) : 0
         if (unusedStatus === 'Chưa sử dụng (> 30 ngày)' && stock > 0) {
-          const days = getDaysToToday(g.latestReceivedDate)
-          const numDays = typeof days === 'number' ? days : 0
-          valueOver30Days = numDays * stock * estimatedUnitPrice
+          const daysIss = getDaysToToday(g.latestIssuedDate)
+          const numDaysIss = (typeof daysIss === 'number' && daysIss > 0) ? daysIss : 0
+          const daysRec = getDaysToToday(g.latestReceivedDate)
+          const numDaysRec = (typeof daysRec === 'number' && daysRec > 0) ? daysRec : 0
+          const activeDays = numDaysIss > 0 ? numDaysIss : numDaysRec
+          valueOver30Days = activeDays * stock * estimatedUnitPrice
         }
       } else {
         // Vật tư tiêu hao hoặc khác
@@ -12485,9 +12882,12 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
         if (isKhauHao) {
           estimatedUnitPrice = priceRow ? (priceRow.donGiaTrungBinh1Ngay || 0) : 0
           if (unusedStatus === 'Chưa sử dụng (> 30 ngày)' && stock > 0) {
-            const days = getDaysToToday(g.latestReceivedDate)
-            const numDays = typeof days === 'number' ? days : 0
-            valueOver30Days = numDays * stock * estimatedUnitPrice
+            const daysIss = getDaysToToday(g.latestIssuedDate)
+            const numDaysIss = (typeof daysIss === 'number' && daysIss > 0) ? daysIss : 0
+            const daysRec = getDaysToToday(g.latestReceivedDate)
+            const numDaysRec = (typeof daysRec === 'number' && daysRec > 0) ? daysRec : 0
+            const activeDays = numDaysIss > 0 ? numDaysIss : numDaysRec
+            valueOver30Days = activeDays * stock * estimatedUnitPrice
           }
         } else {
           estimatedUnitPrice = priceRow ? (priceRow.donGiaTrungBinh || 0) : (materialPrices[g.maSAP] || 0)
@@ -12587,10 +12987,18 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
   // thay vì luôn cộng dồn/hiển thị toàn bộ các kho.
   const [dashboardWarehouseFilter, setDashboardWarehouseFilter] = React.useState('all')
 
+  // Danh sách các kho BCH người dùng chọn BỎ QUA khi xem / xuất báo cáo Dashboard
+  const [dashboardExcludedBch, setDashboardExcludedBch] = React.useState([])
+
   const filteredDashboardStats = React.useMemo(() => {
-    if (dashboardWarehouseFilter === 'all') return dashboardStats
-    return dashboardStats.filter(s => s.projectName === dashboardWarehouseFilter)
-  }, [dashboardStats, dashboardWarehouseFilter])
+    let list = dashboardStats
+    if (dashboardExcludedBch && dashboardExcludedBch.length > 0) {
+      const excludedSet = new Set(dashboardExcludedBch.map(b => String(b).trim().toLowerCase()))
+      list = list.filter(s => !excludedSet.has(String(s.projectName).trim().toLowerCase()))
+    }
+    if (dashboardWarehouseFilter === 'all') return list
+    return list.filter(s => s.projectName === dashboardWarehouseFilter)
+  }, [dashboardStats, dashboardWarehouseFilter, dashboardExcludedBch])
 
   const dashboardSummary = React.useMemo(() => {
     let grandUnusedValue = 0
@@ -14258,10 +14666,13 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
         donXuatLastRow >= 5
           ? { f: `IF(ISNUMBER(${getColLetter('latestIssuedDate')}${rowIdx}), TODAY()-${getColLetter('latestIssuedDate')}${rowIdx}, "")`, v: getDaysToToday(item.latestIssuedDate) }
           : '',
-        item.unusedStatus,
+        {
+          f: `IF(${getColLetter('stock')}${rowIdx}<=0, "Đã dùng hết", IF(OR(NOT(ISNUMBER(${getColLetter('latestIssuedDate')}${rowIdx})), ${getColLetter('issued')}${rowIdx}<=0), IF(AND(ISNUMBER(${getColLetter('daysSinceReceived')}${rowIdx}), ${getColLetter('daysSinceReceived')}${rowIdx}>30), "Chưa sử dụng (> 30 ngày)", "Đang sử dụng"), IF(AND(ISNUMBER(${getColLetter('daysSinceIssued')}${rowIdx}), ${getColLetter('daysSinceIssued')}${rowIdx}>30), "Chưa sử dụng (> 30 ngày)", "Đang sử dụng")))`,
+          v: item.unusedStatus
+        },
         item.estimatedUnitPrice,
         {
-          f: `IF(${getColLetter('unusedStatus')}${rowIdx}="Chưa sử dụng (> 30 ngày)", ROUND(IF(OR(ISNUMBER(SEARCH("khấu hao", ${getColLetter('materialClassification')}${rowIdx})), ISNUMBER(SEARCH("tài sản", ${getColLetter('materialClassification')}${rowIdx}))), ${getColLetter('daysSinceReceived')}${rowIdx}*${getColLetter('stock')}${rowIdx}*${getColLetter('estimatedUnitPrice')}${rowIdx}, ${getColLetter('stock')}${rowIdx}*${getColLetter('estimatedUnitPrice')}${rowIdx}), 0), 0)`,
+          f: `IF(${getColLetter('unusedStatus')}${rowIdx}="Chưa sử dụng (> 30 ngày)", ROUND(IF(OR(ISNUMBER(SEARCH("khấu hao", ${getColLetter('materialClassification')}${rowIdx})), ISNUMBER(SEARCH("tài sản", ${getColLetter('materialClassification')}${rowIdx}))), ${getColLetter('stock')}${rowIdx}*${getColLetter('estimatedUnitPrice')}${rowIdx}*IF(AND(ISNUMBER(${getColLetter('daysSinceIssued')}${rowIdx}), ${getColLetter('daysSinceIssued')}${rowIdx}>0), ${getColLetter('daysSinceIssued')}${rowIdx}, ${getColLetter('daysSinceReceived')}${rowIdx}), ${getColLetter('stock')}${rowIdx}*${getColLetter('estimatedUnitPrice')}${rowIdx}), 0), 0)`,
           v: item.valueOver30Days
         },
         item.materialClassification
@@ -14783,23 +15194,41 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
       }
 
       const colsOverview = [
-        { key: 'stt', label: 'STT', width: 50 },
-        { key: 'projectName', label: 'Kho Ban Chỉ Huy (BCH)', width: 260 },
-        { key: 'totalItems', label: 'Tổng mặt hàng tồn', width: 150 },
-        { key: 'unusedCount', label: 'Chưa sử dụng (> 30 ngày)', width: 170 },
-        { key: 'unusedRatio', label: 'Tỷ lệ Chưa SD (%)', width: 140 },
-        { key: 'inUseCount', label: 'Đang sử dụng', width: 130 },
-        { key: 'depletedCount', label: 'Đã dùng hết', width: 120 },
-        { key: 'unusedValue', label: 'Giá trị chưa SD (VNĐ)', width: 180 }
+        { key: 'stt', label: 'STT', width: 45 },
+        { key: 'projectName', label: 'Kho Ban Chỉ Huy (BCH)', width: 220 },
+        { key: 'totalItems', label: 'Tổng số mã vật tư', width: 120 },
+        { key: 'unusedCount', label: 'Chưa sử dụng (> 30 ngày)', width: 140 },
+        { key: 'unusedRatio', label: 'Tỷ lệ Chưa SD (%)', width: 115 },
+        { key: 'inUseCount', label: 'Đang sử dụng', width: 105 },
+        { key: 'depletedCount', label: 'Đã dùng hết', width: 95 },
+        { key: 'unusedValue', label: 'Giá trị chưa SD (VNĐ)', width: 145 }
       ]
       ws['!cols'] = colsOverview.map(c => ({ wpx: c.width }))
 
+      const scopeDesc = dashboardWarehouseFilter === 'all'
+        ? `Tất cả kho Ban Chỉ Huy (${filteredDashboardStats.length}/${bchWarehouses.length} kho${dashboardExcludedBch.length > 0 ? ` - Đã bỏ qua ${dashboardExcludedBch.length} kho` : ''})`
+        : dashboardWarehouseFilter
+
       ws['A1'] = { v: 'BÁO CÁO DASHBOARD QUẢN LÝ TỒN KHO BAN CHỈ HUY (BCH)', t: 's', s: titleStyle }
       ws['A2'] = {
-        v: `Kho chọn: ${dashboardWarehouseFilter === 'all' ? 'Tất cả kho Ban Chỉ Huy' : dashboardWarehouseFilter} | Loại báo cáo: ${isRealReport ? 'Báo cáo Thực Tế' : 'Báo cáo Sổ Sách'} | Ngày xuất: ${new Date().toLocaleDateString('vi-VN')}`,
+        v: `Kho chọn: ${scopeDesc} | Loại báo cáo: ${isRealReport ? 'Báo cáo Thực Tế' : 'Báo cáo Sổ Sách'} | Ngày xuất: ${new Date().toLocaleDateString('vi-VN')}`,
         t: 's',
         s: subtitleStyle
       }
+
+      // Sắp xếp danh sách kho Ban Chỉ Huy theo thứ tự Giá trị chưa SD (VNĐ) giảm dần (từ lớn đến bé)
+      const sortedDashboardStats = [...filteredDashboardStats].sort((a, b) => {
+        const valA = Number(a.unusedValue) || 0
+        const valB = Number(b.unusedValue) || 0
+        if (valB !== valA) return valB - valA
+        return String(a.projectName || '').localeCompare(String(b.projectName || ''), 'vi', { sensitivity: 'base' })
+      })
+
+      const totalItemsCount = sortedDashboardStats.reduce((s, x) => s + ((x.allItems || x.items || []).length), 0)
+      const grandUnusedCount = sortedDashboardStats.reduce((s, x) => s + (x.unusedCount || 0), 0)
+      const unusedPercentStr = totalItemsCount > 0 ? ((grandUnusedCount / totalItemsCount) * 100).toFixed(1) : '0.0'
+      const detailStartRow = 5
+      const detailLastRow = totalItemsCount > 0 ? (4 + totalItemsCount) : 5
 
       ws['A4'] = { v: 'Tổng số kho BCH', t: 's', s: kpiBoxHeaderStyle }
       ws['B4'] = { v: '', t: 's', s: kpiBoxHeaderStyle }
@@ -14811,9 +15240,9 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
       ws['C5'] = { v: dashboardSummary.grandUnusedValue || 0, t: 'n', s: kpiBoxRedValueStyle, z: '#,##0' }
       ws['D5'] = { v: '', t: 's', s: kpiBoxRedValueStyle }
 
-      ws['E4'] = { v: 'Mặt hàng chưa SD / Tổng tồn', t: 's', s: kpiBoxHeaderStyle }
+      ws['E4'] = { v: 'Mặt hàng chưa sử dụng / Tổng mã vật tư', t: 's', s: kpiBoxHeaderStyle }
       ws['F4'] = { v: '', t: 's', s: kpiBoxHeaderStyle }
-      ws['E5'] = { v: `${dashboardSummary.grandUnusedCount || 0} / ${dashboardSummary.grandTotalItems || 0} (${(dashboardSummary.averageUnusedRatio || 0).toFixed(1)}%)`, t: 's', s: kpiBoxValueStyle }
+      ws['E5'] = { v: `${grandUnusedCount} / ${totalItemsCount} (${unusedPercentStr}%)`, t: 's', s: kpiBoxValueStyle }
       ws['F5'] = { v: '', t: 's', s: kpiBoxValueStyle }
 
       ws['G4'] = { v: 'Kho tồn đọng chưa SD cao nhất', t: 's', s: kpiBoxHeaderStyle }
@@ -14843,7 +15272,7 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
       })
 
       const dataStartRow = rIdx + 1
-      filteredDashboardStats.forEach((stat, idx) => {
+      sortedDashboardStats.forEach((stat, idx) => {
         rIdx++
         const isEven = idx % 2 === 1
         const bg = isEven ? 'F8FAFC' : 'FFFFFF'
@@ -14861,12 +15290,48 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
 
         ws[`A${rIdx}`] = { v: idx + 1, t: 'n', s: { ...baseCellStyle, alignment: { horizontal: 'center', vertical: 'center' } } }
         ws[`B${rIdx}`] = { v: stat.projectName, t: 's', s: { ...baseCellStyle, font: { name: 'Segoe UI', sz: 9.5, bold: true, color: { rgb: '0F58A7' } } } }
-        ws[`C${rIdx}`] = { v: stat.totalItemsInStock || 0, t: 'n', z: '#,##0', s: { ...baseCellStyle, alignment: { horizontal: 'right', vertical: 'center' } } }
-        ws[`D${rIdx}`] = { v: stat.unusedCount || 0, t: 'n', z: '#,##0', s: { ...baseCellStyle, font: { name: 'Segoe UI', sz: 9.5, bold: (stat.unusedCount || 0) > 0, color: { rgb: (stat.unusedCount || 0) > 0 ? 'DC2626' : '64748B' } }, alignment: { horizontal: 'right', vertical: 'center' } } }
-        ws[`E${rIdx}`] = { v: (stat.unusedRatio || 0) / 100, t: 'n', z: '0.0%', s: { ...baseCellStyle, font: { name: 'Segoe UI', sz: 9.5, bold: (stat.unusedRatio || 0) > 0, color: { rgb: (stat.unusedRatio || 0) > 30 ? 'DC2626' : (stat.unusedRatio || 0) > 0 ? 'D97706' : '64748B' } }, alignment: { horizontal: 'right', vertical: 'center' } } }
-        ws[`F${rIdx}`] = { v: stat.inUseCount || 0, t: 'n', z: '#,##0', s: { ...baseCellStyle, font: { name: 'Segoe UI', sz: 9.5, color: { rgb: '059669' } }, alignment: { horizontal: 'right', vertical: 'center' } } }
-        ws[`G${rIdx}`] = { v: stat.depletedCount || 0, t: 'n', z: '#,##0', s: { ...baseCellStyle, alignment: { horizontal: 'right', vertical: 'center' } } }
-        ws[`H${rIdx}`] = { v: stat.unusedValue || 0, t: 'n', z: '#,##0;[Red]-#,##0;"-"', s: { ...baseCellStyle, font: { name: 'Segoe UI', sz: 9.5, bold: (stat.unusedValue || 0) > 0, color: { rgb: (stat.unusedValue || 0) > 0 ? 'DC2626' : '64748B' } }, alignment: { horizontal: 'right', vertical: 'center' } } }
+        ws[`C${rIdx}`] = {
+          f: `COUNTIF(Chi_Tiet_Vat_Tu!$B$5:$B$${detailLastRow}, B${rIdx})`,
+          v: stat.totalItemsInStock || 0,
+          t: 'n',
+          z: '#,##0',
+          s: { ...baseCellStyle, alignment: { horizontal: 'right', vertical: 'center' } }
+        }
+        ws[`D${rIdx}`] = {
+          f: `COUNTIFS(Chi_Tiet_Vat_Tu!$B$5:$B$${detailLastRow}, B${rIdx}, Chi_Tiet_Vat_Tu!$N$5:$N$${detailLastRow}, "Chưa sử dụng (> 30 ngày)")`,
+          v: stat.unusedCount || 0,
+          t: 'n',
+          z: '#,##0',
+          s: { ...baseCellStyle, font: { name: 'Segoe UI', sz: 9.5, bold: (stat.unusedCount || 0) > 0, color: { rgb: (stat.unusedCount || 0) > 0 ? 'DC2626' : '64748B' } }, alignment: { horizontal: 'right', vertical: 'center' } }
+        }
+        ws[`E${rIdx}`] = {
+          f: `IF(C${rIdx}>0, D${rIdx}/C${rIdx}, 0)`,
+          v: (stat.unusedRatio || 0) / 100,
+          t: 'n',
+          z: '0.0%',
+          s: { ...baseCellStyle, font: { name: 'Segoe UI', sz: 9.5, bold: (stat.unusedRatio || 0) > 0, color: { rgb: (stat.unusedRatio || 0) > 30 ? 'DC2626' : (stat.unusedRatio || 0) > 0 ? 'D97706' : '64748B' } }, alignment: { horizontal: 'right', vertical: 'center' } }
+        }
+        ws[`F${rIdx}`] = {
+          f: `COUNTIFS(Chi_Tiet_Vat_Tu!$B$5:$B$${detailLastRow}, B${rIdx}, Chi_Tiet_Vat_Tu!$N$5:$N$${detailLastRow}, "Đang sử dụng")`,
+          v: stat.inUseCount || 0,
+          t: 'n',
+          z: '#,##0',
+          s: { ...baseCellStyle, font: { name: 'Segoe UI', sz: 9.5, color: { rgb: '059669' } }, alignment: { horizontal: 'right', vertical: 'center' } }
+        }
+        ws[`G${rIdx}`] = {
+          f: `COUNTIFS(Chi_Tiet_Vat_Tu!$B$5:$B$${detailLastRow}, B${rIdx}, Chi_Tiet_Vat_Tu!$N$5:$N$${detailLastRow}, "Đã dùng hết")`,
+          v: stat.depletedCount || 0,
+          t: 'n',
+          z: '#,##0',
+          s: { ...baseCellStyle, alignment: { horizontal: 'right', vertical: 'center' } }
+        }
+        ws[`H${rIdx}`] = {
+          f: `SUMIFS(Chi_Tiet_Vat_Tu!$P$5:$P$${detailLastRow}, Chi_Tiet_Vat_Tu!$B$5:$B$${detailLastRow}, B${rIdx})`,
+          v: stat.unusedValue || 0,
+          t: 'n',
+          z: '#,##0;[Red]-#,##0;"-"',
+          s: { ...baseCellStyle, font: { name: 'Segoe UI', sz: 9.5, bold: (stat.unusedValue || 0) > 0, color: { rgb: (stat.unusedValue || 0) > 0 ? 'DC2626' : '64748B' } }, alignment: { horizontal: 'right', vertical: 'center' } }
+        }
       })
 
       rIdx++
@@ -14889,37 +15354,56 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
 
       ws[`C${totalRowIdx}`] = { f: `SUM(C${dataStartRow}:C${totalRowIdx - 1})`, v: dashboardSummary.grandTotalItems || 0, t: 'n', z: '#,##0', s: { ...totalRowStyle, alignment: { horizontal: 'right', vertical: 'center' } } }
       ws[`D${totalRowIdx}`] = { f: `SUM(D${dataStartRow}:D${totalRowIdx - 1})`, v: dashboardSummary.grandUnusedCount || 0, t: 'n', z: '#,##0', s: { ...totalRowStyle, font: { name: 'Segoe UI', sz: 10, bold: true, color: { rgb: 'DC2626' } }, alignment: { horizontal: 'right', vertical: 'center' } } }
-      ws[`E${totalRowIdx}`] = { f: `D${totalRowIdx}/C${totalRowIdx}`, v: (dashboardSummary.averageUnusedRatio || 0) / 100, t: 'n', z: '0.0%', s: { ...totalRowStyle, alignment: { horizontal: 'right', vertical: 'center' } } }
-      ws[`F${totalRowIdx}`] = { f: `SUM(F${dataStartRow}:F${totalRowIdx - 1})`, v: filteredDashboardStats.reduce((s, x) => s + (x.inUseCount || 0), 0), t: 'n', z: '#,##0', s: { ...totalRowStyle, font: { name: 'Segoe UI', sz: 10, bold: true, color: { rgb: '059669' } }, alignment: { horizontal: 'right', vertical: 'center' } } }
-      ws[`G${totalRowIdx}`] = { f: `SUM(G${dataStartRow}:G${totalRowIdx - 1})`, v: filteredDashboardStats.reduce((s, x) => s + (x.depletedCount || 0), 0), t: 'n', z: '#,##0', s: { ...totalRowStyle, alignment: { horizontal: 'right', vertical: 'center' } } }
+      ws[`E${totalRowIdx}`] = { f: `IF(C${totalRowIdx}>0, D${totalRowIdx}/C${totalRowIdx}, 0)`, v: (dashboardSummary.averageUnusedRatio || 0) / 100, t: 'n', z: '0.0%', s: { ...totalRowStyle, alignment: { horizontal: 'right', vertical: 'center' } } }
+      ws[`F${totalRowIdx}`] = { f: `SUM(F${dataStartRow}:F${totalRowIdx - 1})`, v: sortedDashboardStats.reduce((s, x) => s + (x.inUseCount || 0), 0), t: 'n', z: '#,##0', s: { ...totalRowStyle, font: { name: 'Segoe UI', sz: 10, bold: true, color: { rgb: '059669' } }, alignment: { horizontal: 'right', vertical: 'center' } } }
+      ws[`G${totalRowIdx}`] = { f: `SUM(G${dataStartRow}:G${totalRowIdx - 1})`, v: sortedDashboardStats.reduce((s, x) => s + (x.depletedCount || 0), 0), t: 'n', z: '#,##0', s: { ...totalRowStyle, alignment: { horizontal: 'right', vertical: 'center' } } }
       ws[`H${totalRowIdx}`] = { f: `SUM(H${dataStartRow}:H${totalRowIdx - 1})`, v: dashboardSummary.grandUnusedValue || 0, t: 'n', z: '#,##0;[Red]-#,##0;"-"', s: { ...totalRowStyle, font: { name: 'Segoe UI', sz: 10, bold: true, color: { rgb: 'DC2626' } }, alignment: { horizontal: 'right', vertical: 'center' } } }
+
+      // Cập nhật công thức cho KPI box Tổng giá trị chưa SD ở đầu trang
+      if (ws['C5']) {
+        ws['C5'].f = `H${totalRowIdx}`
+      }
+      if (ws['A5']) {
+        ws['A5'].f = `COUNTA(B${dataStartRow}:B${totalRowIdx - 1})`
+      }
 
       ws['!ref'] = `A1:H${totalRowIdx}`
       XLSXStyle.utils.book_append_sheet(wb, ws, "Tong_Quan_Dashboard")
 
+      // Helper chuyển Date thành Excel serial number
+      const toExcelSerial = (dateVal) => {
+        if (!dateVal) return null
+        const d = (dateVal instanceof Date) ? dateVal : parseRowDate(dateVal)
+        if (!d || isNaN(d.getTime())) return null
+        const val = Math.round(d.getTime() / 86400000) + 25569
+        return isNaN(val) ? null : val
+      }
+
       // Sheet 2: Chi tiết danh sách vật tư
       const dws = {}
       const detailCols = [
-        { key: 'stt', label: 'STT', width: 50 },
-        { key: 'project', label: 'Kho Ban Chỉ Huy (BCH)', width: 220 },
-        { key: 'maSAP', label: 'Mã SAP', width: 100 },
-        { key: 'maVatTu', label: 'Mã vật tư', width: 100 },
-        { key: 'tenVatTu', label: 'Tên vật tư', width: 240 },
-        { key: 'dvt', label: 'ĐVT', width: 70 },
-        { key: 'thongSoKyThuat', label: 'Thông số kỹ thuật', width: 160 },
-        { key: 'materialClassification', label: 'Phân loại vật tư', width: 160 },
-        { key: 'stock', label: 'Tồn kho', width: 110 },
-        { key: 'unusedStatus', label: 'Trạng thái sử dụng', width: 180 },
-        { key: 'estimatedUnitPrice', label: 'Đơn giá tạm tính (VNĐ)', width: 160 },
-        { key: 'valueOver30Days', label: 'Thành tiền chưa SD (VNĐ)', width: 180 }
+        { key: 'stt', label: 'STT', width: 42 },
+        { key: 'project', label: 'Kho Ban Chỉ Huy (BCH)', width: 175 },
+        { key: 'maSAP', label: 'Mã SAP', width: 85 },
+        { key: 'tenVatTu', label: 'Tên vật tư', width: 200 },
+        { key: 'dvt', label: 'ĐVT', width: 50 },
+        { key: 'materialClassification', label: 'Phân loại vật tư', width: 110 },
+        { key: 'received', label: 'Khối lượng nhận', width: 95 },
+        { key: 'issued', label: 'Khối lượng xuất', width: 95 },
+        { key: 'stock', label: 'Tồn kho', width: 85 },
+        { key: 'latestReceivedDate', label: 'Ngày nhập muộn nhất', width: 95 },
+        { key: 'daysSinceReceived', label: 'Số ngày nhập muộn nhất đến hôm nay', width: 75 },
+        { key: 'latestIssuedDate', label: 'Ngày xuất muộn nhất', width: 95 },
+        { key: 'daysSinceIssued', label: 'Số ngày xuất muộn nhất đến hôm nay', width: 75 },
+        { key: 'unusedStatus', label: 'Trạng thái sử dụng', width: 130 },
+        { key: 'estimatedUnitPrice', label: 'Đơn giá tạm tính (VNĐ)', width: 110 },
+        { key: 'valueOver30Days', label: 'Thành tiền chưa SD (VNĐ)', width: 130 }
       ]
       dws['!cols'] = detailCols.map(c => ({ wpx: c.width }))
 
-      const totalItemsCount = filteredDashboardStats.reduce((s, x) => s + ((x.allItems || x.items || []).length), 0)
-
       dws['A1'] = { v: 'DANH SÁCH CHI TIẾT VẬT TƯ THIẾT BỊ TỒN KHO DASHBOARD', t: 's', s: titleStyle }
       dws['A2'] = {
-        v: `Kho chọn: ${dashboardWarehouseFilter === 'all' ? 'Tất cả kho Ban Chỉ Huy' : dashboardWarehouseFilter} | Tổng số mặt hàng: ${totalItemsCount}`,
+        v: `Kho chọn: ${scopeDesc} | Tổng số mặt hàng: ${totalItemsCount}`,
         t: 's',
         s: subtitleStyle
       }
@@ -14930,9 +15414,48 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
         dws[cellRef] = { v: col.label, t: 's', s: tblHeaderStyle }
       })
 
+      // Hàm xác định độ ưu tiên sắp xếp của Trạng thái sử dụng:
+      // 1. Chưa sử dụng (> 30 ngày)
+      // 2. Đang sử dụng
+      // 3. Đã dùng hết
+      const getUnusedStatusPriority = (status) => {
+        const s = String(status || '').trim().toLowerCase()
+        if (s.includes('> 30') || s.includes('chưa sử dụng') || s.includes('chua su dung')) return 1
+        if (s.includes('đang sử dụng') || s.includes('dang su dung')) return 2
+        if (s.includes('đã dùng hết') || s.includes('da dung het') || s.includes('hết') || s.includes('het')) return 3
+        return 4
+      }
+
       let itemStt = 1
-      filteredDashboardStats.forEach(stat => {
-        const statItems = stat.allItems || stat.items || []
+      sortedDashboardStats.forEach(stat => {
+        const statItems = [...(stat.allItems || stat.items || [])]
+
+        // Sắp xếp chi tiết vật tư trong từng Kho Ban Chỉ Huy:
+        // Thứ tự: Chưa sử dụng (> 30 ngày) -> Đang sử dụng -> Đã dùng hết
+        statItems.sort((a, b) => {
+          const pA = getUnusedStatusPriority(a.unusedStatus)
+          const pB = getUnusedStatusPriority(b.unusedStatus)
+          if (pA !== pB) return pA - pB
+
+          // Nếu cùng trạng thái "Chưa sử dụng (> 30 ngày)", ưu tiên thành tiền chưa SD giảm dần
+          if (pA === 1) {
+            const valA = Number(a.valueOver30Days) || 0
+            const valB = Number(b.valueOver30Days) || 0
+            if (valB !== valA) return valB - valA
+          }
+
+          // Tiếp theo sắp xếp theo Tên vật tư (tiếng Việt)
+          const nameA = String(a.tenVatTu || '').trim()
+          const nameB = String(b.tenVatTu || '').trim()
+          const nameComp = nameA.localeCompare(nameB, 'vi', { sensitivity: 'base' })
+          if (nameComp !== 0) return nameComp
+
+          // Cuối cùng theo Mã SAP / Mã vật tư
+          const sapA = String(a.maSAP || a.maVatTu || '').trim()
+          const sapB = String(b.maSAP || b.maVatTu || '').trim()
+          return sapA.localeCompare(sapB, 'vi', { sensitivity: 'base' })
+        })
+
         statItems.forEach(item => {
           dRowIdx++
           const isEven = itemStt % 2 === 0
@@ -14952,16 +15475,70 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
           const isUnused = item.unusedStatus === 'Chưa sử dụng (> 30 ngày)'
           const isInUse = item.unusedStatus === 'Đang sử dụng'
 
+          const recSerial = toExcelSerial(item.latestReceivedDate)
+          const issSerial = toExcelSerial(item.latestIssuedDate)
+          const daysRec = getDaysToToday(item.latestReceivedDate)
+          const daysIss = getDaysToToday(item.latestIssuedDate)
+
           dws[`A${dRowIdx}`] = { v: itemStt, t: 'n', s: { ...baseCellStyle, alignment: { horizontal: 'center', vertical: 'center' } } }
           dws[`B${dRowIdx}`] = { v: item.project || stat.projectName, t: 's', s: { ...baseCellStyle, font: { name: 'Segoe UI', sz: 9, bold: true, color: { rgb: '0F58A7' } } } }
           dws[`C${dRowIdx}`] = { v: item.maSAP || '', t: 's', s: { ...baseCellStyle, alignment: { horizontal: 'center', vertical: 'center' } } }
-          dws[`D${dRowIdx}`] = { v: item.maVatTu || '', t: 's', s: { ...baseCellStyle, alignment: { horizontal: 'center', vertical: 'center' } } }
-          dws[`E${dRowIdx}`] = { v: item.tenVatTu || '', t: 's', s: { ...baseCellStyle, font: { name: 'Segoe UI', sz: 9, bold: true } } }
-          dws[`F${dRowIdx}`] = { v: item.dvt || '', t: 's', s: { ...baseCellStyle, alignment: { horizontal: 'center', vertical: 'center' } } }
-          dws[`G${dRowIdx}`] = { v: item.thongSoKyThuat || '', t: 's', s: baseCellStyle }
-          dws[`H${dRowIdx}`] = { v: item.materialClassification || '—', t: 's', s: baseCellStyle }
-          dws[`I${dRowIdx}`] = { v: item.stock || 0, t: 'n', z: '#,##0.00', s: { ...baseCellStyle, alignment: { horizontal: 'right', vertical: 'center' }, font: { name: 'Segoe UI', sz: 9, bold: true } } }
-          dws[`J${dRowIdx}`] = {
+          dws[`D${dRowIdx}`] = { v: item.tenVatTu || '', t: 's', s: { ...baseCellStyle, font: { name: 'Segoe UI', sz: 9, bold: true } } }
+          dws[`E${dRowIdx}`] = { v: item.dvt || '', t: 's', s: { ...baseCellStyle, alignment: { horizontal: 'center', vertical: 'center' } } }
+          dws[`F${dRowIdx}`] = { v: item.materialClassification || '—', t: 's', s: baseCellStyle }
+          dws[`G${dRowIdx}`] = { v: item.received || 0, t: 'n', z: '#,##0.00', s: { ...baseCellStyle, alignment: { horizontal: 'right', vertical: 'center' } } }
+          dws[`H${dRowIdx}`] = { v: item.issued || 0, t: 'n', z: '#,##0.00', s: { ...baseCellStyle, alignment: { horizontal: 'right', vertical: 'center' } } }
+          dws[`I${dRowIdx}`] = {
+            f: `G${dRowIdx}-H${dRowIdx}`,
+            v: item.stock || 0,
+            t: 'n',
+            z: '#,##0.00',
+            s: { ...baseCellStyle, alignment: { horizontal: 'right', vertical: 'center' }, font: { name: 'Segoe UI', sz: 9, bold: true } }
+          }
+
+          // J: Ngày nhập muộn nhất
+          if (recSerial !== null) {
+            dws[`J${dRowIdx}`] = { v: recSerial, t: 'n', z: 'dd/mm/yyyy', s: { ...baseCellStyle, alignment: { horizontal: 'center', vertical: 'center' } } }
+          } else {
+            dws[`J${dRowIdx}`] = { v: '—', t: 's', s: { ...baseCellStyle, alignment: { horizontal: 'center', vertical: 'center' }, font: { name: 'Segoe UI', sz: 9, color: { rgb: '94A3B8' } } } }
+          }
+
+          // K: Số ngày nhập muộn nhất đến hôm nay
+          if (typeof daysRec === 'number') {
+            dws[`K${dRowIdx}`] = {
+              f: `IF(ISNUMBER(J${dRowIdx}), TODAY()-J${dRowIdx}, "")`,
+              v: daysRec,
+              t: 'n',
+              z: '#,##0',
+              s: { ...baseCellStyle, alignment: { horizontal: 'center', vertical: 'center' }, font: { name: 'Segoe UI', sz: 9, bold: true } }
+            }
+          } else {
+            dws[`K${dRowIdx}`] = { v: '—', t: 's', s: { ...baseCellStyle, alignment: { horizontal: 'center', vertical: 'center' }, font: { name: 'Segoe UI', sz: 9, color: { rgb: '94A3B8' } } } }
+          }
+
+          // L: Ngày xuất muộn nhất
+          if (issSerial !== null) {
+            dws[`L${dRowIdx}`] = { v: issSerial, t: 'n', z: 'dd/mm/yyyy', s: { ...baseCellStyle, alignment: { horizontal: 'center', vertical: 'center' } } }
+          } else {
+            dws[`L${dRowIdx}`] = { v: '—', t: 's', s: { ...baseCellStyle, alignment: { horizontal: 'center', vertical: 'center' }, font: { name: 'Segoe UI', sz: 9, color: { rgb: '94A3B8' } } } }
+          }
+
+          // M: Số ngày xuất muộn nhất đến hôm nay
+          if (typeof daysIss === 'number') {
+            dws[`M${dRowIdx}`] = {
+              f: `IF(ISNUMBER(L${dRowIdx}), TODAY()-L${dRowIdx}, "")`,
+              v: daysIss,
+              t: 'n',
+              z: '#,##0',
+              s: { ...baseCellStyle, alignment: { horizontal: 'center', vertical: 'center' }, font: { name: 'Segoe UI', sz: 9, bold: true } }
+            }
+          } else {
+            dws[`M${dRowIdx}`] = { v: '—', t: 's', s: { ...baseCellStyle, alignment: { horizontal: 'center', vertical: 'center' }, font: { name: 'Segoe UI', sz: 9, color: { rgb: '94A3B8' } } } }
+          }
+
+          // N: Trạng thái sử dụng
+          dws[`N${dRowIdx}`] = {
+            f: `IF(I${dRowIdx}<=0, "Đã dùng hết", IF(OR(NOT(ISNUMBER(L${dRowIdx})), H${dRowIdx}<=0), IF(AND(ISNUMBER(K${dRowIdx}), K${dRowIdx}>30), "Chưa sử dụng (> 30 ngày)", "Đang sử dụng"), IF(AND(ISNUMBER(M${dRowIdx}), M${dRowIdx}>30), "Chưa sử dụng (> 30 ngày)", "Đang sử dụng")))`,
             v: item.unusedStatus || '',
             t: 's',
             s: {
@@ -14970,8 +15547,13 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
               fill: { patternType: 'solid', fgColor: { rgb: isUnused ? 'FFFBEB' : isInUse ? 'ECFDF5' : bg } }
             }
           }
-          dws[`K${dRowIdx}`] = { v: item.estimatedUnitPrice || 0, t: 'n', z: '#,##0', s: { ...baseCellStyle, alignment: { horizontal: 'right', vertical: 'center' } } }
-          dws[`L${dRowIdx}`] = {
+
+          // O: Đơn giá tạm tính (VNĐ)
+          dws[`O${dRowIdx}`] = { v: item.estimatedUnitPrice || 0, t: 'n', z: '#,##0', s: { ...baseCellStyle, alignment: { horizontal: 'right', vertical: 'center' } } }
+
+          // P: Thành tiền chưa SD (VNĐ)
+          dws[`P${dRowIdx}`] = {
+            f: `IF(N${dRowIdx}="Chưa sử dụng (> 30 ngày)", ROUND(IF(OR(ISNUMBER(SEARCH("khấu hao", F${dRowIdx})), ISNUMBER(SEARCH("tài sản", F${dRowIdx}))), I${dRowIdx}*O${dRowIdx}*IF(AND(ISNUMBER(M${dRowIdx}), M${dRowIdx}>0), M${dRowIdx}, K${dRowIdx}), I${dRowIdx}*O${dRowIdx}), 0), 0)`,
             v: item.valueOver30Days || 0,
             t: 'n',
             z: '#,##0;[Red]-#,##0;"-"',
@@ -14990,29 +15572,35 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
       dRowIdx++
       const detailTotalRow = dRowIdx
       dws[`A${detailTotalRow}`] = { v: 'TỔNG CỘNG', t: 's', s: { ...totalRowStyle, alignment: { horizontal: 'center', vertical: 'center' } } }
-      for (let c = 1; c < 8; c++) {
+      for (let c = 1; c < 6; c++) {
         dws[`${getColLabel(c)}${detailTotalRow}`] = { v: '', t: 's', s: totalRowStyle }
       }
       if (!dws['!merges']) dws['!merges'] = []
       dws['!merges'].push(
-        { s: { r: 0, c: 0 }, e: { r: 0, c: 11 } },
-        { s: { r: 1, c: 0 }, e: { r: 1, c: 11 } },
-        { s: { r: detailTotalRow - 1, c: 0 }, e: { r: detailTotalRow - 1, c: 7 } }
+        { s: { r: 0, c: 0 }, e: { r: 0, c: 15 } },
+        { s: { r: 1, c: 0 }, e: { r: 1, c: 15 } },
+        { s: { r: detailTotalRow - 1, c: 0 }, e: { r: detailTotalRow - 1, c: 5 } }
       )
 
       if (detailTotalRow > 5) {
+        dws[`G${detailTotalRow}`] = { f: `SUM(G5:G${detailTotalRow - 1})`, t: 'n', z: '#,##0.00', s: { ...totalRowStyle, alignment: { horizontal: 'right', vertical: 'center' } } }
+        dws[`H${detailTotalRow}`] = { f: `SUM(H5:H${detailTotalRow - 1})`, t: 'n', z: '#,##0.00', s: { ...totalRowStyle, alignment: { horizontal: 'right', vertical: 'center' } } }
         dws[`I${detailTotalRow}`] = { f: `SUM(I5:I${detailTotalRow - 1})`, t: 'n', z: '#,##0.00', s: { ...totalRowStyle, alignment: { horizontal: 'right', vertical: 'center' } } }
-        dws[`J${detailTotalRow}`] = { v: '', t: 's', s: totalRowStyle }
-        dws[`K${detailTotalRow}`] = { v: '', t: 's', s: totalRowStyle }
-        dws[`L${detailTotalRow}`] = { f: `SUM(L5:L${detailTotalRow - 1})`, t: 'n', z: '#,##0;[Red]-#,##0;"-"', s: { ...totalRowStyle, font: { name: 'Segoe UI', sz: 10, bold: true, color: { rgb: 'DC2626' } }, alignment: { horizontal: 'right', vertical: 'center' } } }
+        for (let c = 9; c < 15; c++) {
+          dws[`${getColLabel(c)}${detailTotalRow}`] = { v: '', t: 's', s: totalRowStyle }
+        }
+        dws[`P${detailTotalRow}`] = { f: `SUM(P5:P${detailTotalRow - 1})`, t: 'n', z: '#,##0;[Red]-#,##0;"-"', s: { ...totalRowStyle, font: { name: 'Segoe UI', sz: 10, bold: true, color: { rgb: 'DC2626' } }, alignment: { horizontal: 'right', vertical: 'center' } } }
       } else {
+        dws[`G${detailTotalRow}`] = { v: 0, t: 'n', z: '#,##0.00', s: { ...totalRowStyle, alignment: { horizontal: 'right', vertical: 'center' } } }
+        dws[`H${detailTotalRow}`] = { v: 0, t: 'n', z: '#,##0.00', s: { ...totalRowStyle, alignment: { horizontal: 'right', vertical: 'center' } } }
         dws[`I${detailTotalRow}`] = { v: 0, t: 'n', z: '#,##0.00', s: { ...totalRowStyle, alignment: { horizontal: 'right', vertical: 'center' } } }
-        dws[`J${detailTotalRow}`] = { v: '', t: 's', s: totalRowStyle }
-        dws[`K${detailTotalRow}`] = { v: '', t: 's', s: totalRowStyle }
-        dws[`L${detailTotalRow}`] = { v: 0, t: 'n', z: '#,##0;[Red]-#,##0;"-"', s: { ...totalRowStyle, font: { name: 'Segoe UI', sz: 10, bold: true, color: { rgb: 'DC2626' } }, alignment: { horizontal: 'right', vertical: 'center' } } }
+        for (let c = 9; c < 15; c++) {
+          dws[`${getColLabel(c)}${detailTotalRow}`] = { v: '', t: 's', s: totalRowStyle }
+        }
+        dws[`P${detailTotalRow}`] = { v: 0, t: 'n', z: '#,##0;[Red]-#,##0;"-"', s: { ...totalRowStyle, font: { name: 'Segoe UI', sz: 10, bold: true, color: { rgb: 'DC2626' } }, alignment: { horizontal: 'right', vertical: 'center' } } }
       }
 
-      dws['!ref'] = `A1:L${detailTotalRow}`
+      dws['!ref'] = `A1:P${detailTotalRow}`
       XLSXStyle.utils.book_append_sheet(wb, dws, "Chi_Tiet_Vat_Tu")
 
       if (materialPriceRows && materialPriceRows.length > 0) {
@@ -15213,7 +15801,7 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
 
       {subTab === 'dashboard' && (
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'auto', gap: 16, paddingBottom: 16 }}>
-          {/* Bộ lọc chọn kho báo cáo cụ thể */}
+          {/* Bộ lọc chọn kho báo cáo cụ thể & công cụ Bỏ qua BCH */}
           <div style={{
             background: '#ffffff',
             borderRadius: 8,
@@ -15278,32 +15866,44 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
             )}
             <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
               {dashboardWarehouseFilter === 'all'
-                ? 'Đang hiển thị báo cáo tổng hợp của tất cả kho dự án BCH.'
+                ? (dashboardExcludedBch.length > 0
+                    ? `Đang hiển thị ${filteredDashboardStats.length}/${bchWarehouses.length} kho (đã loại trừ ${dashboardExcludedBch.length} kho).`
+                    : 'Đang hiển thị báo cáo tổng hợp của tất cả kho dự án BCH.')
                 : `Đang hiển thị báo cáo riêng cho kho: ${dashboardWarehouseFilter}`}
             </div>
-            <button
-              onClick={handleExportDashboardExcel}
-              style={{
-                marginLeft: 'auto',
-                background: 'linear-gradient(135deg, #059669 0%, #10b981 100%)',
-                color: '#ffffff',
-                border: 'none',
-                boxShadow: '0 2px 4px rgba(16,185,129,0.2)',
-                height: 36,
-                padding: '0 16px',
-                borderRadius: 6,
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 6,
-                fontWeight: 600,
-                fontSize: '13px',
-                cursor: 'pointer',
-                transition: 'all 0.15s ease'
-              }}
-              title="Xuất báo cáo tổng quan và chi tiết Dashboard ra Excel"
-            >
-              <Download size={14} /> Xuất Excel Báo cáo
-            </button>
+
+            {/* Vị trí công cụ BỎ QUA BCH và nút XUẤT EXCEL BÁO CÁO */}
+            <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 10 }}>
+              <DashboardExcludeBchSelector
+                bchWarehouses={bchWarehouses}
+                dashboardExcludedBch={dashboardExcludedBch}
+                setDashboardExcludedBch={setDashboardExcludedBch}
+                dashboardStats={dashboardStats}
+              />
+
+              <button
+                onClick={handleExportDashboardExcel}
+                style={{
+                  background: 'linear-gradient(135deg, #059669 0%, #10b981 100%)',
+                  color: '#ffffff',
+                  border: 'none',
+                  boxShadow: '0 2px 4px rgba(16,185,129,0.2)',
+                  height: 36,
+                  padding: '0 16px',
+                  borderRadius: 6,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  fontWeight: 600,
+                  fontSize: '13px',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease'
+                }}
+                title={dashboardExcludedBch.length > 0 ? `Xuất báo cáo Excel (đã loại trừ ${dashboardExcludedBch.length} kho BCH)` : "Xuất báo cáo tổng quan và chi tiết Dashboard ra Excel"}
+              >
+                <Download size={14} /> Xuất Excel Báo cáo
+              </button>
+            </div>
           </div>
 
           {/* Summary Cards Row */}
@@ -15447,11 +16047,15 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
                 </div>
                 <div style={{ fontSize: dashboardWarehouseFilter === 'all' ? 20 : 15, fontWeight: 800, color: '#10b981', margin: '4px 0 2px 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={dashboardWarehouseFilter === 'all' ? undefined : dashboardWarehouseFilter}>
                   {dashboardWarehouseFilter === 'all'
-                    ? <>{bchWarehouses.length} <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-muted)' }}>kho dự án</span></>
+                    ? (dashboardExcludedBch.length > 0
+                        ? <>{filteredDashboardStats.length} <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-muted)' }}>/ {bchWarehouses.length} kho</span></>
+                        : <>{bchWarehouses.length} <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-muted)' }}>kho dự án</span></>)
                     : dashboardWarehouseFilter}
                 </div>
                 <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
-                  {dashboardWarehouseFilter === 'all' ? 'Giám sát tự động tình trạng tồn đọng' : `Trong tổng số ${bchWarehouses.length} kho dự án BCH`}
+                  {dashboardWarehouseFilter === 'all'
+                    ? (dashboardExcludedBch.length > 0 ? `Đã loại trừ ${dashboardExcludedBch.length} kho BCH` : 'Giám sát tự động tình trạng tồn đọng')
+                    : `Trong tổng số ${bchWarehouses.length} kho dự án BCH`}
                 </div>
               </div>
             </div>

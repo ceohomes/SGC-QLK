@@ -1,6 +1,7 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App.jsx'
+import ErrorBoundary from './ErrorBoundary.jsx'
 import './index.css'
 
 // Suppress known harmless non-fatal CFB/ZIP streaming warnings from xlsx libraries (e.g. "Bad uncompressed size")
@@ -19,11 +20,20 @@ if (typeof window !== 'undefined') {
     }
     originalConsoleError.apply(console, args)
   }
+
+  // Handle module script loading errors (such as 429 Too Many Requests in dev)
+  window.addEventListener('error', (e) => {
+    if (e.target && (e.target.tagName === 'SCRIPT' || e.target.tagName === 'LINK')) {
+      console.warn('Resource load failed, possible rate limit (429):', e.target.src || e.target.href)
+    }
+  }, true)
 }
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
-    <App />
+    <ErrorBoundary>
+      <App />
+    </ErrorBoundary>
   </React.StrictMode>,
 )
 

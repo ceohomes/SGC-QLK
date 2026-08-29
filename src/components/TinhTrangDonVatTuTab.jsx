@@ -458,6 +458,20 @@ export default function TinhTrangDonVatTuTab({
       return letter
     }
 
+    // Helper to sanitize & normalize person names for exact 1-to-1 match
+    const cleanPersonName = (name, fallback = 'Chưa phân công người duyệt cụ thể') => {
+      if (!name) return fallback
+      let s = String(name).normalize('NFC').replace(/\s+/g, ' ').trim()
+      if (!s || s === '—' || s === '-' || s === 'null' || s === 'undefined' || s === 'Chưa rõ người nhận' || s === 'Chưa phân công CB1' || s === 'Chưa phân công CB2' || s === 'Chưa phân công CB3' || s === 'Chưa phân công CB4') {
+        return fallback
+      }
+      // Remove trailing slashes, colons, spaces or separators (e.g. "Trần Vĩnh Hùng /" -> "Trần Vĩnh Hùng")
+      s = s.replace(/[\s\/:|-]+$/, '').trim()
+      // Remove Excel formula wildcard triggers
+      s = s.replace(/[*?~]/g, '').trim()
+      return s || fallback
+    }
+
     // Helper to analyze timeline & delay for each row
     const analyzeRowTimeline = (row) => {
       const rowDate = parseDateForSort(row.ngayXuat)
@@ -501,7 +515,7 @@ export default function TinhTrangDonVatTuTab({
         isPending = true
         delayDays = daysElapsed
         pendingRole = 'Người nhận'
-        pendingPerson = row.nguoiNhan || 'Chưa rõ người nhận'
+        pendingPerson = cleanPersonName(row.nguoiNhan, 'Chưa rõ người nhận')
         timelineStatus = daysElapsed > 0 
           ? `Chờ Người nhận (${pendingPerson}) xác nhận [Chậm ${daysElapsed} ngày]` 
           : `Chờ Người nhận (${pendingPerson}) xác nhận [Trong ngày]`
@@ -510,7 +524,7 @@ export default function TinhTrangDonVatTuTab({
         isPending = true
         delayDays = daysElapsed
         pendingRole = 'CB phê duyệt 1'
-        pendingPerson = row.cbPheDuyet1 || 'Chưa phân công CB1'
+        pendingPerson = cleanPersonName(row.cbPheDuyet1, 'Chưa phân công CB1')
         timelineStatus = daysElapsed > 0 
           ? `Chờ CB duyệt 1 (${pendingPerson}) phê duyệt [Chậm ${daysElapsed} ngày]` 
           : `Chờ CB duyệt 1 (${pendingPerson}) phê duyệt [Trong ngày]`
@@ -519,7 +533,7 @@ export default function TinhTrangDonVatTuTab({
         isPending = true
         delayDays = daysElapsed
         pendingRole = 'CB phê duyệt 2'
-        pendingPerson = row.cbPheDuyet2 || 'Chưa phân công CB2'
+        pendingPerson = cleanPersonName(row.cbPheDuyet2, 'Chưa phân công CB2')
         timelineStatus = daysElapsed > 0 
           ? `Chờ CB duyệt 2 (${pendingPerson}) phê duyệt [Chậm ${daysElapsed} ngày]` 
           : `Chờ CB duyệt 2 (${pendingPerson}) phê duyệt [Trong ngày]`
@@ -528,7 +542,7 @@ export default function TinhTrangDonVatTuTab({
         isPending = true
         delayDays = daysElapsed
         pendingRole = 'CB phê duyệt 3'
-        pendingPerson = row.cbPheDuyet3 || 'Chưa phân công CB3'
+        pendingPerson = cleanPersonName(row.cbPheDuyet3, 'Chưa phân công CB3')
         timelineStatus = daysElapsed > 0 
           ? `Chờ CB duyệt 3 (${pendingPerson}) phê duyệt [Chậm ${daysElapsed} ngày]` 
           : `Chờ CB duyệt 3 (${pendingPerson}) phê duyệt [Trong ngày]`
@@ -537,7 +551,7 @@ export default function TinhTrangDonVatTuTab({
         isPending = true
         delayDays = daysElapsed
         pendingRole = 'CB phê duyệt 4'
-        pendingPerson = row.cbPheDuyet4 || 'Chưa phân công CB4'
+        pendingPerson = cleanPersonName(row.cbPheDuyet4, 'Chưa phân công CB4')
         timelineStatus = daysElapsed > 0 
           ? `Chờ CB duyệt 4 (${pendingPerson}) phê duyệt [Chậm ${daysElapsed} ngày]` 
           : `Chờ CB duyệt 4 (${pendingPerson}) phê duyệt [Trong ngày]`
@@ -546,7 +560,7 @@ export default function TinhTrangDonVatTuTab({
         isPending = true
         delayDays = daysElapsed
         pendingRole = 'Đang xử lý'
-        pendingPerson = row.cbPheDuyet1 || row.nguoiNhan || '—'
+        pendingPerson = cleanPersonName(row.cbPheDuyet1 || row.nguoiNhan, 'Chưa phân công người duyệt cụ thể')
         timelineStatus = daysElapsed > 0 
           ? `Đang chờ xử lý [Chậm ${daysElapsed} ngày]` 
           : `Đang chờ xử lý [Trong ngày]`
@@ -657,6 +671,9 @@ export default function TinhTrangDonVatTuTab({
       const defaultBg = isEven ? 'F8FAFC' : 'FFFFFF'
       const rowAnalysis = analyzeRowTimeline(row)
 
+      const finalPendingPerson = rowAnalysis.isPending ? rowAnalysis.pendingPerson : '—'
+      const finalPendingRole = rowAnalysis.isPending ? rowAnalysis.pendingRole : '—'
+
       const rowValues = {
         stt: rIdx + 1,
         soDon: row.soDon || '—',
@@ -673,8 +690,8 @@ export default function TinhTrangDonVatTuTab({
         soDonSAP: row.soDonSAP || '—',
         dongBoSAP: row.dongBoSAP || '—',
         soNgayCham: rowAnalysis.isPending ? rowAnalysis.delayDays : 0,
-        nguoiChoXuLy: rowAnalysis.isPending ? (rowAnalysis.pendingPerson || '—').trim() : '—',
-        capDuyetCho: rowAnalysis.isPending ? (rowAnalysis.pendingRole || '—').trim() : '—',
+        nguoiChoXuLy: finalPendingPerson,
+        capDuyetCho: finalPendingRole,
         tienDoXuLy: rowAnalysis.isCompleted ? 'Đã hoàn thành' : (rowAnalysis.isRejected ? 'Từ chối / Hủy' : 'Đang chờ duyệt')
       }
 
@@ -853,14 +870,11 @@ export default function TinhTrangDonVatTuTab({
 
       // 1. If currently pending approval/confirmation, record into current pending holder
       if (analysis.isPending) {
-        let currentPersonName = (analysis.pendingPerson || '').trim()
-        let currentRole = (analysis.pendingRole || '').trim() || 'Người phê duyệt'
+        let currentPersonName = analysis.pendingPerson
+        let currentRole = analysis.pendingRole || 'Người phê duyệt'
 
-        if (!currentPersonName || currentPersonName === '—' || currentPersonName === '-') {
-          currentPersonName = 'Chưa phân công người duyệt cụ thể'
-        }
-
-        const key = `${currentPersonName}___${currentRole}`
+        // Normalize map key (lowercase + trimmed) to avoid case-sensitivity split in JS while Excel COUNTIFS is case-insensitive
+        const key = `${currentPersonName.toLowerCase().trim()}___${currentRole.toLowerCase().trim()}`
         if (!approverMap[key]) {
           approverMap[key] = {
             name: currentPersonName,
