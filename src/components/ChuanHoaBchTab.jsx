@@ -1199,6 +1199,16 @@ export default function ChuanHoaBchTab({
       border: borderThin('E2E8F0')
     })
 
+    // Ước lượng số dòng văn bản sẽ tự xuống hàng (wrap) trong 1 ô, dựa theo
+    // độ rộng cột (ký tự) để tính chiều cao dòng vừa đủ, không bị cắt chữ.
+    const estimateWrappedLines = (text, widthChars) => {
+      if (text === null || text === undefined || text === '') return 1
+      const charsPerLine = Math.max(6, Math.round(widthChars * 0.95))
+      return String(text)
+        .split('\n')
+        .reduce((total, line) => total + Math.max(1, Math.ceil(line.length / charsPerLine)), 0)
+    }
+
     // Dựng 1 sheet hoàn chỉnh: dòng tiêu đề + phụ đề + bảng dữ liệu canh chỉnh đẹp
     const buildSheet = ({ title, subtitle, columns, rows, headerColor, headerBorderColor }) => {
       const ws = {}
@@ -1240,9 +1250,17 @@ export default function ChuanHoaBchTab({
       const totalRows = headerRow + rows.length
       ws['!ref'] = `A1:${lastColLetter}${totalRows + 1}`
       ws['!cols'] = columns.map(c => ({ wch: c.width }))
+
+      // Chiều cao dòng tiêu đề cột: đủ chỗ cho nhãn cột dài nhất bị wrap
+      const headerLines = Math.max(1, ...columns.map(c => estimateWrappedLines(c.label, c.width)))
+      const headerHeight = Math.max(24, headerLines * 14 + 10)
+
+      // Các dòng dữ liệu: KHÔNG đặt chiều cao cố định — để Excel tự autofit
+      // chiều cao theo nội dung wrap text thật sự (chính xác hơn nhiều so với
+      // việc tự ước lượng số dòng). Excel chỉ autofit khi dòng không có
+      // customHeight cố định, nên ta chỉ set chiều cao cho các dòng tiêu đề.
       ws['!rows'] = [
-        { hpt: 26 }, { hpt: 18 }, { hpt: 8 }, { hpt: 24 },
-        ...rows.map(() => ({ hpt: 20 }))
+        { hpt: 26 }, { hpt: 18 }, { hpt: 8 }, { hpt: headerHeight }
       ]
       return ws
     }
