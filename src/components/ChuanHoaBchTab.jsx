@@ -1166,46 +1166,173 @@ export default function ChuanHoaBchTab({
     }
   }
 
-  // Xuất file Excel
+  // Xuất file Excel (định dạng đẹp: tiêu đề, màu header, căn lề, độ rộng cột hợp lý)
   const handleExportExcel = () => {
     const wb = XLSX.utils.book_new()
+    const today = new Date().toLocaleDateString('vi-VN')
 
-    // Sheet 1: Tổng hợp danh sách BCH sau chuẩn hóa (1 dòng = 1 BCH)
-    const sheetData1 = standardizedBchGroups.map((g, idx) => ({
-      'STT': idx + 1,
-      'Tên BCH Chuẩn hóa': g.standardName,
-      'Loại': g.isMultiMerged ? 'Đã gộp nhiều kho' : 'BCH độc lập (1 kho)',
-      'Số kho gốc': g.memberCount,
-      'Danh sách Kho gốc': g.members.map(m => m.name).join('; '),
-      'Tổng số phiếu phát sinh': g.totalPhieu,
-      'Số phiếu Giao': g.totalGiao,
-      'Số phiếu Nhận': g.totalNhan,
-      'Ghi chú': g.note || ''
+    // ── Style dùng chung ──────────────────────────────────────────────────
+    const borderThin = (rgb) => ({
+      top: { style: 'thin', color: { rgb } },
+      bottom: { style: 'thin', color: { rgb } },
+      left: { style: 'thin', color: { rgb } },
+      right: { style: 'thin', color: { rgb } }
+    })
+    const titleStyle = {
+      font: { name: 'Segoe UI', sz: 15, bold: true, color: { rgb: '0F172A' } },
+      alignment: { horizontal: 'left', vertical: 'center' }
+    }
+    const subtitleStyle = {
+      font: { name: 'Segoe UI', sz: 10, italic: true, color: { rgb: '64748B' } },
+      alignment: { horizontal: 'left', vertical: 'center' }
+    }
+    const makeHeaderStyle = (rgb, borderRgb) => ({
+      fill: { patternType: 'solid', fgColor: { rgb } },
+      font: { name: 'Segoe UI', sz: 10.5, bold: true, color: { rgb: 'FFFFFF' } },
+      alignment: { horizontal: 'center', vertical: 'center', wrapText: true },
+      border: borderThin(borderRgb)
+    })
+    const makeDataStyle = (align = 'left', zebra = false) => ({
+      font: { name: 'Segoe UI', sz: 10, color: { rgb: '1E293B' } },
+      ...(zebra ? { fill: { patternType: 'solid', fgColor: { rgb: 'F8FAFC' } } } : {}),
+      alignment: { horizontal: align, vertical: 'center', wrapText: true },
+      border: borderThin('E2E8F0')
+    })
+
+    // Dựng 1 sheet hoàn chỉnh: dòng tiêu đề + phụ đề + bảng dữ liệu canh chỉnh đẹp
+    const buildSheet = ({ title, subtitle, columns, rows, headerColor, headerBorderColor }) => {
+      const ws = {}
+      const colCount = columns.length
+      const lastColLetter = XLSX.utils.encode_col(colCount - 1)
+
+      // Dòng 1: Tiêu đề lớn (merge toàn bộ chiều rộng bảng)
+      ws['A1'] = { v: title, t: 's', s: titleStyle }
+      ws['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: colCount - 1 } }]
+      // Dòng 2: Phụ đề (ngày xuất, số lượng)
+      ws['A2'] = { v: subtitle, t: 's', s: subtitleStyle }
+      ws['!merges'].push({ s: { r: 1, c: 0 }, e: { r: 1, c: colCount - 1 } })
+
+      // Dòng 4 (chừa 1 dòng trống ở dòng 3): tiêu đề cột
+      const headerRow = 3
+      const headerStyle = makeHeaderStyle(headerColor, headerBorderColor)
+      columns.forEach((col, cIdx) => {
+        const addr = XLSX.utils.encode_cell({ r: headerRow, c: cIdx })
+        ws[addr] = { v: col.label, t: 's', s: headerStyle }
+      })
+
+      // Dữ liệu (căn lề theo từng cột, tô sọc xen kẽ để dễ đọc)
+      rows.forEach((row, rIdx) => {
+        const excelRow = headerRow + 1 + rIdx
+        const zebra = rIdx % 2 === 1
+        columns.forEach((col, cIdx) => {
+          const addr = XLSX.utils.encode_cell({ r: excelRow, c: cIdx })
+          const rawVal = row[col.key]
+          const isNumber = typeof rawVal === 'number'
+          let cellStyle = makeDataStyle(col.align || (isNumber ? 'center' : 'left'), zebra)
+          if (col.colorize) {
+            const extra = col.colorize(rawVal, row)
+            if (extra) cellStyle = { ...cellStyle, font: { ...cellStyle.font, ...extra } }
+          }
+          ws[addr] = { v: rawVal ?? '', t: isNumber ? 'n' : 's', s: cellStyle }
+        })
+      })
+
+      const totalRows = headerRow + rows.length
+      ws['!ref'] = `A1:${lastColLetter}${totalRows + 1}`
+      ws['!cols'] = columns.map(c => ({ wch: c.width }))
+      ws['!rows'] = [
+        { hpt: 26 }, { hpt: 18 }, { hpt: 8 }, { hpt: 24 },
+        ...rows.map(() => ({ hpt: 20 }))
+      ]
+      return ws
+    }
+
+    // ── Sheet 1: Tổng hợp danh sách BCH sau chuẩn hóa (1 dòng = 1 BCH) ──────
+    const sheet1Rows = standardizedBchGroups.map((g, idx) => ({
+      stt: idx + 1,
+      ten: g.standardName,
+      loai: g.isMultiMerged ? 'Đã gộp nhiều kho' : 'BCH độc lập (1 kho)',
+      soKho: g.memberCount,
+      danhSachKho: g.members.map(m => m.name).join('; '),
+      tongPhieu: g.totalPhieu,
+      giao: g.totalGiao,
+      nhan: g.totalNhan,
+      ghiChu: g.note || ''
     }))
-    const ws1 = XLSX.utils.json_to_sheet(sheetData1)
+    const ws1 = buildSheet({
+      title: 'DANH SÁCH BAN CHỈ HUY SAU CHUẨN HÓA',
+      subtitle: `Xuất ngày ${today}  •  Tổng số: ${sheet1Rows.length} Ban Chỉ Huy  •  Từ ${allOriginalKhos.length} kho gốc`,
+      headerColor: '0F766E',
+      headerBorderColor: '0D9488',
+      columns: [
+        { key: 'stt', label: 'STT', width: 6, align: 'center' },
+        { key: 'ten', label: 'Tên BCH Chuẩn hóa', width: 34, align: 'left', colorize: () => ({ bold: true }) },
+        {
+          key: 'loai', label: 'Loại', width: 20, align: 'center',
+          colorize: (v) => v === 'Đã gộp nhiều kho' ? { bold: true, color: { rgb: '7C3AED' } } : { color: { rgb: '64748B' } }
+        },
+        { key: 'soKho', label: 'Số kho gốc', width: 11, align: 'center' },
+        { key: 'danhSachKho', label: 'Danh sách Kho gốc', width: 60, align: 'left' },
+        { key: 'tongPhieu', label: 'Tổng số phiếu phát sinh', width: 16, align: 'center', colorize: () => ({ bold: true }) },
+        { key: 'giao', label: 'Số phiếu Giao', width: 13, align: 'center' },
+        { key: 'nhan', label: 'Số phiếu Nhận', width: 13, align: 'center' },
+        { key: 'ghiChu', label: 'Ghi chú', width: 22, align: 'left' }
+      ],
+      rows: sheet1Rows
+    })
     XLSX.utils.book_append_sheet(wb, ws1, 'Danh_Sach_BCH_Chuan_Hoa')
 
-    // Sheet 2: Chi tiết từng Kho gốc & Tên chuẩn tương ứng
-    const sheetData2 = allOriginalKhos.map((item, idx) => ({
-      'STT': idx + 1,
-      'Tên Kho BCH (Gốc)': item.name,
-      'Trạng thái': item.isMapped ? 'Đã gộp vào tên chuẩn' : 'Tên gốc (Độc lập)',
-      'Tên BCH Chuẩn hóa': item.currentStandardName,
-      'Tổng phiếu phát sinh': item.totalCount,
-      'Số phiếu Giao': item.giaoCount,
-      'Số phiếu Nhận': item.nhanCount
+    // ── Sheet 2: Chi tiết từng Kho gốc & Tên chuẩn tương ứng ────────────────
+    const sheet2Rows = allOriginalKhos.map((item, idx) => ({
+      stt: idx + 1,
+      tenKho: item.name,
+      trangThai: item.isMapped ? 'Đã gộp vào tên chuẩn' : 'Tên gốc (Độc lập)',
+      tenChuan: item.currentStandardName,
+      tongPhieu: item.totalCount,
+      giao: item.giaoCount,
+      nhan: item.nhanCount
     }))
-    const ws2 = XLSX.utils.json_to_sheet(sheetData2)
+    const ws2 = buildSheet({
+      title: 'CHI TIẾT KHO GỐC & TÊN CHUẨN TƯƠNG ỨNG',
+      subtitle: `Xuất ngày ${today}  •  Tổng số: ${sheet2Rows.length} kho gốc`,
+      headerColor: '1E40AF',
+      headerBorderColor: '2563EB',
+      columns: [
+        { key: 'stt', label: 'STT', width: 6, align: 'center' },
+        { key: 'tenKho', label: 'Tên Kho BCH (Gốc)', width: 36, align: 'left' },
+        {
+          key: 'trangThai', label: 'Trạng thái', width: 24, align: 'center',
+          colorize: (v) => v === 'Đã gộp vào tên chuẩn' ? { bold: true, color: { rgb: '15803D' } } : { color: { rgb: '64748B' } }
+        },
+        { key: 'tenChuan', label: 'Tên BCH Chuẩn hóa', width: 34, align: 'left', colorize: () => ({ bold: true, color: { rgb: '1E40AF' } }) },
+        { key: 'tongPhieu', label: 'Tổng phiếu phát sinh', width: 16, align: 'center' },
+        { key: 'giao', label: 'Số phiếu Giao', width: 13, align: 'center' },
+        { key: 'nhan', label: 'Số phiếu Nhận', width: 13, align: 'center' }
+      ],
+      rows: sheet2Rows
+    })
     XLSX.utils.book_append_sheet(wb, ws2, 'Chi_Tiet_Kho_Goc')
 
-    // Sheet 3: Quy tắc chuẩn hóa
-    const sheetData3 = bchAliasRules.map((r, idx) => ({
-      'STT': idx + 1,
-      'Tên cũ / Biến thể (ten_cu)': r.ten_cu,
-      'Tên BCH Chuẩn (ten_chuan)': r.ten_chuan,
-      'Ghi chú': r.ghi_chu || ''
+    // ── Sheet 3: Quy tắc chuẩn hóa (dùng để đồng bộ Supabase) ───────────────
+    const sheet3Rows = bchAliasRules.map((r, idx) => ({
+      stt: idx + 1,
+      tenCu: r.ten_cu,
+      tenChuan: r.ten_chuan,
+      ghiChu: r.ghi_chu || ''
     }))
-    const ws3 = XLSX.utils.json_to_sheet(sheetData3)
+    const ws3 = buildSheet({
+      title: 'QUY TẮC CHUẨN HÓA (DỮ LIỆU SUPABASE)',
+      subtitle: `Xuất ngày ${today}  •  Tổng số: ${sheet3Rows.length} quy tắc`,
+      headerColor: '475569',
+      headerBorderColor: '64748B',
+      columns: [
+        { key: 'stt', label: 'STT', width: 6, align: 'center' },
+        { key: 'tenCu', label: 'Tên cũ / Biến thể (ten_cu)', width: 36, align: 'left' },
+        { key: 'tenChuan', label: 'Tên BCH Chuẩn (ten_chuan)', width: 36, align: 'left', colorize: () => ({ bold: true, color: { rgb: '0F766E' } }) },
+        { key: 'ghiChu', label: 'Ghi chú', width: 30, align: 'left' }
+      ],
+      rows: sheet3Rows
+    })
     XLSX.utils.book_append_sheet(wb, ws3, 'Quy_Tac_Supabase')
 
     XLSX.writeFile(wb, `SGC_Danh_Sach_BCH_Chuan_Hoa_${new Date().toISOString().slice(0, 10)}.xlsx`)
