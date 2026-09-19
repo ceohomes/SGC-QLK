@@ -1,21 +1,15 @@
-# SGC | Quản Lý Thủ Kho Dự Án
+# SGC | Báo Cáo Giao Nhận
 
-Webapp quản lý **toàn bộ đội ngũ thủ kho của công ty (300–500 người)**, được phân công trên nhiều công trình xây dựng đang thi công cùng lúc. Xây dựng theo cùng ngôn ngữ thiết kế (font Roboto, tông xanh SGC #0f58a7, sidebar trượt có thể ghim, bảng dữ liệu sticky-header, badge trạng thái...) với webapp "SGC | Báo Cáo Giao Nhận" đã có.
+Webapp quản lý báo cáo theo dõi giao nhận vật tư, máy móc thiết bị.
 
 ## Tính năng
 
-- **Dashboard tổng quan**: KPI thẻ số liệu (tổng thủ kho, đang làm việc, sắp hết hạn hợp đồng, tuổi/kinh nghiệm trung bình, giá trị tồn kho quản lý...) và các biểu đồ: phân bổ theo dự án, trạng thái làm việc, trình độ học vấn, độ tuổi, chức vụ, top thủ kho quản lý giá trị tồn kho lớn nhất.
-- **Danh sách thủ kho**: bảng chi tiết đầy đủ thông tin nhân sự (thông tin cá nhân, chức vụ, dự án phụ trách, kho phụ trách, hợp đồng, hiệu suất...), tìm kiếm, lọc theo dự án/chức vụ/trạng thái, xem chi tiết từng người, xuất Excel.
-- **Theo dự án / công trình**: nhóm thủ kho theo từng công trình, thống kê nhanh (số thủ kho, số kho vận hành, giá trị tồn kho).
-- **Cảnh báo hợp đồng**: danh sách hợp đồng đã quá hạn / sắp hết hạn (15, 30, 60 ngày) để chủ động gia hạn.
+- **Tab Đơn Giao**: Import file Excel Report_Orders_Đơn giao, xem & lọc dữ liệu
+- **Tab Đơn Nhận**: Import file Excel Report_Orders_Đơn nhận, xem & lọc dữ liệu  
+- **Cấu hình dữ liệu**: *(sắp ra mắt)*
+- **Tổng hợp**: *(sắp ra mắt)*
 
-## Dữ liệu mẫu
-
-`src/mockData.js` sinh ra **420 hồ sơ thủ kho mẫu** (trong khoảng 300–500 người theo yêu cầu), phân bổ trên **15 công trình xây dựng** đang thi công của công ty. Có thể đổi số lượng bằng cách sửa tham số `generateThuKhoData(420)`, hoặc thay bằng dữ liệu thật (import Excel/CSV hoặc kết nối Supabase/API) — cấu trúc field xem trong `THU_KHO_DATA`.
-
-Bảng danh sách có **phân trang** (25/50/100 dòng/trang) để thao tác mượt với quy mô vài trăm nhân sự; tab "Theo dự án" cũng có nút "Xem thêm" để không hiển thị quá dài khi 1 công trình có nhiều thủ kho.
-
-## Cài đặt & chạy
+## Cài đặt & Chạy
 
 ```bash
 npm install
@@ -28,26 +22,42 @@ npm run dev
 npm run build
 ```
 
-Deploy thư mục `dist/` lên Cloudflare Pages / Vercel / Netlify tương tự webapp gốc.
+Sau đó deploy thư mục `dist/` lên Cloudflare Pages.
 
-## Cấu trúc field Danh sách Thủ kho
+## Deploy lên Cloudflare Pages
 
-| Field | Ý nghĩa |
-|---|---|
-| maNV | Mã nhân viên (TK001...) |
-| hoTen, gioiTinh, ngaySinh, tuoi | Thông tin cá nhân |
-| soDienThoai, cccd, queQuan | Liên hệ / định danh |
-| ngayVaoLam, soNamKinhNghiem | Thâm niên |
-| trinhDo, chuyenNganh | Học vấn |
-| chucVu | Thủ kho trưởng / Thủ kho / Phụ kho |
-| duAn, khoPhuTrach, soLuongKhoQuanLy | Phân công công trình |
-| loaiHopDong, ngayHetHanHD, trangThai | Hợp đồng lao động |
-| luongCoBan, giaTriTonKhoQuanLy | Lương & quy mô quản lý |
-| chungChiNghiepVuKho, chungChiATLD | Chứng chỉ chuyên môn |
-| danhGiaHieuSuat, ghiChu | Đánh giá |
+1. Push code lên GitHub
+2. Vào [Cloudflare Pages](https://pages.cloudflare.com/)
+3. Connect repository
+4. Build settings:
+   - **Build command**: `npm run build`
+   - **Build output directory**: `dist`
+5. Deploy!
 
-## Bước tiếp theo gợi ý
+## Cấu trúc file Excel yêu cầu
 
-- Kết nối Supabase/Google Sheets để đồng bộ dữ liệu thật thay vì mock data.
-- Thêm màn hình import Excel danh sách thủ kho (tương tự tab Đơn Giao/Đơn Nhận ở app gốc).
-- Thêm phân quyền đăng nhập (Admin / Quản lý dự án / Xem) như `QuanLyTaiKhoanTab` ở app gốc.
+File Excel cần có sheet **"Báo cáo theo dõi giao nhận"** với 36 cột:
+- Dòng 1: Nhóm cột (Nhập kho, Xuất kho, Thông tin chung)
+- Dòng 2: Sub-headers
+- Dòng 3+: Dữ liệu
+
+## Changelog — Bản sửa lỗi & tối ưu tốc độ (01/07/2026)
+
+**1. Sửa lỗi tải trùng dữ liệu 2 lần gây chậm >30s (nguyên nhân chính)**
+Trước đây `loadTableFromSupabase` tải song song mỗi trang 10.000 dòng, nhưng Supabase/PostgREST mặc định chỉ trả tối đa 1.000 dòng/request. Kết quả là mọi trang đều bị cắt còn 1.000 dòng, code phát hiện ra rồi **huỷ toàn bộ và tải lại tuần tự từ đầu** — tức tải dữ liệu 2 lần. Đã sửa `PAGE_SIZE` về đúng 1.000 để khớp giới hạn thật của server, tải song song thành công ngay lần đầu.
+
+**2. Sửa lỗi "Smart Sync" so sánh sai dữ liệu với bảng >1.000 dòng**
+Bước so sánh nhẹ (id + timestamp) để phát hiện thay đổi cũng bị giới hạn 1.000 dòng do thiếu phân trang, khiến các dòng ngoài 1.000 dòng đầu bị hiểu nhầm là "đã xoá trên server". Đã thêm phân trang đầy đủ cho bước này.
+
+**3. Giảm spam lỗi 400 từ bảng `sgc_summary_configs` chưa tồn tại**
+Nếu bảng `sgc_summary_configs` chưa được tạo trên Supabase, trước đây app sẽ gửi lại request thất bại mỗi lần chuyển tab / đồng bộ ngầm. Giờ chỉ thử 1 lần/phiên, chỉ kiểm tra lại khi bấm nút "Làm mới" thủ công.
+→ **Bạn cần tạo bảng này** bằng cách mở app, tìm banner vàng "Thiếu bảng sgc_summary_configs trong Supabase", bấm copy SQL và chạy trong Supabase SQL Editor (tính năng này đã có sẵn trong app, không phải code mới).
+
+### Lưu ý thêm (chưa sửa, để tránh rủi ro)
+Bundle `xlsx` (thư viện đọc/xuất Excel) hiện nặng ~1MB và được tải ngay từ đầu dù chưa dùng đến, cũng góp phần làm chậm lần tải đầu tiên. Có thể tối ưu bằng cách chuyển sang `dynamic import()` chỉ tải khi người dùng bấm nút Import/Export Excel — nhưng việc này động vào ~26 vị trí sử dụng trong file xuất báo cáo, nên chưa tự ý sửa để tránh làm hỏng tính năng xuất Excel. Báo lại nếu bạn muốn mình làm tiếp phần này.
+
+## Changelog — Chống Supabase Free tier bị "pause" (01/07/2026)
+
+Đã thêm `.github/workflows/supabase-keep-alive.yml`: tự động gửi 1 request nhẹ tới Supabase mỗi 3 ngày (qua GitHub Actions, miễn phí) để tránh bị pause do 7 ngày không hoạt động — nguyên nhân chính gây chờ >30s khi mở app sau thời gian dài không dùng.
+
+**Không cần làm gì thêm** sau khi push code lên GitHub — workflow tự chạy theo lịch. Muốn kiểm tra ngay: vào tab **Actions** trên GitHub repo → chọn "Supabase Keep-Alive" → **Run workflow** để chạy thử thủ công.
