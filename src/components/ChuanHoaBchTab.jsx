@@ -1266,7 +1266,10 @@ export default function ChuanHoaBchTab({
     }
 
     // ── Sheet 1: Tổng hợp danh sách BCH sau chuẩn hóa (1 dòng = 1 BCH) ──────
-    const sheet1Rows = standardizedBchGroups.map((g, idx) => ({
+    // Sắp xếp theo thứ tự bảng chữ cái A→Z theo Tên BCH Chuẩn hóa (không phân biệt hoa/thường, có dấu)
+    const viCollator = new Intl.Collator('vi', { sensitivity: 'base', numeric: true })
+    const sortedBchGroups = [...standardizedBchGroups].sort((a, b) => viCollator.compare(a.standardName, b.standardName))
+    const sheet1Rows = sortedBchGroups.map((g, idx) => ({
       stt: idx + 1,
       ten: g.standardName,
       loai: g.isMultiMerged ? 'Đã gộp nhiều kho' : 'BCH độc lập (1 kho)',
@@ -1301,7 +1304,9 @@ export default function ChuanHoaBchTab({
     XLSX.utils.book_append_sheet(wb, ws1, 'Danh_Sach_BCH_Chuan_Hoa')
 
     // ── Sheet 2: Chi tiết từng Kho gốc & Tên chuẩn tương ứng ────────────────
-    const sheet2Rows = allOriginalKhos.map((item, idx) => ({
+    // Sắp xếp theo thứ tự bảng chữ cái A→Z theo Tên Kho BCH (Gốc)
+    const sortedOriginalKhos = [...allOriginalKhos].sort((a, b) => viCollator.compare(a.name, b.name))
+    const sheet2Rows = sortedOriginalKhos.map((item, idx) => ({
       stt: idx + 1,
       tenKho: item.name,
       trangThai: item.isMapped ? 'Đã gộp vào tên chuẩn' : 'Tên gốc (Độc lập)',
@@ -1332,7 +1337,9 @@ export default function ChuanHoaBchTab({
     XLSX.utils.book_append_sheet(wb, ws2, 'Chi_Tiet_Kho_Goc')
 
     // ── Sheet 3: Quy tắc chuẩn hóa (dùng để đồng bộ Supabase) ───────────────
-    const sheet3Rows = bchAliasRules.map((r, idx) => ({
+    // Sắp xếp theo thứ tự bảng chữ cái A→Z theo Tên cũ / Biến thể
+    const sortedAliasRules = [...bchAliasRules].sort((a, b) => viCollator.compare(a.ten_cu, b.ten_cu))
+    const sheet3Rows = sortedAliasRules.map((r, idx) => ({
       stt: idx + 1,
       tenCu: r.ten_cu,
       tenChuan: r.ten_chuan,
