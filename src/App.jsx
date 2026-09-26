@@ -13193,9 +13193,7 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
         const wsTongHop = {}
         const columnsTongHop = [
           { key: 'STT', label: 'STT', width: 50 },
-          { key: 'maVatTu', label: 'Mã vật tư', width: 100 },
           { key: 'maSAP', label: 'Mã SAP', width: 100 },
-          { key: 'thongSoKyThuat', label: 'Thông số kỹ thuật', width: 160 },
           { key: 'tenVatTu', label: 'Tên vật tư', width: 280 },
           { key: 'khoBCH', label: 'Kho BCH', width: 180 },
           { key: 'dvt', label: 'ĐVT', width: 70 },
@@ -13308,7 +13306,7 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
               numFormat = '#,##0.00;[Red]-#,##0.00;"-"'
             } else if (col.key === 'tonKho') {
               isFormula = true
-              formulaStr = `H${thRowIdx}-I${thRowIdx}`
+              formulaStr = `F${thRowIdx}-G${thRowIdx}`
               val = Number(row.thucNhap) - Number(row.thucXuat)
               cellType = 'n'
               numFormat = '#,##0.00;[Red]-#,##0.00;"-"'
@@ -13397,7 +13395,7 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
         const lastThDataRow = thRowIdx - 1
 
         wsTongHop['!merges'] = [
-          { s: { r: thRowIdx - 1, c: 0 }, e: { r: thRowIdx - 1, c: 6 } }
+          { s: { r: thRowIdx - 1, c: 0 }, e: { r: thRowIdx - 1, c: 4 } }
         ]
 
         wsTongHop[`A${thRowIdx}`] = {
@@ -13416,7 +13414,7 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
           }
         }
 
-        for (let c = 1; c <= 6; c++) {
+        for (let c = 1; c <= 4; c++) {
           wsTongHop[`${getColLabel(c)}${thRowIdx}`] = {
             v: '',
             t: 's',
@@ -13435,8 +13433,8 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
         const totalThucNhapSum = materialSummaryList.reduce((s, r) => s + (Number(r.thucNhap) || 0), 0)
         const totalThucXuatSum = materialSummaryList.reduce((s, r) => s + (Number(r.thucXuat) || 0), 0)
 
-        wsTongHop[`H${thRowIdx}`] = {
-          f: `SUM(H5:H${lastThDataRow})`,
+        wsTongHop[`F${thRowIdx}`] = {
+          f: `SUM(F5:F${lastThDataRow})`,
           v: totalThucNhapSum,
           t: 'n',
           s: {
@@ -13453,8 +13451,8 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
           z: '#,##0.00;[Red]-#,##0.00;"-"'
         }
 
-        wsTongHop[`I${thRowIdx}`] = {
-          f: `SUM(I5:I${lastThDataRow})`,
+        wsTongHop[`G${thRowIdx}`] = {
+          f: `SUM(G5:G${lastThDataRow})`,
           v: totalThucXuatSum,
           t: 'n',
           s: {
@@ -13471,8 +13469,8 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
           z: '#,##0.00;[Red]-#,##0.00;"-"'
         }
 
-        wsTongHop[`J${thRowIdx}`] = {
-          f: `H${thRowIdx}-I${thRowIdx}`,
+        wsTongHop[`H${thRowIdx}`] = {
+          f: `F${thRowIdx}-G${thRowIdx}`,
           v: totalThucNhapSum - totalThucXuatSum,
           t: 'n',
           s: {
@@ -13489,33 +13487,44 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
           z: '#,##0.00;[Red]-#,##0.00;"-"'
         }
 
-        wsTongHop['!ref'] = `A1:J${thRowIdx}`
+        wsTongHop['!ref'] = `A1:H${thRowIdx}`
 
         // ═════════════════════════════════════════════════════════════════════
         // SHEET 2: CHI TIẾT THEO ĐƠN VỊ (Detailed by Delivery/Receiving Unit)
         // ═════════════════════════════════════════════════════════════════════
         const ws = {}
+        // Bố cục mới: mỗi vật tư 1 dòng "Tổng vật tư" (in đậm) + các dòng chi tiết bên dưới.
+        // Dòng nhập (Nhập từ → Đơn vị giao) và dòng xuất (Xuất cho → Đơn vị nhận) tách riêng, không nằm chung hàng.
         const columns = [
           { key: 'STT', label: 'STT', width: 50 },
-          { key: 'maVatTu', label: 'Mã vật tư', width: 90 },
           { key: 'maSAP', label: 'Mã SAP', width: 100 },
-          { key: 'thongSoKyThuat', label: 'Thông số kỹ thuật', width: 150 },
           { key: 'tenVatTu', label: 'Tên vật tư', width: 280 },
           { key: 'khoBCH', label: 'Kho BCH', width: 180 },
-          { key: 'dvt', label: 'ĐVT', width: 70 },
-          { key: 'donViGiao', label: 'Đơn vị giao', width: 200 },
-          { key: 'thucNhap', label: 'Thực nhập', width: 120 },
-          { key: 'donViNhan', label: 'Đơn vị nhận', width: 200 },
-          { key: 'thucXuat', label: 'Thực xuất', width: 120 },
-          { key: 'tonKho', label: 'Tồn kho', width: 120 }
+          { key: 'dvt', label: 'ĐVT', width: 60 },
+          { key: 'phanLoai', label: 'Phân loại', width: 95 },
+          { key: 'donVi', label: 'Đơn vị giao / Đơn vị nhận', width: 230 },
+          { key: 'thucNhap', label: 'Thực nhập', width: 115 },
+          { key: 'thucXuat', label: 'Thực xuất', width: 115 },
+          { key: 'tonKho', label: 'Tồn kho', width: 115 }
         ]
+        const CT_NUM_FMT = '#,##0.00;[Red]-#,##0.00;"-"'
+        const CT_LABEL_TONG = 'Tổng vật tư'
+        const CT_LABEL_NHAP = 'Nhập từ'
+        const CT_LABEL_XUAT = 'Xuất cho'
+        const ctBorder = (topStyle = 'thin', topColor = 'E2E8F0', bottomStyle = 'thin', bottomColor = 'E2E8F0') => ({
+          top: { style: topStyle, color: { rgb: topColor } },
+          bottom: { style: bottomStyle, color: { rgb: bottomColor } },
+          left: { style: 'thin', color: { rgb: 'E2E8F0' } },
+          right: { style: 'thin', color: { rgb: 'E2E8F0' } }
+        })
 
         ws['!cols'] = columns.map(c => ({ wpx: c.width }))
+        ws['!rows'] = []
 
         let excelRowIdx = 1
 
         ws['A1'] = {
-          v: `BÁO CÁO CHI TIẾT KHỐI LƯỢNG THỰC NHẬP THỰC XUẤT`,
+          v: `BÁO CÁO CHI TIẾT KHỐI LƯỢNG THỰC NHẬP THỰC XUẤT THEO ĐƠN VỊ`,
           t: 's',
           s: {
             font: { name: 'Segoe UI', sz: 14, bold: true, color: { rgb: '0B2545' } },
@@ -13530,19 +13539,24 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
             alignment: { horizontal: 'left', vertical: 'center' }
           }
         }
+        ws['A3'] = {
+          v: `Cách đọc: dòng "${CT_LABEL_TONG}" (in đậm) = số liệu khớp sheet Tổng hợp; các dòng "${CT_LABEL_NHAP}" ghi Đơn vị giao + Thực nhập, các dòng "${CT_LABEL_XUAT}" ghi Đơn vị nhận + Thực xuất. Bấm dấu [-]/[+] bên trái để thu gọn/mở rộng chi tiết.`,
+          t: 's',
+          s: {
+            font: { name: 'Segoe UI', sz: 9, italic: true, color: { rgb: '64748B' } },
+            alignment: { horizontal: 'left', vertical: 'center' }
+          }
+        }
         excelRowIdx = 4
 
         columns.forEach((col, colIdx) => {
-          const colChar = getColLabel(colIdx)
-          const cellRef = `${colChar}${excelRowIdx}`
-          
-          const isThucNhap = col.key === 'thucNhap' || col.key === 'donViGiao'
-          const isThucXuat = col.key === 'thucXuat' || col.key === 'donViNhan'
+          const cellRef = `${getColLabel(colIdx)}${excelRowIdx}`
+          const isNhap = col.key === 'thucNhap'
+          const isXuat = col.key === 'thucXuat'
           const isKhoBCH = col.key === 'khoBCH'
-
-          const excelBgColor = isThucNhap ? '0D9488' : isThucXuat ? 'EA580C' : isKhoBCH ? '1E3A8A' : '0F58A7'
-          const excelBorderColor = isThucNhap ? '0F766E' : isThucXuat ? 'C2410C' : isKhoBCH ? '1E293B' : '0A3D73'
-
+          const isDonVi = col.key === 'donVi' || col.key === 'phanLoai'
+          const excelBgColor = isNhap ? '0D9488' : isXuat ? 'EA580C' : isKhoBCH ? '1E3A8A' : isDonVi ? '334155' : '0F58A7'
+          const excelBorderColor = isNhap ? '0F766E' : isXuat ? 'C2410C' : isKhoBCH ? '1E293B' : isDonVi ? '1E293B' : '0A3D73'
           ws[cellRef] = {
             v: col.label,
             t: 's',
@@ -13560,18 +13574,15 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
           }
         })
 
-        // Build unit-level breakdown for Sheet 2: Chi tiết
-        const detailUnitRows = []
+        // FIX đối soát Chi tiết ↔ Tổng hợp (giữ nguyên logic đã sửa):
+        //   + Thực nhập: nhận NCC/Kho (+) → đối tác = donViGiao; Trả lại NCC (−) → đối tác = donViNhan (NCC)
+        //   + Thực xuất: xuất Tổ đội/Kho (+) → đối tác = donViNhan; Tổ đội trả (−) → đối tác = donViGiao (Tổ đội)
+        //   Tổng hợp chặn âm theo vật tư (Math.max(0, tổng)) → nếu tổng ≤ 0 thì bỏ phía đó ở Chi tiết.
+        const round6 = (v) => Math.round(v * 1e6) / 1e6
+        const detailGroups = []
         realReportSummaryRows.forEach(row => {
-          // FIX đối soát Chi tiết ↔ Tổng hợp:
-          // - Gom theo ĐỐI TÁC của giao dịch (không phải luôn là donViGiao/donViNhan):
-          //   + Thực nhập: nhận NCC/Kho (+) → đối tác = donViGiao; Trả lại NCC (−) → đối tác = donViNhan (NCC)
-          //   + Thực xuất: xuất Tổ đội/Kho (+) → đối tác = donViNhan; Tổ đội trả (−) → đối tác = donViGiao (Tổ đội)
-          //   (Trước đây phần trả lại bị gom vào chính Kho BCH rồi bị Math.max(0) cắt mất → Chi tiết > Tổng hợp)
-          // - Không còn Math.max(0) / fallback theo từng dòng; tổng các dòng của 1 vật tư = đúng số ở Tổng hợp.
           const nhapByGiao = {}
           const xuatByNhan = {}
-          const round6 = (v) => Math.round(v * 1e6) / 1e6
           ;(row.transactions || []).forEach(tx => {
             if (tx.nhapVal > 0 && tx.logicNhapVal !== 0) {
               const g = (tx.logicNhapVal < 0 ? tx.donViNhan : tx.donViGiao) || '—'
@@ -13584,252 +13595,154 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
               xuatByNhan[n] += tx.xuatVal * tx.logicXuatVal
             }
           })
-          // Tổng hợp chặn âm theo vật tư (Math.max(0, tổng)). Nếu tổng ≤ 0 thì Tổng hợp = 0 → Chi tiết bỏ phía đó.
+          const byName = (a, b) => String(a[0]).localeCompare(String(b[0]), 'vi', { sensitivity: 'base' })
           const giaoEntries = (Number(row.thucNhap) > 0)
-            ? Object.entries(nhapByGiao).map(([k, v]) => [k, round6(v)]).filter(([, v]) => v !== 0)
+            ? Object.entries(nhapByGiao).map(([k, v]) => [k, round6(v)]).filter(([, v]) => v !== 0).sort(byName)
             : []
           const nhanEntries = (Number(row.thucXuat) > 0)
-            ? Object.entries(xuatByNhan).map(([k, v]) => [k, round6(v)]).filter(([, v]) => v !== 0)
+            ? Object.entries(xuatByNhan).map(([k, v]) => [k, round6(v)]).filter(([, v]) => v !== 0).sort(byName)
             : []
-          const maxEntries = Math.max(giaoEntries.length, nhanEntries.length)
-          for (let k = 0; k < maxEntries; k++) {
-            const [giao, nhapVal] = giaoEntries[k] || ['—', 0]
-            const [nhan, xuatVal] = nhanEntries[k] || ['—', 0]
-            detailUnitRows.push({
-              maVatTu: row.maVatTu,
-              maSAP: row.maSAP,
-              thongSoKyThuat: row.thongSoKyThuat,
-              tenVatTu: row.tenVatTu,
-              khoBCH: row.khoBCH,
-              dvt: row.dvt,
-              donViGiao: giao,
-              thucNhap: nhapVal,
-              donViNhan: nhan,
-              thucXuat: xuatVal,
-              tonKho: nhapVal - xuatVal
-            })
-          }
+          if (giaoEntries.length === 0 && nhanEntries.length === 0) return
+          detailGroups.push({ row, giaoEntries, nhanEntries })
         })
 
-        detailUnitRows.forEach((row, rowIndex) => {
-          excelRowIdx++
-          const isEvenNum = (rowIndex % 2 === 1)
-          const rowBgColor = isEvenNum ? 'F8FAFC' : 'FFFFFF'
-
+        const writeCtRow = (r, values, opts) => {
           columns.forEach((col, colIdx) => {
-            const colChar = getColLabel(colIdx)
-            const cellRef = `${colChar}${excelRowIdx}`
-
-            let val = ''
-            let cellType = 's'
-            let numFormat = undefined
-            let isFormula = false
-            let formulaStr = ''
-
-            if (col.key === 'STT') {
-              val = rowIndex + 1
-              cellType = 'n'
-            } else if (col.key === 'thucNhap') {
-              val = Number(row.thucNhap)
-              cellType = 'n'
-              numFormat = '#,##0.00;[Red]-#,##0.00;"-"'
-            } else if (col.key === 'thucXuat') {
-              val = Number(row.thucXuat)
-              cellType = 'n'
-              numFormat = '#,##0.00;[Red]-#,##0.00;"-"'
-            } else if (col.key === 'tonKho') {
-              isFormula = true
-              formulaStr = `I${excelRowIdx}-K${excelRowIdx}`
-              val = Number(row.tonKho)
-              cellType = 'n'
-              numFormat = '#,##0.00;[Red]-#,##0.00;"-"'
+            const cellRef = `${getColLabel(colIdx)}${r}`
+            const raw = values[col.key]
+            const isNumCol = ['thucNhap', 'thucXuat', 'tonKho'].includes(col.key)
+            const formula = opts.formulas && opts.formulas[col.key]
+            let cell
+            if (formula) {
+              cell = { f: formula, v: Number(raw) || 0, t: 'n', z: CT_NUM_FMT }
+            } else if (col.key === 'STT' && raw !== '' && raw !== undefined) {
+              cell = { v: raw, t: 'n' }
+            } else if (isNumCol && raw !== '' && raw !== undefined && raw !== null) {
+              cell = { v: Number(raw), t: 'n', z: CT_NUM_FMT }
             } else {
-              val = String(row[col.key] || '')
+              cell = { v: raw === undefined || raw === null ? '' : String(raw), t: 's' }
             }
-
-            const isCenteredCol = ['STT', 'maVatTu', 'maSAP', 'dvt'].includes(col.key)
-            const isRightAligned = ['thucNhap', 'thucXuat', 'tonKho'].includes(col.key)
-
-            let cellBg = rowBgColor
-            let fontColor = '1A1A1A'
-            let isBold = false
-
-            if (col.key === 'tonKho') {
-              const numVal = Number(row[col.key])
-              const isNegative = numVal < 0
-              const isZero = numVal === 0
-              if (isNegative) {
-                cellBg = 'FEF2F2'
-                fontColor = 'EF4444'
-                isBold = true
-              } else if (!isZero) {
-                cellBg = 'EFF6FF'
-                fontColor = '1E40AF'
-                isBold = true
-              } else {
-                cellBg = 'F1F5F9'
-                fontColor = '475569'
-                isBold = false
-              }
-            } else if (col.key === 'thucNhap') {
-              const numVal = Number(row[col.key])
-              if (numVal > 0) {
-                cellBg = 'ECFDF5'
-                fontColor = '065F46'
-                isBold = true
-              } else {
-                cellBg = 'F1F5F9'
-                fontColor = '475569'
-                isBold = false
-              }
-            } else if (col.key === 'thucXuat') {
-              const numVal = Number(row[col.key])
-              if (numVal > 0) {
-                cellBg = 'FFF7ED'
-                fontColor = 'C2410C'
-                isBold = true
-              } else {
-                cellBg = 'F1F5F9'
-                fontColor = '475569'
-                isBold = false
-              }
-            } else if (col.key === 'khoBCH') {
-              fontColor = '1E3A8A'
-              isBold = true
-            } else if (col.key === 'donViGiao') {
-              fontColor = '047857'
-              if (row.donViGiao && row.donViGiao !== '—') {
-                cellBg = 'F0FDF4'
-              }
-            } else if (col.key === 'donViNhan') {
-              fontColor = 'C2410C'
-              if (row.donViNhan && row.donViNhan !== '—') {
-                cellBg = 'FFF7ED'
-              }
-            }
-
-            const cellStyle = {
-              font: { name: 'Segoe UI', sz: 9, color: { rgb: fontColor }, bold: isBold },
+            const st = opts.style(col.key, raw)
+            cell.s = {
+              font: { name: 'Segoe UI', sz: st.sz || 9, color: { rgb: st.color || '1A1A1A' }, bold: !!st.bold, italic: !!st.italic },
               alignment: {
-                horizontal: isCenteredCol ? 'center' : (isRightAligned ? 'right' : 'left'),
+                horizontal: ['STT', 'maSAP', 'dvt', 'phanLoai'].includes(col.key) ? 'center' : (isNumCol ? 'right' : 'left'),
                 vertical: 'center',
-                wrapText: true
+                wrapText: true,
+                indent: st.indent || 0
               },
-              fill: { patternType: 'solid', fgColor: { rgb: cellBg } },
-              border: {
-                top: { style: 'thin', color: { rgb: 'E2E8F0' } },
-                bottom: { style: 'thin', color: { rgb: 'E2E8F0' } },
-                left: { style: 'thin', color: { rgb: 'E2E8F0' } },
-                right: { style: 'thin', color: { rgb: 'E2E8F0' } }
-              }
+              fill: { patternType: 'solid', fgColor: { rgb: st.bg || 'FFFFFF' } },
+              border: st.border || ctBorder()
             }
+            ws[cellRef] = cell
+          })
+        }
 
-            const cellObj = { v: val, t: cellType, s: cellStyle }
-            if (isFormula) cellObj.f = formulaStr
-            if (numFormat) cellObj.z = numFormat
-            ws[cellRef] = cellObj
+        const tongRowRefs = []
+        detailGroups.forEach((grp, gIdx) => {
+          const { row, giaoEntries, nhanEntries } = grp
+          // ── Dòng Tổng vật tư ──
+          excelRowIdx++
+          const tongRow = excelRowIdx
+          tongRowRefs.push(tongRow)
+          const nDetail = giaoEntries.length + nhanEntries.length
+          const firstD = tongRow + 1
+          const lastD = tongRow + nDetail
+          const tNhap = Number(row.thucNhap) || 0
+          const tXuat = Number(row.thucXuat) || 0
+          writeCtRow(tongRow, {
+            STT: gIdx + 1,
+            maSAP: row.maSAP,
+            tenVatTu: row.tenVatTu,
+            khoBCH: row.khoBCH,
+            dvt: row.dvt,
+            phanLoai: CT_LABEL_TONG,
+            donVi: '',
+            thucNhap: tNhap,
+            thucXuat: tXuat,
+            tonKho: tNhap - tXuat
+          }, {
+            formulas: {
+              thucNhap: `SUMIFS(H${firstD}:H${lastD},F${firstD}:F${lastD},"${CT_LABEL_NHAP}")`,
+              thucXuat: `SUMIFS(I${firstD}:I${lastD},F${firstD}:F${lastD},"${CT_LABEL_XUAT}")`,
+              tonKho: `H${tongRow}-I${tongRow}`
+            },
+            style: (key, raw) => {
+              const base = { bold: true, bg: 'EEF2FF', color: '0F172A', border: ctBorder('thin', '94A3B8', 'thin', 'CBD5E1') }
+              if (key === 'khoBCH') return { ...base, color: '1E3A8A' }
+              if (key === 'phanLoai') return { ...base, color: '3730A3', sz: 8.5 }
+              if (key === 'thucNhap') return { ...base, bg: 'D1FAE5', color: '065F46' }
+              if (key === 'thucXuat') return { ...base, bg: 'FFEDD5', color: 'C2410C' }
+              if (key === 'tonKho') {
+                const v = Number(raw) || 0
+                return { ...base, bg: v < 0 ? 'FEE2E2' : v > 0 ? 'DBEAFE' : 'E2E8F0', color: v < 0 ? 'DC2626' : v > 0 ? '1E40AF' : '475569' }
+              }
+              return base
+            }
+          })
+
+          // ── Dòng chi tiết Nhập (Đơn vị giao) ──
+          const detailStyle = (kind) => (key, raw) => {
+            const isNhapK = kind === 'nhap'
+            const base = { bg: 'FFFFFF', color: '94A3B8', sz: 8.5 }
+            if (key === 'phanLoai') return { ...base, bg: isNhapK ? 'F0FDF4' : 'FFF7ED', color: isNhapK ? '047857' : 'C2410C', bold: true }
+            if (key === 'donVi') return { ...base, bg: isNhapK ? 'F0FDF4' : 'FFF7ED', color: isNhapK ? '047857' : 'C2410C', sz: 9, indent: 1 }
+            if (key === 'thucNhap') return isNhapK ? { bg: 'F0FDF4', color: Number(raw) < 0 ? 'DC2626' : '065F46', sz: 9 } : { ...base, bg: 'F8FAFC' }
+            if (key === 'thucXuat') return !isNhapK ? { bg: 'FFF7ED', color: Number(raw) < 0 ? 'DC2626' : 'C2410C', sz: 9 } : { ...base, bg: 'F8FAFC' }
+            if (key === 'tonKho') return { ...base, bg: 'F8FAFC' }
+            return base
+          }
+          giaoEntries.forEach(([giao, val]) => {
+            excelRowIdx++
+            ws['!rows'][excelRowIdx - 1] = { level: 1 }
+            writeCtRow(excelRowIdx, {
+              STT: '', maSAP: row.maSAP, tenVatTu: row.tenVatTu, khoBCH: row.khoBCH, dvt: row.dvt,
+              phanLoai: CT_LABEL_NHAP, donVi: giao, thucNhap: val, thucXuat: '', tonKho: ''
+            }, { style: detailStyle('nhap') })
+          })
+          // ── Dòng chi tiết Xuất (Đơn vị nhận) ──
+          nhanEntries.forEach(([nhan, val]) => {
+            excelRowIdx++
+            ws['!rows'][excelRowIdx - 1] = { level: 1 }
+            writeCtRow(excelRowIdx, {
+              STT: '', maSAP: row.maSAP, tenVatTu: row.tenVatTu, khoBCH: row.khoBCH, dvt: row.dvt,
+              phanLoai: CT_LABEL_XUAT, donVi: nhan, thucNhap: '', thucXuat: val, tonKho: ''
+            }, { style: detailStyle('xuat') })
           })
         })
 
-        // Sum row for Chi Tiet Sheet
+        // ── Dòng TỔNG CỘNG: chỉ cộng các dòng "Tổng vật tư" → khớp sheet Tổng hợp ──
         excelRowIdx++
         const lastDataRow = excelRowIdx - 1
-
+        const grandNhap = detailGroups.reduce((s, g) => s + (Number(g.row.thucNhap) || 0), 0)
+        const grandXuat = detailGroups.reduce((s, g) => s + (Number(g.row.thucXuat) || 0), 0)
         ws['!merges'] = [
-          { s: { r: excelRowIdx - 1, c: 0 }, e: { r: excelRowIdx - 1, c: 7 } }
+          { s: { r: excelRowIdx - 1, c: 0 }, e: { r: excelRowIdx - 1, c: 6 } }
         ]
-
-        ws[`A${excelRowIdx}`] = {
-          v: 'TỔNG CỘNG',
-          t: 's',
-          s: {
-            font: { name: 'Segoe UI', sz: 10, bold: true, color: { rgb: '0F172A' } },
-            alignment: { horizontal: 'center', vertical: 'center' },
-            fill: { patternType: 'solid', fgColor: { rgb: 'F1F5F9' } },
-            border: {
-              top: { style: 'medium', color: { rgb: '0F58A7' } },
-              bottom: { style: 'medium', color: { rgb: '0F58A7' } },
-              left: { style: 'thin', color: { rgb: 'E2E8F0' } },
-              right: { style: 'thin', color: { rgb: 'E2E8F0' } }
-            }
-          }
-        }
-
-        for (let c = 1; c <= 7; c++) {
-          ws[`${getColLabel(c)}${excelRowIdx}`] = {
-            v: '',
-            t: 's',
-            s: {
-              fill: { patternType: 'solid', fgColor: { rgb: 'F1F5F9' } },
-              border: {
-                top: { style: 'medium', color: { rgb: '0F58A7' } },
-                bottom: { style: 'medium', color: { rgb: '0F58A7' } },
-                left: { style: 'thin', color: { rgb: 'E2E8F0' } },
-                right: { style: 'thin', color: { rgb: 'E2E8F0' } }
-              }
-            }
-          }
-        }
-
-        columns.forEach((col, colIdx) => {
-          if (colIdx <= 7) return
-          const colChar = getColLabel(colIdx)
-          const cellRef = `${colChar}${excelRowIdx}`
-
-          let sumFormula = ''
-          let bg = 'F1F5F9'
-          let txtColor = '0F172A'
-
-          if (col.key === 'thucNhap') {
-            sumFormula = `SUM(I5:I${lastDataRow})`
-            bg = 'ECFDF5'
-            txtColor = '065F46'
-          } else if (col.key === 'donViNhan') {
-            ws[cellRef] = {
-              v: '',
-              t: 's',
-              s: {
-                fill: { patternType: 'solid', fgColor: { rgb: 'F1F5F9' } },
-                border: {
-                  top: { style: 'medium', color: { rgb: '0F58A7' } },
-                  bottom: { style: 'medium', color: { rgb: '0F58A7' } },
-                  left: { style: 'thin', color: { rgb: 'E2E8F0' } },
-                  right: { style: 'thin', color: { rgb: 'E2E8F0' } }
-                }
-              }
-            }
-            return
-          } else if (col.key === 'thucXuat') {
-            sumFormula = `SUM(K5:K${lastDataRow})`
-            bg = 'FFF7ED'
-            txtColor = 'C2410C'
-          } else if (col.key === 'tonKho') {
-            sumFormula = `I${excelRowIdx}-K${excelRowIdx}`
-            bg = 'EFF6FF'
-            txtColor = '1E3A8A'
-          }
-
-          const sumVal = detailUnitRows.reduce((sum, r) => sum + (Number(r[col.key]) || 0), 0)
-          
-          ws[cellRef] = {
-            f: sumFormula,
-            v: sumVal,
-            t: 'n',
-            s: {
-              font: { name: 'Segoe UI', sz: 10, bold: true, color: { rgb: txtColor } },
-              alignment: { horizontal: 'right', vertical: 'center' },
-              fill: { patternType: 'solid', fgColor: { rgb: bg } },
-              border: {
-                top: { style: 'medium', color: { rgb: '0F58A7' } },
-                bottom: { style: 'medium', color: { rgb: '0F58A7' } },
-                left: { style: 'thin', color: { rgb: 'E2E8F0' } },
-                right: { style: 'thin', color: { rgb: 'E2E8F0' } }
-              }
-            },
-            z: '#,##0.00;[Red]-#,##0.00;"-"'
+        writeCtRow(excelRowIdx, {
+          STT: '', maSAP: '', tenVatTu: '', khoBCH: '', dvt: '', phanLoai: '', donVi: '',
+          thucNhap: grandNhap, thucXuat: grandXuat, tonKho: grandNhap - grandXuat
+        }, {
+          formulas: {
+            thucNhap: `SUMIFS(H5:H${lastDataRow},F5:F${lastDataRow},"${CT_LABEL_TONG}")`,
+            thucXuat: `SUMIFS(I5:I${lastDataRow},F5:F${lastDataRow},"${CT_LABEL_TONG}")`,
+            tonKho: `H${excelRowIdx}-I${excelRowIdx}`
+          },
+          style: (key) => {
+            const border = ctBorder('medium', '0F58A7', 'medium', '0F58A7')
+            if (key === 'thucNhap') return { bold: true, sz: 10, bg: 'ECFDF5', color: '065F46', border }
+            if (key === 'thucXuat') return { bold: true, sz: 10, bg: 'FFF7ED', color: 'C2410C', border }
+            if (key === 'tonKho') return { bold: true, sz: 10, bg: 'EFF6FF', color: '1E3A8A', border }
+            return { bold: true, sz: 10, bg: 'F1F5F9', color: '0F172A', border }
           }
         })
+        ws[`A${excelRowIdx}`].v = 'TỔNG CỘNG'
+        ws[`A${excelRowIdx}`].t = 's'
+        ws[`A${excelRowIdx}`].s.alignment.horizontal = 'center'
 
+        ws['!outline'] = { above: true }
+        ws['!freeze'] = { xSplit: 0, ySplit: 4 }
+        ws['!autofilter'] = { ref: `A4:${getColLabel(columns.length - 1)}${lastDataRow}` }
         ws['!ref'] = `A1:${getColLabel(columns.length - 1)}${excelRowIdx}`
 
         // Prepare Detailed Sheets "Thực nhập" and "Thực xuất"
