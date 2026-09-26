@@ -13563,41 +13563,51 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
         // Build unit-level breakdown for Sheet 2: Chi tiết
         const detailUnitRows = []
         realReportSummaryRows.forEach(row => {
+          // FIX đối soát Chi tiết ↔ Tổng hợp:
+          // - Gom theo ĐỐI TÁC của giao dịch (không phải luôn là donViGiao/donViNhan):
+          //   + Thực nhập: nhận NCC/Kho (+) → đối tác = donViGiao; Trả lại NCC (−) → đối tác = donViNhan (NCC)
+          //   + Thực xuất: xuất Tổ đội/Kho (+) → đối tác = donViNhan; Tổ đội trả (−) → đối tác = donViGiao (Tổ đội)
+          //   (Trước đây phần trả lại bị gom vào chính Kho BCH rồi bị Math.max(0) cắt mất → Chi tiết > Tổng hợp)
+          // - Không còn Math.max(0) / fallback theo từng dòng; tổng các dòng của 1 vật tư = đúng số ở Tổng hợp.
           const nhapByGiao = {}
           const xuatByNhan = {}
+          const round6 = (v) => Math.round(v * 1e6) / 1e6
           ;(row.transactions || []).forEach(tx => {
             if (tx.nhapVal > 0 && tx.logicNhapVal !== 0) {
-              const g = tx.donViGiao || '—'
+              const g = (tx.logicNhapVal < 0 ? tx.donViNhan : tx.donViGiao) || '—'
               if (!nhapByGiao[g]) nhapByGiao[g] = 0
               nhapByGiao[g] += tx.nhapVal * tx.logicNhapVal
             }
             if (tx.xuatVal > 0 && tx.logicXuatVal !== 0) {
-              const n = tx.donViNhan || '—'
+              const n = (tx.logicXuatVal < 0 ? tx.donViGiao : tx.donViNhan) || '—'
               if (!xuatByNhan[n]) xuatByNhan[n] = 0
               xuatByNhan[n] += tx.xuatVal * tx.logicXuatVal
             }
           })
-          const giaoEntries = Object.entries(nhapByGiao)
-          const nhanEntries = Object.entries(xuatByNhan)
-          const maxEntries = Math.max(1, giaoEntries.length, nhanEntries.length)
+          // Tổng hợp chặn âm theo vật tư (Math.max(0, tổng)). Nếu tổng ≤ 0 thì Tổng hợp = 0 → Chi tiết bỏ phía đó.
+          const giaoEntries = (Number(row.thucNhap) > 0)
+            ? Object.entries(nhapByGiao).map(([k, v]) => [k, round6(v)]).filter(([, v]) => v !== 0)
+            : []
+          const nhanEntries = (Number(row.thucXuat) > 0)
+            ? Object.entries(xuatByNhan).map(([k, v]) => [k, round6(v)]).filter(([, v]) => v !== 0)
+            : []
+          const maxEntries = Math.max(giaoEntries.length, nhanEntries.length)
           for (let k = 0; k < maxEntries; k++) {
             const [giao, nhapVal] = giaoEntries[k] || ['—', 0]
             const [nhan, xuatVal] = nhanEntries[k] || ['—', 0]
-            if (nhapVal !== 0 || xuatVal !== 0 || (k === 0 && (row.thucNhap > 0 || row.thucXuat > 0))) {
-              detailUnitRows.push({
-                maVatTu: row.maVatTu,
-                maSAP: row.maSAP,
-                thongSoKyThuat: row.thongSoKyThuat,
-                tenVatTu: row.tenVatTu,
-                khoBCH: row.khoBCH,
-                dvt: row.dvt,
-                donViGiao: giao,
-                thucNhap: Math.max(0, nhapVal || (k === 0 ? row.thucNhap : 0)),
-                donViNhan: nhan,
-                thucXuat: Math.max(0, xuatVal || (k === 0 ? row.thucXuat : 0)),
-                tonKho: Math.max(0, nhapVal || (k === 0 ? row.thucNhap : 0)) - Math.max(0, xuatVal || (k === 0 ? row.thucXuat : 0))
-              })
-            }
+            detailUnitRows.push({
+              maVatTu: row.maVatTu,
+              maSAP: row.maSAP,
+              thongSoKyThuat: row.thongSoKyThuat,
+              tenVatTu: row.tenVatTu,
+              khoBCH: row.khoBCH,
+              dvt: row.dvt,
+              donViGiao: giao,
+              thucNhap: nhapVal,
+              donViNhan: nhan,
+              thucXuat: xuatVal,
+              tonKho: nhapVal - xuatVal
+            })
           }
         })
 
