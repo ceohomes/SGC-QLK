@@ -1102,7 +1102,7 @@ export default function ThongKeTheoVatTuTab({
                   onClick={() => handleSort('totalStock')}
                   style={{
                     padding: '12px 10px',
-                    fontWeight: 800,
+                    fontWeight: 700,
                     color: '#facc15',
                     textAlign: 'center',
                     cursor: 'pointer',
@@ -1218,7 +1218,7 @@ export default function ThongKeTheoVatTuTab({
                         <td style={{
                           padding: '9px 10px',
                           textAlign: 'right',
-                          fontWeight: 800,
+                          fontWeight: 700,
                           background: 'rgba(219, 234, 254, 0.35)',
                           borderLeft: '1px solid #cbd5e1',
                           borderRight: '2px solid #cbd5e1',
@@ -1255,8 +1255,8 @@ export default function ThongKeTheoVatTuTab({
                   })}
 
                   {/* Grand Total Footer Row */}
-                  <tr style={{ background: '#f1f5f9', fontWeight: 800, borderTop: '2px solid #94a3b8', borderBottom: '2px solid #94a3b8', position: 'sticky', bottom: 0, zIndex: 10 }}>
-                    <td colSpan="5" style={{ padding: '12px 14px', color: '#1e3a8a', fontSize: '15px', fontWeight: 800, textAlign: 'right', borderRight: '1px solid #cbd5e1', background: '#e2e8f0' }}>
+                  <tr style={{ background: '#f1f5f9', fontWeight: 700, borderTop: '2px solid #94a3b8', borderBottom: '2px solid #94a3b8', position: 'sticky', bottom: 0, zIndex: 10 }}>
+                    <td colSpan="5" style={{ padding: '12px 14px', color: '#1e3a8a', fontSize: '15px', fontWeight: 700, textAlign: 'right', borderRight: '1px solid #cbd5e1', background: '#e2e8f0' }}>
                       Tổng cộng tồn theo kho
                     </td>
                     
@@ -1269,7 +1269,7 @@ export default function ThongKeTheoVatTuTab({
                       borderRight: '2px solid #94a3b8',
                       color: '#1e3a8a',
                       fontSize: '15px',
-                      fontWeight: 800
+                      fontWeight: 700
                     }}>
                       {summaryMetrics.grandStock.toLocaleString('vi-VN', { maximumFractionDigits: 2 })}
                     </td>

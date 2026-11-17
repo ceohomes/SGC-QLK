@@ -2180,7 +2180,7 @@ export default function TaiSanKhauHaoTab({
       ws['D5'] = createHeaderCell('Tên vật tư', '1E3A8A')
       ws['E5'] = createHeaderCell('Đvt', '1E3A8A')
       ws['F5'] = createHeaderCell('Tổng tồn kho', '1E3A8A')
-      ws['G5'] = createHeaderCell('KHỐI LƯỢNG TỒN KHO THEO THÁNG', '1D4ED8')
+      ws['G5'] = createHeaderCell('Khối lượng tồn kho theo tháng', '1D4ED8')
       ws['S5'] = createHeaderCell('Đơn giá tháng', '1E3A8A')
       ws['T5'] = createHeaderCell('THÀNH TIỀN TỒN KHO THEO THÁNG', '047857')
 
@@ -3352,8 +3352,8 @@ export default function TaiSanKhauHaoTab({
                     </tr>
                   )}
                   {materialMismatchSummary.length > 0 && (
-                    <tr style={{ background: '#f1f5f9', fontWeight: 800, borderTop: '2px solid #cbd5e1' }}>
-                      <td colSpan="3" style={{ padding: '10px 10px', color: '#1e293b', textAlign: 'right' }}>TỔNG CỘNG CHÊNH LỆCH VẬT TƯ:</td>
+                    <tr style={{ background: '#f1f5f9', fontWeight: 700, borderTop: '2px solid #cbd5e1' }}>
+                      <td colSpan="3" style={{ padding: '10px 10px', color: '#1e293b', textAlign: 'right' }}>Tổng cộng chênh lệch vật tư:</td>
                       <td style={{ padding: '10px 10px', textAlign: 'right', color: '#0f766e' }}>
                         {materialMismatchSummary.reduce((sum, item) => sum + item.effectI, 0).toLocaleString('vi-VN', { maximumFractionDigits: 2 })}
                       </td>
@@ -3598,7 +3598,7 @@ export default function TaiSanKhauHaoTab({
                         <React.Fragment key={group.id}>
                           {/* Group Title Row */}
                           <tr style={{ background: '#f1f5f9', borderBottom: '1px solid #cbd5e1' }}>
-                            <td colSpan="17" style={{ padding: '10px 14px', fontSize: '15px', fontWeight: 800, color: '#1e3a8a', background: '#f1f5f9', letterSpacing: '0.5px' }}>
+                            <td colSpan="17" style={{ padding: '10px 14px', fontSize: '15px', fontWeight: 700, color: '#1e3a8a', background: '#f1f5f9', letterSpacing: '0.5px' }}>
                               {group.title}
                             </td>
                           </tr>
@@ -3666,8 +3666,8 @@ export default function TaiSanKhauHaoTab({
 
                           {/* Subtotal Row for this Group */}
                           <tr style={{ background: '#f8fafc', fontWeight: 700, borderBottom: '2px solid #cbd5e1', borderTop: '1px solid #cbd5e1' }}>
-                            <td colSpan="2" style={{ padding: '10px 14px', textTransform: 'none', color: '#1e3a8a', fontSize: '12px', fontWeight: 800 }}>
-                              CỘNG {group.id === 'I' ? 'KHO DỰ ÁN (A)' : 'NHẬP TỪ NCC (B)'}
+                            <td colSpan="2" style={{ padding: '10px 14px', textTransform: 'none', color: '#1e3a8a', fontSize: '12px', fontWeight: 700 }}>
+                              Cộng {group.id === 'I' ? 'kho dự án (A)' : 'nhập từ NCC (B)'}
                             </td>
                             <td style={{ padding: '10px', textAlign: 'center', color: '#475569' }}>{groupAssets}</td>
                             <td style={{ padding: '10px', textAlign: 'right', color: '#10b981' }}>{groupStock.toLocaleString('vi-VN', { maximumFractionDigits: 2 })}</td>
@@ -3702,9 +3702,9 @@ export default function TaiSanKhauHaoTab({
                     })}
                     
                     {/* Reconciled Difference Row */}
-                    <tr style={{ background: '#ecfdf5', fontWeight: 800, borderTop: '2px solid #10b981', borderBottom: '2px solid #10b981' }}>
+                    <tr style={{ background: '#ecfdf5', fontWeight: 700, borderTop: '2px solid #10b981', borderBottom: '2px solid #10b981' }}>
                       <td colSpan="2" style={{ padding: '12px 10px', textAlign: 'center', color: '#047857' }}>
-                        CHÊNH LỆCH ĐỐI CHIẾU (A - B)
+                        Chênh lệch đối chiếu (A - B)
                       </td>
                       <td style={{ padding: '12px 10px', textAlign: 'center', color: '#047857' }}>-</td>
                       <td style={{ padding: '12px 10px', textAlign: 'right', color: '#047857' }}>
@@ -3766,11 +3766,11 @@ export default function TaiSanKhauHaoTab({
                   </th>
 
                   <th colSpan={12} style={{ padding: '6px 8px', fontWeight: 700, color: '#ffffff', textAlign: 'center', background: '#1d4ed8', border: '1px solid #cbd5e1', fontSize: '12px' }}>
-                    KHỐI LƯỢNG TỒN KHO THEO THÁNG
+                    Khối lượng tồn kho theo tháng
                   </th>
                   
                   <th colSpan={12} style={{ padding: '6px 8px', fontWeight: 700, color: '#ffffff', textAlign: 'center', background: '#047857', border: '1px solid #cbd5e1', fontSize: '12px' }}>
-                    THÀNH TIỀN TÀI SẢN KHẤU HAO
+                    Thành tiền tài sản khấu hao
                   </th>
                 </tr>
                 <tr style={{ background: '#1e3a8a', borderBottom: '1px solid #cbd5e1' }}>
@@ -3845,7 +3845,7 @@ export default function TaiSanKhauHaoTab({
                       return (
                         <React.Fragment key={group.id}>
                           <tr style={{ background: '#f1f5f9', borderBottom: '1px solid #cbd5e1' }}>
-                            <td colSpan={31} style={{ padding: '10px 14px', fontSize: '15px', fontWeight: 800, color: '#1e3a8a', background: '#f1f5f9', letterSpacing: '0.5px' }}>
+                            <td colSpan={31} style={{ padding: '10px 14px', fontSize: '15px', fontWeight: 700, color: '#1e3a8a', background: '#f1f5f9', letterSpacing: '0.5px' }}>
                               {group.title}
                             </td>
                           </tr>
@@ -3938,8 +3938,8 @@ export default function TaiSanKhauHaoTab({
                           )}
 
                           <tr style={{ background: '#f8fafc', fontWeight: 700, borderBottom: '2px solid #cbd5e1', borderTop: '1px solid #cbd5e1' }}>
-                            <td colSpan="5" style={{ padding: '8px 14px', textTransform: 'none', color: '#1e3a8a', fontSize: '12px', fontWeight: 800, border: '1px solid #cbd5e1' }}>
-                              CỘNG {group.id === 'I' ? 'KHO DỰ ÁN (A)' : 'NHẬP TỪ NCC (B)'}
+                            <td colSpan="5" style={{ padding: '8px 14px', textTransform: 'none', color: '#1e3a8a', fontSize: '12px', fontWeight: 700, border: '1px solid #cbd5e1' }}>
+                              Cộng {group.id === 'I' ? 'kho dự án (A)' : 'nhập từ NCC (B)'}
                             </td>
                             <td style={{ padding: '8px 10px', textAlign: 'right', color: '#10b981', border: '1px solid #cbd5e1' }}>{groupStock.toLocaleString('vi-VN', { maximumFractionDigits: 2 })}</td>
                             
@@ -3991,9 +3991,9 @@ export default function TaiSanKhauHaoTab({
                       )
                     })}
                     
-                    <tr style={{ background: '#ecfdf5', fontWeight: 800, borderTop: '2px solid #10b981', borderBottom: '2px solid #10b981' }}>
+                    <tr style={{ background: '#ecfdf5', fontWeight: 700, borderTop: '2px solid #10b981', borderBottom: '2px solid #10b981' }}>
                       <td colSpan="5" style={{ padding: '10px 10px', textAlign: 'center', color: '#047857', border: '1px solid #cbd5e1' }}>
-                        CHÊNH LỆCH ĐỐI CHIẾU (A - B)
+                        Chênh lệch đối chiếu (A - B)
                       </td>
                       <td style={{ padding: '10px 10px', textAlign: 'right', color: '#047857', border: '1px solid #cbd5e1' }}>
                         {reconciliationMonthlyDifference.stockDiff.toLocaleString('vi-VN', { maximumFractionDigits: 2 })}
@@ -4149,8 +4149,8 @@ export default function TaiSanKhauHaoTab({
                     
                     {/* Grand Total Row */}
                     <tr style={{ background: '#f8fafc', fontWeight: 700, borderTop: '2px solid #cbd5e1', borderBottom: '2px solid #cbd5e1' }}>
-                      <td colSpan="4" style={{ padding: '12px 14px', textTransform: 'none', color: '#1e3a8a', fontSize: '12px', fontWeight: 800, textAlign: 'right' }}>
-                        TỔNG CỘNG THỐNG KÊ VẬT TƯ:
+                      <td colSpan="4" style={{ padding: '12px 14px', textTransform: 'none', color: '#1e3a8a', fontSize: '12px', fontWeight: 700, textAlign: 'right' }}>
+                        Tổng cộng thống kê vật tư:
                       </td>
                       
                       <td style={{ padding: '10px', textAlign: 'right', background: 'rgba(219, 234, 254, 0.4)', borderLeft: '1px solid #cbd5e1', borderRight: '1px solid #cbd5e1', color: '#1e3a8a' }}>

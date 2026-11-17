@@ -366,3 +366,17 @@ html body button > span { white-space: nowrap; }
   .sg-kpis::-webkit-scrollbar { display: none; }
   .sg-kpi { flex: 0 0 auto; }
 }
+
+/* Arial chỉ có nét thường (400) và đậm (700): độ đậm 800/900 bị Windows đổi sang Arial Black → chặn ở mọi nơi */
+html body [style*="font-weight: 800"], html body [style*="font-weight: 900"], html body [style*="font-weight: bolder"] { font-weight: 700 !important; }
+
+/* Màn tải dữ liệu lúc mở app */
+.sg-loading { position: fixed; inset: 0; z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; background: var(--bg); background-image: radial-gradient(900px 500px at 50% 35%, #F7F7F9 0%, transparent 70%); }
+.sg-loading-mark { width: 64px; height: 64px; border-radius: 18px; font-size: 22px; animation: sgPop .6s cubic-bezier(.2,1.4,.4,1) both; }
+.sg-loading-title { margin-top: 6px; font-size: 22px; font-weight: 700; color: var(--primary-dark); }
+.sg-loading-sub { display: inline-flex; align-items: center; gap: 6px; font-size: 15px; color: var(--text-muted); }
+@keyframes sgPop { 0% { transform: scale(.4); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+.animate-spin { animation: sgSpin 1s linear infinite; }
+@keyframes sgSpin { to { transform: rotate(360deg); } }
+/* <b>/<strong> trong khối đã đậm sẽ thành "bolder" = 900 → cố định 700 */
+html body b, html body strong { font-weight: 700; }

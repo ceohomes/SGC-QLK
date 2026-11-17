@@ -9,7 +9,7 @@ import {
   AlertCircle, CheckCircle2, Filter, ArrowUpDown, Clock, CloudUpload, Database, Save,
   Pencil, Trash2, Lock, ClipboardList, Warehouse, Building2, Users, HelpCircle,
   Calendar, AlertTriangle, DollarSign, Copy, Check, Terminal, LogOut, User as UserIcon, CheckSquare, ArrowRight,
-  Sparkles, Layers, Zap, Package, FileCheck, Ban, SlidersHorizontal
+  Sparkles, Layers, Zap, Package, FileCheck, Ban, SlidersHorizontal, GripVertical
 } from 'lucide-react'
 import { COLS_GIAO_NHAN, parseXlsxToRows, normalizeBchName, formatVal, getTrangThaiColor, isApprovedStatus, isPendingStatus, isRejectedStatus, getStandardizedBchList } from './constants.js'
 import { supabase, isSupabaseConfigured, supabaseUrl, supabaseAnonKey } from './supabaseClient.js'
@@ -925,14 +925,14 @@ function UploadZone({ onFile, label, accept = '.xlsx,.xls', disabled = false }) 
           </div>
           <div style={{ color: disabled ? '#7f1d1d' : 'var(--text-muted)', fontSize: 15 }}>
             {disabled ? (
-              <span style={{ fontWeight: 600 }}>⚠️ Bạn chưa Chọn Kho Dự Án cụ thể để gán dữ liệu.</span>
+              <span style={{ fontWeight: 600 }}><AlertTriangle size={15} style={{ verticalAlign: '-3px', marginRight: 4 }} />Bạn chưa chọn kho dự án cụ thể để gán dữ liệu.</span>
             ) : (
               <>Kéo thả các file vào đây hoặc <span style={{ color: 'var(--primary)', fontWeight: 600 }}>chọn file từ thiết bị</span></>
             )}
           </div>
           <div style={{ color: disabled ? '#b91c1c' : 'var(--text-light)', fontSize: 12, marginTop: 6, fontStyle: 'italic', fontWeight: disabled ? 500 : 'normal' }}>
             {disabled 
-              ? 'Hãy chọn một dự án cụ thể bên danh sách "KHO DỰ ÁN" ở thanh Menu trên trước để tiếp tục tải lên.' 
+              ? 'Hãy chọn một dự án cụ thể bên danh sách "Kho dự án" ở thanh Menu trên trước để tiếp tục tải lên.' 
               : 'Cho phép chọn nhiều file cùng lúc. Hỗ trợ định dạng chuẩn: .xlsx, .xls'}
           </div>
         </div>
@@ -1166,7 +1166,7 @@ function FilterBar({
           }}
           title="Từ ngày"
         />
-        <span style={{ color: '#94a3b8', fontSize: '15px', fontWeight: 600 }}>➔</span>
+        <span style={{ color: '#94a3b8', fontSize: '15px', fontWeight: 600, display: 'inline-flex' }}><ArrowRight size={15} /></span>
         <input
           type="date"
           value={endDate || ''}
@@ -1533,7 +1533,7 @@ function RealReportSummaryTable({ summaryRows = [], customCategoryMap = {}, loca
           ]
         }
 
-        ws['A2'] = { v: 'BẢNG GIẢI TRÌNH CẤU THÀNH SỐ LIỆU CHI TIẾT', t: 's', s: titleStyle }
+        ws['A2'] = { v: 'Bảng giải trình cấu thành số liệu chi tiết', t: 's', s: titleStyle }
         ws['A3'] = { v: `Kho chọn: ${localProject || 'Tất cả'} | Vật tư: ${itemRow.tenVatTu} (${itemRow.maSAP}) | ĐVT: ${itemRow.dvt}`, t: 's', s: subtitleStyle }
 
         ws['A4'] = { v: 'Màu sắc đối tác:', t: 's', s: legendLabelStyle }
@@ -2608,7 +2608,7 @@ function RealReportSummaryTable({ summaryRows = [], customCategoryMap = {}, loca
         ]
       }
 
-      ws['A2'] = { v: 'BẢNG GIẢI TRÌNH CẤU THÀNH SỐ LIỆU CHI TIẾT', t: 's', s: titleStyle }
+      ws['A2'] = { v: 'Bảng giải trình cấu thành số liệu chi tiết', t: 's', s: titleStyle }
       ws['A3'] = { v: `Kho chọn: ${localProject || 'Tất cả'} | Vật tư: ${itemRow.tenVatTu} (${itemRow.maSAP}) | ĐVT: ${itemRow.dvt}`, t: 's', s: subtitleStyle }
 
       ws['A4'] = { v: 'Màu sắc đối tác:', t: 's', s: legendLabelStyle }
@@ -3893,7 +3893,7 @@ function RealReportSummaryTable({ summaryRows = [], customCategoryMap = {}, loca
                     <Info size={20} className="text-blue-600" />
                     <div>
                       <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: '#1e3a8a' }}>
-                        BẢNG GIẢI TRÌNH CẤU THÀNH SỐ LIỆU CHI TIẾT
+                        Bảng giải trình cấu thành số liệu chi tiết
                       </h3>
                       <p style={{ margin: 0, fontSize: 12, color: '#475569', fontWeight: 600, marginTop: 2 }}>
                         <span style={{ color: '#0284c7', fontWeight: 700 }}>Kho chọn:</span> {localProject || 'Tất cả'} | <span style={{ color: '#0284c7', fontWeight: 700 }}>Vật tư:</span> {detailRow.tenVatTu} ({detailRow.maSAP}) | <span style={{ color: '#0284c7', fontWeight: 700 }}>ĐVT:</span> {detailRow.dvt}
@@ -3971,7 +3971,7 @@ function RealReportSummaryTable({ summaryRows = [], customCategoryMap = {}, loca
                       <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                         <Warehouse size={14} /> BẢNG TỔNG HỢP DIỄN GIẢI THỰC NHẬP (SUMIFS THEO ĐƠN VỊ)
                       </span>
-                      <span style={{ background: 'rgba(255,255,255,0.18)', padding: '2px 8px', borderRadius: 4, fontSize: '12px', fontWeight: 800 }}>
+                      <span style={{ background: 'rgba(255,255,255,0.18)', padding: '2px 8px', borderRadius: 4, fontSize: '12px', fontWeight: 700 }}>
                         Tổng: {detailRow.thucNhap === 0 ? '-' : detailRow.thucNhap.toLocaleString('vi-VN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {detailRow.dvt}
                       </span>
                     </div>
@@ -4123,7 +4123,7 @@ function RealReportSummaryTable({ summaryRows = [], customCategoryMap = {}, loca
                       <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                         <Users size={14} /> BẢNG TỔNG HỢP DIỄN GIẢI THỰC XUẤT (SUMIFS THEO ĐƠN VỊ)
                       </span>
-                      <span style={{ background: 'rgba(255,255,255,0.18)', padding: '2px 8px', borderRadius: 4, fontSize: '12px', fontWeight: 800 }}>
+                      <span style={{ background: 'rgba(255,255,255,0.18)', padding: '2px 8px', borderRadius: 4, fontSize: '12px', fontWeight: 700 }}>
                         Tổng: {detailRow.thucXuat === 0 ? '-' : detailRow.thucXuat.toLocaleString('vi-VN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {detailRow.dvt}
                       </span>
                     </div>
@@ -6741,7 +6741,7 @@ function SummaryConfigTab({
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
         <div>
-          <h2 style={{ margin: 0, fontSize: 22, fontWeight: 800, color: '#0f172a' }}>Cấu hình tổng hợp</h2>
+          <h2 style={{ margin: 0, fontSize: 22, fontWeight: 700, color: '#0f172a' }}>Cấu hình tổng hợp</h2>
           <p style={{ margin: '4px 0 0', color: '#64748b', fontSize: 15 }}>
             Tạo và quản lý các loại tổng hợp theo từng dự án — cấu hình đơn vị giao và nhận riêng biệt
           </p>
@@ -6903,9 +6903,9 @@ function SummaryConfigTab({
                   padding: '10px 14px', borderRadius: 8, marginBottom: 16,
                   border: '1px solid #bae6fd', display: 'flex', alignItems: 'center', gap: 8
                 }}>
-                  <span style={{ fontSize: 15 }}>💡</span>
+                  <Info size={15} style={{ flexShrink: 0 }} />
                   <span>
-                    <strong>Tính năng kéo thả:</strong> Bạn có thể nắm biểu tượng ☰ của <strong>Tên đơn vị</strong> rồi kéo thả sang ô tương ứng ở 3 cột (Giảm trừ, Bỏ qua, Tính toán) để thiết lập nhanh, tiện lợi và lưu lại tức thì!
+                    <strong>Tính năng kéo thả:</strong> Bạn có thể nắm biểu tượng kéo (6 chấm) của <strong>Tên đơn vị</strong> rồi kéo thả sang ô tương ứng ở 3 cột (Giảm trừ, Bỏ qua, Tính toán) để thiết lập nhanh, tiện lợi và lưu lại tức thì!
                   </span>
                 </div>
 
@@ -7037,7 +7037,7 @@ function SummaryConfigTab({
                                           style={{ display: 'flex', alignItems: 'center', gap: 6, width: '100%', cursor: 'grab', userSelect: 'none' }}
                                           title="Nhấp giữ kéo sang các cột bên cạnh, hoặc Click để chuyển sang Tính Toán"
                                         >
-                                          <span style={{ color: '#94a3b8', fontSize: 15, flexShrink: 0 }}>☰</span>
+                                          <span style={{ color: '#94a3b8', fontSize: 15, flexShrink: 0, display: 'inline-flex' }}><GripVertical size={14} /></span>
                                           <span style={{ wordBreak: 'break-word', whiteSpace: 'normal', flex: 1 }} title={itemChuaPhanBo.row.unit}>
                                             {itemChuaPhanBo.row.unit}
                                           </span>
@@ -7105,7 +7105,7 @@ function SummaryConfigTab({
                                             maxWidth: '100%'
                                           }}
                                         >
-                                          <span style={{ flexShrink: 0, color: '#3b82f6' }}>☰</span>
+                                          <span style={{ flexShrink: 0, color: '#3b82f6', display: 'inline-flex' }}><GripVertical size={14} /></span>
                                           <span style={{ wordBreak: 'break-word', whiteSpace: 'normal' }} title={itemGiamTru.row.unit}>{itemGiamTru.row.unit}</span>
                                           <button 
                                             type="button" 
@@ -7195,7 +7195,7 @@ function SummaryConfigTab({
                                             maxWidth: '100%'
                                           }}
                                         >
-                                          <span style={{ flexShrink: 0, color: '#f43f5e' }}>☰</span>
+                                          <span style={{ flexShrink: 0, color: '#f43f5e', display: 'inline-flex' }}><GripVertical size={14} /></span>
                                           <span style={{ wordBreak: 'break-word', whiteSpace: 'normal' }} title={itemBoQua.row.unit}>{itemBoQua.row.unit}</span>
                                           <button 
                                             type="button" 
@@ -7284,7 +7284,7 @@ function SummaryConfigTab({
                                             maxWidth: '100%'
                                           }}
                                         >
-                                          <span style={{ flexShrink: 0, color: '#10b981' }}>☰</span>
+                                          <span style={{ flexShrink: 0, color: '#10b981', display: 'inline-flex' }}><GripVertical size={14} /></span>
                                           <span style={{ wordBreak: 'break-word', whiteSpace: 'normal' }} title={itemTinhToan.row.unit}>{itemTinhToan.row.unit}</span>
                                           <button 
                                             type="button" 
@@ -7450,7 +7450,7 @@ function SummaryConfigTab({
                                           style={{ display: 'flex', alignItems: 'center', gap: 6, width: '100%', cursor: 'grab', userSelect: 'none' }}
                                           title="Nhấp giữ kéo sang các cột bên cạnh, hoặc Click để chuyển sang Tính Toán"
                                         >
-                                          <span style={{ color: '#94a3b8', fontSize: 15, flexShrink: 0 }}>☰</span>
+                                          <span style={{ color: '#94a3b8', fontSize: 15, flexShrink: 0, display: 'inline-flex' }}><GripVertical size={14} /></span>
                                           <span style={{ wordBreak: 'break-word', whiteSpace: 'normal', flex: 1 }} title={itemChuaPhanBo.row.unit}>
                                             {itemChuaPhanBo.row.unit}
                                           </span>
@@ -7518,7 +7518,7 @@ function SummaryConfigTab({
                                             maxWidth: '100%'
                                           }}
                                         >
-                                          <span style={{ flexShrink: 0, color: '#3b82f6' }}>☰</span>
+                                          <span style={{ flexShrink: 0, color: '#3b82f6', display: 'inline-flex' }}><GripVertical size={14} /></span>
                                           <span style={{ wordBreak: 'break-word', whiteSpace: 'normal' }} title={itemGiamTru.row.unit}>{itemGiamTru.row.unit}</span>
                                           <button 
                                             type="button" 
@@ -7608,7 +7608,7 @@ function SummaryConfigTab({
                                             maxWidth: '100%'
                                           }}
                                         >
-                                          <span style={{ flexShrink: 0, color: '#f43f5e' }}>☰</span>
+                                          <span style={{ flexShrink: 0, color: '#f43f5e', display: 'inline-flex' }}><GripVertical size={14} /></span>
                                           <span style={{ wordBreak: 'break-word', whiteSpace: 'normal' }} title={itemBoQua.row.unit}>{itemBoQua.row.unit}</span>
                                           <button 
                                             type="button" 
@@ -7697,7 +7697,7 @@ function SummaryConfigTab({
                                             maxWidth: '100%'
                                           }}
                                         >
-                                          <span style={{ flexShrink: 0, color: '#10b981' }}>☰</span>
+                                          <span style={{ flexShrink: 0, color: '#10b981', display: 'inline-flex' }}><GripVertical size={14} /></span>
                                           <span style={{ wordBreak: 'break-word', whiteSpace: 'normal' }} title={itemTinhToan.row.unit}>{itemTinhToan.row.unit}</span>
                                           <button 
                                             type="button" 
@@ -7743,9 +7743,9 @@ function SummaryConfigTab({
                   borderRadius: 8, border: '1px solid #e2e8f0',
                   display: 'flex', gap: 20, flexWrap: 'wrap', fontSize: 12, color: '#64748b'
                 }}>
-                  <span>📌 <strong>Giảm trừ:</strong> Kéo thả tên đơn vị từ cột danh sách tương ứng để đưa vào nhóm Giảm trừ</span>
-                  <span>🚫 <strong>Bỏ qua:</strong> Kéo thả tên đơn vị tương ứng để loại khỏi tính toán</span>
-                  <span>✅ <strong>Tính toán:</strong> Nhóm các đơn vị thực hiện tính toán đầy đủ (mặc định)</span>
+                  <span><strong>Giảm trừ:</strong> Kéo thả tên đơn vị từ cột danh sách tương ứng để đưa vào nhóm Giảm trừ</span>
+                  <span><strong>Bỏ qua:</strong> Kéo thả tên đơn vị tương ứng để loại khỏi tính toán</span>
+                  <span><strong>Tính toán:</strong> Nhóm các đơn vị thực hiện tính toán đầy đủ (mặc định)</span>
                 </div>
               </div>
             )}
@@ -7810,7 +7810,7 @@ function CreateSummaryConfigModal({ onClose, onSave, selectedProject }) {
             <div style={{ width: 36, height: 36, background: '#eff6ff', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <Settings size={18} color="#0f58a7" />
             </div>
-            <h3 style={{ margin: 0, fontSize: 15, fontWeight: 800, color: '#0f172a' }}>Tạo Loại Tổng hợp</h3>
+            <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: '#0f172a' }}>Tạo Loại Tổng hợp</h3>
           </div>
           <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748b', padding: 4, borderRadius: 6, display: 'flex' }}>
             <X size={18} />
@@ -7862,8 +7862,8 @@ function CreateSummaryConfigModal({ onClose, onSave, selectedProject }) {
                     transform: 'translate(-50%, -50%)',
                     fontSize: 12,
                     color: getContrastColor(preset.value),
-                    fontWeight: 900
-                  }}>✓</span>
+                    fontWeight: 700
+                  }}><Check size={12} strokeWidth={3} /></span>
                 )}
               </button>
             ))}
@@ -8009,12 +8009,12 @@ function DeleteDepreciationConfirmModal({ isOpen, onClose, onConfirm, months }) 
             <h3 style={{
               margin: 0,
               fontSize: '15px',
-              fontWeight: 800,
+              fontWeight: 700,
               letterSpacing: '0.03em',
               textTransform: 'uppercase',
               color: '#ffffff'
             }}>
-              XÁC NHẬN XÓA THỜI GIAN KHẤU HAO
+              Xác nhận xóa thời gian khấu hao
             </h3>
           </div>
           <button
@@ -8043,7 +8043,7 @@ function DeleteDepreciationConfirmModal({ isOpen, onClose, onConfirm, months }) 
             <span style={{ fontSize: '15px', color: '#64748b', fontWeight: 500 }}>
               Xóa cấu hình khấu hao:
             </span>
-            <span style={{ fontSize: '22px', fontWeight: 800, color: '#d91b43' }}>
+            <span style={{ fontSize: '22px', fontWeight: 700, color: '#d91b43' }}>
               Khấu hao {months} tháng
             </span>
           </div>
@@ -8163,7 +8163,7 @@ function DeleteConfigConfirmModal({ isOpen, onClose, onConfirm, configName, proj
             <div style={{ width: 36, height: 36, borderRadius: 10, background: '#fee2e2', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <Trash2 size={18} color="#ef4444" />
             </div>
-            <h3 style={{ margin: 0, fontSize: 15, fontWeight: 800, color: '#991b1b', letterSpacing: '-0.01em' }}>Xác nhận xóa Cấu hình</h3>
+            <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: '#991b1b', letterSpacing: '-0.01em' }}>Xác nhận xóa Cấu hình</h3>
           </div>
           <button onClick={onClose} style={{ background: 'transparent', border: 'none', color: '#64748b', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: 4 }}>
             <X size={18} />
@@ -9942,9 +9942,9 @@ function PhanNhomVatTuTab({
           }}>
             {/* Sidebar Header */}
             <div style={{ padding: '16px', borderBottom: '1px solid var(--border)', background: '#f8fafc' }}>
-              <div style={{ fontWeight: 800, fontSize: '15px', color: 'var(--text)', display: 'flex', alignItems: 'center', gap: 6, marginBottom: 12 }}>
+              <div style={{ fontWeight: 700, fontSize: '15px', color: 'var(--text)', display: 'flex', alignItems: 'center', gap: 6, marginBottom: 12 }}>
                 <Clock size={16} style={{ color: 'var(--primary)' }} />
-                DANH SÁCH KHẤU HAO ({depreciationOptions.length})
+                Danh sách khấu hao ({depreciationOptions.length})
               </div>
               
               {/* Add New Duration Form */}
@@ -10010,7 +10010,7 @@ function PhanNhomVatTuTab({
                       gap: 4
                     }}
                   >
-                    <span style={{ fontSize: '12px' }}>✓</span> Đã duyệt
+                    <span style={{ fontSize: '12px' }}><Check size={12} strokeWidth={3} /></span> Đã duyệt
                   </button>
                   <button
                     onClick={() => setNewDurationIsApproved(false)}
@@ -10031,7 +10031,7 @@ function PhanNhomVatTuTab({
                       gap: 4
                     }}
                   >
-                    <span style={{ fontSize: '12px' }}>⏱</span> Tạm tính
+                    <Clock size={13} strokeWidth={2.6} /> Tạm tính
                   </button>
                 </div>
 
@@ -10051,7 +10051,7 @@ function PhanNhomVatTuTab({
                     wordBreak: 'break-word',
                     marginTop: 4
                   }}>
-                    <span style={{ fontSize: '15px', flexShrink: 0, marginTop: '1px' }}>{addDurationFeedback.isError ? '⚠️' : '✅'}</span>
+                    <span style={{ fontSize: '15px', flexShrink: 0, marginTop: '1px' }}>{addDurationFeedback.isError ? <AlertTriangle size={15} /> : <CheckCircle2 size={15} />}</span>
                     <span style={{ flex: 1 }}>{addDurationFeedback.text}</span>
                     <button 
                       onClick={() => setAddDurationFeedback(null)}
@@ -10083,7 +10083,7 @@ function PhanNhomVatTuTab({
                 <div>
                   <div style={{
                     fontSize: '12px',
-                    fontWeight: 800,
+                    fontWeight: 700,
                     textTransform: 'uppercase',
                     color: 'var(--primary)',
                     letterSpacing: '0.05em',
@@ -10119,7 +10119,7 @@ function PhanNhomVatTuTab({
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
                         <div style={{
                           fontSize: '12px',
-                          fontWeight: 800,
+                          fontWeight: 700,
                           padding: '3px 6px',
                           borderRadius: '6px',
                           background: selectedMonthsGroup?.isAll ? '#ffffff' : `rgba(15, 88, 167, 0.1)`,
@@ -10164,7 +10164,7 @@ function PhanNhomVatTuTab({
                   <div>
                     <div style={{
                       fontSize: '12px',
-                      fontWeight: 800,
+                      fontWeight: 700,
                       textTransform: 'uppercase',
                       color: '#64748b',
                       letterSpacing: '0.05em',
@@ -10227,7 +10227,7 @@ function PhanNhomVatTuTab({
                             <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
                               <div style={{
                                 fontSize: '12px',
-                                fontWeight: 800,
+                                fontWeight: 700,
                                 padding: '3px 6px',
                                 borderRadius: '6px',
                                 background: isActive ? '#ffffff' : `${colors.fg}20`,
@@ -10275,7 +10275,7 @@ function PhanNhomVatTuTab({
                   <div>
                     <div style={{
                       fontSize: '12px',
-                      fontWeight: 800,
+                      fontWeight: 700,
                       textTransform: 'uppercase',
                       color: '#16a34a',
                       letterSpacing: '0.05em',
@@ -10338,7 +10338,7 @@ function PhanNhomVatTuTab({
                             <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
                               <div style={{
                                 fontSize: '12px',
-                                fontWeight: 800,
+                                fontWeight: 700,
                                 padding: '3px 6px',
                                 borderRadius: '6px',
                                 background: isActive ? '#ffffff' : `${colors.fg}20`,
@@ -10422,7 +10422,7 @@ function PhanNhomVatTuTab({
                   <div>
                     <div style={{
                       fontSize: '12px',
-                      fontWeight: 800,
+                      fontWeight: 700,
                       textTransform: 'uppercase',
                       color: '#d97706',
                       letterSpacing: '0.05em',
@@ -10485,7 +10485,7 @@ function PhanNhomVatTuTab({
                             <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
                               <div style={{
                                 fontSize: '12px',
-                                fontWeight: 800,
+                                fontWeight: 700,
                                 padding: '3px 6px',
                                 borderRadius: '6px',
                                 background: isActive ? '#ffffff' : `${colors.fg}20`,
@@ -10595,17 +10595,17 @@ function PhanNhomVatTuTab({
             }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <h3 style={{ margin: 0, fontSize: '15px', fontWeight: 800, color: 'var(--text)' }}>
+                  <h3 style={{ margin: 0, fontSize: '15px', fontWeight: 700, color: 'var(--text)' }}>
                     {selectedMonthsGroup?.isAll
-                      ? (depreciationSearchQuery.trim() ? 'KẾT QUẢ TÌM KIẾM TOÀN BỘ VẬT TƯ' : 'TẤT CẢ VẬT TƯ KHẤU HAO')
+                      ? (depreciationSearchQuery.trim() ? 'Kết quả tìm kiếm toàn bộ vật tư' : 'Tất cả vật tư khấu hao')
                       : depreciationSearchQuery.trim()
                         ? `KẾT QUẢ TÌM KIẾM TRONG: ${
                             selectedMonthsGroup?.months === 0 
-                              ? 'VẬT TƯ CHƯA THIẾT LẬP' 
+                              ? 'Vật tư chưa thiết lập' 
                               : `KHẤU HAO ${selectedMonthsGroup?.months} THÁNG (${selectedMonthsGroup?.isApproved ? 'ĐÃ DUYỆT' : 'TẠM TÍNH'})`
                           }`
                         : selectedMonthsGroup?.months === 0
-                          ? 'VẬT TƯ CHƯA THIẾT LẬP KHẤU HAO'
+                          ? 'Vật tư chưa thiết lập khấu hao'
                           : `KHẤU HAO ${selectedMonthsGroup?.months} THÁNG (${selectedMonthsGroup?.isApproved ? 'ĐÃ DUYỆT' : 'TẠM TÍNH'})`}
                   </h3>
                   <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
@@ -10864,7 +10864,7 @@ function PhanNhomVatTuTab({
                       {/* 1. Month select */}
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', flex: '2 1 320px' }}>
                         <span style={{ fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', color: '#475569', letterSpacing: '0.02em' }}>
-                          📅 Bước 1: Chọn số tháng mới
+                          Bước 1: Chọn số tháng mới
                         </span>
                         
                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', alignItems: 'center' }}>
@@ -10915,7 +10915,7 @@ function PhanNhomVatTuTab({
                               >
                                 <span style={{
                                   fontSize: '12px',
-                                  fontWeight: 800,
+                                  fontWeight: 700,
                                   padding: '1px 5px',
                                   borderRadius: '4px',
                                   background: optColors.bg,
@@ -10934,7 +10934,7 @@ function PhanNhomVatTuTab({
                       {/* 2. Status toggle buttons */}
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', flex: '0 0 220px' }}>
                         <span style={{ fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', color: '#475569', letterSpacing: '0.02em' }}>
-                          🏷️ Bước 2: Chọn trạng thái mới
+                          Bước 2: Chọn trạng thái mới
                         </span>
                         <div style={{
                           display: 'flex',
@@ -11111,7 +11111,7 @@ function PhanNhomVatTuTab({
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0, flex: 1 }}>
                           {/* SAP Code */}
                           <span style={{
-                            fontWeight: 800,
+                            fontWeight: 700,
                             fontSize: '12px',
                             color: groupColors.fg,
                             background: `${groupColors.fg}15`,
@@ -11144,7 +11144,7 @@ function PhanNhomVatTuTab({
                           {/* Status Badge */}
                           <span style={{
                             fontSize: '12px',
-                            fontWeight: 800,
+                            fontWeight: 700,
                             padding: '2px 6px',
                             borderRadius: '4px',
                             background: closestGroup.months === 0 
@@ -11164,11 +11164,11 @@ function PhanNhomVatTuTab({
                             marginLeft: '4px'
                           }}>
                             {closestGroup.months === 0 ? (
-                              <>⏱ Chưa thiết lập</>
+                              <><Clock size={12} style={{ verticalAlign: '-2px' }} /> Chưa thiết lập</>
                             ) : closestGroup.isApproved ? (
-                              <>✓ {closestGroup.months}T (Đã duyệt)</>
+                              <><Check size={12} strokeWidth={3} style={{ verticalAlign: '-2px' }} /> {closestGroup.months}T (Đã duyệt)</>
                             ) : (
-                              <>⏱ {closestGroup.months}T (Tạm tính)</>
+                              <><Clock size={12} style={{ verticalAlign: '-2px' }} /> {closestGroup.months}T (Tạm tính)</>
                             )}
                           </span>
                         </div>
@@ -15645,7 +15645,7 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
               }}>
                 <h3 style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)', margin: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
                   <ClipboardList size={15} style={{ color: 'var(--primary)' }} />
-                  {dashboardWarehouseFilter === 'all' ? 'DANH SÁCH XẾP HẠNG CẢNH BÁO KHO DỰ ÁN BCH' : 'CHI TIẾT CẢNH BÁO KHO ĐÃ CHỌN'}
+                  {dashboardWarehouseFilter === 'all' ? 'Danh sách xếp hạng cảnh báo kho dự án BCH' : 'Chi tiết cảnh báo kho đã chọn'}
                 </h3>
                 <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
                   Theo giá trị tồn đọng chưa dùng giảm dần
@@ -15750,9 +15750,9 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
                     gap: 4
                   }}>
                     <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--primary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                      CHI TIẾT KHO ĐANG THEO DÕI
+                      Chi tiết kho đang theo dõi
                     </div>
-                    <h3 style={{ fontSize: 15, fontWeight: 800, color: 'var(--text)', margin: 0, display: 'flex', alignItems: 'center', gap: 6, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={activeDashStat.projectName}>
+                    <h3 style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)', margin: 0, display: 'flex', alignItems: 'center', gap: 6, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={activeDashStat.projectName}>
                       <Warehouse size={16} style={{ color: 'var(--primary)' }} />
                       {activeDashStat.projectName}
                     </h3>
@@ -15795,16 +15795,16 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
                       border: '1px solid var(--border)'
                     }}>
                       <div>
-                        <div style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 500 }}>TỔNG NHẬP (LŨY KẾ)</div>
+                        <div style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 500 }}>Tổng nhập (lũy kế)</div>
                         <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)', marginTop: 2 }}>{activeDashStat.totalReceived.toLocaleString('vi-VN', { maximumFractionDigits: 2 })}</div>
                       </div>
                       <div>
-                        <div style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 500 }}>TỔNG XUẤT (LŨY KẾ)</div>
+                        <div style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 500 }}>Tổng xuất (lũy kế)</div>
                         <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)', marginTop: 2 }}>{activeDashStat.totalIssued.toLocaleString('vi-VN', { maximumFractionDigits: 2 })}</div>
                       </div>
                       <div style={{ gridColumn: 'span 2', borderTop: '1px solid #e2e8f0', paddingTop: 8, marginTop: 4 }}>
-                        <div style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 500 }}>TỔNG THÀNH TIỀN TỒN ĐỌNG CHƯA DÙNG</div>
-                        <div style={{ fontSize: 15, fontWeight: 800, color: activeDashStat.alarmColor, marginTop: 2 }}>
+                        <div style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 500 }}>Tổng thành tiền tồn đọng chưa dùng</div>
+                        <div style={{ fontSize: 15, fontWeight: 700, color: activeDashStat.alarmColor, marginTop: 2 }}>
                           {activeDashStat.unusedValue.toLocaleString('vi-VN')} đ
                         </div>
                       </div>
@@ -15813,7 +15813,7 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
                     {/* Top 10 Warned items list */}
                     <div>
                       <h4 style={{ fontSize: 12, fontWeight: 700, color: '#475569', margin: '0 0 8px 0', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                        TOP 10 VẬT TƯ TỒN ĐỌNG GIÁ TRỊ LỚN NHẤT KHO NÀY
+                        Top 10 vật tư tồn đọng giá trị lớn nhất kho này
                       </h4>
                       
                       {activeDashStat.topStagnant.length === 0 ? (
@@ -16438,7 +16438,7 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
                         {item.issued > 0 ? item.issued.toLocaleString('vi-VN', { maximumFractionDigits: 2 }) : '0'}
                       </td>
                       <td style={{
-                        width: 85, minWidth: 85, textAlign: isZero ? 'center' : 'right', fontSize: '15px', fontWeight: 800,
+                        width: 85, minWidth: 85, textAlign: isZero ? 'center' : 'right', fontSize: '15px', fontWeight: 700,
                         color: isNegative ? '#ef4444' : (isZero ? 'var(--text-muted)' : 'var(--primary)'),
                         background: isNegative ? '#fef2f2' : (isZero ? 'transparent' : 'var(--primary-light)'),
                         padding: '6px 10px'
@@ -16497,7 +16497,7 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
 
                       {/* Thành tiền vật tư tồn >30 ngày */}
                       <td style={{
-                        width: 130, minWidth: 130, textAlign: 'right', fontSize: '15px', fontWeight: 800,
+                        width: 130, minWidth: 130, textAlign: 'right', fontSize: '15px', fontWeight: 700,
                         color: item.valueOver30Days > 0 ? '#b91c1c' : 'var(--text-muted)',
                         background: item.valueOver30Days > 0 ? '#fff5f5' : 'transparent',
                         padding: '6px 10px'
@@ -16672,7 +16672,7 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                 <Info size={22} color="#0284c7" />
-                <h3 style={{ fontSize: 15, fontWeight: 800, color: '#0f172a', margin: 0 }}>
+                <h3 style={{ fontSize: 15, fontWeight: 700, color: '#0f172a', margin: 0 }}>
                   Giải Thích Logic Tổng Hợp & Khối Lượng Thực
                 </h3>
               </div>
@@ -17894,7 +17894,7 @@ function PlaceholderTab({ icon, title, desc }) {
           color: '#92400e',
           fontWeight: 600,
         }}>
-          🚧 Tính năng đang được phát triển
+          Tính năng đang được phát triển
         </div>
       </div>
     </div>
@@ -18061,7 +18061,7 @@ function PreviewImportModal({ isOpen, onClose, onConfirm, rows, fileName, type, 
             <div style={{ flex: 1, lineHeight: 1.5 }}>
               {finalApprovedRows.length === 0 ? (
                 <span>
-                  <strong style={{ fontSize: '15px', display: 'block', marginBottom: '4px', color: '#b91c1c' }}>⚠️ KIỂM TRA LỖI KHỚP DÀNH CHO KHO DỰ ÁN</strong>
+                  <strong style={{ fontSize: '15px', display: 'block', marginBottom: '4px', color: '#b91c1c' }}><AlertTriangle size={15} style={{ verticalAlign: '-3px', marginRight: 4 }} />Kiểm tra lỗi khớp dành cho kho dự án</strong>
                   Không có bất kỳ dòng dữ liệu hợp lệ nào trong tệp tải lên khớp với Kho dự án đã chọn <strong>"{selectedProject}"</strong> hoặc chưa được duyệt hoặc bị trùng lặp. Hệ thống sẽ <strong>bỏ qua toàn bộ dữ liệu</strong> và không thể lưu tệp này.
                   {uniqueUnits.length > 0 && (
                     <div style={{ marginTop: 8, padding: '8px 12px', background: '#fff', borderRadius: '6px', border: '1px solid #fee2e2', fontWeight: 500, color: '#b91c1c' }}>
@@ -18071,7 +18071,7 @@ function PreviewImportModal({ isOpen, onClose, onConfirm, rows, fileName, type, 
                 </span>
               ) : (
                 <span>
-                  <strong style={{ fontSize: '15px', display: 'block', marginBottom: '4px' }}>⚠️ LƯU Ý BỎ QUA DỮ LIỆU KHÔNG TRÙNG KHỚP KHO</strong>
+                  <strong style={{ fontSize: '15px', display: 'block', marginBottom: '4px' }}><AlertTriangle size={15} style={{ verticalAlign: '-3px', marginRight: 4 }} />Lưu ý: bỏ qua dữ liệu không trùng khớp kho</strong>
                   Phát hiện <strong>{mismatchCount.toLocaleString()} dòng</strong> có cột <strong>{unitLabel}</strong> không trùng khớp hoàn toàn với tên Kho dự án đang chọn <strong>"{selectedProject}"</strong>. Hệ thống sẽ tự động <strong>bỏ qua {mismatchCount.toLocaleString()} dòng này</strong> và chỉ nhập/lưu {finalApprovedRows.length.toLocaleString()} dòng hợp lệ.
                 </span>
               )}
@@ -18096,7 +18096,7 @@ function PreviewImportModal({ isOpen, onClose, onConfirm, rows, fileName, type, 
             <AlertTriangle size={18} color="#ea580c" style={{ flexShrink: 0, marginTop: '2px' }} />
             <div style={{ flex: 1, lineHeight: 1.5 }}>
               <span>
-                <strong style={{ fontSize: '15px', display: 'block', marginBottom: '4px' }}>⚠️ PHÁT HIỆN DỮ LIỆU BỊ TRÙNG LẶP CHI TIẾT DÒNG</strong>
+                <strong style={{ fontSize: '15px', display: 'block', marginBottom: '4px' }}><AlertTriangle size={15} style={{ verticalAlign: '-3px', marginRight: 4 }} />Phát hiện dữ liệu bị trùng lặp chi tiết dòng</strong>
                 Phát hiện <strong>{duplicateCount.toLocaleString()} dòng</strong> dữ liệu trong file bị <strong>TRÙNG LẶP HOÀN TOÀN</strong> (các thông tin chi tiết của dòng đã tồn tại trên cơ sở dữ liệu hiện tại hoặc bị lặp lại nội bộ trong file). Hệ thống sẽ tự động <strong>BỎ QUA {duplicateCount.toLocaleString()} dòng này</strong> để giữ an toàn cho dữ liệu gốc.
               </span>
             </div>
@@ -19084,7 +19084,7 @@ ALTER TABLE public.don_kho ADD CONSTRAINT don_kho_ten_du_an_fkey
 -- ALTER TABLE public.don_kho DROP COLUMN IF EXISTS du_an;`}
             </pre>
             <p style={{ margin: 0, fontSize: 12, color: '#16a34a', fontWeight: 500 }}>
-              ✔️ <strong>Lưu ý:</strong> Ứng dụng đã được tích hợp cơ chế <strong>Tự phục hồi (Self-Healing)</strong> thông minh. Bất kể bạn đang sử dụng cấu trúc cũ (cột <code>du_an</code>) hay cấu trúc mới (cột <code>ten_du_an</code>), phần mềm sẽ tự phát hiện lỗi column, tự gỡ bỏ cột thừa và lưu trữ trơn tru mà không làm ngắt quãng công việc của bạn!
+              <CheckCircle2 size={15} style={{ verticalAlign: '-3px', marginRight: 4 }} /><strong>Lưu ý:</strong> Ứng dụng đã được tích hợp cơ chế <strong>Tự phục hồi (Self-Healing)</strong> thông minh. Bất kể bạn đang sử dụng cấu trúc cũ (cột <code>du_an</code>) hay cấu trúc mới (cột <code>ten_du_an</code>), phần mềm sẽ tự phát hiện lỗi column, tự gỡ bỏ cột thừa và lưu trữ trơn tru mà không làm ngắt quãng công việc của bạn!
             </p>
           </div>
         </details>
@@ -21634,28 +21634,10 @@ export default function App() {
   return (
     <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative' }}>
       {isInitialLoading && (
-        <div style={{
-          position: 'fixed',
-          inset: 0,
-          zIndex: 9999,
-          background: '#fff5f5',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: 16,
-        }}>
-          <div style={{
-            width: 64, height: 64, background: 'var(--primary-light)',
-            borderRadius: 18, display: 'flex', alignItems: 'center', justifyContent: 'center',
-          }}>
-            <RefreshCw size={30} color="var(--primary)" style={{ animation: 'spin 1s linear infinite' }} />
-          </div>
-          <div style={{ textAlign: 'center' }}>
-            <h2 style={{ fontSize: 22, fontWeight: 800, color: 'var(--text)', margin: '0' }}>
-              SGC | BÁO CÁO GIAO NHẬN
-            </h2>
-          </div>
+        <div className="sg-loading">
+          <span className="sg-logo-mark sg-loading-mark">SGC</span>
+          <div className="sg-loading-title">Báo cáo giao nhận</div>
+          <div className="sg-loading-sub"><RefreshCw size={15} className="animate-spin" /> Đang tải dữ liệu…</div>
         </div>
       )}
       <Header
@@ -21686,7 +21668,7 @@ export default function App() {
             background: 'linear-gradient(180deg, #0a3d73 0%, #153e75 100%)',
             borderRight: '1px solid rgba(255, 255, 255, 0.12)',
             boxShadow: '0 10px 30px -5px rgba(10, 61, 115, 0.2), 4px 0 20px -4px rgba(10, 61, 115, 0.1)',
-            display: 'flex',
+            
             flexDirection: 'column',
             zIndex: 1000,
             transform: isSidebarOpen || isSidebarPinned ? 'translateX(0)' : 'translateX(-270px)',
@@ -21707,7 +21689,7 @@ export default function App() {
               <div style={{ display: 'flex', flexDirection: 'column' }}>
                 <span style={{ 
                   fontFamily: 'var(--font-display)', 
-                  fontWeight: 800, 
+                  fontWeight: 700, 
                   fontSize: '15px', 
                   color: '#ffffff', 
                   letterSpacing: '0.06em', 
@@ -22141,7 +22123,7 @@ export default function App() {
             }}>
               <AlertCircle size={20} color="#dc2626" style={{ marginTop: '2px', flexShrink: 0 }} />
               <div style={{ flex: 1 }}>
-                <h4 style={{ margin: 0, fontSize: '15px', fontWeight: 700 }}>⚠️ Lỗi xác thực kết nối Supabase (401 Unauthorized)</h4>
+                <h4 style={{ margin: 0, fontSize: '15px', fontWeight: 700 }}><AlertTriangle size={15} style={{ verticalAlign: '-3px', marginRight: 4 }} />Lỗi xác thực kết nối Supabase (401 Unauthorized)</h4>
                 <p style={{ margin: '4px 0 0 0', fontSize: '12px', color: '#b91c1c', lineHeight: 1.4 }}>
                   Cơ sở dữ liệu Supabase đã từ chối yêu cầu truy cập vì Project URL hoặc Anon Key bị cấu hình sai hoặc đã bị thay đổi/hết hạn trên trang quản trị dự án của bạn (Lỗi 401 Unauthorized). 
                   Do đó, bạn <strong>không thể xem danh sách, cập nhật hay xóa dự án</strong> được. Vui lòng bấm vào nút cấu hình lại bên dưới.
