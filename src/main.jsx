@@ -3,6 +3,8 @@ import ReactDOM from 'react-dom/client'
 import App from './App.jsx'
 import ErrorBoundary from './ErrorBoundary.jsx'
 import './index.css'
+import './theme.css'
+import { startThemeFix } from './themeFix.js'
 
 // Suppress known harmless non-fatal CFB/ZIP streaming warnings from xlsx libraries (e.g. "Bad uncompressed size")
 if (typeof window !== 'undefined') {
@@ -28,6 +30,8 @@ if (typeof window !== 'undefined') {
     }
   }, true)
 }
+
+startThemeFix()
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>

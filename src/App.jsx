@@ -78,7 +78,7 @@ function SearchableSelect({ value, onChange, options, placeholder = 'Tất cả 
     borderRadius: 6,
     padding: '0 32px 0 12px',
     color: '#0f172a',
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: 700,
     cursor: 'pointer',
     width: 'fit-content',
@@ -170,7 +170,7 @@ function SearchableSelect({ value, onChange, options, placeholder = 'Tất cả 
               style={{
                 width: '100%',
                 padding: '5px 8px 5px 28px',
-                fontSize: 13,
+                fontSize: 15,
                 border: '1px solid #cbd5e1',
                 borderRadius: 4,
                 outline: 'none',
@@ -203,7 +203,7 @@ function SearchableSelect({ value, onChange, options, placeholder = 'Tất cả 
               }}
               style={{
                 padding: '6px 8px',
-                fontSize: 13,
+                fontSize: 15,
                 fontWeight: !value ? 700 : 500,
                 borderRadius: 4,
                 cursor: 'pointer',
@@ -237,7 +237,7 @@ function SearchableSelect({ value, onChange, options, placeholder = 'Tất cả 
                   }}
                   style={{
                     padding: '6px 8px',
-                    fontSize: 13,
+                    fontSize: 15,
                     fontWeight: matches ? 700 : 500,
                     borderRadius: 4,
                     cursor: 'pointer',
@@ -392,7 +392,7 @@ function DashboardExcludeBchSelector({
           border: hasExclusions ? '1.5px solid #f87171' : '1px solid var(--border)',
           background: hasExclusions ? '#fef2f2' : '#ffffff',
           color: hasExclusions ? '#dc2626' : 'var(--text)',
-          fontSize: 13,
+          fontSize: 15,
           fontWeight: 600,
           display: 'inline-flex',
           alignItems: 'center',
@@ -410,7 +410,7 @@ function DashboardExcludeBchSelector({
           <span style={{
             background: '#ef4444',
             color: '#ffffff',
-            fontSize: 11,
+            fontSize: 12,
             fontWeight: 700,
             padding: '1px 6px',
             borderRadius: 10,
@@ -422,7 +422,7 @@ function DashboardExcludeBchSelector({
           <span style={{
             background: '#f1f5f9',
             color: '#64748b',
-            fontSize: 11,
+            fontSize: 12,
             fontWeight: 600,
             padding: '1px 6px',
             borderRadius: 10,
@@ -455,11 +455,11 @@ function DashboardExcludeBchSelector({
           {/* Header */}
           <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', borderBottom: '1px solid #f1f5f9', paddingBottom: 8 }}>
             <div>
-              <div style={{ fontSize: 13.5, fontWeight: 700, color: '#0f172a', display: 'flex', alignItems: 'center', gap: 6 }}>
+              <div style={{ fontSize: 15, fontWeight: 700, color: '#0f172a', display: 'flex', alignItems: 'center', gap: 6 }}>
                 <Ban size={15} color="#ef4444" />
                 Chọn kho BCH cần bỏ qua
               </div>
-              <div style={{ fontSize: 11.5, color: '#64748b', marginTop: 2 }}>
+              <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>
                 Kho được chọn sẽ không xuất hiện trong số liệu và file Excel xuất ra.
               </div>
             </div>
@@ -490,7 +490,7 @@ function DashboardExcludeBchSelector({
               style={{
                 width: '100%',
                 padding: '6px 8px 6px 30px',
-                fontSize: 12.5,
+                fontSize: 12,
                 border: '1px solid #cbd5e1',
                 borderRadius: 6,
                 outline: 'none',
@@ -563,7 +563,7 @@ function DashboardExcludeBchSelector({
                     background: '#ffffff',
                     border: '1px solid #fca5a5',
                     color: '#b91c1c',
-                    fontSize: 11,
+                    fontSize: 12,
                     fontWeight: 600,
                     padding: '2px 6px',
                     borderRadius: 4,
@@ -638,7 +638,7 @@ function DashboardExcludeBchSelector({
                     />
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{
-                        fontSize: 12.5,
+                        fontSize: 12,
                         fontWeight: excluded ? 700 : 500,
                         color: excluded ? '#dc2626' : '#1e293b',
                         overflow: 'hidden',
@@ -648,7 +648,7 @@ function DashboardExcludeBchSelector({
                         {bch}
                       </div>
                       {stat && (
-                        <div style={{ fontSize: 11, color: excluded ? '#ef4444' : '#64748b', display: 'flex', gap: 8, marginTop: 1 }}>
+                        <div style={{ fontSize: 12, color: excluded ? '#ef4444' : '#64748b', display: 'flex', gap: 8, marginTop: 1 }}>
                           <span>{stat.totalItemsInStock || 0} mặt hàng</span>
                           {unusedVal > 0 && (
                             <span style={{ color: '#ef4444', fontWeight: 600 }}>
@@ -660,7 +660,7 @@ function DashboardExcludeBchSelector({
                     </div>
                     {excluded && (
                       <span style={{
-                        fontSize: 10.5,
+                        fontSize: 12,
                         fontWeight: 700,
                         color: '#dc2626',
                         background: '#fee2e2',
@@ -679,7 +679,7 @@ function DashboardExcludeBchSelector({
 
           {/* Footer */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: 4 }}>
-            <span style={{ fontSize: 11.5, color: '#64748b' }}>
+            <span style={{ fontSize: 12, color: '#64748b' }}>
               {hasExclusions ? `Đang loại trừ ${dashboardExcludedBch.length} kho` : 'Chưa chọn bỏ qua kho nào'}
             </span>
             <button
@@ -691,7 +691,7 @@ function DashboardExcludeBchSelector({
                 background: '#0f58a7',
                 color: '#ffffff',
                 border: 'none',
-                fontSize: 12.5,
+                fontSize: 12,
                 fontWeight: 600,
                 cursor: 'pointer'
               }}
@@ -706,199 +706,97 @@ function DashboardExcludeBchSelector({
 }
 
 // ─── Header ──────────────────────────────────────────────────────────────────
-function Header({ selectedProject, setSelectedProject, duAnOptions, onOpenAddProjectModal, onEditProject, onDeleteProject, onOpenConfigModal, onForceRefresh, onMouseEnterLogo, activeTab, currentUser, onLogout }) {
-  const getHeaderTitle = (tab) => {
-    switch (tab) {
-      case 'chung':
-        return 'SGC | ĐƠN CHUNG'
-      case 'tinh_trang_don':
-        return 'SGC | TÌNH TRẠNG ĐƠN VẬT TƯ'
-      case 'kho':
-        return 'SGC | KHO DỰ ÁN'
-      case 'chuan_hoa_bch':
-        return 'SGC | CHUẨN HÓA TÊN BCH'
-      case 'inventory':
-        return 'SGC | BÁO CÁO XUẤT NHẬP TỒN'
-      case 'inventory_real':
-        return 'SGC | BÁO CÁO XUẤT NHẬP THỰC'
-      case 'depreciation_assets':
-        return 'SGC | THỐNG KÊ TÀI SẢN KHẤU HAO'
-      case 'material_stats':
-        return 'SGC | THỐNG KÊ THEO VẬT TƯ'
-      case 'dongia':
-        return 'SGC | PHÂN NHÓM VẬT TƯ'
-      case 'accounts':
-        return 'SGC | QUẢN LÝ TÀI KHOẢN'
-      default:
-        return 'SGC | BÁO CÁO GIAO NHẬN'
-    }
-  }
+// Phông Arial rộng hơn Roboto cũ: nới cột 15% để mã/chữ không gãy giữa từ
+const colW = (w) => (typeof w === 'number' ? Math.round(w * 1.15) : w)
+
+// Màu riêng của từng mục điều hướng (mỗi mục một màu, theo phong cách web anh Chung)
+const NAV_META = {
+  chung: { short: 'Đơn chung', c: '#0F58A7', c2: '#2F86E0', t: '#E4EEFA', cd: '#0A3D73' },
+  tinh_trang_don: { short: 'Tình trạng đơn', c: '#0E8F80', c2: '#22C2AE', t: '#DDF4F0', cd: '#0B6B60' },
+  kho: { short: 'Kho dự án', c: '#12A150', c2: '#3CCB7F', t: '#DFF5E7', cd: '#0D7A3C' },
+  chuan_hoa_bch: { short: 'Chuẩn hóa BCH', c: '#6D4AFF', c2: '#9B7BFF', t: '#ECE7FF', cd: '#4B2FC9' },
+  dongia: { short: 'Phân nhóm vật tư', c: '#E07A10', c2: '#F5A524', t: '#FDEFDC', cd: '#A85607' },
+  inventory: { short: 'Xuất nhập tồn', c: '#2D3CE6', c2: '#6271FF', t: '#E5E8FD', cd: '#1F2AB0' },
+  inventory_real: { short: 'Xuất nhập thực', c: '#C21FC9', c2: '#E05BE6', t: '#F8E2F9', cd: '#8F1594' },
+  depreciation_assets: { short: 'Tài sản khấu hao', c: '#D9365E', c2: '#F2708F', t: '#FCE4EA', cd: '#A8223F' },
+  material_stats: { short: 'Thống kê vật tư', c: '#0284C7', c2: '#38BDF8', t: '#DDF0FB', cd: '#03649A' },
+  accounts: { short: 'Tài khoản', c: '#475BA8', c2: '#7487D6', t: '#E6E9F6', cd: '#2F3F80' },
+}
+
+function Header({ onForceRefresh, activeTab, setTab, tabs, counts, currentUser, onLogout }) {
+  const [refreshing, setRefreshing] = useState(false)
+  const active = tabs.find(t => t.id === activeTab)
+  const groups = [
+    tabs.filter(t => ['chung', 'tinh_trang_don', 'kho', 'chuan_hoa_bch', 'dongia'].includes(t.id)),
+    tabs.filter(t => ['inventory', 'inventory_real', 'depreciation_assets', 'material_stats'].includes(t.id) || (t.id === 'accounts' && currentUser?.quyen === 'Admin')),
+  ]
+  const initials = (currentUser?.ho_ten || '?').trim().split(/\s+/).slice(-1)[0].slice(0, 1).toUpperCase()
 
   return (
-    <header style={{
-      background: 'linear-gradient(135deg, #0a3d73 0%, #0f58a7 60%, #1a6abf 100%)', // Original professional blue system
-      padding: '0 24px',
-      height: 64, // Taller header for premium elegance
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      boxShadow: '0 4px 20px rgba(10,61,115,0.25)',
-      position: 'sticky',
-      top: 0,
-      zIndex: 100,
-      borderBottom: '1px solid rgba(255, 255, 255, 0.1)'
-    }}>
-      <div 
-        onMouseEnter={onMouseEnterLogo}
-        style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer' }}
-      >
-        <div style={{
-          width: 36, height: 36, background: '#ffffff',
-          borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center',
-          boxShadow: '0 3px 12px rgba(10,61,115,0.2)',
-        }}>
-          <span style={{ color: '#0f58a7', fontWeight: 900, fontSize: 15, letterSpacing: '0.02em' }}>SGC</span>
+    <header className="sg-top">
+      <div className="sg-top-row">
+        <div className="sg-top-title" title={active ? active.label : ''}>
+          {active && <span className="sg-top-dot" style={{ '--c': NAV_META[active.id]?.c, '--c2': NAV_META[active.id]?.c2 }}>{React.cloneElement(active.icon, { size: 15, strokeWidth: 2.4 })}</span>}
+          <span>{active ? active.label : 'Báo cáo giao nhận'}</span>
         </div>
-        <div>
-          <div style={{ color: '#ffffff', fontWeight: 800, fontSize: 18, letterSpacing: '0.03em', display: 'flex', alignItems: 'center', gap: 8 }}>
-            {getHeaderTitle(activeTab)}
-          </div>
+        <div className="sg-top-logo" title="SGC | Hệ thống báo cáo giao nhận vật tư">
+          <span className="sg-logo-mark">SGC</span>
+          <span className="sg-logo-text">Báo cáo giao nhận</span>
         </div>
-      </div>
-
-      {/* Removed Kho Dự Án Widget as requested */}
-
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        {isSupabaseConfigured && (
-          <button
-            onClick={async (e) => {
-              const btn = e.currentTarget
-              const originalText = btn.innerHTML
-              btn.disabled = true
-              btn.style.opacity = '0.6'
-              btn.innerHTML = '<span style="display:flex;align-items:center;gap:4px;"><svg class="animate-spin" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg> Đang tải...</span>'
-              try {
-                await onForceRefresh()
-              } catch (err) {
-                console.error(err)
-              } finally {
-                btn.disabled = false
-                btn.style.opacity = '1'
-                btn.innerHTML = originalText
-              }
-            }}
-            title="Tải lại toàn bộ dữ liệu sạch trực tiếp từ Supabase (Bỏ qua Caching)"
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              background: 'rgba(255, 255, 255, 0.12)',
-              border: '1px solid rgba(255, 255, 255, 0.2)',
-              borderRadius: 6,
-              padding: '4px 10px',
-              color: '#ffffff',
-              fontSize: 12,
-              fontWeight: 600,
-              whiteSpace: 'nowrap',
-              cursor: 'pointer',
-              transition: 'all 0.15s ease',
-              height: 28,
-              boxSizing: 'border-box'
-            }}
-            onMouseOver={(e) => {
-              e.currentTarget.style.background = 'rgba(255, 255, 255, 0.25)'
-            }}
-            onMouseOut={(e) => {
-              e.currentTarget.style.background = 'rgba(255, 255, 255, 0.12)'
-            }}
-          >
-            <RefreshCw size={12} style={{ marginRight: 5, color: '#e0f2fe' }} />
-            <span>Tải lại DB</span>
-          </button>
-        )}
-
-        <div
-          title={isSupabaseConfigured ? "Đã kết nối cơ sở dữ liệu Supabase" : "Chưa kết nối cơ sở dữ liệu Supabase"}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            background: isSupabaseConfigured ? 'rgba(16, 185, 129, 0.15)' : 'rgba(245, 158, 11, 0.15)',
-            border: isSupabaseConfigured ? '1px solid rgba(16, 185, 129, 0.3)' : '1px solid rgba(245, 158, 11, 0.3)',
-            borderRadius: 6,
-            padding: '4px 10px',
-            color: '#ffffff',
-            fontSize: 12,
-            fontWeight: 600,
-            whiteSpace: 'nowrap',
-            cursor: 'default',
-            height: 28,
-            boxSizing: 'border-box'
-          }}
-        >
-          <Database size={13} style={{ marginRight: 5, color: isSupabaseConfigured ? '#34d399' : '#fbbf24' }} />
-          <span>{isSupabaseConfigured ? 'Supabase Connected' : 'Supabase Offline'}</span>
-          <span style={{
-            width: 6,
-            height: 6,
-            borderRadius: '50%',
-            background: isSupabaseConfigured ? '#10b981' : '#f59e0b',
-            marginLeft: 6,
-            display: 'inline-block',
-            boxShadow: isSupabaseConfigured ? '0 0 8px #10b981' : '0 0 8px #f59e0b'
-          }} />
-        </div>
-
-        {currentUser && (
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 8,
-            background: 'rgba(255,255,255,0.15)',
-            border: '1px solid rgba(255,255,255,0.2)',
-            borderRadius: 6,
-            padding: '4px 10px',
-            color: '#ffffff',
-            fontSize: 12,
-            fontWeight: 600,
-            height: 28,
-            boxSizing: 'border-box'
-          }}>
-            <UserIcon size={12} style={{ color: '#93c5fd' }} />
-            <span style={{ maxWidth: '80px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={`${currentUser.ho_ten} (${currentUser.quyen})`}>
-              {currentUser.ho_ten}
-            </span>
+        <div className="sg-top-actions">
+          {isSupabaseConfigured && (
             <button
-              onClick={onLogout}
-              title="Đăng xuất khỏi hệ thống"
-              style={{
-                background: 'none',
-                border: 'none',
-                color: '#feca1d',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                padding: '2px',
-                borderRadius: '4px',
-                marginLeft: '2px'
+              className="sg-round"
+              disabled={refreshing}
+              title="Tải lại toàn bộ dữ liệu trực tiếp từ Supabase (bỏ qua bộ nhớ đệm)"
+              onClick={async () => {
+                setRefreshing(true)
+                try { await onForceRefresh() } catch (err) { console.error(err) } finally { setRefreshing(false) }
               }}
             >
-              <LogOut size={13} />
+              <RefreshCw size={15} className={refreshing ? 'animate-spin' : ''} />
+              <span className="sg-round-lb">{refreshing ? 'Đang tải…' : 'Tải lại dữ liệu'}</span>
             </button>
-          </div>
-        )}
-
-        <div style={{
-          background: 'rgba(255,255,255,0.15)',
-          border: '1px solid rgba(255,255,255,0.2)',
-          borderRadius: 6,
-          padding: '4px 12px',
-          color: '#ffffff',
-          fontSize: 13,
-          fontWeight: 600,
-          letterSpacing: '0.03em'
-        }}>
-          v1.0.0
+          )}
+          <span className={'sg-conn ' + (isSupabaseConfigured ? 'ok' : 'off')} title={isSupabaseConfigured ? 'Đã kết nối cơ sở dữ liệu Supabase' : 'Chưa kết nối cơ sở dữ liệu Supabase'}>
+            <i />{isSupabaseConfigured ? 'Đã kết nối' : 'Chưa kết nối'}
+          </span>
+          {currentUser && (
+            <button className="sg-user" onClick={onLogout} title={`${currentUser.ho_ten} (${currentUser.quyen}) · Bấm để đăng xuất · Phiên bản v1.0.0`}>
+              <span className="sg-ava">{initials}</span>
+              <span className="sg-user-name">{currentUser.ho_ten}</span>
+              <LogOut size={14} />
+            </button>
+          )}
         </div>
       </div>
+      <nav className="sg-pills" aria-label="Điều hướng">
+        {groups.map((g, gi) => (
+          <React.Fragment key={gi}>
+            {gi > 0 && <span className="sg-pill-sep" aria-hidden="true" />}
+            {g.map(t => {
+              const m = NAV_META[t.id] || NAV_META.chung
+              const isOn = activeTab === t.id
+              const n = counts[t.id]
+              return (
+                <button
+                  key={t.id}
+                  className={'sg-pill' + (isOn ? ' on' : '')}
+                  aria-current={isOn ? 'true' : undefined}
+                  data-tab={t.id}
+                  title={n > 0 ? `${t.label} · ${n.toLocaleString('vi-VN')} dòng` : t.label}
+                  style={{ '--c': m.c, '--c2': m.c2, '--t': m.t, '--cd': m.cd }}
+                  onClick={() => setTab(t.id)}
+                >
+                  <span className="sg-pill-dot">{React.cloneElement(t.icon, { size: 13, strokeWidth: 2.4 })}</span>
+                  <span className="sg-pill-lb">{m.short}</span>
+                  {isOn && n > 0 && <span className="sg-pill-n">{n.toLocaleString('vi-VN')}</span>}
+                </button>
+              )
+            })}
+          </React.Fragment>
+        ))}
+      </nav>
     </header>
   )
 }
@@ -940,7 +838,7 @@ function TabBar({ tabs, active, onChange }) {
               color: active === t.id ? '#fff' : 'var(--text-muted)',
               borderRadius: 20,
               padding: '2px 8px',
-              fontSize: 11,
+              fontSize: 12,
               fontWeight: 700,
             }}>{t.count.toLocaleString()}</span>
           )}
@@ -1022,10 +920,10 @@ function UploadZone({ onFile, label, accept = '.xlsx,.xls', disabled = false }) 
           {disabled ? <Lock size={24} color="#f5222d" /> : <Upload size={24} color="var(--primary)" />}
         </div>
         <div>
-          <div style={{ fontWeight: 700, fontSize: 16, color: disabled ? '#f5222d' : 'var(--text)', marginBottom: 6 }}>
+          <div style={{ fontWeight: 700, fontSize: 15, color: disabled ? '#f5222d' : 'var(--text)', marginBottom: 6 }}>
             {disabled ? 'Nút Tải File Đang Bị Khóa' : label}
           </div>
-          <div style={{ color: disabled ? '#7f1d1d' : 'var(--text-muted)', fontSize: 14 }}>
+          <div style={{ color: disabled ? '#7f1d1d' : 'var(--text-muted)', fontSize: 15 }}>
             {disabled ? (
               <span style={{ fontWeight: 600 }}>⚠️ Bạn chưa Chọn Kho Dự Án cụ thể để gán dữ liệu.</span>
             ) : (
@@ -1113,76 +1011,32 @@ function StatsBar({ rows, onAppendFile }) {
     ...stats.cards
   ]
 
+  const toneOfCard = (c) => c.color === '#10b981' ? 'sg-c-green' : c.color === '#ef4444' ? 'sg-c-red' : c.color === '#b45309' ? 'sg-c-orange' : 'sg-c-blue'
+
   return (
-    <div style={{ display: 'flex', gap: 12, marginBottom: 16, flexWrap: 'wrap', flexShrink: 0 }}>
-      {cards.map(c => (
-        <div key={c.label} style={{
-          background: c.bg,
-          border: `1px solid ${c.border}`,
-          borderRadius: 8,
-          padding: '10px 16px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          flex: '1 1 200px',
-          minWidth: 180,
-          boxShadow: 'var(--shadow-sm)'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-            <span style={{ color: 'var(--text-muted)', fontSize: 14, fontWeight: 500 }}>{c.label}:</span>
-            <span style={{ color: c.color, fontSize: 16, fontWeight: 700, letterSpacing: '-0.01em' }}>{c.value}</span>
+    <div className="sg-kpis" style={{ marginBottom: 12, flexShrink: 0 }}>
+      {cards.map(c => {
+        const [num, ...unit] = String(c.value).split(' ')
+        return (
+          <div key={c.label} className={'sg-kpi sm ' + toneOfCard(c)} title={`${c.label}: ${c.value}`}>
+            <span className="sg-kpi-ic">{React.cloneElement(c.icon, { size: 15 })}</span>
+            <span className="sg-kpi-bd">
+              <span className="sg-kpi-lb">{c.label}</span>
+              <span className="sg-kpi-v">{num}<small>{unit.join(' ')}</small></span>
+            </span>
           </div>
-          <div style={{
-            width: 32, height: 32, borderRadius: 8,
-            background: '#ffffff', color: c.color,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            border: `1px solid ${c.border}`,
-            flexShrink: 0
-          }}>
-            {c.icon}
-          </div>
-        </div>
-      ))}
+        )
+      })}
 
       {onAppendFile && (
-        <div 
+        <div
           onClick={() => document.getElementById('append-file-input')?.click()}
-          style={{
-            background: '#ffffff',
-            border: '2px dashed #0284c7',
-            borderRadius: 8,
-            padding: '10px 16px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            flex: '1 1 200px',
-            minWidth: 180,
-            boxShadow: 'var(--shadow-sm)',
-            cursor: 'pointer',
-            transition: 'all 0.2s ease',
-            userSelect: 'none'
-          }}
-          onMouseOver={(e) => {
-            e.currentTarget.style.borderColor = '#0369a1';
-            e.currentTarget.style.background = '#f0f9ff';
-          }}
-          onMouseOut={(e) => {
-            e.currentTarget.style.borderColor = '#0284c7';
-            e.currentTarget.style.background = '#ffffff';
-          }}
+          className="sg-btn ghost"
+          title="Tải thêm file Excel để nối tiếp dữ liệu vào Đơn chung hiện có"
+          style={{ marginLeft: 'auto', alignSelf: 'center', userSelect: 'none' }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-            <span style={{ color: '#0369a1', fontSize: 14, fontWeight: 700 }}>Up file nối tiếp:</span>
-            <span style={{ color: '#64748b', fontSize: 12, fontWeight: 500 }}>Nối tiếp dữ liệu</span>
-          </div>
-          <div style={{
-            width: 32, height: 32, borderRadius: 8,
-            background: '#0284c7', color: '#ffffff',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            flexShrink: 0
-          }}>
-            <CloudUpload size={18} />
-          </div>
+          <CloudUpload size={16} />
+          <span>Tải thêm file nối tiếp</span>
           <input
             id="append-file-input"
             type="file"
@@ -1292,7 +1146,7 @@ function FilterBar({
         background: '#ffffff',
         height: 44,
         boxShadow: '0 1px 2px rgba(15, 23, 42, 0.05)',
-        fontSize: '13.5px',
+        fontSize: '15px',
         color: '#334155',
         flexShrink: 0
       }}>
@@ -1304,7 +1158,7 @@ function FilterBar({
             border: 'none',
             outline: 'none',
             background: 'transparent',
-            fontSize: '13.5px',
+            fontSize: '15px',
             color: '#0f172a',
             fontFamily: 'inherit',
             cursor: 'pointer',
@@ -1312,7 +1166,7 @@ function FilterBar({
           }}
           title="Từ ngày"
         />
-        <span style={{ color: '#94a3b8', fontSize: '13px', fontWeight: 600 }}>➔</span>
+        <span style={{ color: '#94a3b8', fontSize: '15px', fontWeight: 600 }}>➔</span>
         <input
           type="date"
           value={endDate || ''}
@@ -1321,7 +1175,7 @@ function FilterBar({
             border: 'none',
             outline: 'none',
             background: 'transparent',
-            fontSize: '13.5px',
+            fontSize: '15px',
             color: '#0f172a',
             fontFamily: 'inherit',
             cursor: 'pointer',
@@ -1386,7 +1240,7 @@ function FilterBar({
             alignItems: 'center',
             gap: 6,
             fontWeight: 600,
-            fontSize: '13.5px',
+            fontSize: '15px',
             cursor: 'pointer'
           }}
         >
@@ -3747,7 +3601,7 @@ function RealReportSummaryTable({ summaryRows = [], customCategoryMap = {}, loca
     display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
     height: 30, minWidth: 30, padding: '0 8px',
     border: '1px solid #e2e8f0', borderRadius: 6,
-    fontSize: 13, fontWeight: 500, cursor: 'pointer',
+    fontSize: 15, fontWeight: 500, cursor: 'pointer',
     background: '#fff', color: '#374151', transition: 'all 0.15s',
     userSelect: 'none'
   }
@@ -3757,7 +3611,7 @@ function RealReportSummaryTable({ summaryRows = [], customCategoryMap = {}, loca
   return (
     <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
       {/* Helpful tip banner */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 14px', background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '6px', marginBottom: '10px', fontSize: '12.5px', color: '#1e40af' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 14px', background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '6px', marginBottom: '10px', fontSize: '12px', color: '#1e40af' }}>
         <Info size={16} className="text-blue-600" style={{ flexShrink: 0 }} />
         <span>
           <strong>Hướng dẫn:</strong> Nhấp đúp (double-click) vào bất kỳ dòng vật tư nào để xem <strong>Bảng giải trình cấu thành số liệu chi tiết</strong>.
@@ -3785,7 +3639,7 @@ function RealReportSummaryTable({ summaryRows = [], customCategoryMap = {}, loca
                   <th
                     key={c.key}
                     style={{
-                      width: c.width, minWidth: c.width, maxWidth: c.width,
+                      width: colW(c.width), minWidth: colW(c.width), maxWidth: colW(c.width),
                       textAlign: 'center', verticalAlign: 'middle',
                       fontSize: '12px', padding: '8px 10px',
                       whiteSpace: 'normal', wordBreak: 'break-word', lineHeight: '1.2',
@@ -3862,7 +3716,7 @@ function RealReportSummaryTable({ summaryRows = [], customCategoryMap = {}, loca
                       <td
                         key={col.key}
                         style={{
-                          width: col.width, minWidth: col.width, maxWidth: col.width,
+                          width: colW(col.width), minWidth: colW(col.width), maxWidth: colW(col.width),
                           color: cellTextColor,
                           backgroundColor: cellBg,
                           fontWeight: cellFontWeight,
@@ -4038,7 +3892,7 @@ function RealReportSummaryTable({ summaryRows = [], customCategoryMap = {}, loca
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <Info size={20} className="text-blue-600" />
                     <div>
-                      <h3 style={{ margin: 0, fontSize: 15.5, fontWeight: 700, color: '#1e3a8a' }}>
+                      <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: '#1e3a8a' }}>
                         BẢNG GIẢI TRÌNH CẤU THÀNH SỐ LIỆU CHI TIẾT
                       </h3>
                       <p style={{ margin: 0, fontSize: 12, color: '#475569', fontWeight: 600, marginTop: 2 }}>
@@ -4052,7 +3906,7 @@ function RealReportSummaryTable({ summaryRows = [], customCategoryMap = {}, loca
                     display: 'flex',
                     alignItems: 'center',
                     gap: 12,
-                    fontSize: '11px',
+                    fontSize: '12px',
                     fontWeight: 600,
                     background: '#f8fafc',
                     padding: '6px 12px',
@@ -4060,7 +3914,7 @@ function RealReportSummaryTable({ summaryRows = [], customCategoryMap = {}, loca
                     border: '1px solid #e2e8f0',
                     marginLeft: 16
                   }}>
-                    <span style={{ color: '#64748b', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 700 }}>Màu sắc đối tác:</span>
+                    <span style={{ color: '#64748b', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 700 }}>Màu sắc đối tác:</span>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                       <span style={{ width: 10, height: 10, borderRadius: 2, background: '#fffbeb', border: '1px solid #fde68a' }}></span>
                       <span style={{ color: '#78350f' }}>Nhà cung cấp (NCC)</span>
@@ -4090,7 +3944,7 @@ function RealReportSummaryTable({ summaryRows = [], customCategoryMap = {}, loca
                       alignItems: 'center',
                       gap: 6,
                       fontWeight: 600,
-                      fontSize: '13px',
+                      fontSize: '15px',
                       cursor: 'pointer'
                     }}
                   >
@@ -4113,16 +3967,16 @@ function RealReportSummaryTable({ summaryRows = [], customCategoryMap = {}, loca
                   
                   {/* Table 1: DIỄN GIẢI THỰC NHẬP */}
                   <div style={{ background: '#fcfdfd', border: '1px solid #0f766e', borderRadius: 8, overflow: 'hidden', boxShadow: '0 2px 4px rgba(15,23,42,0.05)' }}>
-                    <div style={{ background: 'linear-gradient(135deg, #0f766e 0%, #115e59 100%)', color: '#ffffff', padding: '10px 14px', fontWeight: 700, fontSize: '13px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div style={{ background: 'linear-gradient(135deg, #0f766e 0%, #115e59 100%)', color: '#ffffff', padding: '10px 14px', fontWeight: 700, fontSize: '15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                         <Warehouse size={14} /> BẢNG TỔNG HỢP DIỄN GIẢI THỰC NHẬP (SUMIFS THEO ĐƠN VỊ)
                       </span>
-                      <span style={{ background: 'rgba(255,255,255,0.18)', padding: '2px 8px', borderRadius: 4, fontSize: '11.5px', fontWeight: 800 }}>
+                      <span style={{ background: 'rgba(255,255,255,0.18)', padding: '2px 8px', borderRadius: 4, fontSize: '12px', fontWeight: 800 }}>
                         Tổng: {detailRow.thucNhap === 0 ? '-' : detailRow.thucNhap.toLocaleString('vi-VN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {detailRow.dvt}
                       </span>
                     </div>
                     <div style={{ overflowX: 'auto' }}>
-                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '11.5px' }}>
+                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
                         <thead>
                           <tr style={{ background: '#f0fdf4', borderBottom: '1px solid #ccfbf1', color: '#0f766e', fontWeight: 700 }}>
                             <th style={{ padding: '8px 10px', textAlign: 'center', width: 40, borderBottom: '1px solid #ccfbf1' }}>STT</th>
@@ -4168,7 +4022,7 @@ function RealReportSummaryTable({ summaryRows = [], customCategoryMap = {}, loca
                                   {/* 2. Phân loại đơn vị */}
                                   <td style={{ padding: '8px 10px', fontWeight: 600 }}>
                                     <span style={{
-                                      padding: '2px 6px', borderRadius: 4, fontSize: '10px',
+                                      padding: '2px 6px', borderRadius: 4, fontSize: '12px',
                                       background: isZero ? '#f1f5f9' : isNegative ? '#fee2e2' : '#ecfdf5',
                                       color: isZero ? '#475569' : isNegative ? '#991b1b' : '#047857',
                                       border: isZero ? '1px solid #cbd5e1' : isNegative ? '1px solid #fca5a5' : '1px solid #a7f3d0'
@@ -4190,7 +4044,7 @@ function RealReportSummaryTable({ summaryRows = [], customCategoryMap = {}, loca
                                   {/* 4. Vai trò Kho chọn */}
                                   <td style={{ padding: '8px 10px', textAlign: 'center', fontWeight: 600 }}>
                                     <span style={{
-                                      padding: '2px 6px', borderRadius: 4, fontSize: '10px',
+                                      padding: '2px 6px', borderRadius: 4, fontSize: '12px',
                                       background: sumItem.role === 'Đơn vị nhận' ? '#f5f3ff' : '#fff7ed',
                                       color: sumItem.role === 'Đơn vị nhận' ? '#6d28d9' : '#ea580c',
                                       border: sumItem.role === 'Đơn vị nhận' ? '1px solid #ddd6fe' : '1px solid #fed7aa'
@@ -4216,7 +4070,7 @@ function RealReportSummaryTable({ summaryRows = [], customCategoryMap = {}, loca
                                   <td style={{ padding: '8px 10px', textAlign: 'center', fontWeight: 600 }}>
                                     {partnerRoleLabel && (
                                       <span style={{
-                                        padding: '2px 6px', borderRadius: 4, fontSize: '10px',
+                                        padding: '2px 6px', borderRadius: 4, fontSize: '12px',
                                         background: cat === 'kho' ? '#eff6ff' : cat === 'ncc' ? '#fffbeb' : '#f0fdf4',
                                         color: cat === 'kho' ? '#1e3a8a' : cat === 'ncc' ? '#78350f' : '#065f46',
                                         border: cat === 'kho' ? '1px solid #bfdbfe' : cat === 'ncc' ? '1px solid #fde68a' : '1px solid #bbf7d0'
@@ -4234,7 +4088,7 @@ function RealReportSummaryTable({ summaryRows = [], customCategoryMap = {}, loca
                                   {/* 8. Hệ số logic */}
                                   <td style={{ padding: '8px 10px', textAlign: 'center' }}>
                                     <span style={{
-                                      fontWeight: 700, padding: '2px 6px', borderRadius: 4, fontSize: '10px',
+                                      fontWeight: 700, padding: '2px 6px', borderRadius: 4, fontSize: '12px',
                                       background: sumItem.logicVal > 0 ? '#dcfce7' : sumItem.logicVal < 0 ? '#fee2e2' : '#f1f5f9',
                                       color: sumItem.logicVal > 0 ? '#15803d' : sumItem.logicVal < 0 ? '#b91c1c' : '#475569'
                                     }}>
@@ -4251,7 +4105,7 @@ function RealReportSummaryTable({ summaryRows = [], customCategoryMap = {}, loca
                                   </td>
 
                                   {/* 10. Ghi chú */}
-                                  <td style={{ padding: '8px 10px', color: '#475569', fontStyle: 'italic', fontSize: '11px' }}>
+                                  <td style={{ padding: '8px 10px', color: '#475569', fontStyle: 'italic', fontSize: '12px' }}>
                                     {sumItem.explain || ''}
                                   </td>
                                 </tr>
@@ -4265,16 +4119,16 @@ function RealReportSummaryTable({ summaryRows = [], customCategoryMap = {}, loca
 
                   {/* Table 2: DIỄN GIẢI THỰC XUẤT */}
                   <div style={{ background: '#fcfdfd', border: '1px solid #c2410c', borderRadius: 8, overflow: 'hidden', boxShadow: '0 2px 4px rgba(15,23,42,0.05)' }}>
-                    <div style={{ background: 'linear-gradient(135deg, #ea580c 0%, #c2410c 100%)', color: '#ffffff', padding: '10px 14px', fontWeight: 700, fontSize: '13px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div style={{ background: 'linear-gradient(135deg, #ea580c 0%, #c2410c 100%)', color: '#ffffff', padding: '10px 14px', fontWeight: 700, fontSize: '15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                         <Users size={14} /> BẢNG TỔNG HỢP DIỄN GIẢI THỰC XUẤT (SUMIFS THEO ĐƠN VỊ)
                       </span>
-                      <span style={{ background: 'rgba(255,255,255,0.18)', padding: '2px 8px', borderRadius: 4, fontSize: '11.5px', fontWeight: 800 }}>
+                      <span style={{ background: 'rgba(255,255,255,0.18)', padding: '2px 8px', borderRadius: 4, fontSize: '12px', fontWeight: 800 }}>
                         Tổng: {detailRow.thucXuat === 0 ? '-' : detailRow.thucXuat.toLocaleString('vi-VN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {detailRow.dvt}
                       </span>
                     </div>
                     <div style={{ overflowX: 'auto' }}>
-                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '11.5px' }}>
+                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
                         <thead>
                           <tr style={{ background: '#fff7ed', borderBottom: '1px solid #ffedd5', color: '#c2410c', fontWeight: 700 }}>
                             <th style={{ padding: '8px 10px', textAlign: 'center', width: 40, borderBottom: '1px solid #ffedd5' }}>STT</th>
@@ -4320,7 +4174,7 @@ function RealReportSummaryTable({ summaryRows = [], customCategoryMap = {}, loca
                                   {/* 2. Phân loại đơn vị */}
                                   <td style={{ padding: '8px 10px', fontWeight: 600 }}>
                                     <span style={{
-                                      padding: '2px 6px', borderRadius: 4, fontSize: '10px',
+                                      padding: '2px 6px', borderRadius: 4, fontSize: '12px',
                                       background: isZero ? '#f1f5f9' : isNegative ? '#fee2e2' : '#fff7ed',
                                       color: isZero ? '#475569' : isNegative ? '#991b1b' : '#c2410c',
                                       border: isZero ? '1px solid #cbd5e1' : isNegative ? '1px solid #fca5a5' : '1px solid #fed7aa'
@@ -4342,7 +4196,7 @@ function RealReportSummaryTable({ summaryRows = [], customCategoryMap = {}, loca
                                   {/* 4. Vai trò Kho chọn */}
                                   <td style={{ padding: '8px 10px', textAlign: 'center', fontWeight: 600 }}>
                                     <span style={{
-                                      padding: '2px 6px', borderRadius: 4, fontSize: '10px',
+                                      padding: '2px 6px', borderRadius: 4, fontSize: '12px',
                                       background: sumItem.role === 'Đơn vị nhận' ? '#f5f3ff' : '#fff7ed',
                                       color: sumItem.role === 'Đơn vị nhận' ? '#6d28d9' : '#ea580c',
                                       border: sumItem.role === 'Đơn vị nhận' ? '1px solid #ddd6fe' : '1px solid #fed7aa'
@@ -4368,7 +4222,7 @@ function RealReportSummaryTable({ summaryRows = [], customCategoryMap = {}, loca
                                   <td style={{ padding: '8px 10px', textAlign: 'center', fontWeight: 600 }}>
                                     {partnerRoleLabel && (
                                       <span style={{
-                                        padding: '2px 6px', borderRadius: 4, fontSize: '10px',
+                                        padding: '2px 6px', borderRadius: 4, fontSize: '12px',
                                         background: cat === 'kho' ? '#eff6ff' : cat === 'ncc' ? '#fffbeb' : '#f0fdf4',
                                         color: cat === 'kho' ? '#1e3a8a' : cat === 'ncc' ? '#78350f' : '#065f46',
                                         border: cat === 'kho' ? '1px solid #bfdbfe' : cat === 'ncc' ? '1px solid #fde68a' : '1px solid #bbf7d0'
@@ -4386,7 +4240,7 @@ function RealReportSummaryTable({ summaryRows = [], customCategoryMap = {}, loca
                                   {/* 8. Hệ số logic */}
                                   <td style={{ padding: '8px 10px', textAlign: 'center' }}>
                                     <span style={{
-                                      fontWeight: 700, padding: '2px 6px', borderRadius: 4, fontSize: '10px',
+                                      fontWeight: 700, padding: '2px 6px', borderRadius: 4, fontSize: '12px',
                                       background: sumItem.logicVal > 0 ? '#dcfce7' : sumItem.logicVal < 0 ? '#fee2e2' : '#f1f5f9',
                                       color: sumItem.logicVal > 0 ? '#15803d' : sumItem.logicVal < 0 ? '#b91c1c' : '#475569'
                                     }}>
@@ -4403,7 +4257,7 @@ function RealReportSummaryTable({ summaryRows = [], customCategoryMap = {}, loca
                                   </td>
 
                                   {/* 10. Ghi chú */}
-                                  <td style={{ padding: '8px 10px', color: '#475569', fontStyle: 'italic', fontSize: '11px' }}>
+                                  <td style={{ padding: '8px 10px', color: '#475569', fontStyle: 'italic', fontSize: '12px' }}>
                                     {sumItem.explain || ''}
                                   </td>
                                 </tr>
@@ -4440,19 +4294,19 @@ function RealReportSummaryTable({ summaryRows = [], customCategoryMap = {}, loca
 
       {/* Pagination */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', background: '#f8fafc', borderTop: '1px solid #cbd5e1', borderBottomLeftRadius: 8, borderBottomRightRadius: 8, gap: 12, flexWrap: 'wrap', flexShrink: 0 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '13px', color: '#475569' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '15px', color: '#475569' }}>
           <span>Hiển thị</span>
           <select
             value={pageSize}
             onChange={(e) => { setPageSize(Number(e.target.value)); setCurrentPage(1); }}
-            style={{ padding: '2px 4px', border: '1px solid #cbd5e1', borderRadius: 4, background: '#fff', fontSize: '13px', color: '#1e293b', cursor: 'pointer' }}
+            style={{ padding: '2px 4px', border: '1px solid #cbd5e1', borderRadius: 4, background: '#fff', fontSize: '15px', color: '#1e293b', cursor: 'pointer' }}
           >
             {PAGE_SIZE_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
           </select>
           <span>dòng / trang</span>
         </div>
 
-        <div style={{ fontSize: '13px', color: '#475569', fontWeight: 500 }}>
+        <div style={{ fontSize: '15px', color: '#475569', fontWeight: 500 }}>
           {summaryRows.length > 0 ? `${startIdx + 1}–${endIdx} / ${summaryRows.length} dòng` : '0 dòng'}
         </div>
 
@@ -4654,7 +4508,7 @@ function DataTable({ rows, setRows, type, columns = COLS_GIAO_NHAN, customCatego
     display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
     height: 30, minWidth: 30, padding: '0 8px',
     border: '1px solid #e2e8f0', borderRadius: 6,
-    fontSize: 13, fontWeight: 500, cursor: 'pointer',
+    fontSize: 15, fontWeight: 500, cursor: 'pointer',
     background: '#fff', color: '#374151', transition: 'all 0.15s',
     userSelect: 'none'
   }
@@ -4707,10 +4561,10 @@ function DataTable({ rows, setRows, type, columns = COLS_GIAO_NHAN, customCatego
                 <Trash2 size={24} />
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flex: 1 }}>
-                <h3 style={{ fontSize: 18, fontWeight: 700, color: '#0f172a', margin: 0, fontFamily: 'inherit' }}>
+                <h3 style={{ fontSize: 22, fontWeight: 700, color: '#0f172a', margin: 0, fontFamily: 'inherit' }}>
                   Xác nhận xóa dữ liệu
                 </h3>
-                <p style={{ fontSize: 14, color: '#475569', margin: 0, lineHeight: '1.5', fontFamily: 'inherit' }}>
+                <p style={{ fontSize: 15, color: '#475569', margin: 0, lineHeight: '1.5', fontFamily: 'inherit' }}>
                   Bạn có thực sự muốn xóa <strong>{selectedIds.size}</strong> dòng dữ liệu đã chọn? Hành động này không thể hoàn tác và sẽ xóa vĩnh viễn trên cơ sở dữ liệu Supabase.
                 </p>
               </div>
@@ -4722,7 +4576,7 @@ function DataTable({ rows, setRows, type, columns = COLS_GIAO_NHAN, customCatego
                 style={{
                   padding: '10px 20px',
                   borderRadius: 8,
-                  fontSize: 14,
+                  fontSize: 15,
                   fontWeight: 600,
                   background: '#f1f5f9',
                   color: '#334155',
@@ -4750,7 +4604,7 @@ function DataTable({ rows, setRows, type, columns = COLS_GIAO_NHAN, customCatego
                 style={{
                   padding: '10px 20px',
                   borderRadius: 8,
-                  fontSize: 14,
+                  fontSize: 15,
                   fontWeight: 700,
                   background: '#dc2626',
                   color: '#ffffff',
@@ -4794,11 +4648,11 @@ function DataTable({ rows, setRows, type, columns = COLS_GIAO_NHAN, customCatego
             gap: 14,
           }}>
             <RefreshCw size={28} color="#dc2626" style={{ animation: 'spin 1s linear infinite' }} />
-            <h3 style={{ fontSize: 16, fontWeight: 700, color: '#0f172a', margin: 0 }}>
+            <h3 style={{ fontSize: 15, fontWeight: 700, color: '#0f172a', margin: 0 }}>
               Đang xóa dữ liệu...
             </h3>
             {deleteProgress && (
-              <p style={{ fontSize: 13.5, color: '#475569', margin: 0 }}>
+              <p style={{ fontSize: 15, color: '#475569', margin: 0 }}>
                 Đã xóa {deleteProgress.done.toLocaleString('vi-VN')} / {deleteProgress.total.toLocaleString('vi-VN')} dòng
               </p>
             )}
@@ -4818,7 +4672,7 @@ function DataTable({ rows, setRows, type, columns = COLS_GIAO_NHAN, customCatego
           padding: '10px 16px',
           marginBottom: 12,
           color: '#991b1b',
-          fontSize: '13.5px',
+          fontSize: '15px',
           fontWeight: 500,
           boxShadow: '0 1px 3px rgba(239, 68, 68, 0.08)',
           flexShrink: 0
@@ -4834,7 +4688,7 @@ function DataTable({ rows, setRows, type, columns = COLS_GIAO_NHAN, customCatego
               style={{
                 height: 32,
                 padding: '0 14px',
-                fontSize: '13px',
+                fontSize: '15px',
                 borderColor: '#fca5a5',
                 color: '#b91c1c',
                 background: '#ffffff',
@@ -4852,7 +4706,7 @@ function DataTable({ rows, setRows, type, columns = COLS_GIAO_NHAN, customCatego
               style={{
                 height: 32,
                 padding: '0 14px',
-                fontSize: '13px',
+                fontSize: '15px',
                 background: '#dc2626',
                 color: '#ffffff',
                 border: 'none',
@@ -4908,7 +4762,7 @@ function DataTable({ rows, setRows, type, columns = COLS_GIAO_NHAN, customCatego
                   <th
                     key={c.key}
                     style={{
-                      width: c.width, minWidth: c.width, maxWidth: c.width,
+                      width: colW(c.width), minWidth: colW(c.width), maxWidth: colW(c.width),
                       textAlign: 'center', verticalAlign: 'middle',
                       fontSize: '12px', padding: '8px 10px',
                       whiteSpace: 'normal', wordBreak: 'break-word', lineHeight: '1.2',
@@ -5014,7 +4868,7 @@ function DataTable({ rows, setRows, type, columns = COLS_GIAO_NHAN, customCatego
                     <td
                       key={col.key}
                       style={{
-                        width: col.width, minWidth: col.width, maxWidth: col.width,
+                        width: colW(col.width), minWidth: colW(col.width), maxWidth: colW(col.width),
                         color: cellTextColor,
                         backgroundColor: cellBg,
                         fontWeight: cellFontWeight,
@@ -5026,13 +4880,13 @@ function DataTable({ rows, setRows, type, columns = COLS_GIAO_NHAN, customCatego
                     >
                       {col.key === 'trangThai' ? (
                         row[col.key] ? (
-                          <span className={`badge ${getTrangThaiColor(row[col.key])}`} style={{ fontSize: '11px', padding: '2px 6px', lineHeight: 1.2 }}>
+                          <span className={`badge ${getTrangThaiColor(row[col.key])}`} style={{ fontSize: '12px', padding: '2px 6px', lineHeight: 1.2 }}>
                             {row[col.key]}
                           </span>
                         ) : ''
                       ) : col.key === 'tinhTrang' ? (
                         row[col.key]
-                          ? <span className={`badge ${row[col.key] === 'NEW' ? 'badge-green' : row[col.key] === 'USED' ? 'badge-yellow' : 'badge-gray'}`} style={{ fontSize: '11px', padding: '2px 6px', lineHeight: 1.2 }}>{row[col.key]}</span>
+                          ? <span className={`badge ${row[col.key] === 'NEW' ? 'badge-green' : row[col.key] === 'USED' ? 'badge-yellow' : 'badge-gray'}`} style={{ fontSize: '12px', padding: '2px 6px', lineHeight: 1.2 }}>{row[col.key]}</span>
                           : ''
                       ) : (col.key === 'logicTongHop' || col.key === 'khoiLuongThuc') && Number(row[col.key]) === 0 ? (
                         '-'
@@ -5060,7 +4914,7 @@ function DataTable({ rows, setRows, type, columns = COLS_GIAO_NHAN, customCatego
       }}>
         {/* Left: page size selector */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ fontSize: 13, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>Hiển thị</span>
+          <span style={{ fontSize: 15, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>Hiển thị</span>
           <div style={{ display: 'flex', gap: 4 }}>
             {PAGE_SIZE_OPTIONS.map(sz => (
               <button
@@ -5075,19 +4929,19 @@ function DataTable({ rows, setRows, type, columns = COLS_GIAO_NHAN, customCatego
               </button>
             ))}
           </div>
-          <span style={{ fontSize: 13, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>dòng / trang</span>
+          <span style={{ fontSize: 15, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>dòng / trang</span>
         </div>
 
         {/* Right: page info + nav */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <span style={{ fontSize: 13, color: 'var(--text-muted)', marginRight: 4, whiteSpace: 'nowrap' }}>
+          <span style={{ fontSize: 15, color: 'var(--text-muted)', marginRight: 4, whiteSpace: 'nowrap' }}>
             {startIdx + 1}–{endIdx} / {rows.length.toLocaleString()} dòng
           </span>
           <button style={currentPage === 1 ? btnDisabled : btnBase} onClick={() => setCurrentPage(1)}>«</button>
           <button style={currentPage === 1 ? btnDisabled : btnBase} onClick={() => setCurrentPage(p => p - 1)}>‹</button>
           {getPageNums().map((p, i) =>
             p === '...'
-              ? <span key={`ellipsis-b-${i}`} style={{ fontSize: 13, color: '#94a3b8', padding: '0 2px' }}>…</span>
+              ? <span key={`ellipsis-b-${i}`} style={{ fontSize: 15, color: '#94a3b8', padding: '0 2px' }}>…</span>
               : <button key={p} style={currentPage === p ? btnActive : btnBase} onClick={() => setCurrentPage(p)}>{p}</button>
           )}
           <button style={currentPage === totalPages ? btnDisabled : btnBase} onClick={() => setCurrentPage(p => p + 1)}>›</button>
@@ -5521,7 +5375,7 @@ function OrderTab({
             alignItems: 'flex-start',
           }}>
             <Info size={14} color="var(--primary)" style={{ marginTop: 1, flexShrink: 0 }} />
-            <div style={{ fontSize: 14, color: 'var(--primary-dark)' }}>
+            <div style={{ fontSize: 15, color: 'var(--primary-dark)' }}>
               <strong>Cấu trúc file yêu cầu:</strong> File Excel có sheet "Báo cáo theo dõi giao nhận" với 36 cột từ Ngày xuất nhập đến Nhãn hiệu. Dòng 1 là nhóm cột, dòng 2 là sub-header, dữ liệu từ dòng 3.
             </div>
           </div>
@@ -5538,7 +5392,7 @@ function OrderTab({
               alignItems: 'flex-start',
             }}>
               <Info size={14} color="var(--primary)" style={{ marginTop: 1, flexShrink: 0 }} />
-              <div style={{ fontSize: 14, color: 'var(--primary-dark)' }}>
+              <div style={{ fontSize: 15, color: 'var(--primary-dark)' }}>
                 <strong>Lưu ý:</strong> Bạn đang chọn <strong>Tất cả dự án</strong>. Khi tải file lên, hệ thống sẽ tự động phân tích và gán dữ liệu vào các dự án tương ứng dựa trên cột dữ liệu gốc của từng dòng!
               </div>
             </div>
@@ -5567,7 +5421,7 @@ function OrderTab({
               borderRadius: 8,
               padding: '10px 16px',
               marginBottom: 16,
-              fontSize: 14,
+              fontSize: 15,
               color: supabaseMessage.type === 'success' ? '#065f46' : supabaseMessage.type === 'error' ? '#9f1239' : '#1e40af',
               display: 'flex',
               alignItems: 'center',
@@ -5622,10 +5476,10 @@ function OrderTab({
                 }}>
                   {type === 'giao' ? <Truck size={26} color="var(--primary)" /> : <PackageCheck size={26} color="var(--primary)" />}
                 </div>
-                <h3 style={{ fontSize: 17, fontWeight: 700, color: 'var(--text)', marginBottom: 6 }}>
+                <h3 style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)', marginBottom: 6 }}>
                   Dự án <span style={{ color: 'var(--primary)' }}>"{selectedProject}"</span> chưa có dữ liệu
                 </h3>
-                <p style={{ color: 'var(--text-muted)', fontSize: 14, marginBottom: 20 }}>
+                <p style={{ color: 'var(--text-muted)', fontSize: 15, marginBottom: 20 }}>
                   Upload file Excel để tải dữ liệu {label} cho dự án này.
                 </p>
                 <UploadZone onFile={handleFile} label={uploadLabel} disabled={false} />
@@ -6068,15 +5922,52 @@ function KhoDuAnTab({
   return (
     <div style={{ padding: '16px 24px 24px 24px', height: '100%', display: 'flex', flexDirection: 'column', boxSizing: 'border-box', overflow: 'hidden' }}>
       {/* Tab Header & Action Panel */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, flexShrink: 0, gap: 16 }}>
-        <div>
-          <h2 style={{ fontSize: 19, fontWeight: 800, color: 'var(--text)', margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
-            <Warehouse size={22} color="var(--primary)" />
-            Kho dự án (Trích xuất từ Đơn chung)
-          </h2>
-          <p style={{ margin: '4px 0 0', color: 'var(--text-muted)', fontSize: 13.5 }}>
-            Tự động trích xuất toàn bộ tên <strong>Đơn vị giao</strong> và <strong>Đơn vị nhận</strong> từ dữ liệu Đơn chung hiện tại.
-          </p>
+      <div title="Tự động trích xuất toàn bộ tên Đơn vị giao và Đơn vị nhận từ dữ liệu Đơn chung hiện tại. Không cần import file Excel riêng cho tab này: hệ thống quét cột Đơn vị giao và Đơn vị nhận của Đơn chung để đồng bộ theo thời gian thực." style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, flexShrink: 0, gap: 12, flexWrap: 'wrap' }}>
+        <div style={{
+          background: '#ffffff',
+          border: '1px solid #D5DCEB',
+          borderRadius: 99,
+          padding: '0 8px 0 14px',
+          height: 40,
+          flex: '1 1 360px',
+          maxWidth: 560,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
+          flexShrink: 0,
+          boxShadow: '0 1px 2px rgba(0,0,0,0.02)'
+        }}>
+          <Search size={16} color="#64748b" />
+          <input
+            type="text"
+            placeholder="Tìm kiếm nhanh tên Đơn vị giao hoặc Đơn vị nhận..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            style={{
+              flex: 1,
+              border: 'none',
+              outline: 'none',
+              fontSize: 15,
+              color: 'var(--text)',
+              background: 'transparent'
+            }}
+          />
+          {search && (
+            <button
+              onClick={() => setSearch('')}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                cursor: 'pointer',
+                color: '#64748b',
+                padding: 2,
+                display: 'flex',
+                alignItems: 'center'
+              }}
+            >
+              <X size={14} />
+            </button>
+          )}
         </div>
         <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
           {(onNavigateToTab || onOpenChuanHoaBchModal) && (
@@ -6095,7 +5986,7 @@ function KhoDuAnTab({
                 alignItems: 'center',
                 gap: 6,
                 padding: '8px 16px',
-                fontSize: 13.5,
+                fontSize: 15,
                 fontWeight: 600,
                 borderRadius: 8,
                 cursor: 'pointer',
@@ -6109,7 +6000,7 @@ function KhoDuAnTab({
                   style={{
                     background: 'rgba(255,255,255,0.25)',
                     color: '#ffffff',
-                    fontSize: 11,
+                    fontSize: 12,
                     fontWeight: 700,
                     padding: '1px 6px',
                     borderRadius: 10,
@@ -6131,7 +6022,7 @@ function KhoDuAnTab({
                 gap: 6,
                 padding: '6px 12px',
                 borderRadius: 20,
-                fontSize: 12.5,
+                fontSize: 12,
                 fontWeight: 600,
                 background: isSynchronized ? '#f0fdf4' : '#fff7ed',
                 border: isSynchronized ? '1px solid #bbf7d0' : '1px solid #ffedd5',
@@ -6176,7 +6067,7 @@ function KhoDuAnTab({
                   alignItems: 'center',
                   gap: 6,
                   padding: '8px 16px',
-                  fontSize: 13.5,
+                  fontSize: 15,
                   fontWeight: 600,
                   borderRadius: 8,
                   cursor: (saveStatus === 'saving' || isSynchronized) ? 'not-allowed' : 'pointer',
@@ -6203,7 +6094,7 @@ function KhoDuAnTab({
                 alignItems: 'center',
                 gap: 6,
                 padding: '8px 16px',
-                fontSize: 13.5,
+                fontSize: 15,
                 fontWeight: 600,
                 borderRadius: 8,
                 cursor: 'pointer'
@@ -6215,23 +6106,6 @@ function KhoDuAnTab({
         </div>
       </div>
 
-      {/* Info Warning Alert */}
-      <div style={{
-        background: '#eff6ff',
-        border: '1px solid #bfdbfe',
-        borderRadius: 10,
-        padding: '10px 14px',
-        marginBottom: 16,
-        display: 'flex',
-        gap: 8,
-        alignItems: 'center',
-        flexShrink: 0
-      }}>
-        <Info size={16} color="var(--primary)" style={{ flexShrink: 0 }} />
-        <div style={{ fontSize: 13.5, color: '#1e40af', lineHeight: 1.4 }}>
-          <strong>Cơ chế tự động:</strong> Bạn không cần phải import file Excel riêng cho tab này. Hệ thống sẽ tự động quét cột <strong>Đơn vị giao</strong> và <strong>Đơn vị nhận</strong> của Sheet <strong>Đơn chung</strong> để đồng bộ trực quan thời gian thực!
-        </div>
-      </div>
 
       {/* Supabase RLS Troubleshooting Card */}
       {isSupabaseConfigured && Object.keys(dbCategoryMap || {}).length === 0 && (
@@ -6245,11 +6119,11 @@ function KhoDuAnTab({
           textAlign: 'left',
           flexShrink: 0
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#b45309', fontWeight: 700, fontSize: '14px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#b45309', fontWeight: 700, fontSize: '15px' }}>
             <AlertTriangle size={18} />
             <span>Chưa tải được phân loại từ Supabase (Có thể do chưa phân quyền RLS)</span>
           </div>
-          <p style={{ margin: '6px 0 12px 0', fontSize: '13px', color: '#78350f', lineHeight: 1.5 }}>
+          <p style={{ margin: '6px 0 12px 0', fontSize: '15px', color: '#78350f', lineHeight: 1.5 }}>
             Ứng dụng đã kết nối tới Supabase nhưng danh sách phân loại đơn vị trống (hoặc trả về 0 bản ghi). 
             Nếu bảng <code style={{ background: '#fef3c7', padding: '1px 5px', borderRadius: 4, fontFamily: 'monospace' }}>phan_loai_don_vi</code> của bạn đã có dữ liệu (như trong trang quản trị Supabase), nguyên nhân chính là do <strong>Row Level Security (RLS)</strong> đang chặn quyền đọc công khai.
           </p>
@@ -6267,7 +6141,7 @@ function KhoDuAnTab({
                 border: 'none',
                 borderRadius: '6px',
                 padding: '8px 14px',
-                fontSize: '12.5px',
+                fontSize: '12px',
                 fontWeight: 700,
                 cursor: 'pointer',
                 display: 'flex',
@@ -6287,7 +6161,7 @@ function KhoDuAnTab({
                 border: '1px solid #d97706',
                 borderRadius: '6px',
                 padding: '8px 14px',
-                fontSize: '12.5px',
+                fontSize: '12px',
                 fontWeight: 600,
                 cursor: 'pointer'
               }}
@@ -6296,7 +6170,7 @@ function KhoDuAnTab({
             </button>
           </div>
           {showRlsGuide && (
-            <div style={{ marginTop: 12, padding: 12, background: '#fffbeb', borderLeft: '3px solid #d97706', borderRadius: '0 6px 6px 0', fontSize: '12.5px', color: '#78350f', lineHeight: 1.5 }}>
+            <div style={{ marginTop: 12, padding: 12, background: '#fffbeb', borderLeft: '3px solid #d97706', borderRadius: '0 6px 6px 0', fontSize: '12px', color: '#78350f', lineHeight: 1.5 }}>
               <ol style={{ margin: 0, paddingLeft: 16, display: 'flex', flexDirection: 'column', gap: 6 }}>
                 <li>Bấm nút <strong>Copy mã SQL cấu hình RLS bảng phân loại</strong> ở trên.</li>
                 <li>Truy cập vào <a href="https://supabase.com/dashboard" target="_blank" rel="noreferrer" style={{ color: '#2563eb', textDecoration: 'underline', fontWeight: 600 }}>Supabase Dashboard</a>, chọn đúng dự án của bạn.</li>
@@ -6309,51 +6183,6 @@ function KhoDuAnTab({
         </div>
       )}
 
-      {/* Search Input Filter */}
-      <div style={{
-        background: '#ffffff',
-        border: '1px solid #e2e8f0',
-        borderRadius: 10,
-        padding: '10px 14px',
-        marginBottom: 16,
-        display: 'flex',
-        alignItems: 'center',
-        gap: 8,
-        flexShrink: 0,
-        boxShadow: '0 1px 2px rgba(0,0,0,0.02)'
-      }}>
-        <Search size={16} color="#64748b" />
-        <input
-          type="text"
-          placeholder="Tìm kiếm nhanh tên Đơn vị giao hoặc Đơn vị nhận..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          style={{
-            flex: 1,
-            border: 'none',
-            outline: 'none',
-            fontSize: 14,
-            color: 'var(--text)',
-            background: 'transparent'
-          }}
-        />
-        {search && (
-          <button
-            onClick={() => setSearch('')}
-            style={{
-              background: 'transparent',
-              border: 'none',
-              cursor: 'pointer',
-              color: '#64748b',
-              padding: 2,
-              display: 'flex',
-              alignItems: 'center'
-            }}
-          >
-            <X size={14} />
-          </button>
-        )}
-      </div>
 
       {/* Main Grid View */}
       {chungRows.length === 0 ? (
@@ -6381,10 +6210,10 @@ function KhoDuAnTab({
           }}>
             <ClipboardList size={26} color="var(--primary)" />
           </div>
-          <h3 style={{ fontSize: 16, fontWeight: 700, color: 'var(--text)', marginBottom: 6 }}>
+          <h3 style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)', marginBottom: 6 }}>
             Chưa có dữ liệu Đơn chung
           </h3>
-          <p style={{ color: 'var(--text-muted)', fontSize: 14, maxWidth: 440, margin: '0 auto 16px' }}>
+          <p style={{ color: 'var(--text-muted)', fontSize: 15, maxWidth: 440, margin: '0 auto 16px' }}>
             Vui lòng chọn tab <strong>Đơn chung</strong> ở thanh menu bên trái, tải lên tệp Excel dữ liệu để hệ thống tự động trích xuất các Kho dự án trực tiếp tại đây!
           </p>
         </div>
@@ -6394,7 +6223,7 @@ function KhoDuAnTab({
             {
               key: 'chuaphanbo',
               title: 'Chưa phân bổ',
-              icon: <HelpCircle size={15} color="#64748b" />,
+              icon: <Info size={15} color="#64748b" />,
               list: categorizedUnits.chuaphanbo,
               headerBg: '#f8fafc',
               textColor: '#334155',
@@ -6491,7 +6320,7 @@ function KhoDuAnTab({
                     justifyContent: 'space-between',
                     flexShrink: 0
                   }}>
-                    <span style={{ fontWeight: 700, fontSize: 13.5, color: col.textColor, display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span style={{ fontWeight: 700, fontSize: 15, color: col.textColor, display: 'flex', alignItems: 'center', gap: 6 }}>
                       {col.icon}
                       {col.title} ({col.list.length})
                     </span>
@@ -6508,7 +6337,7 @@ function KhoDuAnTab({
                           color: '#1e40af',
                           borderRadius: 6,
                           padding: '2px 8px',
-                          fontSize: 11.5,
+                          fontSize: 12,
                           fontWeight: 600,
                           cursor: 'pointer',
                           display: 'flex',
@@ -6525,7 +6354,7 @@ function KhoDuAnTab({
                   {/* Column Scrollable Content */}
                   <div style={{ flex: 1, overflowY: 'auto' }}>
                     {col.list.length === 0 ? (
-                      <div style={{ color: '#94a3b8', fontSize: 12.5, padding: 24, textAlign: 'center', fontStyle: 'italic' }}>
+                      <div style={{ color: '#94a3b8', fontSize: 12, padding: 24, textAlign: 'center', fontStyle: 'italic' }}>
                         {col.emptyText}
                       </div>
                     ) : (
@@ -6559,7 +6388,7 @@ function KhoDuAnTab({
                             className={isUnsaved ? "hover:bg-red-200/50" : "hover:bg-blue-50/40"}
                           >
                           {/* STT */}
-                          <div style={{ fontSize: 11, color: '#94a3b8', width: 20, textAlign: 'center', fontWeight: 600 }}>
+                          <div style={{ fontSize: 12, color: '#94a3b8', width: 20, textAlign: 'center', fontWeight: 600 }}>
                             {idx + 1}
                           </div>
                           
@@ -6568,7 +6397,7 @@ function KhoDuAnTab({
                             <div 
                               title={item.name} 
                               style={{ 
-                                fontSize: 12.5, 
+                                fontSize: 12, 
                                 fontWeight: 600, 
                                 color: '#1e293b', 
                                 whiteSpace: 'nowrap', 
@@ -6585,7 +6414,7 @@ function KhoDuAnTab({
                             <span
                               title={`Đã gộp từ ${mergedOldList.length} tên cũ: \n• ${mergedOldList.join('\n• ')}`}
                               style={{
-                                fontSize: 10.5,
+                                fontSize: 12,
                                 fontWeight: 700,
                                 padding: '1px 6px',
                                 borderRadius: 4,
@@ -6903,7 +6732,7 @@ function SummaryConfigTab({
     border: '1px solid #0a3d73'
   }
   const tdStyle = {
-    padding: '6px 10px', fontSize: 13, borderBottom: '1px solid #e2e8f0',
+    padding: '6px 10px', fontSize: 15, borderBottom: '1px solid #e2e8f0',
     verticalAlign: 'middle', color: '#1e293b'
   }
 
@@ -6912,8 +6741,8 @@ function SummaryConfigTab({
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
         <div>
-          <h2 style={{ margin: 0, fontSize: 20, fontWeight: 800, color: '#0f172a' }}>Cấu hình tổng hợp</h2>
-          <p style={{ margin: '4px 0 0', color: '#64748b', fontSize: 14 }}>
+          <h2 style={{ margin: 0, fontSize: 22, fontWeight: 800, color: '#0f172a' }}>Cấu hình tổng hợp</h2>
+          <p style={{ margin: '4px 0 0', color: '#64748b', fontSize: 15 }}>
             Tạo và quản lý các loại tổng hợp theo từng dự án — cấu hình đơn vị giao và nhận riêng biệt
           </p>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 8, fontSize: 12, color: '#64748b', fontWeight: 600 }}>
@@ -6932,17 +6761,17 @@ function SummaryConfigTab({
                 : '#cbd5e1',
               color: selectedProject ? '#fff' : '#94a3b8',
               border: 'none', borderRadius: 8,
-              padding: '9px 18px', fontSize: 14, fontWeight: 700,
+              padding: '9px 18px', fontSize: 15, fontWeight: 700,
               cursor: selectedProject ? 'pointer' : 'not-allowed',
               display: 'flex', alignItems: 'center', gap: 6,
               boxShadow: selectedProject ? '0 2px 8px rgba(15,88,167,0.25)' : 'none',
               transition: 'all 0.15s'
             }}
           >
-            <span style={{ fontSize: 18, lineHeight: 1 }}>+</span> Tạo Loại Tổng hợp
+            <span style={{ fontSize: 22, lineHeight: 1 }}>+</span> Tạo Loại Tổng hợp
           </button>
           {!selectedProject && (
-            <span style={{ fontSize: 11, color: '#f59e0b', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}>
+            <span style={{ fontSize: 12, color: '#f59e0b', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}>
               <AlertCircle size={11} color="#f59e0b" /> Vui lòng chọn Kho dự án trước
             </span>
           )}
@@ -6963,10 +6792,10 @@ function SummaryConfigTab({
           }}>
             <Settings size={28} color="#94a3b8" />
           </div>
-          <h3 style={{ margin: '0 0 8px', fontSize: 16, fontWeight: 700, color: '#334155' }}>
+          <h3 style={{ margin: '0 0 8px', fontSize: 15, fontWeight: 700, color: '#334155' }}>
             Chưa chọn Kho dự án
           </h3>
-          <p style={{ margin: 0, fontSize: 14 }}>
+          <p style={{ margin: 0, fontSize: 15 }}>
             Vui lòng chọn Kho dự án trên thanh menu ở góc trên để cấu hình loại tổng hợp.
           </p>
         </div>
@@ -6982,10 +6811,10 @@ function SummaryConfigTab({
           }}>
             <Settings size={28} color="#94a3b8" />
           </div>
-          <h3 style={{ margin: '0 0 8px', fontSize: 16, fontWeight: 700, color: '#334155' }}>
+          <h3 style={{ margin: '0 0 8px', fontSize: 15, fontWeight: 700, color: '#334155' }}>
             Chưa có loại tổng hợp cho dự án này
           </h3>
-          <p style={{ margin: 0, fontSize: 14 }}>
+          <p style={{ margin: 0, fontSize: 15 }}>
             Nhấn <strong>"+ Tạo Loại Tổng hợp"</strong> để bắt đầu cấu hình đơn vị giao nhận cho dự án này.
           </p>
         </div>
@@ -7070,11 +6899,11 @@ function SummaryConfigTab({
               <div style={{ padding: '20px 20px 24px' }}>
                 {/* Drag and Drop instructions */}
                 <div style={{
-                  fontSize: '12.5px', color: '#0369a1', background: '#f0f9ff',
+                  fontSize: '12px', color: '#0369a1', background: '#f0f9ff',
                   padding: '10px 14px', borderRadius: 8, marginBottom: 16,
                   border: '1px solid #bae6fd', display: 'flex', alignItems: 'center', gap: 8
                 }}>
-                  <span style={{ fontSize: 16 }}>💡</span>
+                  <span style={{ fontSize: 15 }}>💡</span>
                   <span>
                     <strong>Tính năng kéo thả:</strong> Bạn có thể nắm biểu tượng ☰ của <strong>Tên đơn vị</strong> rồi kéo thả sang ô tương ứng ở 3 cột (Giảm trừ, Bỏ qua, Tính toán) để thiết lập nhanh, tiện lợi và lưu lại tức thì!
                   </span>
@@ -7092,7 +6921,7 @@ function SummaryConfigTab({
                       }}>
                         <Truck size={14} color="#0f58a7" />
                       </div>
-                      <span style={{ fontWeight: 700, fontSize: 14, color: '#0f172a' }}>
+                      <span style={{ fontWeight: 700, fontSize: 15, color: '#0f172a' }}>
                         Bảng Đơn Giao
                       </span>
                       <span style={{ fontSize: 12, color: '#64748b', background: '#f1f5f9', borderRadius: 4, padding: '2px 8px' }}>
@@ -7101,16 +6930,16 @@ function SummaryConfigTab({
                     </div>
 
                     {cfg.giaoTable.length === 0 ? (
-                      <div style={{ fontSize: 13, color: '#94a3b8', padding: '16px', textAlign: 'center', background: '#f8fafc', borderRadius: 8, border: '1px dashed #e2e8f0' }}>
+                      <div style={{ fontSize: 15, color: '#94a3b8', padding: '16px', textAlign: 'center', background: '#f8fafc', borderRadius: 8, border: '1px dashed #e2e8f0' }}>
                         Không có dữ liệu đơn vị giao cho dự án này
                       </div>
                     ) : (
                       <div style={{ overflowX: 'auto', borderRadius: 8, border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
-                        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, tableLayout: 'fixed' }}>
+                        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 15, tableLayout: 'fixed' }}>
                           <thead>
                             <tr>
                               <th colSpan={4} style={{
-                                padding: '10px 12px', fontSize: 13, fontWeight: 700, color: '#fff',
+                                padding: '10px 12px', fontSize: 15, fontWeight: 700, color: '#fff',
                                 background: '#0f58a7', textAlign: 'center', whiteSpace: 'nowrap',
                                 border: '1px solid #0a3d73', textTransform: 'uppercase', letterSpacing: '0.05em'
                               }}>
@@ -7208,7 +7037,7 @@ function SummaryConfigTab({
                                           style={{ display: 'flex', alignItems: 'center', gap: 6, width: '100%', cursor: 'grab', userSelect: 'none' }}
                                           title="Nhấp giữ kéo sang các cột bên cạnh, hoặc Click để chuyển sang Tính Toán"
                                         >
-                                          <span style={{ color: '#94a3b8', fontSize: 13, flexShrink: 0 }}>☰</span>
+                                          <span style={{ color: '#94a3b8', fontSize: 15, flexShrink: 0 }}>☰</span>
                                           <span style={{ wordBreak: 'break-word', whiteSpace: 'normal', flex: 1 }} title={itemChuaPhanBo.row.unit}>
                                             {itemChuaPhanBo.row.unit}
                                           </span>
@@ -7266,7 +7095,7 @@ function SummaryConfigTab({
                                             color: '#1e40af',
                                             borderRadius: 6,
                                             padding: '4px 8px',
-                                            fontSize: '11.5px',
+                                            fontSize: '12px',
                                             fontWeight: 600,
                                             display: 'inline-flex',
                                             alignItems: 'center',
@@ -7291,7 +7120,7 @@ function SummaryConfigTab({
                                               cursor: 'pointer',
                                               padding: 0,
                                               marginLeft: 4,
-                                              fontSize: 14,
+                                              fontSize: 15,
                                               lineHeight: 1,
                                               display: 'flex',
                                               alignItems: 'center'
@@ -7302,7 +7131,7 @@ function SummaryConfigTab({
                                           </button>
                                         </div>
                                       ) : (
-                                        <span style={{ fontSize: 11, color: '#cbd5e1', fontStyle: 'italic', pointerEvents: 'none', userSelect: 'none' }}>Kéo thả vào đây</span>
+                                        <span style={{ fontSize: 12, color: '#cbd5e1', fontStyle: 'italic', pointerEvents: 'none', userSelect: 'none' }}>Kéo thả vào đây</span>
                                       )}
                                     </td>
 
@@ -7356,7 +7185,7 @@ function SummaryConfigTab({
                                             color: '#9f1239',
                                             borderRadius: 6,
                                             padding: '4px 8px',
-                                            fontSize: '11.5px',
+                                            fontSize: '12px',
                                             fontWeight: 600,
                                             display: 'inline-flex',
                                             alignItems: 'center',
@@ -7381,7 +7210,7 @@ function SummaryConfigTab({
                                               cursor: 'pointer',
                                               padding: 0,
                                               marginLeft: 4,
-                                              fontSize: 14,
+                                              fontSize: 15,
                                               lineHeight: 1,
                                               display: 'flex',
                                               alignItems: 'center'
@@ -7392,7 +7221,7 @@ function SummaryConfigTab({
                                           </button>
                                         </div>
                                       ) : (
-                                        <span style={{ fontSize: 11, color: '#cbd5e1', fontStyle: 'italic', pointerEvents: 'none', userSelect: 'none' }}>Kéo thả vào đây</span>
+                                        <span style={{ fontSize: 12, color: '#cbd5e1', fontStyle: 'italic', pointerEvents: 'none', userSelect: 'none' }}>Kéo thả vào đây</span>
                                       )}
                                     </td>
 
@@ -7445,7 +7274,7 @@ function SummaryConfigTab({
                                             color: '#065f46',
                                             borderRadius: 6,
                                             padding: '4px 8px',
-                                            fontSize: '11.5px',
+                                            fontSize: '12px',
                                             fontWeight: 600,
                                             display: 'inline-flex',
                                             alignItems: 'center',
@@ -7470,7 +7299,7 @@ function SummaryConfigTab({
                                               cursor: 'pointer',
                                               padding: 0,
                                               marginLeft: 4,
-                                              fontSize: 14,
+                                              fontSize: 15,
                                               lineHeight: 1,
                                               display: 'flex',
                                               alignItems: 'center'
@@ -7481,7 +7310,7 @@ function SummaryConfigTab({
                                           </button>
                                         </div>
                                       ) : (
-                                        <span style={{ fontSize: 11, color: '#cbd5e1', fontStyle: 'italic', pointerEvents: 'none', userSelect: 'none' }}>Kéo thả vào đây</span>
+                                        <span style={{ fontSize: 12, color: '#cbd5e1', fontStyle: 'italic', pointerEvents: 'none', userSelect: 'none' }}>Kéo thả vào đây</span>
                                       )}
                                     </td>
                                   </tr>
@@ -7505,7 +7334,7 @@ function SummaryConfigTab({
                       }}>
                         <PackageCheck size={14} color="#10b981" />
                       </div>
-                      <span style={{ fontWeight: 700, fontSize: 14, color: '#0f172a' }}>
+                      <span style={{ fontWeight: 700, fontSize: 15, color: '#0f172a' }}>
                         Bảng Đơn Nhận
                       </span>
                       <span style={{ fontSize: 12, color: '#64748b', background: '#f1f5f9', borderRadius: 4, padding: '2px 8px' }}>
@@ -7514,16 +7343,16 @@ function SummaryConfigTab({
                     </div>
 
                     {cfg.nhanTable.length === 0 ? (
-                      <div style={{ fontSize: 13, color: '#94a3b8', padding: '16px', textAlign: 'center', background: '#f8fafc', borderRadius: 8, border: '1px dashed #e2e8f0' }}>
+                      <div style={{ fontSize: 15, color: '#94a3b8', padding: '16px', textAlign: 'center', background: '#f8fafc', borderRadius: 8, border: '1px dashed #e2e8f0' }}>
                         Không có dữ liệu đơn vị nhận cho dự án này
                       </div>
                     ) : (
                       <div style={{ overflowX: 'auto', borderRadius: 8, border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
-                        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, tableLayout: 'fixed' }}>
+                        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 15, tableLayout: 'fixed' }}>
                           <thead>
                             <tr>
                               <th colSpan={4} style={{
-                                padding: '10px 12px', fontSize: 13, fontWeight: 700, color: '#fff',
+                                padding: '10px 12px', fontSize: 15, fontWeight: 700, color: '#fff',
                                 background: '#065f46', textAlign: 'center', whiteSpace: 'nowrap',
                                 border: '1px solid #04432e', textTransform: 'uppercase', letterSpacing: '0.05em'
                               }}>
@@ -7621,7 +7450,7 @@ function SummaryConfigTab({
                                           style={{ display: 'flex', alignItems: 'center', gap: 6, width: '100%', cursor: 'grab', userSelect: 'none' }}
                                           title="Nhấp giữ kéo sang các cột bên cạnh, hoặc Click để chuyển sang Tính Toán"
                                         >
-                                          <span style={{ color: '#94a3b8', fontSize: 13, flexShrink: 0 }}>☰</span>
+                                          <span style={{ color: '#94a3b8', fontSize: 15, flexShrink: 0 }}>☰</span>
                                           <span style={{ wordBreak: 'break-word', whiteSpace: 'normal', flex: 1 }} title={itemChuaPhanBo.row.unit}>
                                             {itemChuaPhanBo.row.unit}
                                           </span>
@@ -7679,7 +7508,7 @@ function SummaryConfigTab({
                                             color: '#1e40af',
                                             borderRadius: 6,
                                             padding: '4px 8px',
-                                            fontSize: '11.5px',
+                                            fontSize: '12px',
                                             fontWeight: 600,
                                             display: 'inline-flex',
                                             alignItems: 'center',
@@ -7704,7 +7533,7 @@ function SummaryConfigTab({
                                               cursor: 'pointer',
                                               padding: 0,
                                               marginLeft: 4,
-                                              fontSize: 14,
+                                              fontSize: 15,
                                               lineHeight: 1,
                                               display: 'flex',
                                               alignItems: 'center'
@@ -7715,7 +7544,7 @@ function SummaryConfigTab({
                                           </button>
                                         </div>
                                       ) : (
-                                        <span style={{ fontSize: 11, color: '#cbd5e1', fontStyle: 'italic', pointerEvents: 'none', userSelect: 'none' }}>Kéo thả vào đây</span>
+                                        <span style={{ fontSize: 12, color: '#cbd5e1', fontStyle: 'italic', pointerEvents: 'none', userSelect: 'none' }}>Kéo thả vào đây</span>
                                       )}
                                     </td>
 
@@ -7769,7 +7598,7 @@ function SummaryConfigTab({
                                             color: '#9f1239',
                                             borderRadius: 6,
                                             padding: '4px 8px',
-                                            fontSize: '11.5px',
+                                            fontSize: '12px',
                                             fontWeight: 600,
                                             display: 'inline-flex',
                                             alignItems: 'center',
@@ -7794,7 +7623,7 @@ function SummaryConfigTab({
                                               cursor: 'pointer',
                                               padding: 0,
                                               marginLeft: 4,
-                                              fontSize: 14,
+                                              fontSize: 15,
                                               lineHeight: 1,
                                               display: 'flex',
                                               alignItems: 'center'
@@ -7805,7 +7634,7 @@ function SummaryConfigTab({
                                           </button>
                                         </div>
                                       ) : (
-                                        <span style={{ fontSize: 11, color: '#cbd5e1', fontStyle: 'italic', pointerEvents: 'none', userSelect: 'none' }}>Kéo thả vào đây</span>
+                                        <span style={{ fontSize: 12, color: '#cbd5e1', fontStyle: 'italic', pointerEvents: 'none', userSelect: 'none' }}>Kéo thả vào đây</span>
                                       )}
                                     </td>
 
@@ -7858,7 +7687,7 @@ function SummaryConfigTab({
                                             color: '#065f46',
                                             borderRadius: 6,
                                             padding: '4px 8px',
-                                            fontSize: '11.5px',
+                                            fontSize: '12px',
                                             fontWeight: 600,
                                             display: 'inline-flex',
                                             alignItems: 'center',
@@ -7883,7 +7712,7 @@ function SummaryConfigTab({
                                               cursor: 'pointer',
                                               padding: 0,
                                               marginLeft: 4,
-                                              fontSize: 14,
+                                              fontSize: 15,
                                               lineHeight: 1,
                                               display: 'flex',
                                               alignItems: 'center'
@@ -7894,7 +7723,7 @@ function SummaryConfigTab({
                                           </button>
                                         </div>
                                       ) : (
-                                        <span style={{ fontSize: 11, color: '#cbd5e1', fontStyle: 'italic', pointerEvents: 'none', userSelect: 'none' }}>Kéo thả vào đây</span>
+                                        <span style={{ fontSize: 12, color: '#cbd5e1', fontStyle: 'italic', pointerEvents: 'none', userSelect: 'none' }}>Kéo thả vào đây</span>
                                       )}
                                     </td>
                                   </tr>
@@ -7981,7 +7810,7 @@ function CreateSummaryConfigModal({ onClose, onSave, selectedProject }) {
             <div style={{ width: 36, height: 36, background: '#eff6ff', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <Settings size={18} color="#0f58a7" />
             </div>
-            <h3 style={{ margin: 0, fontSize: 16, fontWeight: 800, color: '#0f172a' }}>Tạo Loại Tổng hợp</h3>
+            <h3 style={{ margin: 0, fontSize: 15, fontWeight: 800, color: '#0f172a' }}>Tạo Loại Tổng hợp</h3>
           </div>
           <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748b', padding: 4, borderRadius: 6, display: 'flex' }}>
             <X size={18} />
@@ -7989,7 +7818,7 @@ function CreateSummaryConfigModal({ onClose, onSave, selectedProject }) {
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <label style={{ fontSize: 13, fontWeight: 600, color: '#475569' }}>Tên Loại tổng hợp <span style={{ color: '#ef4444' }}>*</span></label>
+          <label style={{ fontSize: 15, fontWeight: 600, color: '#475569' }}>Tên Loại tổng hợp <span style={{ color: '#ef4444' }}>*</span></label>
           <input
             autoFocus
             type="text"
@@ -8005,7 +7834,7 @@ function CreateSummaryConfigModal({ onClose, onSave, selectedProject }) {
 
         {/* Hiển thị bộ chọn màu sắc nền */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          <label style={{ fontSize: 13, fontWeight: 600, color: '#475569' }}>Màu nền Loại tổng hợp</label>
+          <label style={{ fontSize: 15, fontWeight: 600, color: '#475569' }}>Màu nền Loại tổng hợp</label>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
             {PRESET_COLORS.map((preset) => (
               <button
@@ -8031,7 +7860,7 @@ function CreateSummaryConfigModal({ onClose, onSave, selectedProject }) {
                     top: '50%',
                     left: '50%',
                     transform: 'translate(-50%, -50%)',
-                    fontSize: 10,
+                    fontSize: 12,
                     color: getContrastColor(preset.value),
                     fontWeight: 900
                   }}>✓</span>
@@ -8081,7 +7910,7 @@ function CreateSummaryConfigModal({ onClose, onSave, selectedProject }) {
 
         {/* Hiển thị dự án đang chọn — không cần dropdown */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <label style={{ fontSize: 13, fontWeight: 600, color: '#475569' }}>Gắn với Dự án</label>
+          <label style={{ fontSize: 15, fontWeight: 600, color: '#475569' }}>Gắn với Dự án</label>
           {selectedProject ? (
             <div style={{
               display: 'flex', alignItems: 'center', gap: 8,
@@ -8089,7 +7918,7 @@ function CreateSummaryConfigModal({ onClose, onSave, selectedProject }) {
               borderRadius: 8, padding: '9px 14px'
             }}>
               <CheckCircle2 size={15} color="#0f58a7" />
-              <span style={{ fontSize: 14, fontWeight: 700, color: '#0f58a7' }}>{selectedProject}</span>
+              <span style={{ fontSize: 15, fontWeight: 700, color: '#0f58a7' }}>{selectedProject}</span>
             </div>
           ) : (
             <div style={{
@@ -8098,7 +7927,7 @@ function CreateSummaryConfigModal({ onClose, onSave, selectedProject }) {
               borderRadius: 8, padding: '9px 14px'
             }}>
               <AlertCircle size={15} color="#d97706" />
-              <span style={{ fontSize: 13, color: '#92400e' }}>
+              <span style={{ fontSize: 15, color: '#92400e' }}>
                 Chưa chọn dự án — cấu hình sẽ áp dụng cho <strong>tất cả dự án</strong>. Bạn có thể chọn dự án cụ thể ở thanh KHO DỰ ÁN trên header trước khi tạo.
               </span>
             </div>
@@ -8108,13 +7937,13 @@ function CreateSummaryConfigModal({ onClose, onSave, selectedProject }) {
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 4 }}>
           <button
             onClick={onClose}
-            style={{ padding: '7px 16px', borderRadius: 6, border: '1px solid #cbd5e1', background: '#fff', color: '#475569', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
+            style={{ padding: '7px 16px', borderRadius: 6, border: '1px solid #cbd5e1', background: '#fff', color: '#475569', fontSize: 15, fontWeight: 600, cursor: 'pointer' }}
           >
             Hủy
           </button>
           <button
             onClick={handleSave}
-            style={{ padding: '7px 18px', borderRadius: 6, border: 'none', background: 'linear-gradient(135deg, #0f58a7 0%, #1a6abf 100%)', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', boxShadow: '0 2px 4px rgba(15,88,167,0.2)' }}
+            style={{ padding: '7px 18px', borderRadius: 6, border: 'none', background: 'linear-gradient(135deg, #0f58a7 0%, #1a6abf 100%)', color: '#fff', fontSize: 15, fontWeight: 700, cursor: 'pointer', boxShadow: '0 2px 4px rgba(15,88,167,0.2)' }}
           >
             Tạo & Lưu
           </button>
@@ -8211,15 +8040,15 @@ function DeleteDepreciationConfirmModal({ isOpen, onClose, onConfirm, months }) 
         {/* Body */}
         <div style={{ padding: '24px 32px', display: 'flex', flexDirection: 'column', gap: 16 }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <span style={{ fontSize: '14px', color: '#64748b', fontWeight: 500 }}>
+            <span style={{ fontSize: '15px', color: '#64748b', fontWeight: 500 }}>
               Xóa cấu hình khấu hao:
             </span>
-            <span style={{ fontSize: '24px', fontWeight: 800, color: '#d91b43' }}>
+            <span style={{ fontSize: '22px', fontWeight: 800, color: '#d91b43' }}>
               Khấu hao {months} tháng
             </span>
           </div>
 
-          <p style={{ margin: 0, fontSize: '14.5px', color: '#334155', lineHeight: '1.6', fontWeight: 500 }}>
+          <p style={{ margin: 0, fontSize: '15px', color: '#334155', lineHeight: '1.6', fontWeight: 500 }}>
             Bạn có chắc chắn muốn xóa cấu hình khấu hao này khỏi hệ thống không?
             <span style={{ display: 'block', marginTop: 8, color: '#64748b', fontWeight: 400 }}>
               Tất cả vật tư thuộc nhóm này sẽ được đưa về nhóm <strong style={{ color: '#0f172a' }}>"Chưa thiết lập"</strong>.
@@ -8228,7 +8057,7 @@ function DeleteDepreciationConfirmModal({ isOpen, onClose, onConfirm, months }) 
 
           <p style={{
             margin: 0,
-            fontSize: '13px',
+            fontSize: '15px',
             color: '#94a3b8',
             fontStyle: 'italic',
             borderTop: '1px solid #f1f5f9',
@@ -8255,7 +8084,7 @@ function DeleteDepreciationConfirmModal({ isOpen, onClose, onConfirm, months }) 
               border: '1px solid #cbd5e1',
               background: '#ffffff',
               color: '#475569',
-              fontSize: '13.5px',
+              fontSize: '15px',
               fontWeight: 600,
               cursor: 'pointer',
               transition: 'all 0.15s'
@@ -8279,7 +8108,7 @@ function DeleteDepreciationConfirmModal({ isOpen, onClose, onConfirm, months }) 
               border: 'none',
               background: '#d91b43',
               color: '#ffffff',
-              fontSize: '13.5px',
+              fontSize: '15px',
               fontWeight: 700,
               cursor: 'pointer',
               boxShadow: '0 4px 6px -1px rgba(217, 27, 67, 0.2), 0 2px 4px -1px rgba(217, 27, 67, 0.1)',
@@ -8334,7 +8163,7 @@ function DeleteConfigConfirmModal({ isOpen, onClose, onConfirm, configName, proj
             <div style={{ width: 36, height: 36, borderRadius: 10, background: '#fee2e2', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <Trash2 size={18} color="#ef4444" />
             </div>
-            <h3 style={{ margin: 0, fontSize: 16, fontWeight: 800, color: '#991b1b', letterSpacing: '-0.01em' }}>Xác nhận xóa Cấu hình</h3>
+            <h3 style={{ margin: 0, fontSize: 15, fontWeight: 800, color: '#991b1b', letterSpacing: '-0.01em' }}>Xác nhận xóa Cấu hình</h3>
           </div>
           <button onClick={onClose} style={{ background: 'transparent', border: 'none', color: '#64748b', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: 4 }}>
             <X size={18} />
@@ -8343,7 +8172,7 @@ function DeleteConfigConfirmModal({ isOpen, onClose, onConfirm, configName, proj
 
         {/* Body */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <p style={{ margin: 0, fontSize: 14.5, color: '#334155', lineHeight: '1.6' }}>
+          <p style={{ margin: 0, fontSize: 15, color: '#334155', lineHeight: '1.6' }}>
             Bạn có chắc chắn muốn xóa cấu hình tổng hợp <strong style={{ color: '#0f172a' }}>"{configName}"</strong>?
           </p>
 
@@ -8355,7 +8184,7 @@ function DeleteConfigConfirmModal({ isOpen, onClose, onConfirm, configName, proj
             display: 'flex',
             flexDirection: 'column',
             gap: 8,
-            fontSize: 13,
+            fontSize: 15,
             color: '#9f1239'
           }}>
             <div style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -8380,7 +8209,7 @@ function DeleteConfigConfirmModal({ isOpen, onClose, onConfirm, configName, proj
               border: '1px solid #cbd5e1',
               background: '#fff',
               color: '#475569',
-              fontSize: 13,
+              fontSize: 15,
               fontWeight: 600,
               cursor: 'pointer',
               transition: 'background 0.1s'
@@ -8398,7 +8227,7 @@ function DeleteConfigConfirmModal({ isOpen, onClose, onConfirm, configName, proj
               border: 'none',
               background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
               color: '#fff',
-              fontSize: 13,
+              fontSize: 15,
               fontWeight: 700,
               cursor: 'pointer',
               boxShadow: '0 2px 6px rgba(239, 68, 68, 0.25)',
@@ -9567,58 +9396,109 @@ function PhanNhomVatTuTab({
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center',
+        gap: 8,
+        rowGap: 8,
+        flexWrap: 'wrap',
         marginBottom: 12,
-        borderBottom: '1px solid var(--border)',
-        paddingBottom: 6,
         flexShrink: 0
       }}>
-        <div style={{ display: 'flex', gap: 6 }}>
+        <div className="sg-seg">
           <button
             onClick={() => setCurrentSubTab('classification')}
-            style={{
-              padding: '8px 16px',
-              borderRadius: '6px 6px 0 0',
-              fontSize: '13.5px',
-              fontWeight: currentSubTab === 'classification' ? 700 : 500,
-              background: currentSubTab === 'classification' ? 'var(--primary)' : 'transparent',
-              color: currentSubTab === 'classification' ? '#ffffff' : 'var(--text-muted)',
-              border: 'none',
-              cursor: 'pointer',
-              transition: 'all 0.15s',
-              boxShadow: currentSubTab === 'classification' ? 'var(--shadow-sm)' : 'none',
-              borderBottom: currentSubTab === 'classification' ? '2px solid var(--primary)' : 'none',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px'
-            }}
+            className={(currentSubTab === 'classification') ? 'on' : ''}
           >
             <PackageCheck size={16} />
             Phân nhóm vật tư
           </button>
           <button
             onClick={() => setCurrentSubTab('depreciation')}
-            style={{
-              padding: '8px 16px',
-              borderRadius: '6px 6px 0 0',
-              fontSize: '13.5px',
-              fontWeight: currentSubTab === 'depreciation' ? 700 : 500,
-              background: currentSubTab === 'depreciation' ? 'var(--primary)' : 'transparent',
-              color: currentSubTab === 'depreciation' ? '#ffffff' : 'var(--text-muted)',
-              border: 'none',
-              cursor: 'pointer',
-              transition: 'all 0.15s',
-              boxShadow: currentSubTab === 'depreciation' ? 'var(--shadow-sm)' : 'none',
-              borderBottom: currentSubTab === 'depreciation' ? '2px solid var(--primary)' : 'none',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px'
-            }}
+            className={(currentSubTab === 'depreciation') ? 'on' : ''}
           >
             <DollarSign size={16} />
             Thời gian khấu hao
           </button>
         </div>
 
+        {currentSubTab === 'classification' && (
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginLeft: 'auto' }} title="Cập nhật đơn giá trung bình và phân loại vật tư bằng cách tải lên file Excel hoặc nhập trực tiếp. Dữ liệu tự động liên thông với Bảng tổng hợp xuất nhập tồn.">
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <button className="sg-btn ghost"
+              onClick={handleDownloadTemplate}
+            >
+              <FileSpreadsheet size={14} />
+              <span>Tải Form</span>
+            </button>
+
+            <label className="sg-btn" >
+              <Upload size={14} />
+              <span>Tải lên file Excel</span>
+              <input
+                type="file"
+                accept=".xlsx, .xls"
+                onChange={handleUploadPriceExcel}
+                style={{ display: 'none' }}
+              />
+            </label>
+
+            <button
+              className="btn btn-success"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                cursor: 'pointer',
+                background: '#10b981',
+                color: '#ffffff',
+                padding: '8px 16px',
+                borderRadius: 6,
+                fontSize: 15,
+                fontWeight: 600,
+                border: 'none',
+                boxShadow: 'var(--shadow-sm)',
+                transition: 'all 0.15s'
+              }}
+              onClick={() => {
+                try {
+                  const wb = XLSXStyle.utils.book_new()
+                  const rowsToExport = filteredPriceRows || materialPriceRows || []
+                  const phanNhomSheet = buildPhanNhomVatTuSheet(
+                    rowsToExport,
+                    materialMetadataMap,
+                    depreciationOptions,
+                    customCategoryMap,
+                    materialClassifications
+                  )
+                  XLSXStyle.utils.book_append_sheet(wb, phanNhomSheet, "Phân nhóm Vật tư")
+                  
+                  const wbout = XLSXStyle.write(wb, { bookType: 'xlsx', type: 'array' })
+                  const blob = new Blob([wbout], { type: 'application/octet-stream' })
+                  const url = URL.createObjectURL(blob)
+                  const a = document.createElement('a')
+                  a.href = url
+                  a.download = `Phan_Nhom_Vat_Tu_${new Date().toISOString().slice(0, 10)}.xlsx`
+                  a.click()
+                  URL.revokeObjectURL(url)
+                } catch (err) {
+                  console.error("Export Excel error:", err)
+                  alert("Đã xảy ra lỗi khi xuất Excel. Vui lòng thử lại.")
+                }
+              }}
+            >
+              <Download size={14} />
+              <span>Xuất Excel</span>
+            </button>
+
+            <button className="sg-btn danger"
+              onClick={() => {
+                setShowConfirmClearPrices(true);
+              }}
+            >
+              <Trash2 size={14} />
+              <span>Xóa dữ liệu</span>
+            </button>
+          </div>
+          </div>
+        )}
         {/* Save button matching the design in the screenshot */}
         {isSupabaseConfigured && (
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -9635,7 +9515,7 @@ function PhanNhomVatTuTab({
                   border: '1.5px solid #f87171',
                   color: '#dc2626',
                   borderRadius: 6,
-                  fontSize: '12.5px',
+                  fontSize: '12px',
                   fontWeight: 700,
                   cursor: 'pointer',
                   transition: 'all 0.15s ease',
@@ -9664,7 +9544,7 @@ function PhanNhomVatTuTab({
                   border: '1px solid #cbd5e1',
                   color: '#475569',
                   borderRadius: 6,
-                  fontSize: '12.5px',
+                  fontSize: '12px',
                   fontWeight: 600,
                   cursor: 'pointer',
                   transition: 'all 0.15s ease'
@@ -9744,7 +9624,7 @@ function PhanNhomVatTuTab({
                 color: isDepreciationAndPricesSynced ? '#64748b' : '#ffffff',
                 border: 'none',
                 borderRadius: 6,
-                fontSize: '13px',
+                fontSize: '15px',
                 fontWeight: 700,
                 cursor: (isSyncingToSupabase || isDepreciationAndPricesSynced) ? 'not-allowed' : 'pointer',
                 opacity: isSyncingToSupabase ? 0.7 : 1,
@@ -9785,157 +9665,6 @@ function PhanNhomVatTuTab({
         )}
       </div>
 
-      {/* Title and Controls Card */}
-      {currentSubTab === 'classification' && (
-        <div style={{
-          background: '#ffffff',
-          borderRadius: 8,
-          border: '1px solid var(--border)',
-          padding: '16px 20px',
-          marginBottom: 12,
-          boxShadow: 'var(--shadow-sm)',
-          flexShrink: 0,
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
-            <div>
-              <h2 style={{ fontSize: 18, fontWeight: 800, color: 'var(--text)', margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
-                <PackageCheck size={20} style={{ color: 'var(--primary)' }} />
-                Phân nhóm vật tư
-              </h2>
-              <p style={{ color: 'var(--text-muted)', fontSize: 13, margin: '4px 0 0 0' }}>
-                Cập nhật đơn giá trung bình và phân loại vật tư bằng cách tải lên file Excel hoặc nhập trực tiếp. Dữ liệu này sẽ tự động liên thông với Bảng tổng hợp xuất nhập tồn.
-              </p>
-            </div>
-          </div>
-          
-          <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-            <button
-              onClick={handleDownloadTemplate}
-              className="btn btn-secondary"
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 6,
-                cursor: 'pointer',
-                background: '#475569',
-                color: '#ffffff',
-                padding: '8px 16px',
-                borderRadius: 6,
-                fontSize: 13,
-                fontWeight: 600,
-                border: 'none',
-                boxShadow: 'var(--shadow-sm)',
-                transition: 'all 0.15s'
-              }}
-            >
-              <FileSpreadsheet size={14} />
-              <span>Tải Form</span>
-            </button>
-
-            <label className="btn btn-primary" style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 6,
-              cursor: 'pointer',
-              background: 'var(--primary)',
-              color: '#ffffff',
-              padding: '8px 16px',
-              borderRadius: 6,
-              fontSize: 13,
-              fontWeight: 600,
-              border: 'none',
-              boxShadow: 'var(--shadow-sm)',
-              transition: 'all 0.15s'
-            }}>
-              <Upload size={14} />
-              <span>Up File Excel</span>
-              <input
-                type="file"
-                accept=".xlsx, .xls"
-                onChange={handleUploadPriceExcel}
-                style={{ display: 'none' }}
-              />
-            </label>
-
-            <button
-              className="btn btn-success"
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 6,
-                cursor: 'pointer',
-                background: '#10b981',
-                color: '#ffffff',
-                padding: '8px 16px',
-                borderRadius: 6,
-                fontSize: 13,
-                fontWeight: 600,
-                border: 'none',
-                boxShadow: 'var(--shadow-sm)',
-                transition: 'all 0.15s'
-              }}
-              onClick={() => {
-                try {
-                  const wb = XLSXStyle.utils.book_new()
-                  const rowsToExport = filteredPriceRows || materialPriceRows || []
-                  const phanNhomSheet = buildPhanNhomVatTuSheet(
-                    rowsToExport,
-                    materialMetadataMap,
-                    depreciationOptions,
-                    customCategoryMap,
-                    materialClassifications
-                  )
-                  XLSXStyle.utils.book_append_sheet(wb, phanNhomSheet, "Phân nhóm Vật tư")
-                  
-                  const wbout = XLSXStyle.write(wb, { bookType: 'xlsx', type: 'array' })
-                  const blob = new Blob([wbout], { type: 'application/octet-stream' })
-                  const url = URL.createObjectURL(blob)
-                  const a = document.createElement('a')
-                  a.href = url
-                  a.download = `Phan_Nhom_Vat_Tu_${new Date().toISOString().slice(0, 10)}.xlsx`
-                  a.click()
-                  URL.revokeObjectURL(url)
-                } catch (err) {
-                  console.error("Export Excel error:", err)
-                  alert("Đã xảy ra lỗi khi xuất Excel. Vui lòng thử lại.")
-                }
-              }}
-            >
-              <Download size={14} />
-              <span>Xuất Excel</span>
-            </button>
-
-            <button
-              onClick={() => {
-                setShowConfirmClearPrices(true);
-              }}
-              className="btn"
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 6,
-                cursor: 'pointer',
-                background: '#ef4444',
-                color: '#ffffff',
-                padding: '8px 16px',
-                borderRadius: 6,
-                fontSize: 13,
-                fontWeight: 600,
-                border: 'none',
-                boxShadow: 'var(--shadow-sm)',
-                transition: 'all 0.15s'
-              }}
-            >
-              <Trash2 size={14} />
-              <span>Xóa dữ liệu</span>
-            </button>
-          </div>
-        </div>
-      )}
-
       {currentSubTab === 'classification' ? (
         /* Search bar & Grid for Classification */
         <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, overflow: 'hidden', paddingBottom: 4 }}>
@@ -9953,7 +9682,7 @@ function PhanNhomVatTuTab({
                   style={{
                     width: '100%',
                     padding: classificationSearchQuery ? '6px 32px 6px 32px' : '6px 10px 6px 32px',
-                    fontSize: '13px',
+                    fontSize: '15px',
                     border: '1px solid var(--border)',
                     borderRadius: 6,
                     background: '#ffffff',
@@ -9987,7 +9716,7 @@ function PhanNhomVatTuTab({
                   </button>
                 )}
               </div>
-              <div style={{ fontSize: '12.5px', color: 'var(--text-muted)', fontWeight: 500 }}>
+              <div style={{ fontSize: '12px', color: 'var(--text-muted)', fontWeight: 500 }}>
                 Có <strong>{filteredPriceRows.length}</strong> vật tư được thiết lập đơn giá
               </div>
             </div>
@@ -10014,7 +9743,7 @@ function PhanNhomVatTuTab({
                 <tbody>
                   {filteredPriceRows.length === 0 ? (
                     <tr>
-                      <td colSpan={12} style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '13.5px' }}>
+                      <td colSpan={12} style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '15px' }}>
                         Chưa có đơn giá nào được thiết lập. Hãy tải lên file Excel để xem dữ liệu.
                       </td>
                     </tr>
@@ -10033,26 +9762,26 @@ function PhanNhomVatTuTab({
 
                       return (
                         <tr key={row.maSAP + idx} style={{ borderBottom: '1px solid #f1f5f9', background: idx % 2 === 0 ? '#ffffff' : '#f8fafc' }}>
-                          <td style={{ textAlign: 'center', padding: '10px', fontSize: 13, color: 'var(--text-muted)' }}>{idx + 1}</td>
-                          <td style={{ fontWeight: 700, padding: '10px', fontSize: 13, color: 'var(--text)' }}>{row.maSAP}</td>
-                          <td style={{ textAlign: 'left', padding: '10px', fontSize: 13, color: 'var(--text)', whiteSpace: 'normal', wordBreak: 'break-word' }}>{meta.tenVatTu || '—'}</td>
-                          <td style={{ textAlign: 'center', padding: '10px', fontSize: 13, color: 'var(--text-muted)' }}>{meta.dvt || '—'}</td>
-                          <td style={{ textAlign: 'right', padding: '10px', fontSize: 13, color: 'var(--text)' }}>
+                          <td style={{ textAlign: 'center', padding: '10px', fontSize: 15, color: 'var(--text-muted)' }}>{idx + 1}</td>
+                          <td style={{ fontWeight: 700, padding: '10px', fontSize: 15, color: 'var(--text)' }}>{row.maSAP}</td>
+                          <td style={{ textAlign: 'left', padding: '10px', fontSize: 15, color: 'var(--text)', whiteSpace: 'normal', wordBreak: 'break-word' }}>{meta.tenVatTu || '—'}</td>
+                          <td style={{ textAlign: 'center', padding: '10px', fontSize: 15, color: 'var(--text-muted)' }}>{meta.dvt || '—'}</td>
+                          <td style={{ textAlign: 'right', padding: '10px', fontSize: 15, color: 'var(--text)' }}>
                             {row.khoiLuongTong ? row.khoiLuongTong.toLocaleString('vi-VN', { maximumFractionDigits: 2 }) : '0'}
                           </td>
-                          <td style={{ textAlign: 'right', padding: '10px', fontSize: 13, color: 'var(--text)', fontWeight: 600 }}>
+                          <td style={{ textAlign: 'right', padding: '10px', fontSize: 15, color: 'var(--text)', fontWeight: 600 }}>
                             {row.thanhTien ? row.thanhTien.toLocaleString('vi-VN') : '0'}
                           </td>
-                          <td style={{ textAlign: 'right', padding: '10px', fontSize: 13, color: 'var(--primary)', fontWeight: 700 }}>
+                          <td style={{ textAlign: 'right', padding: '10px', fontSize: 15, color: 'var(--primary)', fontWeight: 700 }}>
                             {computedAvgPrice ? computedAvgPrice.toLocaleString('vi-VN') : '0'}
                           </td>
-                          <td style={{ textAlign: 'right', padding: '10px', fontSize: 13, color: '#2563eb', fontWeight: 600 }}>
+                          <td style={{ textAlign: 'right', padding: '10px', fontSize: 15, color: '#2563eb', fontWeight: 600 }}>
                             {computedMonthlyPrice ? computedMonthlyPrice.toLocaleString('vi-VN') : '0'}
                           </td>
-                          <td style={{ textAlign: 'right', padding: '10px', fontSize: 13, color: 'var(--text-muted)' }}>
+                          <td style={{ textAlign: 'right', padding: '10px', fontSize: 15, color: 'var(--text-muted)' }}>
                             {computedDailyPrice ? computedDailyPrice.toLocaleString('vi-VN') : '0'}
                           </td>
-                          <td style={{ textAlign: 'center', padding: '10px 18px 10px 10px', fontSize: 13 }}>
+                          <td style={{ textAlign: 'center', padding: '10px 18px 10px 10px', fontSize: 15 }}>
                             {(() => {
                               const val = getClassification(row)
                               const text = val.trim().toLowerCase()
@@ -10107,7 +9836,7 @@ function PhanNhomVatTuTab({
                               )
                             })()}
                           </td>
-                          <td style={{ textAlign: 'center', padding: '10px 18px 10px 10px', fontSize: 13 }}>
+                          <td style={{ textAlign: 'center', padding: '10px 18px 10px 10px', fontSize: 15 }}>
                             {(() => {
                               const val = getClassification(row)
                               const text = val.trim().toLowerCase()
@@ -10115,7 +9844,7 @@ function PhanNhomVatTuTab({
                               
                               if (!isAsset) {
                                 return (
-                                  <span style={{ fontSize: '12.5px', color: '#94a3b8', fontStyle: 'italic', fontWeight: 500 }}>— Không áp dụng</span>
+                                  <span style={{ fontSize: '12px', color: '#94a3b8', fontStyle: 'italic', fontWeight: 500 }}>— Không áp dụng</span>
                                 )
                               }
                               
@@ -10145,7 +9874,7 @@ function PhanNhomVatTuTab({
                               )
                             })()}
                           </td>
-                          <td style={{ textAlign: 'center', padding: '10px 18px 10px 10px', fontSize: 13 }}>
+                          <td style={{ textAlign: 'center', padding: '10px 18px 10px 10px', fontSize: 15 }}>
                             {(() => {
                               const val = getClassification(row)
                               const text = val.trim().toLowerCase()
@@ -10153,14 +9882,14 @@ function PhanNhomVatTuTab({
                               
                               if (!isAsset) {
                                 return (
-                                  <span style={{ fontSize: '12.5px', color: '#94a3b8', fontStyle: 'italic', fontWeight: 500 }}>— Không áp dụng</span>
+                                  <span style={{ fontSize: '12px', color: '#94a3b8', fontStyle: 'italic', fontWeight: 500 }}>— Không áp dụng</span>
                                 )
                               }
                               
                               const currentMonths = getClosestMonthsGroup(row, depreciationOptions)
                               if (currentMonths.months === 0) {
                                 return (
-                                  <span style={{ fontSize: '12.5px', color: '#94a3b8', fontStyle: 'italic', fontWeight: 500 }}>— Chưa thiết lập</span>
+                                  <span style={{ fontSize: '12px', color: '#94a3b8', fontStyle: 'italic', fontWeight: 500 }}>— Chưa thiết lập</span>
                                 )
                               }
                               
@@ -10213,7 +9942,7 @@ function PhanNhomVatTuTab({
           }}>
             {/* Sidebar Header */}
             <div style={{ padding: '16px', borderBottom: '1px solid var(--border)', background: '#f8fafc' }}>
-              <div style={{ fontWeight: 800, fontSize: '13.5px', color: 'var(--text)', display: 'flex', alignItems: 'center', gap: 6, marginBottom: 12 }}>
+              <div style={{ fontWeight: 800, fontSize: '15px', color: 'var(--text)', display: 'flex', alignItems: 'center', gap: 6, marginBottom: 12 }}>
                 <Clock size={16} style={{ color: 'var(--primary)' }} />
                 DANH SÁCH KHẤU HAO ({depreciationOptions.length})
               </div>
@@ -10229,7 +9958,7 @@ function PhanNhomVatTuTab({
                     style={{
                       flex: 1,
                       padding: '6px 10px',
-                      fontSize: '13px',
+                      fontSize: '15px',
                       border: '1px solid var(--border)',
                       borderRadius: 6,
                       outline: 'none',
@@ -10250,7 +9979,7 @@ function PhanNhomVatTuTab({
                       color: '#ffffff',
                       border: 'none',
                       borderRadius: 6,
-                      fontSize: '12.5px',
+                      fontSize: '12px',
                       fontWeight: 700,
                       cursor: 'pointer',
                       transition: 'all 0.15s'
@@ -10267,7 +9996,7 @@ function PhanNhomVatTuTab({
                     style={{
                       flex: 1,
                       padding: '4px 8px',
-                      fontSize: '11px',
+                      fontSize: '12px',
                       fontWeight: 700,
                       border: 'none',
                       borderRadius: 4,
@@ -10281,14 +10010,14 @@ function PhanNhomVatTuTab({
                       gap: 4
                     }}
                   >
-                    <span style={{ fontSize: '11px' }}>✓</span> Đã duyệt
+                    <span style={{ fontSize: '12px' }}>✓</span> Đã duyệt
                   </button>
                   <button
                     onClick={() => setNewDurationIsApproved(false)}
                     style={{
                       flex: 1,
                       padding: '4px 8px',
-                      fontSize: '11px',
+                      fontSize: '12px',
                       fontWeight: 700,
                       border: 'none',
                       borderRadius: 4,
@@ -10302,7 +10031,7 @@ function PhanNhomVatTuTab({
                       gap: 4
                     }}
                   >
-                    <span style={{ fontSize: '11px' }}>⏱</span> Tạm tính
+                    <span style={{ fontSize: '12px' }}>⏱</span> Tạm tính
                   </button>
                 </div>
 
@@ -10310,7 +10039,7 @@ function PhanNhomVatTuTab({
                   <div style={{
                     padding: '8px 10px',
                     borderRadius: 6,
-                    fontSize: '11.5px',
+                    fontSize: '12px',
                     fontWeight: 500,
                     background: addDurationFeedback.isError ? '#fef2f2' : '#f0fdf4',
                     border: `1px solid ${addDurationFeedback.isError ? '#fca5a5' : '#86efac'}`,
@@ -10322,7 +10051,7 @@ function PhanNhomVatTuTab({
                     wordBreak: 'break-word',
                     marginTop: 4
                   }}>
-                    <span style={{ fontSize: '13px', flexShrink: 0, marginTop: '1px' }}>{addDurationFeedback.isError ? '⚠️' : '✅'}</span>
+                    <span style={{ fontSize: '15px', flexShrink: 0, marginTop: '1px' }}>{addDurationFeedback.isError ? '⚠️' : '✅'}</span>
                     <span style={{ flex: 1 }}>{addDurationFeedback.text}</span>
                     <button 
                       onClick={() => setAddDurationFeedback(null)}
@@ -10330,7 +10059,7 @@ function PhanNhomVatTuTab({
                         background: 'none',
                         border: 'none',
                         color: 'inherit',
-                        fontSize: '13px',
+                        fontSize: '15px',
                         cursor: 'pointer',
                         padding: 0,
                         marginLeft: 'auto',
@@ -10353,7 +10082,7 @@ function PhanNhomVatTuTab({
                 {/* TỔNG QUAN SECTION */}
                 <div>
                   <div style={{
-                    fontSize: '11px',
+                    fontSize: '12px',
                     fontWeight: 800,
                     textTransform: 'uppercase',
                     color: 'var(--primary)',
@@ -10389,7 +10118,7 @@ function PhanNhomVatTuTab({
                     >
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
                         <div style={{
-                          fontSize: '10px',
+                          fontSize: '12px',
                           fontWeight: 800,
                           padding: '3px 6px',
                           borderRadius: '6px',
@@ -10404,7 +10133,7 @@ function PhanNhomVatTuTab({
                         </div>
                         <div style={{
                           fontWeight: selectedMonthsGroup?.isAll ? 800 : 600,
-                          fontSize: '13px',
+                          fontSize: '15px',
                           color: selectedMonthsGroup?.isAll ? 'var(--primary)' : 'var(--text)',
                           whiteSpace: 'nowrap',
                           overflow: 'hidden',
@@ -10416,7 +10145,7 @@ function PhanNhomVatTuTab({
                       
                       <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                         <span style={{
-                          fontSize: '11px',
+                          fontSize: '12px',
                           fontWeight: 700,
                           background: 'var(--primary)',
                           color: '#ffffff',
@@ -10434,7 +10163,7 @@ function PhanNhomVatTuTab({
                 {sidebarChuaThietLap.length > 0 && (
                   <div>
                     <div style={{
-                      fontSize: '11px',
+                      fontSize: '12px',
                       fontWeight: 800,
                       textTransform: 'uppercase',
                       color: '#64748b',
@@ -10497,7 +10226,7 @@ function PhanNhomVatTuTab({
                           >
                             <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
                               <div style={{
-                                fontSize: '10px',
+                                fontSize: '12px',
                                 fontWeight: 800,
                                 padding: '3px 6px',
                                 borderRadius: '6px',
@@ -10512,7 +10241,7 @@ function PhanNhomVatTuTab({
                               </div>
                               <div style={{
                                 fontWeight: isActive ? 800 : 600,
-                                fontSize: '13px',
+                                fontSize: '15px',
                                 color: colors.fg,
                                 whiteSpace: 'nowrap',
                                 overflow: 'hidden',
@@ -10524,7 +10253,7 @@ function PhanNhomVatTuTab({
                             
                             <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                               <span style={{
-                                fontSize: '11px',
+                                fontSize: '12px',
                                 fontWeight: 700,
                                 background: colors.fg,
                                 color: '#ffffff',
@@ -10545,7 +10274,7 @@ function PhanNhomVatTuTab({
                 {sidebarDaDuyet.length > 0 && (
                   <div>
                     <div style={{
-                      fontSize: '11px',
+                      fontSize: '12px',
                       fontWeight: 800,
                       textTransform: 'uppercase',
                       color: '#16a34a',
@@ -10608,7 +10337,7 @@ function PhanNhomVatTuTab({
                           >
                             <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
                               <div style={{
-                                fontSize: '10px',
+                                fontSize: '12px',
                                 fontWeight: 800,
                                 padding: '3px 6px',
                                 borderRadius: '6px',
@@ -10623,7 +10352,7 @@ function PhanNhomVatTuTab({
                               </div>
                               <div style={{
                                 fontWeight: isActive ? 800 : 600,
-                                fontSize: '13px',
+                                fontSize: '15px',
                                 color: colors.fg,
                                 whiteSpace: 'nowrap',
                                 overflow: 'hidden',
@@ -10635,7 +10364,7 @@ function PhanNhomVatTuTab({
                             
                             <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                               <span style={{
-                                fontSize: '11px',
+                                fontSize: '12px',
                                 fontWeight: 700,
                                 background: colors.fg,
                                 color: '#ffffff',
@@ -10692,7 +10421,7 @@ function PhanNhomVatTuTab({
                 {sidebarTamTinh.length > 0 && (
                   <div>
                     <div style={{
-                      fontSize: '11px',
+                      fontSize: '12px',
                       fontWeight: 800,
                       textTransform: 'uppercase',
                       color: '#d97706',
@@ -10755,7 +10484,7 @@ function PhanNhomVatTuTab({
                           >
                             <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
                               <div style={{
-                                fontSize: '10px',
+                                fontSize: '12px',
                                 fontWeight: 800,
                                 padding: '3px 6px',
                                 borderRadius: '6px',
@@ -10770,7 +10499,7 @@ function PhanNhomVatTuTab({
                               </div>
                               <div style={{
                                 fontWeight: isActive ? 800 : 600,
-                                fontSize: '13px',
+                                fontSize: '15px',
                                 color: colors.fg,
                                 whiteSpace: 'nowrap',
                                 overflow: 'hidden',
@@ -10782,7 +10511,7 @@ function PhanNhomVatTuTab({
                             
                             <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                               <span style={{
-                                fontSize: '11px',
+                                fontSize: '12px',
                                 fontWeight: 700,
                                 background: colors.fg,
                                 color: '#ffffff',
@@ -10866,7 +10595,7 @@ function PhanNhomVatTuTab({
             }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <h3 style={{ margin: 0, fontSize: '14px', fontWeight: 800, color: 'var(--text)' }}>
+                  <h3 style={{ margin: 0, fontSize: '15px', fontWeight: 800, color: 'var(--text)' }}>
                     {selectedMonthsGroup?.isAll
                       ? (depreciationSearchQuery.trim() ? 'KẾT QUẢ TÌM KIẾM TOÀN BỘ VẬT TƯ' : 'TẤT CẢ VẬT TƯ KHẤU HAO')
                       : depreciationSearchQuery.trim()
@@ -10892,7 +10621,7 @@ function PhanNhomVatTuTab({
                       gap: '8px',
                       padding: '6px 12px',
                       borderRadius: '6px',
-                      fontSize: '12.5px',
+                      fontSize: '12px',
                       fontWeight: 600,
                       background: syncNotification.type === 'success' 
                         ? '#ecfdf5' 
@@ -10964,7 +10693,7 @@ function PhanNhomVatTuTab({
                     style={{
                       width: '100%',
                       padding: depreciationSearchQuery ? '6px 32px 6px 32px' : '6px 10px 6px 32px',
-                      fontSize: '13px',
+                      fontSize: '15px',
                       border: '1px solid var(--border)',
                       borderRadius: 6,
                       background: '#ffffff',
@@ -11008,7 +10737,7 @@ function PhanNhomVatTuTab({
                     alignItems: 'center',
                     gap: 8,
                     cursor: 'pointer',
-                    fontSize: '12.5px',
+                    fontSize: '12px',
                     fontWeight: 600,
                     color: 'var(--text-muted)',
                     userSelect: 'none'
@@ -11071,7 +10800,7 @@ function PhanNhomVatTuTab({
                         background: 'var(--primary)',
                         color: '#ffffff',
                         fontWeight: 700,
-                        fontSize: '13px',
+                        fontSize: '15px',
                         padding: '4px 12px',
                         borderRadius: '20px',
                         display: 'flex',
@@ -11081,7 +10810,7 @@ function PhanNhomVatTuTab({
                         <CheckSquare size={14} />
                         <span>Đã chọn {selectedMaterials.size} vật tư</span>
                       </div>
-                      <span style={{ fontSize: '13.5px', color: '#64748b', fontWeight: 500 }}>
+                      <span style={{ fontSize: '15px', color: '#64748b', fontWeight: 500 }}>
                         Thiết lập số tháng & trạng thái đồng loạt cho các vật tư đã chọn bên dưới.
                       </span>
                     </div>
@@ -11134,7 +10863,7 @@ function PhanNhomVatTuTab({
                     }}>
                       {/* 1. Month select */}
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', flex: '2 1 320px' }}>
-                        <span style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', color: '#475569', letterSpacing: '0.02em' }}>
+                        <span style={{ fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', color: '#475569', letterSpacing: '0.02em' }}>
                           📅 Bước 1: Chọn số tháng mới
                         </span>
                         
@@ -11158,7 +10887,7 @@ function PhanNhomVatTuTab({
                                   border: isSelected ? `2px solid ${optColors.fg}` : `1px solid ${optColors.fg}40`,
                                   background: isSelected ? optColors.bg : '#ffffff',
                                   color: optColors.fg,
-                                  fontSize: '12.5px',
+                                  fontSize: '12px',
                                   fontWeight: isSelected ? 700 : 600,
                                   cursor: 'pointer',
                                   display: 'inline-flex',
@@ -11185,7 +10914,7 @@ function PhanNhomVatTuTab({
                                 }}
                               >
                                 <span style={{
-                                  fontSize: '10px',
+                                  fontSize: '12px',
                                   fontWeight: 800,
                                   padding: '1px 5px',
                                   borderRadius: '4px',
@@ -11204,7 +10933,7 @@ function PhanNhomVatTuTab({
 
                       {/* 2. Status toggle buttons */}
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', flex: '0 0 220px' }}>
-                        <span style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', color: '#475569', letterSpacing: '0.02em' }}>
+                        <span style={{ fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', color: '#475569', letterSpacing: '0.02em' }}>
                           🏷️ Bước 2: Chọn trạng thái mới
                         </span>
                         <div style={{
@@ -11225,7 +10954,7 @@ function PhanNhomVatTuTab({
                               padding: '2px 8px',
                               border: 'none',
                               borderRadius: '4px',
-                              fontSize: '11.5px',
+                              fontSize: '12px',
                               fontWeight: 600,
                               cursor: 'pointer',
                               background: batchTargetApproved ? '#16a34a' : 'transparent',
@@ -11244,7 +10973,7 @@ function PhanNhomVatTuTab({
                               padding: '2px 8px',
                               border: 'none',
                               borderRadius: '4px',
-                              fontSize: '11.5px',
+                              fontSize: '12px',
                               fontWeight: 600,
                               cursor: 'pointer',
                               background: !batchTargetApproved ? '#d97706' : 'transparent',
@@ -11267,7 +10996,7 @@ function PhanNhomVatTuTab({
                           color: '#ffffff',
                           border: 'none',
                           borderRadius: '6px',
-                          fontSize: '12.5px',
+                          fontSize: '12px',
                           fontWeight: 700,
                           cursor: 'pointer',
                           transition: 'all 0.15s',
@@ -11293,7 +11022,7 @@ function PhanNhomVatTuTab({
                   </div>
                 </div>
               ) : (
-                <div style={{ fontSize: '12.5px', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                <div style={{ fontSize: '12px', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 6 }}>
                   <Info size={14} style={{ color: 'var(--primary)' }} />
                   <span>Chọn một hoặc nhiều thẻ vật tư để chuyển sang thời gian khấu hao tương ứng nhanh chóng.</span>
                 </div>
@@ -11311,7 +11040,7 @@ function PhanNhomVatTuTab({
                   justifyContent: 'center',
                   padding: '40px',
                   color: 'var(--text-muted)',
-                  fontSize: '13.5px',
+                  fontSize: '15px',
                   background: '#ffffff',
                   borderRadius: '12px',
                   border: '1.5px dashed var(--border)'
@@ -11383,7 +11112,7 @@ function PhanNhomVatTuTab({
                           {/* SAP Code */}
                           <span style={{
                             fontWeight: 800,
-                            fontSize: '11.5px',
+                            fontSize: '12px',
                             color: groupColors.fg,
                             background: `${groupColors.fg}15`,
                             padding: '1.5px 5px',
@@ -11400,7 +11129,7 @@ function PhanNhomVatTuTab({
                           {/* Material Name */}
                           <span style={{
                             fontWeight: 700,
-                            fontSize: '13px',
+                            fontSize: '15px',
                             color: '#1e293b',
                             whiteSpace: 'nowrap',
                             overflow: 'hidden',
@@ -11414,7 +11143,7 @@ function PhanNhomVatTuTab({
 
                           {/* Status Badge */}
                           <span style={{
-                            fontSize: '10.5px',
+                            fontSize: '12px',
                             fontWeight: 800,
                             padding: '2px 6px',
                             borderRadius: '4px',
@@ -11555,13 +11284,13 @@ function PhanNhomVatTuTab({
                 <Trash2 size={24} />
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flex: 1 }}>
-                <h3 style={{ fontSize: 18, fontWeight: 700, color: '#0f172a', margin: 0 }}>
+                <h3 style={{ fontSize: 22, fontWeight: 700, color: '#0f172a', margin: 0 }}>
                   Xác nhận xóa dữ liệu
                 </h3>
-                <p style={{ fontSize: 14, color: '#475569', margin: 0, lineHeight: '1.5' }}>
+                <p style={{ fontSize: 15, color: '#475569', margin: 0, lineHeight: '1.5' }}>
                   Bạn có thực sự muốn xóa toàn bộ danh sách đơn giá và phân loại vật tư ở tab <strong>Phân nhóm vật tư</strong>? Hành động này không thể hoàn tác và sẽ xóa vĩnh viễn dữ liệu đơn giá này trên cả cục bộ và cơ sở dữ liệu Supabase (nếu có kết nối).
                 </p>
-                <p style={{ fontSize: 13, color: '#0284c7', margin: '4px 0 0 0', lineHeight: '1.5', fontWeight: 500 }}>
+                <p style={{ fontSize: 15, color: '#0284c7', margin: '4px 0 0 0', lineHeight: '1.5', fontWeight: 500 }}>
                   * Lưu ý: Cấu hình ở tab "Thời gian khấu hao" sẽ được giữ nguyên, không bị ảnh hưởng.
                 </p>
               </div>
@@ -11573,7 +11302,7 @@ function PhanNhomVatTuTab({
                 style={{
                   padding: '10px 20px',
                   borderRadius: 8,
-                  fontSize: 14,
+                  fontSize: 15,
                   fontWeight: 600,
                   background: '#f1f5f9',
                   color: '#334155',
@@ -11639,7 +11368,7 @@ function PhanNhomVatTuTab({
                 style={{
                   padding: '10px 20px',
                   borderRadius: 8,
-                  fontSize: 14,
+                  fontSize: 15,
                   fontWeight: 700,
                   background: '#dc2626',
                   color: '#ffffff',
@@ -15567,7 +15296,7 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
     display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
     height: 30, minWidth: 30, padding: '0 8px',
     border: '1px solid #e2e8f0', borderRadius: 6,
-    fontSize: 13, fontWeight: 500, cursor: 'pointer',
+    fontSize: 15, fontWeight: 500, cursor: 'pointer',
     background: '#fff', color: '#374151', transition: 'all 0.15s',
     userSelect: 'none'
   }
@@ -15618,104 +15347,44 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
   ]
 
   return (
-    <div id="baocao-xuat-nhap-ton-root" style={{ padding: '16px 24px 24px 24px', height: '100%', display: 'flex', flexDirection: 'column', boxSizing: 'border-box', overflow: 'hidden', fontFamily: "'Roboto', sans-serif" }}>
+    <div id="baocao-xuat-nhap-ton-root" style={{ padding: '16px 24px 24px 24px', height: '100%', display: 'flex', flexDirection: 'column', boxSizing: 'border-box', overflow: 'hidden' }}>
       {/* Sub-tabs for Inventory Report view */}
       {isRealReport && (
-        <div style={{ display: 'flex', gap: 6, marginBottom: 12, borderBottom: '1px solid var(--border)', paddingBottom: 6, flexShrink: 0 }}>
+        <div className="sg-seg" style={{ marginBottom: 12, alignSelf: 'flex-start' }}>
           <button
             id="btn-real-report-nhap"
             onClick={() => { setRealReportSubTab('nhap'); setCurrentPage(1); }}
-            style={{
-              padding: '8px 16px',
-              borderRadius: '6px 6px 0 0',
-              fontSize: '13.5px',
-              fontWeight: realReportSubTab === 'nhap' ? 700 : 500,
-              background: realReportSubTab === 'nhap' ? 'var(--primary)' : 'transparent',
-              color: realReportSubTab === 'nhap' ? '#ffffff' : 'var(--text-muted)',
-              border: 'none',
-              cursor: 'pointer',
-              transition: 'all 0.15s',
-              boxShadow: realReportSubTab === 'nhap' ? 'var(--shadow-sm)' : 'none',
-              borderBottom: realReportSubTab === 'nhap' ? '3px solid #10b981' : 'none'
-            }}
+            className={(realReportSubTab === 'nhap') ? 'on' : ''}
           >
             Nhập thực
           </button>
           <button
             id="btn-real-report-xuat"
             onClick={() => { setRealReportSubTab('xuat'); setCurrentPage(1); }}
-            style={{
-              padding: '8px 16px',
-              borderRadius: '6px 6px 0 0',
-              fontSize: '13.5px',
-              fontWeight: realReportSubTab === 'xuat' ? 700 : 500,
-              background: realReportSubTab === 'xuat' ? 'var(--primary)' : 'transparent',
-              color: realReportSubTab === 'xuat' ? '#ffffff' : 'var(--text-muted)',
-              border: 'none',
-              cursor: 'pointer',
-              transition: 'all 0.15s',
-              boxShadow: realReportSubTab === 'xuat' ? 'var(--shadow-sm)' : 'none',
-              borderBottom: realReportSubTab === 'xuat' ? '3px solid #f97316' : 'none'
-            }}
+            className={(realReportSubTab === 'xuat') ? 'on' : ''}
           >
             Xuất thực
           </button>
           <button
             id="btn-real-report-tonghop"
             onClick={() => { setRealReportSubTab('tonghop'); setCurrentPage(1); }}
-            style={{
-              padding: '8px 16px',
-              borderRadius: '6px 6px 0 0',
-              fontSize: '13.5px',
-              fontWeight: realReportSubTab === 'tonghop' ? 700 : 500,
-              background: realReportSubTab === 'tonghop' ? 'var(--primary)' : 'transparent',
-              color: realReportSubTab === 'tonghop' ? '#ffffff' : 'var(--text-muted)',
-              border: 'none',
-              cursor: 'pointer',
-              transition: 'all 0.15s',
-              boxShadow: realReportSubTab === 'tonghop' ? 'var(--shadow-sm)' : 'none',
-              borderBottom: realReportSubTab === 'tonghop' ? '3px solid #8b5cf6' : 'none'
-            }}
+            className={(realReportSubTab === 'tonghop') ? 'on' : ''}
           >
             Tổng hợp
           </button>
         </div>
       )}
       {!isRealReport && (
-        <div style={{ display: 'flex', gap: 6, marginBottom: 12, borderBottom: '1px solid var(--border)', paddingBottom: 6, flexShrink: 0 }}>
+        <div className="sg-seg" style={{ marginBottom: 12, alignSelf: 'flex-start' }}>
           <button
             onClick={() => setSubTab('summary')}
-            style={{
-              padding: '8px 16px',
-              borderRadius: '6px 6px 0 0',
-              fontSize: '13.5px',
-              fontWeight: subTab === 'summary' ? 700 : 500,
-              background: subTab === 'summary' ? 'var(--primary)' : 'transparent',
-              color: subTab === 'summary' ? '#ffffff' : 'var(--text-muted)',
-              border: 'none',
-              cursor: 'pointer',
-              transition: 'all 0.15s',
-              boxShadow: subTab === 'summary' ? 'var(--shadow-sm)' : 'none',
-              borderBottom: subTab === 'summary' ? '2px solid var(--primary)' : 'none'
-            }}
+            className={(subTab === 'summary') ? 'on' : ''}
           >
             Bảng chi tiết
           </button>
           <button
             onClick={() => setSubTab('dashboard')}
-            style={{
-              padding: '8px 16px',
-              borderRadius: '6px 6px 0 0',
-              fontSize: '13.5px',
-              fontWeight: subTab === 'dashboard' ? 700 : 500,
-              background: subTab === 'dashboard' ? 'var(--primary)' : 'transparent',
-              color: subTab === 'dashboard' ? '#ffffff' : 'var(--text-muted)',
-              border: 'none',
-              cursor: 'pointer',
-              transition: 'all 0.15s',
-              boxShadow: subTab === 'dashboard' ? 'var(--shadow-sm)' : 'none',
-              borderBottom: subTab === 'dashboard' ? '2px solid var(--primary)' : 'none'
-            }}
+            className={(subTab === 'dashboard') ? 'on' : ''}
           >
             Dashboard báo cáo
           </button>
@@ -15737,7 +15406,7 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
             flexWrap: 'wrap',
             flexShrink: 0
           }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 15, fontWeight: 700, color: 'var(--text)' }}>
               <Warehouse size={16} style={{ color: 'var(--primary)' }} />
               Chọn kho báo cáo:
             </div>
@@ -15755,7 +15424,7 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
                 padding: '7px 10px',
                 borderRadius: 6,
                 border: '1px solid var(--border)',
-                fontSize: 13,
+                fontSize: 15,
                 fontWeight: 600,
                 color: 'var(--text)',
                 background: '#f8fafc',
@@ -15779,7 +15448,7 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
                   border: '1px solid var(--border)',
                   background: '#ffffff',
                   color: 'var(--text-muted)',
-                  fontSize: 12.5,
+                  fontSize: 12,
                   fontWeight: 600,
                   cursor: 'pointer'
                 }}
@@ -15818,7 +15487,7 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
                   alignItems: 'center',
                   gap: 6,
                   fontWeight: 600,
-                  fontSize: '13px',
+                  fontSize: '15px',
                   cursor: 'pointer',
                   transition: 'all 0.15s ease'
                 }}
@@ -15837,150 +15506,53 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
             flexShrink: 0
           }}>
             {/* Card 1: Grand Unused Value */}
-            <div style={{
-              background: '#ffffff',
-              borderRadius: 8,
-              border: '1px solid var(--border)',
-              padding: '16px 20px',
-              boxShadow: 'var(--shadow-sm)',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 16
-            }}>
-              <div style={{
-                background: '#fee2e2',
-                color: '#ef4444',
-                padding: 12,
-                borderRadius: 8,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center'
-              }}>
-                <AlertCircle size={24} />
-              </div>
-              <div>
-                <div style={{ fontSize: 12.5, color: 'var(--text-muted)', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                  Tổng giá trị tồn chưa dùng
-                </div>
-                <div style={{ fontSize: 20, fontWeight: 800, color: '#ef4444', margin: '4px 0 2px 0' }}>
-                  {dashboardSummary.grandUnusedValue.toLocaleString('vi-VN')} đ
-                </div>
-                <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
-                  {dashboardWarehouseFilter === 'all' ? 'Tích lũy từ tất cả dự án BCH (> 30 ngày)' : `Kho: ${dashboardWarehouseFilter} (> 30 ngày)`}
-                </div>
-              </div>
+            <div className="sg-kpi sg-c-red">
+              <span className="sg-kpi-ic"><AlertCircle size={20} /></span>
+              <span className="sg-kpi-bd">
+                <span className="sg-kpi-lb">Tổng giá trị tồn chưa dùng</span>
+                <span className="sg-kpi-v">{dashboardSummary.grandUnusedValue.toLocaleString('vi-VN')}<small>đ</small></span>
+                <span className="sg-kpi-sub">{dashboardWarehouseFilter === 'all' ? 'Tích lũy từ tất cả dự án BCH (> 30 ngày)' : `Kho: ${dashboardWarehouseFilter} (> 30 ngày)`}</span>
+              </span>
             </div>
 
             {/* Card 2: Total Warned Items */}
-            <div style={{
-              background: '#ffffff',
-              borderRadius: 8,
-              border: '1px solid var(--border)',
-              padding: '16px 20px',
-              boxShadow: 'var(--shadow-sm)',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 16
-            }}>
-              <div style={{
-                background: '#fff9db',
-                color: '#f59e0b',
-                padding: 12,
-                borderRadius: 8,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center'
-              }}>
-                <AlertTriangle size={24} />
-              </div>
-              <div>
-                <div style={{ fontSize: 12.5, color: 'var(--text-muted)', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                  Số mặt hàng cảnh báo
-                </div>
-                <div style={{ fontSize: 20, fontWeight: 800, color: '#f59e0b', margin: '4px 0 2px 0' }}>
-                  {dashboardSummary.grandUnusedCount.toLocaleString()} / {dashboardSummary.grandTotalItems.toLocaleString()}
-                </div>
-                <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
-                  Tỷ lệ chậm sử dụng: <strong style={{ color: '#f59e0b' }}>{dashboardSummary.averageUnusedRatio.toFixed(1)}%</strong>
-                </div>
-              </div>
+            <div className="sg-kpi sg-c-orange">
+              <span className="sg-kpi-ic"><AlertTriangle size={20} /></span>
+              <span className="sg-kpi-bd">
+                <span className="sg-kpi-lb">Số mặt hàng cảnh báo</span>
+                <span className="sg-kpi-v">{dashboardSummary.grandUnusedCount.toLocaleString('vi-VN')}<small>/ {dashboardSummary.grandTotalItems.toLocaleString('vi-VN')} mặt hàng</small></span>
+                <span className="sg-kpi-sub">Tỷ lệ chậm sử dụng: {dashboardSummary.averageUnusedRatio.toFixed(1).replace('.', ',')}%</span>
+              </span>
             </div>
 
             {/* Card 3: Highest Unused Warehouse */}
-            <div style={{
-              background: '#ffffff',
-              borderRadius: 8,
-              border: '1px solid var(--border)',
-              padding: '16px 20px',
-              boxShadow: 'var(--shadow-sm)',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 16
-            }}>
-              <div style={{
-                background: '#eff6ff',
-                color: 'var(--primary)',
-                padding: 12,
-                borderRadius: 8,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center'
-              }}>
-                <Building2 size={24} />
-              </div>
-              <div style={{ minWidth: 0, flex: 1 }}>
-                <div style={{ fontSize: 12.5, color: 'var(--text-muted)', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                  Dự án tồn đọng cao nhất
-                </div>
-                <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)', margin: '4px 0 2px 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={dashboardSummary.highestUnusedWarehouse}>
-                  {dashboardSummary.highestUnusedWarehouse}
-                </div>
-                <div style={{ fontSize: 12, color: 'var(--text-muted)', display: 'flex', justifyContent: 'space-between' }}>
-                  <span>Giá trị tồn:</span>
-                  <strong style={{ color: '#ef4444' }}>{dashboardSummary.highestUnusedVal.toLocaleString('vi-VN')} đ</strong>
-                </div>
-              </div>
+            <div className="sg-kpi sg-c-blue">
+              <span className="sg-kpi-ic"><Building2 size={20} /></span>
+              <span className="sg-kpi-bd" style={{ flex: 1 }}>
+                <span className="sg-kpi-lb">Dự án tồn đọng cao nhất</span>
+                <span className="sg-kpi-v" style={{ fontSize: 15, overflow: 'hidden', textOverflow: 'ellipsis' }} title={dashboardSummary.highestUnusedWarehouse}>{dashboardSummary.highestUnusedWarehouse}</span>
+                <span className="sg-kpi-sub">Giá trị tồn: {dashboardSummary.highestUnusedVal.toLocaleString('vi-VN')} đ</span>
+              </span>
             </div>
 
             {/* Card 4: Monitoring projects */}
-            <div style={{
-              background: '#ffffff',
-              borderRadius: 8,
-              border: '1px solid var(--border)',
-              padding: '16px 20px',
-              boxShadow: 'var(--shadow-sm)',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 16
-            }}>
-              <div style={{
-                background: '#ecfdf5',
-                color: '#10b981',
-                padding: 12,
-                borderRadius: 8,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center'
-              }}>
-                <Warehouse size={24} />
-              </div>
-              <div>
-                <div style={{ fontSize: 12.5, color: 'var(--text-muted)', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                  {dashboardWarehouseFilter === 'all' ? 'Kho dự án BCH theo dõi' : 'Đang xem báo cáo kho'}
-                </div>
-                <div style={{ fontSize: dashboardWarehouseFilter === 'all' ? 20 : 15, fontWeight: 800, color: '#10b981', margin: '4px 0 2px 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={dashboardWarehouseFilter === 'all' ? undefined : dashboardWarehouseFilter}>
+            <div className="sg-kpi sg-c-green">
+              <span className="sg-kpi-ic"><Warehouse size={20} /></span>
+              <span className="sg-kpi-bd" style={{ flex: 1 }}>
+                <span className="sg-kpi-lb">{dashboardWarehouseFilter === 'all' ? 'Kho dự án BCH theo dõi' : 'Đang xem báo cáo kho'}</span>
+                <span className="sg-kpi-v" style={dashboardWarehouseFilter === 'all' ? undefined : { fontSize: 15, overflow: 'hidden', textOverflow: 'ellipsis' }} title={dashboardWarehouseFilter === 'all' ? undefined : dashboardWarehouseFilter}>
                   {dashboardWarehouseFilter === 'all'
                     ? (dashboardExcludedBch.length > 0
-                        ? <>{filteredDashboardStats.length} <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-muted)' }}>/ {bchWarehouses.length} kho</span></>
-                        : <>{bchWarehouses.length} <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-muted)' }}>kho dự án</span></>)
+                        ? <>{filteredDashboardStats.length}<small>/ {bchWarehouses.length} kho</small></>
+                        : <>{bchWarehouses.length}<small>kho dự án</small></>)
                     : dashboardWarehouseFilter}
-                </div>
-                <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                </span>
+                <span className="sg-kpi-sub">
                   {dashboardWarehouseFilter === 'all'
                     ? (dashboardExcludedBch.length > 0 ? `Đã loại trừ ${dashboardExcludedBch.length} kho BCH` : 'Giám sát tự động tình trạng tồn đọng')
                     : `Trong tổng số ${bchWarehouses.length} kho dự án BCH`}
-                </div>
-              </div>
+                </span>
+              </span>
             </div>
           </div>
 
@@ -15993,10 +15565,10 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
             boxShadow: 'var(--shadow-sm)',
             flexShrink: 0
           }}>
-            <h3 style={{ fontSize: 14.5, fontWeight: 700, color: 'var(--text)', margin: '0 0 12px 0', display: 'flex', alignItems: 'center', gap: 6 }}>
+            <h3 style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)', margin: '0 0 12px 0', display: 'flex', alignItems: 'center', gap: 6 }}>
               <BarChart3 size={16} style={{ color: 'var(--primary)' }} />
               {dashboardWarehouseFilter === 'all'
-                ? (isRealReport ? 'BIỂU ĐỒ SO SÁNH GIÁ TRỊ TỒN THỰC TẾ CHƯA SỬ DỤNG (> 30 NGÀY) GIỮA CÁC KHO DỰ ÁN BCH' : 'BIỂU ĐỒ SO SÁNH GIÁ TRỊ TỒN CHƯA SỬ DỤNG (> 30 NGÀY) GIỮA CÁC KHO DỰ ÁN BCH')
+                ? (isRealReport ? 'Biểu đồ so sánh giá trị tồn thực tế chưa sử dụng (> 30 ngày) giữa các kho dự án BCH' : 'Biểu đồ so sánh giá trị tồn chưa sử dụng (> 30 ngày) giữa các kho dự án BCH')
                 : (isRealReport ? `GIÁ TRỊ TỒN THỰC TẾ CHƯA SỬ DỤNG (> 30 NGÀY) — KHO: ${dashboardWarehouseFilter}` : `GIÁ TRỊ TỒN CHƯA SỬ DỤNG (> 30 NGÀY) — KHO: ${dashboardWarehouseFilter}`)}
             </h3>
             
@@ -16021,7 +15593,7 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
                       transition: 'all 0.15s'
                     }}
                   >
-                    <div style={{ width: 220, fontSize: 13, fontWeight: isSelected ? 700 : 500, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={stat.projectName}>
+                    <div style={{ width: 220, fontSize: 15, fontWeight: isSelected ? 700 : 500, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={stat.projectName}>
                       {index + 1}. {stat.projectName}
                     </div>
                     
@@ -16035,7 +15607,7 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
                       }} />
                     </div>
                     
-                    <div style={{ width: 140, textAlign: 'right', fontSize: 13, fontWeight: 700, color: stat.unusedValue > 0 ? stat.alarmColor : 'var(--text-muted)' }}>
+                    <div style={{ width: 140, textAlign: 'right', fontSize: 15, fontWeight: 700, color: stat.unusedValue > 0 ? stat.alarmColor : 'var(--text-muted)' }}>
                       {stat.unusedValue.toLocaleString('vi-VN')} đ
                     </div>
                   </div>
@@ -16071,11 +15643,11 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
                 justifyContent: 'space-between',
                 alignItems: 'center'
               }}>
-                <h3 style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text)', margin: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
+                <h3 style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)', margin: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
                   <ClipboardList size={15} style={{ color: 'var(--primary)' }} />
                   {dashboardWarehouseFilter === 'all' ? 'DANH SÁCH XẾP HẠNG CẢNH BÁO KHO DỰ ÁN BCH' : 'CHI TIẾT CẢNH BÁO KHO ĐÃ CHỌN'}
                 </h3>
-                <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
                   Theo giá trị tồn đọng chưa dùng giảm dần
                 </span>
               </div>
@@ -16095,7 +15667,7 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
                   <tbody>
                     {filteredDashboardStats.length === 0 ? (
                       <tr>
-                        <td colSpan={6} style={{ padding: 30, textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>
+                        <td colSpan={6} style={{ padding: 30, textAlign: 'center', color: 'var(--text-muted)', fontSize: 15 }}>
                           Không có dữ liệu kho dự án BCH nào
                         </td>
                       </tr>
@@ -16114,8 +15686,8 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
                               transition: 'all 0.15s'
                             }}
                           >
-                            <td style={{ textAlign: 'center', padding: '10px 8px', fontSize: 12.5, color: 'var(--text-muted)' }}>{idx + 1}</td>
-                            <td style={{ textAlign: 'left', padding: '10px 8px', fontSize: 12.5, color: 'var(--text)' }}>
+                            <td style={{ textAlign: 'center', padding: '10px 8px', fontSize: 12, color: 'var(--text-muted)' }}>{idx + 1}</td>
+                            <td style={{ textAlign: 'left', padding: '10px 8px', fontSize: 12, color: 'var(--text)' }}>
                               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                                 {isSelected && <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--primary)' }} />}
                                 <span>{stat.projectName}</span>
@@ -16128,23 +15700,23 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
                                 border: `1px solid ${stat.alarmBorder}`,
                                 padding: '3px 8px',
                                 borderRadius: 4,
-                                fontSize: 11,
+                                fontSize: 12,
                                 fontWeight: 700,
                                 display: 'inline-block'
                               }}>
                                 {stat.alarmLevel}
                               </span>
                             </td>
-                            <td style={{ textAlign: 'center', padding: '10px 8px', fontSize: 12.5, color: 'var(--text)' }}>
+                            <td style={{ textAlign: 'center', padding: '10px 8px', fontSize: 12, color: 'var(--text)' }}>
                               <strong>{stat.unusedCount}</strong> / {stat.totalItemsInStock}
-                              <span style={{ fontSize: 11, color: 'var(--text-muted)', display: 'inline', marginLeft: 4 }}>
+                              <span style={{ fontSize: 12, color: 'var(--text-muted)', display: 'inline', marginLeft: 4 }}>
                                 ({stat.unusedRatio.toFixed(1)}%)
                               </span>
                             </td>
-                            <td style={{ textAlign: 'right', padding: '10px 8px', fontSize: 12.5, color: 'var(--text-muted)' }}>
+                            <td style={{ textAlign: 'right', padding: '10px 8px', fontSize: 12, color: 'var(--text-muted)' }}>
                               {stat.unusedQty.toLocaleString('vi-VN', { maximumFractionDigits: 2 })}
                             </td>
-                            <td style={{ textAlign: 'right', padding: '10px 8px', fontSize: 12.5, color: stat.unusedValue > 0 ? stat.alarmColor : 'var(--text)', fontWeight: 700 }}>
+                            <td style={{ textAlign: 'right', padding: '10px 8px', fontSize: 12, color: stat.unusedValue > 0 ? stat.alarmColor : 'var(--text)', fontWeight: 700 }}>
                               {stat.unusedValue.toLocaleString('vi-VN')} đ
                             </td>
                           </tr>
@@ -16177,10 +15749,10 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
                     flexDirection: 'column',
                     gap: 4
                   }}>
-                    <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--primary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--primary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                       CHI TIẾT KHO ĐANG THEO DÕI
                     </div>
-                    <h3 style={{ fontSize: 14.5, fontWeight: 800, color: 'var(--text)', margin: 0, display: 'flex', alignItems: 'center', gap: 6, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={activeDashStat.projectName}>
+                    <h3 style={{ fontSize: 15, fontWeight: 800, color: 'var(--text)', margin: 0, display: 'flex', alignItems: 'center', gap: 6, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={activeDashStat.projectName}>
                       <Warehouse size={16} style={{ color: 'var(--primary)' }} />
                       {activeDashStat.projectName}
                     </h3>
@@ -16189,7 +15761,7 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
                   <div style={{ flex: 1, overflow: 'auto', padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 16 }}>
                     {/* Progress Bar */}
                     <div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12.5, color: 'var(--text)', marginBottom: 6 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: 'var(--text)', marginBottom: 6 }}>
                         <span style={{ fontWeight: 500 }}>Tỷ lệ mặt hàng chậm sử dụng:</span>
                         <strong style={{ color: activeDashStat.alarmColor }}>{activeDashStat.unusedRatio.toFixed(1)}%</strong>
                       </div>
@@ -16206,7 +15778,7 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
                           height: '100%'
                         }} />
                       </div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>
                         <span>Chưa sử dụng (&gt;30 ngày): <strong>{activeDashStat.unusedCount}</strong> mặt hàng</span>
                         <span>Đang sử dụng: <strong>{activeDashStat.totalItemsInStock - activeDashStat.unusedCount}</strong> mặt hàng</span>
                       </div>
@@ -16223,16 +15795,16 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
                       border: '1px solid var(--border)'
                     }}>
                       <div>
-                        <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 500 }}>TỔNG NHẬP (LŨY KẾ)</div>
-                        <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)', marginTop: 2 }}>{activeDashStat.totalReceived.toLocaleString('vi-VN', { maximumFractionDigits: 2 })}</div>
+                        <div style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 500 }}>TỔNG NHẬP (LŨY KẾ)</div>
+                        <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)', marginTop: 2 }}>{activeDashStat.totalReceived.toLocaleString('vi-VN', { maximumFractionDigits: 2 })}</div>
                       </div>
                       <div>
-                        <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 500 }}>TỔNG XUẤT (LŨY KẾ)</div>
-                        <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)', marginTop: 2 }}>{activeDashStat.totalIssued.toLocaleString('vi-VN', { maximumFractionDigits: 2 })}</div>
+                        <div style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 500 }}>TỔNG XUẤT (LŨY KẾ)</div>
+                        <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)', marginTop: 2 }}>{activeDashStat.totalIssued.toLocaleString('vi-VN', { maximumFractionDigits: 2 })}</div>
                       </div>
                       <div style={{ gridColumn: 'span 2', borderTop: '1px solid #e2e8f0', paddingTop: 8, marginTop: 4 }}>
-                        <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 500 }}>TỔNG THÀNH TIỀN TỒN ĐỌNG CHƯA DÙNG</div>
-                        <div style={{ fontSize: 16, fontWeight: 800, color: activeDashStat.alarmColor, marginTop: 2 }}>
+                        <div style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 500 }}>TỔNG THÀNH TIỀN TỒN ĐỌNG CHƯA DÙNG</div>
+                        <div style={{ fontSize: 15, fontWeight: 800, color: activeDashStat.alarmColor, marginTop: 2 }}>
                           {activeDashStat.unusedValue.toLocaleString('vi-VN')} đ
                         </div>
                       </div>
@@ -16240,7 +15812,7 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
 
                     {/* Top 10 Warned items list */}
                     <div>
-                      <h4 style={{ fontSize: 12.5, fontWeight: 700, color: '#475569', margin: '0 0 8px 0', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                      <h4 style={{ fontSize: 12, fontWeight: 700, color: '#475569', margin: '0 0 8px 0', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                         TOP 10 VẬT TƯ TỒN ĐỌNG GIÁ TRỊ LỚN NHẤT KHO NÀY
                       </h4>
                       
@@ -16266,13 +15838,13 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
                             >
                               <div style={{ minWidth: 0, flex: 1 }}>
                                 <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text)', display: 'flex', alignItems: 'center', gap: 6 }}>
-                                  <span style={{ color: 'var(--text-muted)', fontSize: 11 }}>{item.maSAP}</span>
+                                  <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>{item.maSAP}</span>
                                   <span style={{
                                     background: '#e2e8f0',
                                     color: '#475569',
                                     padding: '1px 4px',
                                     borderRadius: 3,
-                                    fontSize: 10,
+                                    fontSize: 12,
                                     fontWeight: 500
                                   }}>
                                     {item.dvt}
@@ -16283,10 +15855,10 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
                                 </div>
                               </div>
                               <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                                <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--text)' }}>
+                                <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text)' }}>
                                   {item.valueOver30Days.toLocaleString('vi-VN')} đ
                                 </div>
-                                <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 1 }}>
+                                <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 1 }}>
                                   Tồn: <strong>{item.stock.toLocaleString('vi-VN', { maximumFractionDigits: 2 })}</strong>
                                 </div>
                               </div>
@@ -16310,7 +15882,7 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
                         color: '#ffffff',
                         padding: '10px 14px',
                         borderRadius: 6,
-                        fontSize: 13,
+                        fontSize: 15,
                         fontWeight: 700,
                         border: 'none',
                         cursor: 'pointer',
@@ -16329,7 +15901,7 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
                   </div>
                 </div>
               ) : (
-                <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)', fontSize: 13.5 }}>
+                <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)', fontSize: 15 }}>
                   Hãy chọn một kho dự án để xem chi tiết
                 </div>
               )}
@@ -16356,7 +15928,7 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
       }}>
         {/* Selector */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 280 }}>
-          <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+          <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
             Kho / Dự án:
           </span>
           <div style={{ flex: 1, minWidth: 180 }}>
@@ -16375,7 +15947,7 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
           <>
             {/* Đơn vị giao Selector */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 260 }}>
-              <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+              <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
                 Đơn vị giao:
               </span>
               <div style={{ flex: 1, minWidth: 160 }}>
@@ -16392,7 +15964,7 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
 
             {/* Đơn vị nhận Selector */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 260 }}>
-              <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+              <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
                 Đơn vị nhận:
               </span>
               <div style={{ flex: 1, minWidth: 160 }}>
@@ -16409,19 +15981,19 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
 
             {/* Khoảng thời gian */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0, borderLeft: '1px solid var(--border)', paddingLeft: 12 }}>
-              <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-muted)' }}>Từ ngày:</span>
+              <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-muted)' }}>Từ ngày:</span>
               <input
                 type="date"
                 className="input"
-                style={{ height: 38, padding: '0 8px', fontSize: 13, border: '1px solid #cbd5e1', borderRadius: 6 }}
+                style={{ height: 38, padding: '0 8px', fontSize: 15, border: '1px solid #cbd5e1', borderRadius: 6 }}
                 value={startDate}
                 onChange={e => setStartDate(e.target.value)}
               />
-              <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-muted)' }}>Đến ngày:</span>
+              <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-muted)' }}>Đến ngày:</span>
               <input
                 type="date"
                 className="input"
-                style={{ height: 38, padding: '0 8px', fontSize: 13, border: '1px solid #cbd5e1', borderRadius: 6 }}
+                style={{ height: 38, padding: '0 8px', fontSize: 15, border: '1px solid #cbd5e1', borderRadius: 6 }}
                 value={endDate}
                 onChange={e => setEndDate(e.target.value)}
               />
@@ -16458,7 +16030,7 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
                 id="input-inventory-search"
                 type="text"
                 className="input"
-                style={{ paddingLeft: 30, width: '100%', height: 38, fontSize: 13, border: '1px solid #cbd5e1' }}
+                style={{ paddingLeft: 30, width: '100%', height: 38, fontSize: 15, border: '1px solid #cbd5e1' }}
                 placeholder="Tìm theo Mã SAP, Mã vật tư, Tên vật tư..."
                 value={searchTerm}
                 onChange={e => setSearchTerm(e.target.value)}
@@ -16467,7 +16039,7 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
 
             {/* Status Filter Toggle */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-              <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-muted)' }}>Trạng thái:</span>
+              <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-muted)' }}>Trạng thái:</span>
               <div style={{ display: 'flex', background: 'var(--surface2)', borderRadius: 8, padding: 2, border: '1px solid var(--border)', height: 38, alignItems: 'center' }}>
                 <button
                   id="btn-inventory-status-approved"
@@ -16476,7 +16048,7 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
                     padding: '0 12px',
                     height: '100%',
                     borderRadius: 6,
-                    fontSize: '12.5px',
+                    fontSize: '12px',
                     fontWeight: 600,
                     transition: 'all 0.1s',
                     background: statusFilter === 'approved_only' ? '#ffffff' : 'transparent',
@@ -16495,7 +16067,7 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
                     padding: '0 12px',
                     height: '100%',
                     borderRadius: 6,
-                    fontSize: '12.5px',
+                    fontSize: '12px',
                     fontWeight: 600,
                     transition: 'all 0.1s',
                     background: statusFilter === 'approved_pending' ? '#ffffff' : 'transparent',
@@ -16515,7 +16087,7 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
                     padding: '0 12px',
                     height: '100%',
                     borderRadius: 6,
-                    fontSize: '12.5px',
+                    fontSize: '12px',
                     fontWeight: 600,
                     transition: 'all 0.1s',
                     background: statusFilter === 'all' ? '#ffffff' : 'transparent',
@@ -16540,7 +16112,7 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
               background: '#f8fafc',
               borderRadius: 8,
               border: '1px solid #e2e8f0',
-              fontSize: '12.5px',
+              fontSize: '12px',
               flexWrap: 'wrap',
               flexShrink: 0
             }}>
@@ -16580,7 +16152,7 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
                 padding: '0 14px',
                 borderRadius: 6,
                 fontWeight: 600,
-                fontSize: '13px',
+                fontSize: '15px',
                 border: '1px solid #bae6fd',
                 color: '#0369a1',
                 background: '#f0f9ff',
@@ -16596,7 +16168,7 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
                 e.currentTarget.style.borderColor = '#bae6fd';
               }}
             >
-              <HelpCircle size={14} />
+              <Info size={14} />
               <span>Xem Giải thích Logic</span>
             </button>
           )}
@@ -16614,7 +16186,7 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
                 padding: '0 16px',
                 borderRadius: 6,
                 fontWeight: 600,
-                fontSize: '13px',
+                fontSize: '15px',
                 background: '#10b981',
                 color: '#ffffff',
                 border: 'none',
@@ -16631,35 +16203,21 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
 
       {/* Summary Metrics Cards */}
       {localProject && (
-        <div style={{ display: 'flex', gap: 12, marginBottom: 12, flexWrap: 'wrap', flexShrink: 0 }}>
-          {(isRealReport ? realReportMetrics : metricsCards).map(c => (
-            <div key={c.label} style={{
-              background: c.bg,
-              border: `1px solid ${c.border}`,
-              borderRadius: 8,
-              padding: '10px 16px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              flex: '1 1 200px',
-              minWidth: 180,
-              boxShadow: 'var(--shadow-sm)'
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                <span style={{ color: 'var(--text-muted)', fontSize: 13, fontWeight: 500 }}>{c.label}:</span>
-                <span style={{ color: c.color, fontSize: 16, fontWeight: 700, letterSpacing: '-0.01em' }}>{c.value}</span>
+        <div className="sg-kpis" style={{ marginBottom: 12, flexShrink: 0 }}>
+          {(isRealReport ? realReportMetrics : metricsCards).map(c => {
+            const tone = c.color === '#10b981' ? 'sg-c-green' : c.color === '#f97316' ? 'sg-c-orange' : c.color === '#ef4444' ? 'sg-c-red' : c.color === '#8b5cf6' ? 'sg-c-violet' : 'sg-c-blue'
+            const v = String(c.value)
+            const m = /^(.*?)\s+(đ|mặt hàng)$/.exec(v)
+            return (
+              <div key={c.label} className={'sg-kpi sm ' + tone} title={`${c.label}: ${v}`}>
+                <span className="sg-kpi-ic">{React.cloneElement(c.icon, { size: 15 })}</span>
+                <span className="sg-kpi-bd">
+                  <span className="sg-kpi-lb">{c.label}</span>
+                  <span className="sg-kpi-v">{m ? <>{m[1]}<small>{m[2]}</small></> : v}</span>
+                </span>
               </div>
-              <div style={{
-                width: 32, height: 32, borderRadius: 8,
-                background: '#ffffff', color: c.color,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                border: `1px solid ${c.border}`,
-                flexShrink: 0
-              }}>
-                {c.icon}
-              </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
       )}
 
@@ -16669,8 +16227,8 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
           <div style={{ width: 56, height: 56, borderRadius: 28, background: '#eff6ff', color: '#0f58a7', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
             <Warehouse size={28} />
           </div>
-          <h3 style={{ fontSize: 16, fontWeight: 700, color: 'var(--text)', margin: '0 0 8px 0' }}>Chưa chọn Kho / Dự án</h3>
-          <p style={{ color: 'var(--text-muted)', fontSize: 13.5, margin: 0, maxWidth: 420, textAlign: 'center', lineHeight: '1.5' }}>
+          <h3 style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)', margin: '0 0 8px 0' }}>Chưa chọn Kho / Dự án</h3>
+          <p style={{ color: 'var(--text-muted)', fontSize: 15, margin: 0, maxWidth: 420, textAlign: 'center', lineHeight: '1.5' }}>
             Vui lòng chọn một Kho / Dự án cụ thể từ danh sách bộ lọc ở trên để tải dữ liệu báo cáo chi tiết nhanh nhất và tránh bị lag.
           </p>
         </div>
@@ -16681,8 +16239,8 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
               <div style={{ width: 56, height: 56, borderRadius: 28, background: '#fef2f2', color: '#ef4444', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
                 <AlertCircle size={28} />
               </div>
-              <h3 style={{ fontSize: 16, fontWeight: 700, color: 'var(--text)', margin: '0 0 8px 0' }}>Không có dữ liệu phát sinh</h3>
-              <p style={{ color: 'var(--text-muted)', fontSize: 13.5, margin: 0, maxWidth: 420, textAlign: 'center', lineHeight: '1.5' }}>
+              <h3 style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)', margin: '0 0 8px 0' }}>Không có dữ liệu phát sinh</h3>
+              <p style={{ color: 'var(--text-muted)', fontSize: 15, margin: 0, maxWidth: 420, textAlign: 'center', lineHeight: '1.5' }}>
                 Không tìm thấy dữ liệu tổng hợp thực tế nào{localProject ? ` liên quan đến kho "${localProject}"` : ''} trong dữ liệu Đơn chung hiện tại.
               </p>
             </div>
@@ -16702,8 +16260,8 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
             <div style={{ width: 56, height: 56, borderRadius: 28, background: '#fef2f2', color: '#ef4444', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
               <AlertCircle size={28} />
             </div>
-            <h3 style={{ fontSize: 16, fontWeight: 700, color: 'var(--text)', margin: '0 0 8px 0' }}>Không có dữ liệu phát sinh</h3>
-            <p style={{ color: 'var(--text-muted)', fontSize: 13.5, margin: 0, maxWidth: 420, textAlign: 'center', lineHeight: '1.5' }}>
+            <h3 style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)', margin: '0 0 8px 0' }}>Không có dữ liệu phát sinh</h3>
+            <p style={{ color: 'var(--text-muted)', fontSize: 15, margin: 0, maxWidth: 420, textAlign: 'center', lineHeight: '1.5' }}>
               Không tìm thấy bản ghi {realReportSubTab === 'nhap' ? 'nhập' : 'xuất'} thực tế nào{localProject ? ` liên quan đến kho "${localProject}"` : ''} trong dữ liệu Đơn chung hiện tại.
             </p>
           </div>
@@ -16717,8 +16275,8 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
           <div style={{ width: 56, height: 56, borderRadius: 28, background: '#fef2f2', color: '#ef4444', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
             <AlertCircle size={28} />
           </div>
-          <h3 style={{ fontSize: 16, fontWeight: 700, color: 'var(--text)', margin: '0 0 8px 0' }}>Không có dữ liệu phát sinh</h3>
-          <p style={{ color: 'var(--text-muted)', fontSize: 13.5, margin: 0, maxWidth: 420, textAlign: 'center', lineHeight: '1.5' }}>
+          <h3 style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)', margin: '0 0 8px 0' }}>Không có dữ liệu phát sinh</h3>
+          <p style={{ color: 'var(--text-muted)', fontSize: 15, margin: 0, maxWidth: 420, textAlign: 'center', lineHeight: '1.5' }}>
             Không tìm thấy bản ghi giao nhận nào{localProject ? ` liên quan đến kho "${localProject}"` : ''}{statusFilter === 'approved_only' ? ' ở trạng thái đã phê duyệt' : ''} trong dữ liệu Đơn chung hiện tại.
           </p>
         </div>
@@ -16793,13 +16351,13 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
                   <th style={{ width: 95, minWidth: 95, fontSize: '12px', padding: '8px 10px', textAlign: 'center', verticalAlign: 'middle', whiteSpace: 'normal', lineHeight: '1.2' }}>
                     <span>Ngày nhập muộn nhất</span>
                   </th>
-                  <th style={{ width: 90, minWidth: 90, fontSize: '11px', padding: '8px 6px', textAlign: 'center', verticalAlign: 'middle', whiteSpace: 'normal', lineHeight: '1.2' }}>
+                  <th style={{ width: 90, minWidth: 90, fontSize: '12px', padding: '8px 6px', textAlign: 'center', verticalAlign: 'middle', whiteSpace: 'normal', lineHeight: '1.2' }}>
                     <span>Số ngày nhập muộn nhất đến hôm nay</span>
                   </th>
                   <th style={{ width: 95, minWidth: 95, fontSize: '12px', padding: '8px 10px', textAlign: 'center', verticalAlign: 'middle', whiteSpace: 'normal', lineHeight: '1.2' }}>
                     <span>Ngày xuất muộn nhất</span>
                   </th>
-                  <th style={{ width: 90, minWidth: 90, fontSize: '11px', padding: '8px 6px', textAlign: 'center', verticalAlign: 'middle', whiteSpace: 'normal', lineHeight: '1.2' }}>
+                  <th style={{ width: 90, minWidth: 90, fontSize: '12px', padding: '8px 6px', textAlign: 'center', verticalAlign: 'middle', whiteSpace: 'normal', lineHeight: '1.2' }}>
                     <span>Số ngày xuất muộn nhất đến hôm nay</span>
                   </th>
                   <th style={{ width: 145, minWidth: 145, fontSize: '12px', padding: '8px 10px', textAlign: 'center', verticalAlign: 'middle', whiteSpace: 'normal', lineHeight: '1.2' }}>
@@ -16807,7 +16365,7 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
                   </th>
                   <th 
                     onClick={() => toggleSort('estimatedUnitPrice')}
-                    style={{ width: 110, minWidth: 110, cursor: 'pointer', fontSize: '11px', padding: '8px 6px', textAlign: 'center', verticalAlign: 'middle', whiteSpace: 'normal', lineHeight: '1.2' }}
+                    style={{ width: 110, minWidth: 110, cursor: 'pointer', fontSize: '12px', padding: '8px 6px', textAlign: 'center', verticalAlign: 'middle', whiteSpace: 'normal', lineHeight: '1.2' }}
                   >
                     <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4, justifyContent: 'center', width: '100%' }}>
                       <span>Đơn giá trung bình tạm tính</span>
@@ -16816,7 +16374,7 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
                   </th>
                   <th 
                     onClick={() => toggleSort('valueOver30Days')}
-                    style={{ width: 130, minWidth: 130, cursor: 'pointer', fontSize: '11px', padding: '8px 6px', textAlign: 'center', verticalAlign: 'middle', whiteSpace: 'normal', lineHeight: '1.2' }}
+                    style={{ width: 130, minWidth: 130, cursor: 'pointer', fontSize: '12px', padding: '8px 6px', textAlign: 'center', verticalAlign: 'middle', whiteSpace: 'normal', lineHeight: '1.2' }}
                   >
                     <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4, justifyContent: 'center', width: '100%' }}>
                       <span>{isRealReport ? 'Thành tiền vật tư tồn thực tế >30 ngày' : 'Thành tiền vật tư tồn >30 ngày'}</span>
@@ -16825,7 +16383,7 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
                   </th>
                   <th 
                     onClick={() => toggleSort('materialClassification')}
-                    style={{ width: 110, minWidth: 110, cursor: 'pointer', fontSize: '11px', padding: '8px 6px', textAlign: 'center', verticalAlign: 'middle', whiteSpace: 'normal', lineHeight: '1.2' }}
+                    style={{ width: 110, minWidth: 110, cursor: 'pointer', fontSize: '12px', padding: '8px 6px', textAlign: 'center', verticalAlign: 'middle', whiteSpace: 'normal', lineHeight: '1.2' }}
                   >
                     <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4, justifyContent: 'center', width: '100%' }}>
                       <span>Phân loại vật tư</span>
@@ -16845,17 +16403,17 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
                       <td style={{ width: 50, minWidth: 50, maxWidth: 50, textAlign: 'center', fontSize: '12px', color: 'var(--text-muted)', padding: '6px 10px' }}>
                         {stt}
                       </td>
-                      <td style={{ width: 130, minWidth: 130, fontSize: '13px', fontWeight: 700, fontFamily: "'Roboto', sans-serif", color: 'var(--text)', padding: '6px 10px' }}>
+                      <td style={{ width: 130, minWidth: 130, fontSize: '15px', fontWeight: 700, fontFamily: "'Roboto', sans-serif", color: 'var(--text)', padding: '6px 10px' }}>
                         {item.maSAP}
                       </td>
-                      <td style={{ width: 75, minWidth: 75, fontSize: '13px', fontFamily: "'Roboto', sans-serif", color: 'var(--text-muted)', padding: '6px 10px' }}>
+                      <td style={{ width: 75, minWidth: 75, fontSize: '15px', fontFamily: "'Roboto', sans-serif", color: 'var(--text-muted)', padding: '6px 10px' }}>
                         {item.maVatTu || '—'}
                       </td>
                       {localProject === 'Tất cả kho BCH' && (
                         <td style={{ 
                           width: 150, 
                           minWidth: 150, 
-                          fontSize: '13px', 
+                          fontSize: '15px', 
                           fontWeight: 600, 
                           color: 'var(--primary-dark)', 
                           background: 'var(--primary-light)', 
@@ -16864,39 +16422,39 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
                           {item.project || '—'}
                         </td>
                       )}
-                      <td style={{ minWidth: 200, fontSize: '13px', fontWeight: 600, color: 'var(--text)', whiteSpace: 'normal', wordBreak: 'break-word', padding: '6px 10px' }}>
+                      <td style={{ minWidth: 200, fontSize: '15px', fontWeight: 600, color: 'var(--text)', whiteSpace: 'normal', wordBreak: 'break-word', padding: '6px 10px' }}>
                         {item.tenVatTu || '—'}
                       </td>
                       <td style={{ width: 60, minWidth: 60, textAlign: 'center', padding: '6px 10px' }}>
-                        <span className="badge badge-gray" style={{ fontSize: '11px', padding: '2px 6px' }}>{item.dvt || '—'}</span>
+                        <span className="badge badge-gray" style={{ fontSize: '12px', padding: '2px 6px' }}>{item.dvt || '—'}</span>
                       </td>
-                      <td style={{ width: 75, minWidth: 75, fontSize: '13px', color: 'var(--text-muted)', whiteSpace: 'normal', wordBreak: 'break-word', padding: '6px 10px' }}>
+                      <td style={{ width: 75, minWidth: 75, fontSize: '15px', color: 'var(--text-muted)', whiteSpace: 'normal', wordBreak: 'break-word', padding: '6px 10px' }}>
                         {item.thongSoKyThuat || '—'}
                       </td>
-                      <td style={{ width: 90, minWidth: 90, textAlign: 'right', fontSize: '13px', fontWeight: 700, color: '#10b981', padding: '6px 10px' }}>
+                      <td style={{ width: 90, minWidth: 90, textAlign: 'right', fontSize: '15px', fontWeight: 700, color: '#10b981', padding: '6px 10px' }}>
                         {item.received > 0 ? item.received.toLocaleString('vi-VN', { maximumFractionDigits: 2 }) : '0'}
                       </td>
-                      <td style={{ width: 90, minWidth: 90, textAlign: 'right', fontSize: '13px', fontWeight: 700, color: '#f97316', padding: '6px 10px' }}>
+                      <td style={{ width: 90, minWidth: 90, textAlign: 'right', fontSize: '15px', fontWeight: 700, color: '#f97316', padding: '6px 10px' }}>
                         {item.issued > 0 ? item.issued.toLocaleString('vi-VN', { maximumFractionDigits: 2 }) : '0'}
                       </td>
                       <td style={{
-                        width: 85, minWidth: 85, textAlign: isZero ? 'center' : 'right', fontSize: '13px', fontWeight: 800,
+                        width: 85, minWidth: 85, textAlign: isZero ? 'center' : 'right', fontSize: '15px', fontWeight: 800,
                         color: isNegative ? '#ef4444' : (isZero ? 'var(--text-muted)' : 'var(--primary)'),
                         background: isNegative ? '#fef2f2' : (isZero ? 'transparent' : 'var(--primary-light)'),
                         padding: '6px 10px'
                       }}>
                         {isZero ? '—' : item.stock.toLocaleString('vi-VN', { maximumFractionDigits: 2 })}
                       </td>
-                      <td style={{ width: 95, minWidth: 95, textAlign: 'center', fontSize: '13px', color: 'var(--text-muted)', padding: '6px 10px' }}>
+                      <td style={{ width: 95, minWidth: 95, textAlign: 'center', fontSize: '15px', color: 'var(--text-muted)', padding: '6px 10px' }}>
                         {formatDate(item.latestReceivedDate)}
                       </td>
-                      <td style={{ width: 90, minWidth: 90, textAlign: 'center', fontSize: '13px', fontWeight: 700, color: item.latestReceivedDate ? '#475569' : 'var(--text-muted)', padding: '6px 10px' }}>
+                      <td style={{ width: 90, minWidth: 90, textAlign: 'center', fontSize: '15px', fontWeight: 700, color: item.latestReceivedDate ? '#475569' : 'var(--text-muted)', padding: '6px 10px' }}>
                         {getDaysToToday(item.latestReceivedDate)}
                       </td>
-                      <td style={{ width: 95, minWidth: 95, textAlign: 'center', fontSize: '13px', color: 'var(--text-muted)', padding: '6px 10px' }}>
+                      <td style={{ width: 95, minWidth: 95, textAlign: 'center', fontSize: '15px', color: 'var(--text-muted)', padding: '6px 10px' }}>
                         {formatDate(item.latestIssuedDate)}
                       </td>
-                      <td style={{ width: 90, minWidth: 90, textAlign: 'center', fontSize: '13px', fontWeight: 700, color: item.latestIssuedDate ? '#475569' : 'var(--text-muted)', padding: '6px 10px' }}>
+                      <td style={{ width: 90, minWidth: 90, textAlign: 'center', fontSize: '15px', fontWeight: 700, color: item.latestIssuedDate ? '#475569' : 'var(--text-muted)', padding: '6px 10px' }}>
                         {getDaysToToday(item.latestIssuedDate)}
                       </td>
                       <td style={{ width: 145, minWidth: 145, textAlign: 'center', padding: '6px 10px' }}>
@@ -16913,7 +16471,7 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
                           }
                           return (
                             <span className="badge" style={{
-                              fontSize: '11px',
+                              fontSize: '12px',
                               padding: '2px 6px',
                               borderRadius: '4px',
                               fontWeight: 700,
@@ -16930,7 +16488,7 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
                       </td>
 
                       {/* Đơn giá trung bình tạm tính */}
-                      <td style={{ width: 110, minWidth: 110, textAlign: 'right', padding: '6px 10px', fontSize: '13px', fontWeight: 700, color: 'var(--primary)' }}>
+                      <td style={{ width: 110, minWidth: 110, textAlign: 'right', padding: '6px 10px', fontSize: '15px', fontWeight: 700, color: 'var(--primary)' }}>
                         {(() => {
                           const price = item.estimatedUnitPrice || 0;
                           return price > 0 ? price.toLocaleString('vi-VN') : '—';
@@ -16939,7 +16497,7 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
 
                       {/* Thành tiền vật tư tồn >30 ngày */}
                       <td style={{
-                        width: 130, minWidth: 130, textAlign: 'right', fontSize: '13px', fontWeight: 800,
+                        width: 130, minWidth: 130, textAlign: 'right', fontSize: '15px', fontWeight: 800,
                         color: item.valueOver30Days > 0 ? '#b91c1c' : 'var(--text-muted)',
                         background: item.valueOver30Days > 0 ? '#fff5f5' : 'transparent',
                         padding: '6px 10px'
@@ -17028,7 +16586,7 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
             flexShrink: 0,
             boxShadow: 'var(--shadow-sm)'
           }}>
-            <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>
+            <div style={{ fontSize: 15, color: 'var(--text-muted)' }}>
               Hiển thị từ <strong>{Math.min(reportData.length, (currentPage - 1) * pageSize + 1)}</strong> đến{' '}
               <strong>{Math.min(reportData.length, currentPage * pageSize)}</strong> trong tổng số{' '}
               <strong>{reportData.length.toLocaleString()}</strong> mặt hàng
@@ -17050,7 +16608,7 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
                 >
                   ‹
                 </button>
-                <span style={{ fontSize: 13, color: 'var(--text)', fontWeight: 500, padding: '0 4px' }}>
+                <span style={{ fontSize: 15, color: 'var(--text)', fontWeight: 500, padding: '0 4px' }}>
                   Trang <strong>{currentPage}</strong> / {totalPages}
                 </span>
                 <button
@@ -17113,8 +16671,8 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
               background: '#f8fafc'
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <HelpCircle size={22} color="#0284c7" />
-                <h3 style={{ fontSize: 16, fontWeight: 800, color: '#0f172a', margin: 0 }}>
+                <Info size={22} color="#0284c7" />
+                <h3 style={{ fontSize: 15, fontWeight: 800, color: '#0f172a', margin: 0 }}>
                   Giải Thích Logic Tổng Hợp & Khối Lượng Thực
                 </h3>
               </div>
@@ -17150,7 +16708,7 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
                 style={{
                   padding: '12px 16px',
                   fontWeight: 700,
-                  fontSize: 13.5,
+                  fontSize: 15,
                   border: 'none',
                   background: 'none',
                   color: explainModalSubTab === 'nhap' ? 'var(--primary)' : 'var(--text-muted)',
@@ -17167,7 +16725,7 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
                 style={{
                   padding: '12px 16px',
                   fontWeight: 700,
-                  fontSize: 13.5,
+                  fontSize: 15,
                   border: 'none',
                   background: 'none',
                   color: explainModalSubTab === 'xuat' ? 'var(--primary)' : 'var(--text-muted)',
@@ -17182,7 +16740,7 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
 
             {/* Content */}
             <div style={{ padding: '24px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 18 }}>
-              <p style={{ margin: 0, fontSize: 13.5, color: '#475569', lineHeight: 1.6 }}>
+              <p style={{ margin: 0, fontSize: 15, color: '#475569', lineHeight: 1.6 }}>
                 Hệ thống tự động tính toán <strong>Hệ số Logic tổng hợp</strong> và <strong>Khối lượng thực</strong> dựa trên phân nhóm đơn vị (được quản lý tại tab <strong>Kho dự án</strong>).
               </p>
 
@@ -17190,12 +16748,12 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
                 <>
                   {/* Case 1 */}
                   <div>
-                    <h4 style={{ fontSize: 14, fontWeight: 700, color: '#0369a1', margin: '0 0 10px 0', display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <h4 style={{ fontSize: 15, fontWeight: 700, color: '#0369a1', margin: '0 0 10px 0', display: 'flex', alignItems: 'center', gap: 6 }}>
                       <span style={{ display: 'inline-block', width: 6, height: 6, borderRadius: '50%', background: '#0369a1' }} />
                       Trường hợp 1: Đơn vị GIAO là Kho / Dự án hiện tại (Nhận về giảm nhận)
                     </h4>
                     <div style={{ border: '1px solid #e2e8f0', borderRadius: 8, overflow: 'hidden' }}>
-                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 15 }}>
                         <thead>
                           <tr style={{ background: '#f1f5f9', borderBottom: '1px solid #e2e8f0' }}>
                             <th style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 600, color: '#334155' }}>Đơn vị NHẬN thuộc nhóm</th>
@@ -17226,12 +16784,12 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
 
                   {/* Case 2 */}
                   <div>
-                    <h4 style={{ fontSize: 14, fontWeight: 700, color: '#0891b2', margin: '0 0 10px 0', display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <h4 style={{ fontSize: 15, fontWeight: 700, color: '#0891b2', margin: '0 0 10px 0', display: 'flex', alignItems: 'center', gap: 6 }}>
                       <span style={{ display: 'inline-block', width: 6, height: 6, borderRadius: '50%', background: '#0891b2' }} />
                       Trường hợp 2: Đơn vị NHẬN là Kho / Dự án hiện tại
                     </h4>
                     <div style={{ border: '1px solid #e2e8f0', borderRadius: 8, overflow: 'hidden' }}>
-                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 15 }}>
                         <thead>
                           <tr style={{ background: '#f1f5f9', borderBottom: '1px solid #e2e8f0' }}>
                             <th style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 600, color: '#334155' }}>Đơn vị GIAO thuộc nhóm</th>
@@ -17264,12 +16822,12 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
                 <>
                   {/* Case 1 for Xuat */}
                   <div>
-                    <h4 style={{ fontSize: 14, fontWeight: 700, color: '#0369a1', margin: '0 0 10px 0', display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <h4 style={{ fontSize: 15, fontWeight: 700, color: '#0369a1', margin: '0 0 10px 0', display: 'flex', alignItems: 'center', gap: 6 }}>
                       <span style={{ display: 'inline-block', width: 6, height: 6, borderRadius: '50%', background: '#0369a1' }} />
                       Trường hợp 1: Đơn vị GIAO là Kho / Dự án hiện tại
                     </h4>
                     <div style={{ border: '1px solid #e2e8f0', borderRadius: 8, overflow: 'hidden' }}>
-                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 15 }}>
                         <thead>
                           <tr style={{ background: '#f1f5f9', borderBottom: '1px solid #e2e8f0' }}>
                             <th style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 600, color: '#334155' }}>Đơn vị NHẬN thuộc nhóm</th>
@@ -17300,12 +16858,12 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
 
                   {/* Case 2 for Xuat */}
                   <div>
-                    <h4 style={{ fontSize: 14, fontWeight: 700, color: '#0891b2', margin: '0 0 10px 0', display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <h4 style={{ fontSize: 15, fontWeight: 700, color: '#0891b2', margin: '0 0 10px 0', display: 'flex', alignItems: 'center', gap: 6 }}>
                       <span style={{ display: 'inline-block', width: 6, height: 6, borderRadius: '50%', background: '#0891b2' }} />
                       Trường hợp 2: Đơn vị NHẬN là Kho / Dự án hiện tại
                     </h4>
                     <div style={{ border: '1px solid #e2e8f0', borderRadius: 8, overflow: 'hidden' }}>
-                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 15 }}>
                         <thead>
                           <tr style={{ background: '#f1f5f9', borderBottom: '1px solid #e2e8f0' }}>
                             <th style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 600, color: '#334155' }}>Đơn vị GIAO thuộc nhóm</th>
@@ -17338,10 +16896,10 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
 
               {/* Formula */}
               <div style={{ background: '#f0f9ff', border: '1px solid #e0f2fe', borderRadius: 8, padding: '12px 16px' }}>
-                <span style={{ fontSize: 13, fontWeight: 700, color: '#0369a1', display: 'block', marginBottom: 4 }}>
+                <span style={{ fontSize: 15, fontWeight: 700, color: '#0369a1', display: 'block', marginBottom: 4 }}>
                   Công thức tính Khối lượng thực:
                 </span>
-                <code style={{ fontSize: 13, fontWeight: 700, color: '#0f172a', fontFamily: 'var(--font-mono)' }}>
+                <code style={{ fontSize: 15, fontWeight: 700, color: '#0f172a', fontFamily: 'var(--font-mono)' }}>
                   Khối lượng thực = Khối lượng {explainModalSubTab === 'nhap' ? 'nhập' : 'xuất'} * Hệ số Logic tổng hợp
                 </code>
               </div>
@@ -17363,7 +16921,7 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
                   padding: '0 18px',
                   borderRadius: 6,
                   fontWeight: 700,
-                  fontSize: 13,
+                  fontSize: 15,
                   cursor: 'pointer',
                   background: 'var(--primary)',
                   color: '#ffffff',
@@ -17917,7 +17475,7 @@ function SummaryCompilationTab({ giaoRows, nhanRows, configs = [], selectedProje
         gap: 16
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-          <span style={{ fontWeight: 600, fontSize: 13.5, color: '#334155' }}>Cấu hình tổng hợp:</span>
+          <span style={{ fontWeight: 600, fontSize: 15, color: '#334155' }}>Cấu hình tổng hợp:</span>
           <select 
             value={selectedConfigId || ''} 
             onChange={(e) => setSelectedConfigId(Number(e.target.value))}
@@ -17926,7 +17484,7 @@ function SummaryCompilationTab({ giaoRows, nhanRows, configs = [], selectedProje
               borderRadius: 6,
               border: '1px solid #cbd5e1',
               background: '#ffffff',
-              fontSize: 13.5,
+              fontSize: 15,
               fontWeight: 600,
               color: '#1e293b',
               boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
@@ -17948,22 +17506,22 @@ function SummaryCompilationTab({ giaoRows, nhanRows, configs = [], selectedProje
           <div style={{ display: 'flex', alignItems: 'center', gap: 24, flexWrap: 'wrap' }}>
             {/* Stat Item 1: Total records */}
             <div style={{ borderLeft: '3px solid #64748b', paddingLeft: 8 }}>
-              <div style={{ fontSize: 10.5, color: '#64748b', fontWeight: 500, marginBottom: 1 }}>Dòng sau phân bổ</div>
-              <div style={{ fontSize: 14.5, fontWeight: 700, color: '#0f172a' }}>{statsTotalRows.toLocaleString('vi-VN')} dòng</div>
+              <div style={{ fontSize: 12, color: '#64748b', fontWeight: 500, marginBottom: 1 }}>Dòng sau phân bổ</div>
+              <div style={{ fontSize: 15, fontWeight: 700, color: '#0f172a' }}>{statsTotalRows.toLocaleString('vi-VN')} dòng</div>
             </div>
 
             {/* Stat Item 2: Consolidated Import Volume */}
             <div style={{ borderLeft: `3px solid ${totalNhap >= 0 ? '#10b981' : '#ef4444'}`, paddingLeft: 8 }}>
-              <div style={{ fontSize: 10.5, color: '#64748b', fontWeight: 500, marginBottom: 1 }}>Khối lượng Nhập ròng</div>
-              <div style={{ fontSize: 14.5, fontWeight: 700, color: totalNhap < 0 ? '#dc2626' : '#10b981' }}>
+              <div style={{ fontSize: 12, color: '#64748b', fontWeight: 500, marginBottom: 1 }}>Khối lượng Nhập ròng</div>
+              <div style={{ fontSize: 15, fontWeight: 700, color: totalNhap < 0 ? '#dc2626' : '#10b981' }}>
                 {totalNhap.toLocaleString('vi-VN', { maximumFractionDigits: 2 })}
               </div>
             </div>
 
             {/* Stat Item 3: Consolidated Export Volume */}
             <div style={{ borderLeft: `3px solid ${totalXuat >= 0 ? '#3b82f6' : '#ef4444'}`, paddingLeft: 8 }}>
-              <div style={{ fontSize: 10.5, color: '#64748b', fontWeight: 500, marginBottom: 1 }}>Khối lượng Xuất ròng</div>
-              <div style={{ fontSize: 14.5, fontWeight: 700, color: totalXuat < 0 ? '#dc2626' : '#3b82f6' }}>
+              <div style={{ fontSize: 12, color: '#64748b', fontWeight: 500, marginBottom: 1 }}>Khối lượng Xuất ròng</div>
+              <div style={{ fontSize: 15, fontWeight: 700, color: totalXuat < 0 ? '#dc2626' : '#3b82f6' }}>
                 {totalXuat.toLocaleString('vi-VN', { maximumFractionDigits: 2 })}
               </div>
             </div>
@@ -17984,7 +17542,7 @@ function SummaryCompilationTab({ giaoRows, nhanRows, configs = [], selectedProje
               gap: 6,
               height: 32,
               padding: '0 12px',
-              fontSize: 13,
+              fontSize: 15,
               borderRadius: 6
             }}
           >
@@ -18023,7 +17581,7 @@ function SummaryCompilationTab({ giaoRows, nhanRows, configs = [], selectedProje
                   borderRadius: 8,
                   border: '1px solid #cbd5e1',
                   background: '#ffffff',
-                  fontSize: 14,
+                  fontSize: 15,
                   outline: 'none',
                 }}
               />
@@ -18043,11 +17601,11 @@ function SummaryCompilationTab({ giaoRows, nhanRows, configs = [], selectedProje
             {/* Right filters */}
             <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 12 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <span style={{ fontSize: 13, fontWeight: 550, color: '#64748b' }}>Nhóm:</span>
+                <span style={{ fontSize: 15, fontWeight: 550, color: '#64748b' }}>Nhóm:</span>
                 <select 
                   value={groupFilter} 
                   onChange={(e) => setGroupFilter(e.target.value)} 
-                  style={{ padding: '7px 12px', border: '1px solid #cbd5e1', borderRadius: 8, fontSize: 13.5, background: '#ffffff', fontWeight: 550 }}
+                  style={{ padding: '7px 12px', border: '1px solid #cbd5e1', borderRadius: 8, fontSize: 15, background: '#ffffff', fontWeight: 550 }}
                 >
                   <option value="all">Tất cả</option>
                   <option value="tinhToan">Tính toán</option>
@@ -18056,11 +17614,11 @@ function SummaryCompilationTab({ giaoRows, nhanRows, configs = [], selectedProje
               </div>
 
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <span style={{ fontSize: 13, fontWeight: 550, color: '#64748b' }}>Nguồn:</span>
+                <span style={{ fontSize: 15, fontWeight: 550, color: '#64748b' }}>Nguồn:</span>
                 <select 
                   value={sourceFilter} 
                   onChange={(e) => setSourceFilter(e.target.value)} 
-                  style={{ padding: '7px 12px', border: '1px solid #cbd5e1', borderRadius: 8, fontSize: 13.5, background: '#ffffff', fontWeight: 550 }}
+                  style={{ padding: '7px 12px', border: '1px solid #cbd5e1', borderRadius: 8, fontSize: 15, background: '#ffffff', fontWeight: 550 }}
                 >
                   <option value="all">Tất cả nguồn</option>
                   <option value="giao">Đơn Giao</option>
@@ -18078,21 +17636,21 @@ function SummaryCompilationTab({ giaoRows, nhanRows, configs = [], selectedProje
                   <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: 1600 }}>
                     <thead style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0', position: 'sticky', top: 0, zIndex: 10 }}>
                       <tr>
-                        <th style={{ padding: '12px 14px', fontSize: 12.5, fontWeight: 700, color: '#475569', textTransform: 'uppercase', width: 60, textAlign: 'center' }}>STT</th>
-                        <th style={{ padding: '12px 14px', fontSize: 12.5, fontWeight: 700, color: '#475569', textTransform: 'uppercase', width: 115, textAlign: 'center' }}>Nhóm</th>
-                        <th style={{ padding: '12px 14px', fontSize: 12.5, fontWeight: 700, color: '#475569', textTransform: 'uppercase', width: 105, textAlign: 'center' }}>Nguồn</th>
-                        <th style={{ padding: '12px 14px', fontSize: 12.5, fontWeight: 700, color: '#475569', textTransform: 'uppercase', width: 110, textAlign: 'center' }}>Ngày</th>
-                        <th style={{ padding: '12px 14px', fontSize: 12.5, fontWeight: 700, color: '#475569', textTransform: 'uppercase', width: 105 }}>Mã Vật tư</th>
-                        <th style={{ padding: '12px 14px', fontSize: 12.5, fontWeight: 700, color: '#475569', textTransform: 'uppercase', width: 220 }}>Tên Vật tư</th>
-                        <th style={{ padding: '12px 14px', fontSize: 12.5, fontWeight: 700, color: '#475569', textTransform: 'uppercase', width: 65, textAlign: 'center' }}>ĐVT</th>
-                        <th style={{ padding: '12px 14px', fontSize: 12.5, fontWeight: 700, color: '#475569', textTransform: 'uppercase', width: 170 }}>Mã đơn nhập kho</th>
-                        <th style={{ padding: '12px 14px', fontSize: 12.5, fontWeight: 700, color: '#475569', textTransform: 'uppercase', width: 170 }}>Mã đơn xuất kho</th>
-                        <th style={{ padding: '12px 14px', fontSize: 12.5, fontWeight: 700, color: '#475569', textTransform: 'uppercase', width: 160 }}>Đơn vị giao</th>
-                        <th style={{ padding: '12px 14px', fontSize: 12.5, fontWeight: 700, color: '#475569', textTransform: 'uppercase', width: 160 }}>Đơn vị nhận</th>
-                        <th style={{ padding: '12px 14px', fontSize: 12.5, fontWeight: 700, color: '#475569', textTransform: 'uppercase', width: 180 }}>Đơn vị đối tác</th>
-                        <th style={{ padding: '12px 14px', fontSize: 12.5, fontWeight: 700, color: '#475569', textTransform: 'uppercase', width: 140, textAlign: 'right' }}>KL Nhập</th>
-                        <th style={{ padding: '12px 14px', fontSize: 12.5, fontWeight: 700, color: '#475569', textTransform: 'uppercase', width: 140, textAlign: 'right' }}>KL Xuất</th>
-                        <th style={{ padding: '12px 14px', fontSize: 12.5, fontWeight: 700, color: '#475569', textTransform: 'uppercase', width: 115, textAlign: 'center' }}>Trạng thái</th>
+                        <th style={{ padding: '12px 14px', fontSize: 12, fontWeight: 700, color: '#475569', textTransform: 'uppercase', width: 60, textAlign: 'center' }}>STT</th>
+                        <th style={{ padding: '12px 14px', fontSize: 12, fontWeight: 700, color: '#475569', textTransform: 'uppercase', width: 115, textAlign: 'center' }}>Nhóm</th>
+                        <th style={{ padding: '12px 14px', fontSize: 12, fontWeight: 700, color: '#475569', textTransform: 'uppercase', width: 105, textAlign: 'center' }}>Nguồn</th>
+                        <th style={{ padding: '12px 14px', fontSize: 12, fontWeight: 700, color: '#475569', textTransform: 'uppercase', width: 110, textAlign: 'center' }}>Ngày</th>
+                        <th style={{ padding: '12px 14px', fontSize: 12, fontWeight: 700, color: '#475569', textTransform: 'uppercase', width: 105 }}>Mã Vật tư</th>
+                        <th style={{ padding: '12px 14px', fontSize: 12, fontWeight: 700, color: '#475569', textTransform: 'uppercase', width: 220 }}>Tên Vật tư</th>
+                        <th style={{ padding: '12px 14px', fontSize: 12, fontWeight: 700, color: '#475569', textTransform: 'uppercase', width: 65, textAlign: 'center' }}>ĐVT</th>
+                        <th style={{ padding: '12px 14px', fontSize: 12, fontWeight: 700, color: '#475569', textTransform: 'uppercase', width: 170 }}>Mã đơn nhập kho</th>
+                        <th style={{ padding: '12px 14px', fontSize: 12, fontWeight: 700, color: '#475569', textTransform: 'uppercase', width: 170 }}>Mã đơn xuất kho</th>
+                        <th style={{ padding: '12px 14px', fontSize: 12, fontWeight: 700, color: '#475569', textTransform: 'uppercase', width: 160 }}>Đơn vị giao</th>
+                        <th style={{ padding: '12px 14px', fontSize: 12, fontWeight: 700, color: '#475569', textTransform: 'uppercase', width: 160 }}>Đơn vị nhận</th>
+                        <th style={{ padding: '12px 14px', fontSize: 12, fontWeight: 700, color: '#475569', textTransform: 'uppercase', width: 180 }}>Đơn vị đối tác</th>
+                        <th style={{ padding: '12px 14px', fontSize: 12, fontWeight: 700, color: '#475569', textTransform: 'uppercase', width: 140, textAlign: 'right' }}>KL Nhập</th>
+                        <th style={{ padding: '12px 14px', fontSize: 12, fontWeight: 700, color: '#475569', textTransform: 'uppercase', width: 140, textAlign: 'right' }}>KL Xuất</th>
+                        <th style={{ padding: '12px 14px', fontSize: 12, fontWeight: 700, color: '#475569', textTransform: 'uppercase', width: 115, textAlign: 'center' }}>Trạng thái</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -18109,7 +17667,7 @@ function SummaryCompilationTab({ giaoRows, nhanRows, configs = [], selectedProje
                           }}
                           className="table-row-hover"
                           >
-                            <td style={{ padding: '10px 14px', textAlign: 'center', fontSize: 13.5, color: '#64748b' }}>{globalIndex}</td>
+                            <td style={{ padding: '10px 14px', textAlign: 'center', fontSize: 15, color: '#64748b' }}>{globalIndex}</td>
                             
                             {/* Nhóm Badge */}
                             <td style={{ padding: '10px 14px', textAlign: 'center' }}>
@@ -18144,78 +17702,78 @@ function SummaryCompilationTab({ giaoRows, nhanRows, configs = [], selectedProje
                             </td>
 
                             {/* Date */}
-                            <td style={{ padding: '10px 14px', textAlign: 'center', fontSize: 13, color: '#334155' }}>
+                            <td style={{ padding: '10px 14px', textAlign: 'center', fontSize: 15, color: '#334155' }}>
                               {row.ngayXuatNhap}
                             </td>
 
                             {/* Mã SAP/Mã vật tư */}
-                            <td style={{ padding: '10px 14px', fontSize: 13, fontWeight: 500, color: '#475569' }}>
+                            <td style={{ padding: '10px 14px', fontSize: 15, fontWeight: 500, color: '#475569' }}>
                               {row.maSAP || row.maVatTu || '-'}
                             </td>
 
                             {/* Tên vật tư */}
-                            <td style={{ padding: '10px 14px', fontSize: 13.5, color: '#0f172a', fontWeight: 500 }}>
+                            <td style={{ padding: '10px 14px', fontSize: 15, color: '#0f172a', fontWeight: 500 }}>
                               <div style={{ maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={row.tenVatTu}>
                                 {row.tenVatTu}
                               </div>
                               {row.thongSoKyThuat && (
-                                <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 2, maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={row.thongSoKyThuat}>
+                                <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 2, maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={row.thongSoKyThuat}>
                                   {row.thongSoKyThuat}
                                 </div>
                               )}
                             </td>
 
                             {/* ĐVT */}
-                            <td style={{ padding: '10px 14px', textAlign: 'center', fontSize: 13, color: '#475569' }}>{row.dvt || '-'}</td>
+                            <td style={{ padding: '10px 14px', textAlign: 'center', fontSize: 15, color: '#475569' }}>{row.dvt || '-'}</td>
 
                             {/* Mã đơn nhập kho */}
-                            <td style={{ padding: '10px 14px', fontSize: 13, color: '#475569' }}>
+                            <td style={{ padding: '10px 14px', fontSize: 15, color: '#475569' }}>
                               <div style={{ maxWidth: 150, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={row.maDonNhapKho || ''}>
                                 {row.maDonNhapKho || '-'}
                               </div>
                             </td>
 
                             {/* Mã đơn xuất kho */}
-                            <td style={{ padding: '10px 14px', fontSize: 13, color: '#475569' }}>
+                            <td style={{ padding: '10px 14px', fontSize: 15, color: '#475569' }}>
                               <div style={{ maxWidth: 150, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={row.maDonXuatKho || ''}>
                                 {row.maDonXuatKho || '-'}
                               </div>
                             </td>
 
                             {/* Đơn vị giao */}
-                            <td style={{ padding: '10px 14px', fontSize: 13, color: '#334155', fontWeight: 500 }}>
+                            <td style={{ padding: '10px 14px', fontSize: 15, color: '#334155', fontWeight: 500 }}>
                               <div style={{ maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={row.donViGiao || ''}>
                                 {row.donViGiao || '-'}
                               </div>
                             </td>
 
                             {/* Đơn vị nhận */}
-                            <td style={{ padding: '10px 14px', fontSize: 13, color: '#334155', fontWeight: 500 }}>
+                            <td style={{ padding: '10px 14px', fontSize: 15, color: '#334155', fontWeight: 500 }}>
                               <div style={{ maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={row.donViNhan || ''}>
                                 {row.donViNhan || '-'}
                               </div>
                             </td>
 
                             {/* Đơn vị đối tác */}
-                            <td style={{ padding: '10px 14px', fontSize: 13, color: '#334155', fontWeight: 500 }}>
+                            <td style={{ padding: '10px 14px', fontSize: 15, color: '#334155', fontWeight: 500 }}>
                               <div style={{ maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={row.compiledUnit}>
                                 {row.compiledUnit}
                               </div>
                             </td>
 
                             {/* Khối lượng Nhập */}
-                            <td style={{ padding: '10px 14px', textAlign: 'right', fontSize: 13.5 }}>
+                            <td style={{ padding: '10px 14px', textAlign: 'right', fontSize: 15 }}>
                               {formatValueWithNegColor(row.khoiLuongNhap)}
                             </td>
 
                             {/* Khối lượng Xuất */}
-                            <td style={{ padding: '10px 14px', textAlign: 'right', fontSize: 13.5 }}>
+                            <td style={{ padding: '10px 14px', textAlign: 'right', fontSize: 15 }}>
                               {formatValueWithNegColor(row.khoiLuongXuat)}
                             </td>
 
                             {/* Trạng thái badge */}
                             <td style={{ padding: '10px 14px', textAlign: 'center' }}>
-                              <span className={`badge ${getTrangThaiColor(row.trangThai)}`} style={{ fontSize: 11.5 }}>
+                              <span className={`badge ${getTrangThaiColor(row.trangThai)}`} style={{ fontSize: 12 }}>
                                 {row.trangThai || 'Chưa duyệt'}
                               </span>
                             </td>
@@ -18232,7 +17790,7 @@ function SummaryCompilationTab({ giaoRows, nhanRows, configs = [], selectedProje
                 display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                 padding: '12px 18px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 10
               }}>
-                <div style={{ fontSize: 13.5, color: '#64748b' }}>
+                <div style={{ fontSize: 15, color: '#64748b' }}>
                   Hiển thị dòng <strong>{((currentPage - 1) * pageSize + 1).toLocaleString('vi-VN')}</strong> đến <strong>{Math.min(currentPage * pageSize, filteredRows.length).toLocaleString('vi-VN')}</strong> trong tổng số <strong>{filteredRows.length.toLocaleString('vi-VN')}</strong> dòng kết quả
                 </div>
 
@@ -18246,7 +17804,7 @@ function SummaryCompilationTab({ giaoRows, nhanRows, configs = [], selectedProje
                     }}
                     style={{
                       padding: '5px 8px', border: '1px solid #cbd5e1', borderRadius: 6,
-                      fontSize: 12.5, background: '#ffffff', marginRight: 12
+                      fontSize: 12, background: '#ffffff', marginRight: 12
                     }}
                   >
                     <option value={50}>50 dòng/trang</option>
@@ -18271,7 +17829,7 @@ function SummaryCompilationTab({ giaoRows, nhanRows, configs = [], selectedProje
                   >
                     Trước
                   </button>
-                  <span style={{ fontSize: 13, fontWeight: 600, padding: '0 8px', color: '#334155' }}>
+                  <span style={{ fontSize: 15, fontWeight: 600, padding: '0 8px', color: '#334155' }}>
                     Trang {currentPage} / {totalPages}
                   </span>
                   <button
@@ -18296,7 +17854,7 @@ function SummaryCompilationTab({ giaoRows, nhanRows, configs = [], selectedProje
           ) : (
             <div style={{ padding: 24, background: '#f8fafc', borderRadius: 12, border: '1px solid #e2e8f0' }}>
               <div className="empty-state" style={{ minHeight: 180 }}>
-                <span className="text-muted" style={{ fontSize: 14 }}>Không tìm thấy dòng kết quả nào phù hợp với bộ lọc hiện tại.</span>
+                <span className="text-muted" style={{ fontSize: 15 }}>Không tìm thấy dòng kết quả nào phù hợp với bộ lọc hiện tại.</span>
               </div>
             </div>
           )}
@@ -18304,7 +17862,7 @@ function SummaryCompilationTab({ giaoRows, nhanRows, configs = [], selectedProje
       ) : (
         <div style={{ padding: 24 }}>
           <div className="empty-state" style={{ minHeight: 240 }}>
-            <span className="text-muted" style={{ fontSize: 14 }}>Vui lòng chọn hoặc cấu hình một loại tổng hợp để xem dữ liệu.</span>
+            <span className="text-muted" style={{ fontSize: 15 }}>Vui lòng chọn hoặc cấu hình một loại tổng hợp để xem dữ liệu.</span>
           </div>
         </div>
       )}
@@ -18332,7 +17890,7 @@ function PlaceholderTab({ icon, title, desc }) {
           border: '1px solid #fde68a',
           borderRadius: 8,
           padding: '8px 16px',
-          fontSize: 14,
+          fontSize: 15,
           color: '#92400e',
           fontWeight: 600,
         }}>
@@ -18445,10 +18003,10 @@ function PreviewImportModal({ isOpen, onClose, onConfirm, rows, fileName, type, 
               <FileSpreadsheet size={20} color="var(--primary)" />
             </div>
             <div>
-              <div style={{ fontWeight: 700, fontSize: 16, color: 'var(--text)' }}>
+              <div style={{ fontWeight: 700, fontSize: 15, color: 'var(--text)' }}>
                 Xem trước dữ liệu — {label}
               </div>
-              <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 2 }}>
+              <div style={{ fontSize: 15, color: 'var(--text-muted)', marginTop: 2 }}>
                 {fileName} · {rows.length.toLocaleString()} dòng dữ liệu
                 {finalApprovedRows.length > 10 && <span style={{ color: '#f59e0b', marginLeft: 4 }}>(hiển thị 10 dòng đầu)</span>}
               </div>
@@ -18470,7 +18028,7 @@ function PreviewImportModal({ isOpen, onClose, onConfirm, rows, fileName, type, 
             borderBottom: '1px solid #bae6fd',
             padding: '12px 24px',
             color: '#0369a1',
-            fontSize: '13.5px',
+            fontSize: '15px',
             fontWeight: 500,
             display: 'flex',
             alignItems: 'center',
@@ -18492,7 +18050,7 @@ function PreviewImportModal({ isOpen, onClose, onConfirm, rows, fileName, type, 
             borderBottom: finalApprovedRows.length === 0 ? '1px solid #fee2e2' : '1px solid #fef3c7',
             padding: '12px 24px',
             color: finalApprovedRows.length === 0 ? '#991b1b' : '#92400e',
-            fontSize: 13,
+            fontSize: 15,
             display: 'flex',
             alignItems: 'flex-start',
             gap: 10,
@@ -18503,7 +18061,7 @@ function PreviewImportModal({ isOpen, onClose, onConfirm, rows, fileName, type, 
             <div style={{ flex: 1, lineHeight: 1.5 }}>
               {finalApprovedRows.length === 0 ? (
                 <span>
-                  <strong style={{ fontSize: '14px', display: 'block', marginBottom: '4px', color: '#b91c1c' }}>⚠️ KIỂM TRA LỖI KHỚP DÀNH CHO KHO DỰ ÁN</strong>
+                  <strong style={{ fontSize: '15px', display: 'block', marginBottom: '4px', color: '#b91c1c' }}>⚠️ KIỂM TRA LỖI KHỚP DÀNH CHO KHO DỰ ÁN</strong>
                   Không có bất kỳ dòng dữ liệu hợp lệ nào trong tệp tải lên khớp với Kho dự án đã chọn <strong>"{selectedProject}"</strong> hoặc chưa được duyệt hoặc bị trùng lặp. Hệ thống sẽ <strong>bỏ qua toàn bộ dữ liệu</strong> và không thể lưu tệp này.
                   {uniqueUnits.length > 0 && (
                     <div style={{ marginTop: 8, padding: '8px 12px', background: '#fff', borderRadius: '6px', border: '1px solid #fee2e2', fontWeight: 500, color: '#b91c1c' }}>
@@ -18513,7 +18071,7 @@ function PreviewImportModal({ isOpen, onClose, onConfirm, rows, fileName, type, 
                 </span>
               ) : (
                 <span>
-                  <strong style={{ fontSize: '14px', display: 'block', marginBottom: '4px' }}>⚠️ LƯU Ý BỎ QUA DỮ LIỆU KHÔNG TRÙNG KHỚP KHO</strong>
+                  <strong style={{ fontSize: '15px', display: 'block', marginBottom: '4px' }}>⚠️ LƯU Ý BỎ QUA DỮ LIỆU KHÔNG TRÙNG KHỚP KHO</strong>
                   Phát hiện <strong>{mismatchCount.toLocaleString()} dòng</strong> có cột <strong>{unitLabel}</strong> không trùng khớp hoàn toàn với tên Kho dự án đang chọn <strong>"{selectedProject}"</strong>. Hệ thống sẽ tự động <strong>bỏ qua {mismatchCount.toLocaleString()} dòng này</strong> và chỉ nhập/lưu {finalApprovedRows.length.toLocaleString()} dòng hợp lệ.
                 </span>
               )}
@@ -18528,7 +18086,7 @@ function PreviewImportModal({ isOpen, onClose, onConfirm, rows, fileName, type, 
             borderBottom: '1px solid #fed7aa',
             padding: '12px 24px',
             color: '#c2410c',
-            fontSize: 13,
+            fontSize: 15,
             display: 'flex',
             alignItems: 'flex-start',
             gap: 10,
@@ -18538,7 +18096,7 @@ function PreviewImportModal({ isOpen, onClose, onConfirm, rows, fileName, type, 
             <AlertTriangle size={18} color="#ea580c" style={{ flexShrink: 0, marginTop: '2px' }} />
             <div style={{ flex: 1, lineHeight: 1.5 }}>
               <span>
-                <strong style={{ fontSize: '14px', display: 'block', marginBottom: '4px' }}>⚠️ PHÁT HIỆN DỮ LIỆU BỊ TRÙNG LẶP CHI TIẾT DÒNG</strong>
+                <strong style={{ fontSize: '15px', display: 'block', marginBottom: '4px' }}>⚠️ PHÁT HIỆN DỮ LIỆU BỊ TRÙNG LẶP CHI TIẾT DÒNG</strong>
                 Phát hiện <strong>{duplicateCount.toLocaleString()} dòng</strong> dữ liệu trong file bị <strong>TRÙNG LẶP HOÀN TOÀN</strong> (các thông tin chi tiết của dòng đã tồn tại trên cơ sở dữ liệu hiện tại hoặc bị lặp lại nội bộ trong file). Hệ thống sẽ tự động <strong>BỎ QUA {duplicateCount.toLocaleString()} dòng này</strong> để giữ an toàn cho dữ liệu gốc.
               </span>
             </div>
@@ -18561,11 +18119,11 @@ function PreviewImportModal({ isOpen, onClose, onConfirm, rows, fileName, type, 
             <div style={{
               display: 'flex', alignItems: 'center', gap: 7,
               background: '#f8fafc', border: '1px solid #cbd5e1',
-              borderRadius: 8, padding: '7px 14px', fontSize: 13, color: '#334155', flex: '1 1 100%'
+              borderRadius: 8, padding: '7px 14px', fontSize: 15, color: '#334155', flex: '1 1 100%'
             }}>
               <FileSpreadsheet size={15} color="#475569" />
               <span>
-                Tổng cộng phát hiện: <strong style={{ color: '#0f172a', fontSize: 14 }}>{rows.length.toLocaleString()} dòng</strong> dữ liệu được tải lên từ file Excel.
+                Tổng cộng phát hiện: <strong style={{ color: '#0f172a', fontSize: 15 }}>{rows.length.toLocaleString()} dòng</strong> dữ liệu được tải lên từ file Excel.
               </span>
             </div>
 
@@ -18573,7 +18131,7 @@ function PreviewImportModal({ isOpen, onClose, onConfirm, rows, fileName, type, 
             <div style={{
               display: 'flex', alignItems: 'center', gap: 7,
               background: '#ecfdf5', border: '1px solid #a7f3d0',
-              borderRadius: 8, padding: '7px 14px', fontSize: 13, color: '#065f46', flex: 1, minWidth: 220
+              borderRadius: 8, padding: '7px 14px', fontSize: 15, color: '#065f46', flex: 1, minWidth: 220
             }}>
               <CheckCircle2 size={15} color="#10b981" />
               <span>
@@ -18586,7 +18144,7 @@ function PreviewImportModal({ isOpen, onClose, onConfirm, rows, fileName, type, 
               <div style={{
                 display: 'flex', alignItems: 'center', gap: 7,
                 background: '#fff7ed', border: '1px solid #fed7aa',
-                borderRadius: 8, padding: '7px 14px', fontSize: 13, color: '#c2410c', flex: 1, minWidth: 220
+                borderRadius: 8, padding: '7px 14px', fontSize: 15, color: '#c2410c', flex: 1, minWidth: 220
               }}>
                 <AlertTriangle size={15} color="#ea580c" style={{ flexShrink: 0 }} />
                 <span>
@@ -18600,7 +18158,7 @@ function PreviewImportModal({ isOpen, onClose, onConfirm, rows, fileName, type, 
               <div style={{
                 display: 'flex', alignItems: 'flex-start', gap: 7,
                 background: '#fff1f2', border: '1px solid #fecdd3',
-                borderRadius: 8, padding: '7px 14px', fontSize: 13, color: '#9f1239', flex: 1, minWidth: 220
+                borderRadius: 8, padding: '7px 14px', fontSize: 15, color: '#9f1239', flex: 1, minWidth: 220
               }}>
                 <AlertCircle size={15} color="#ef4444" style={{ marginTop: 1, flexShrink: 0 }} />
                 <span>
@@ -18615,7 +18173,7 @@ function PreviewImportModal({ isOpen, onClose, onConfirm, rows, fileName, type, 
               <div style={{
                 display: 'flex', alignItems: 'center', gap: 7,
                 background: '#fff7ed', border: '1px solid #fed7aa',
-                borderRadius: 8, padding: '7px 14px', fontSize: 13, color: '#92400e', flex: 1, minWidth: 220
+                borderRadius: 8, padding: '7px 14px', fontSize: 15, color: '#92400e', flex: 1, minWidth: 220
               }}>
                 <AlertCircle size={15} color="#f59e0b" />
                 <span>
@@ -18691,14 +18249,14 @@ function AddProjectModal({ isOpen, onClose, onSave }) {
         gap: 16
       }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #f1f5f9', paddingBottom: 12 }}>
-          <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: '#0f172a' }}>Tạo mới Kho dự án</h3>
+          <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: '#0f172a' }}>Tạo mới Kho dự án</h3>
           <button onClick={onClose} style={{ background: 'transparent', border: 'none', color: '#64748b', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
             <X size={18} />
           </button>
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <label style={{ fontSize: 13, fontWeight: 600, color: '#475569', textAlign: 'left' }}>Tên Kho dự án / Công trình</label>
+          <label style={{ fontSize: 15, fontWeight: 600, color: '#475569', textAlign: 'left' }}>Tên Kho dự án / Công trình</label>
           <input
             autoFocus
             type="text"
@@ -18726,7 +18284,7 @@ function AddProjectModal({ isOpen, onClose, onSave }) {
               border: '1px solid #cbd5e1',
               background: '#ffffff',
               color: '#475569',
-              fontSize: 13,
+              fontSize: 15,
               fontWeight: 600,
               cursor: 'pointer'
             }}
@@ -18741,7 +18299,7 @@ function AddProjectModal({ isOpen, onClose, onSave }) {
               border: 'none',
               background: 'linear-gradient(135deg, #0f58a7 0%, #1a6abf 100%)',
               color: '#ffffff',
-              fontSize: 13,
+              fontSize: 15,
               fontWeight: 600,
               cursor: 'pointer',
               boxShadow: '0 2px 4px rgba(15,88,167,0.2)'
@@ -18807,14 +18365,14 @@ function EditProjectModal({ isOpen, onClose, onSave, currentName }) {
         gap: 16
       }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #f1f5f9', paddingBottom: 12 }}>
-          <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: '#0f172a' }}>Sửa tên Kho dự án</h3>
+          <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: '#0f172a' }}>Sửa tên Kho dự án</h3>
           <button onClick={onClose} style={{ background: 'transparent', border: 'none', color: '#64748b', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
             <X size={18} />
           </button>
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <label style={{ fontSize: 13, fontWeight: 600, color: '#475569', textAlign: 'left' }}>Tên Kho dự án / Công trình mới</label>
+          <label style={{ fontSize: 15, fontWeight: 600, color: '#475569', textAlign: 'left' }}>Tên Kho dự án / Công trình mới</label>
           <input
             autoFocus
             type="text"
@@ -18831,7 +18389,7 @@ function EditProjectModal({ isOpen, onClose, onSave, currentName }) {
             }}
           />
           {error && <span style={{ fontSize: 12, color: '#ef4444', fontWeight: 500, textAlign: 'left' }}>{error}</span>}
-          <p style={{ fontSize: 11, color: '#64748b', marginTop: 4, fontStyle: 'italic', textAlign: 'left', lineHeight: '1.4' }}>
+          <p style={{ fontSize: 12, color: '#64748b', marginTop: 4, fontStyle: 'italic', textAlign: 'left', lineHeight: '1.4' }}>
             * Lưu ý: Khi lưu, tất cả các đơn hàng trực thuộc dự án hiện tại sẽ được thay đổi tên để đồng bộ sang tên mới.
           </p>
         </div>
@@ -18845,7 +18403,7 @@ function EditProjectModal({ isOpen, onClose, onSave, currentName }) {
               border: '1px solid #cbd5e1',
               background: '#ffffff',
               color: '#475569',
-              fontSize: 13,
+              fontSize: 15,
               fontWeight: 600,
               cursor: 'pointer'
             }}
@@ -18860,7 +18418,7 @@ function EditProjectModal({ isOpen, onClose, onSave, currentName }) {
               border: 'none',
               background: 'linear-gradient(135deg, #0f58a7 0%, #1a6abf 100%)',
               color: '#ffffff',
-              fontSize: 13,
+              fontSize: 15,
               fontWeight: 600,
               cursor: 'pointer',
               boxShadow: '0 2px 4px rgba(15,88,167,0.2)'
@@ -18909,7 +18467,7 @@ function DeleteFileModal({ isOpen, onClose, onConfirm, type, selectedProject, ro
             <div style={{ width: 36, height: 36, borderRadius: 10, background: '#fee2e2', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <Trash2 size={18} color="#ef4444" />
             </div>
-            <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: '#991b1b' }}>Xác nhận xóa dữ liệu</h3>
+            <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: '#991b1b' }}>Xác nhận xóa dữ liệu</h3>
           </div>
           <button onClick={onClose} style={{ background: 'transparent', border: 'none', color: '#64748b', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
             <X size={18} />
@@ -18918,7 +18476,7 @@ function DeleteFileModal({ isOpen, onClose, onConfirm, type, selectedProject, ro
 
         {/* Body */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          <p style={{ margin: 0, fontSize: 14, color: '#334155', lineHeight: '1.6' }}>
+          <p style={{ margin: 0, fontSize: 15, color: '#334155', lineHeight: '1.6' }}>
             Bạn có chắc chắn muốn xóa toàn bộ dữ liệu <strong style={{ color: '#0f172a' }}>{label}</strong>
             {selectedProject ? <> của kho dự án <strong style={{ color: '#0f172a' }}>"{selectedProject}"</strong></> : ''}?
           </p>
@@ -18934,7 +18492,7 @@ function DeleteFileModal({ isOpen, onClose, onConfirm, type, selectedProject, ro
               alignItems: 'flex-start'
             }}>
               <AlertCircle size={18} color="#ef4444" style={{ flexShrink: 0, marginTop: 1 }} />
-              <div style={{ fontSize: 13, color: '#9f1239', lineHeight: '1.6' }}>
+              <div style={{ fontSize: 15, color: '#9f1239', lineHeight: '1.6' }}>
                 <strong>File này đang có dữ liệu!</strong>
                 <div style={{ marginTop: 6 }}>
                   <span>• <strong>{rowCount.toLocaleString()} dòng</strong> {label} sẽ bị xóa vĩnh viễn</span>
@@ -18969,7 +18527,7 @@ function DeleteFileModal({ isOpen, onClose, onConfirm, type, selectedProject, ro
             style={{
               padding: '8px 16px', borderRadius: 6,
               border: '1px solid #cbd5e1', background: '#ffffff',
-              color: '#475569', fontSize: 13, fontWeight: 600, cursor: 'pointer'
+              color: '#475569', fontSize: 15, fontWeight: 600, cursor: 'pointer'
             }}
           >
             Hủy bỏ
@@ -18979,7 +18537,7 @@ function DeleteFileModal({ isOpen, onClose, onConfirm, type, selectedProject, ro
             style={{
               padding: '8px 18px', borderRadius: 6, border: 'none',
               background: '#dc2626',
-              color: '#ffffff', fontSize: 13, fontWeight: 700,
+              color: '#ffffff', fontSize: 15, fontWeight: 700,
               cursor: 'pointer',
               boxShadow: '0 2px 8px rgba(220,38,38,0.35)',
               display: 'flex', alignItems: 'center', gap: 6
@@ -19033,7 +18591,7 @@ function DeleteProjectModal({ isOpen, onClose, onConfirm, projectName, giaoRows,
             <div style={{ width: 36, height: 36, borderRadius: 10, background: '#fee2e2', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <Trash2 size={18} color="#ef4444" />
             </div>
-            <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: '#991b1b' }}>Xác nhận xóa Dự án</h3>
+            <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: '#991b1b' }}>Xác nhận xóa Dự án</h3>
           </div>
           <button onClick={onClose} style={{ background: 'transparent', border: 'none', color: '#64748b', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
             <X size={18} />
@@ -19042,7 +18600,7 @@ function DeleteProjectModal({ isOpen, onClose, onConfirm, projectName, giaoRows,
 
         {/* Body */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          <p style={{ margin: 0, fontSize: 14, color: '#334155', lineHeight: '1.6' }}>
+          <p style={{ margin: 0, fontSize: 15, color: '#334155', lineHeight: '1.6' }}>
             Bạn có chắc chắn muốn xóa kho dự án <strong style={{ color: '#0f172a' }}>"{projectName}"</strong>?
           </p>
 
@@ -19058,7 +18616,7 @@ function DeleteProjectModal({ isOpen, onClose, onConfirm, projectName, giaoRows,
               alignItems: 'flex-start'
             }}>
               <AlertCircle size={18} color="#ef4444" style={{ flexShrink: 0, marginTop: 1 }} />
-              <div style={{ fontSize: 13, color: '#9f1239', lineHeight: '1.6' }}>
+              <div style={{ fontSize: 15, color: '#9f1239', lineHeight: '1.6' }}>
                 <strong>Dự án này đang có dữ liệu!</strong>
                 <div style={{ marginTop: 6, display: 'flex', flexDirection: 'column', gap: 3 }}>
                   {giaoCount > 0 && (
@@ -19101,7 +18659,7 @@ function DeleteProjectModal({ isOpen, onClose, onConfirm, projectName, giaoRows,
             style={{
               padding: '8px 16px', borderRadius: 6,
               border: '1px solid #cbd5e1', background: '#ffffff',
-              color: '#475569', fontSize: 13, fontWeight: 600, cursor: 'pointer'
+              color: '#475569', fontSize: 15, fontWeight: 600, cursor: 'pointer'
             }}
           >
             Hủy bỏ
@@ -19111,7 +18669,7 @@ function DeleteProjectModal({ isOpen, onClose, onConfirm, projectName, giaoRows,
             style={{
               padding: '8px 18px', borderRadius: 6, border: 'none',
               background: hasData ? '#dc2626' : '#ef4444',
-              color: '#ffffff', fontSize: 13, fontWeight: 700,
+              color: '#ffffff', fontSize: 15, fontWeight: 700,
               cursor: 'pointer',
               boxShadow: hasData ? '0 2px 8px rgba(220,38,38,0.35)' : '0 2px 4px rgba(239,68,68,0.2)',
               display: 'flex', alignItems: 'center', gap: 6
@@ -19268,7 +18826,7 @@ function SupabaseConfigModal({ isOpen, onClose }) {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #f1f5f9', paddingBottom: 12 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <Database size={18} color="#0f58a7" />
-            <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: '#0f172a' }}>Cấu hình kết nối cơ sở dữ liệu Supabase</h3>
+            <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: '#0f172a' }}>Cấu hình kết nối cơ sở dữ liệu Supabase</h3>
           </div>
           <button onClick={onClose} style={{ background: 'transparent', border: 'none', color: '#64748b', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: 4 }}>
             <X size={18} />
@@ -19292,10 +18850,10 @@ function SupabaseConfigModal({ isOpen, onClose }) {
             backgroundColor: isCurrentlyConnected ? '#10b981' : '#f43f5e'
           }} />
           <div style={{ flex: 1 }}>
-            <span style={{ fontSize: 13, fontWeight: 700, color: isCurrentlyConnected ? '#065f46' : '#9f1239' }}>
+            <span style={{ fontSize: 15, fontWeight: 700, color: isCurrentlyConnected ? '#065f46' : '#9f1239' }}>
               Trạng thái: {isCurrentlyConnected ? 'Đã bật đầu nối Supabase' : 'Chưa cấu hình (Offline)'}
             </span>
-            <p style={{ margin: '1px 0 0 0', fontSize: 11, color: isCurrentlyConnected ? '#047857' : '#be123c' }}>
+            <p style={{ margin: '1px 0 0 0', fontSize: 12, color: isCurrentlyConnected ? '#047857' : '#be123c' }}>
               {isCurrentlyConnected 
                 ? `Đang load từ: ${currentSource === 'local' ? 'Trình duyệt Web (Local Storage)' : currentSource === 'env' ? 'Biến môi trường (Vite Env)' : 'Cấu hình tích hợp mặc định (Code)'}`
                 : 'Đang chạy offline bằng bộ dữ liệu tạm thời.'}
@@ -19321,13 +18879,13 @@ function SupabaseConfigModal({ isOpen, onClose }) {
           <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 12 }}>
             {/* Edit Fields */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-              <label style={{ fontSize: 11, fontWeight: 600, color: '#475569', textAlign: 'left' }}>
+              <label style={{ fontSize: 12, fontWeight: 600, color: '#475569', textAlign: 'left' }}>
                 Supabase Project URL (VITE_SUPABASE_URL)
               </label>
               <input
                 type="text"
                 className="input"
-                style={{ width: '100%', fontFamily: 'monospace', fontSize: 11, height: '36px', padding: '0 10px' }}
+                style={{ width: '100%', fontFamily: 'monospace', fontSize: 12, height: '36px', padding: '0 10px' }}
                 placeholder="Ví dụ: https://your-project-id.supabase.co"
                 value={url}
                 onChange={(e) => setUrl(e.target.value)}
@@ -19335,13 +18893,13 @@ function SupabaseConfigModal({ isOpen, onClose }) {
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-              <label style={{ fontSize: 11, fontWeight: 600, color: '#475569', textAlign: 'left' }}>
+              <label style={{ fontSize: 12, fontWeight: 600, color: '#475569', textAlign: 'left' }}>
                 Supabase Project API Anon Key (VITE_SUPABASE_ANON_KEY)
               </label>
               <textarea
                 className="input"
                 rows={3}
-                style={{ width: '100%', fontFamily: 'monospace', fontSize: 10, resize: 'vertical', padding: '6px 10px', lineHeight: '1.4' }}
+                style={{ width: '100%', fontFamily: 'monospace', fontSize: 12, resize: 'vertical', padding: '6px 10px', lineHeight: '1.4' }}
                 placeholder="Nhập chuỗi Anon Key..."
                 value={key}
                 onChange={(e) => setKey(e.target.value)}
@@ -19351,7 +18909,7 @@ function SupabaseConfigModal({ isOpen, onClose }) {
             {/* Live Test connection button & results */}
             <div style={{ border: '1px dashed #cbd5e1', borderRadius: 8, padding: 12, background: '#ffffff' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: 11, fontWeight: 600, color: '#334155' }}>Kiểm tra trạng thái kết nối trực tiếp:</span>
+                <span style={{ fontSize: 12, fontWeight: 600, color: '#334155' }}>Kiểm tra trạng thái kết nối trực tiếp:</span>
                 <button
                   type="button"
                   onClick={handleTestConnection}
@@ -19361,7 +18919,7 @@ function SupabaseConfigModal({ isOpen, onClose }) {
                     border: '1px solid #cbd5e1',
                     padding: '4px 10px',
                     borderRadius: 4,
-                    fontSize: 10,
+                    fontSize: 12,
                     fontWeight: 600,
                     color: '#1e293b',
                     cursor: testing ? 'not-allowed' : 'pointer',
@@ -19384,7 +18942,7 @@ function SupabaseConfigModal({ isOpen, onClose }) {
                   marginTop: 8,
                   padding: 8,
                   borderRadius: 6,
-                  fontSize: 10,
+                  fontSize: 12,
                   fontWeight: 500,
                   backgroundColor: testResult.success ? '#f0fdf4' : '#fef2f2',
                   border: `1px solid ${testResult.success ? '#bbf7d0' : '#fca5a5'}`,
@@ -19407,7 +18965,7 @@ function SupabaseConfigModal({ isOpen, onClose }) {
           </summary>
           <div style={{ marginTop: 8, paddingLeft: 4, display: 'flex', flexDirection: 'column', gap: 6 }}>
             <p style={{ margin: 0 }}><strong>Cách 1:</strong> Bạn chỉ cần cấu hình ngay tại form này rồi bấm <strong>Lưu kết nối</strong>. Trình duyệt của bạn sẽ tự lưu vĩnh viễn và đồng bộ dữ liệu ngay lập tức.</p>
-            <p style={{ margin: 0 }}><strong>Cách 2:</strong> Vào Cloudflare Dashboard &gt; Settings &gt; Environment variables &gt; Thêm <code style={{ fontSize: 11, background: '#cbd5e1', padding: '1px 3px', borderRadius: 3 }}>VITE_SUPABASE_URL</code> và <code style={{ fontSize: 11, background: '#cbd5e1', padding: '1px 3px', borderRadius: 3 }}>VITE_SUPABASE_ANON_KEY</code> để mọi thiết bị truy cập mặc định online.</p>
+            <p style={{ margin: 0 }}><strong>Cách 2:</strong> Vào Cloudflare Dashboard &gt; Settings &gt; Environment variables &gt; Thêm <code style={{ fontSize: 12, background: '#cbd5e1', padding: '1px 3px', borderRadius: 3 }}>VITE_SUPABASE_URL</code> và <code style={{ fontSize: 12, background: '#cbd5e1', padding: '1px 3px', borderRadius: 3 }}>VITE_SUPABASE_ANON_KEY</code> để mọi thiết bị truy cập mặc định online.</p>
           </div>
         </details>
 
@@ -19418,10 +18976,10 @@ function SupabaseConfigModal({ isOpen, onClose }) {
             <span>Sửa lỗi lưu/xóa (RLS Row Level Security) trong Supabase</span>
           </summary>
           <div style={{ marginTop: 8, paddingLeft: 4, display: 'flex', flexDirection: 'column', gap: 6, textAlign: 'left' }}>
-            <p style={{ margin: 0, fontSize: 11.5, color: '#475569', lineHeight: '1.5' }}>
+            <p style={{ margin: 0, fontSize: 12, color: '#475569', lineHeight: '1.5' }}>
               Mặc định Supabase bật <strong>Row Level Security (RLS)</strong> nên sẽ chặn các lệnh <strong>INSERT</strong> và <strong>DELETE</strong> từ Client (báo lỗi 401 hoặc lỗi chặn RLS ngay cả khi kết nối Test OK).
             </p>
-            <p style={{ margin: 0, fontSize: 11.5, color: '#475569', lineHeight: '1.5' }}>
+            <p style={{ margin: 0, fontSize: 12, color: '#475569', lineHeight: '1.5' }}>
               Hãy sao chép các câu lệnh SQL dưới đây, dán vào tab <strong>SQL Editor</strong> trong trang quản trị Supabase dự án của bạn rồi chọn <strong>Run</strong> để khắc phục hoàn toàn:
             </p>
             <pre style={{
@@ -19430,7 +18988,7 @@ function SupabaseConfigModal({ isOpen, onClose }) {
               background: '#1e293b',
               color: '#f8fafc',
               borderRadius: 6,
-              fontSize: 10.5,
+              fontSize: 12,
               overflowX: 'auto',
               fontFamily: 'monospace',
               lineHeight: '1.4'
@@ -19470,7 +19028,7 @@ CREATE POLICY "Allow public don_kho" ON public.don_kho FOR ALL USING (true) WITH
             <span>Sửa liên kết cột sai (Thêm cột ten_du_an & Tạo khóa ngoại khớp)</span>
           </summary>
           <div style={{ marginTop: 8, paddingLeft: 4, display: 'flex', flexDirection: 'column', gap: 6, textAlign: 'left' }}>
-            <p style={{ margin: 0, fontSize: 11.5, color: '#475569', lineHeight: '1.5' }}>
+            <p style={{ margin: 0, fontSize: 12, color: '#475569', lineHeight: '1.5' }}>
               Để sửa lỗi liên kết cột không đồng nhất (cột <code>ten_du_an</code> thuộc bảng <code>du_an</code> nhưng lại liên kết vào cột <code>du_an</code> của 2 bảng kia khiến cho sơ đồ Supabase hiển thị lệch lạc), bạn chỉ cần chạy tập lệnh SQL dưới đây trong <strong>SQL Editor</strong>:
             </p>
             <pre style={{
@@ -19479,7 +19037,7 @@ CREATE POLICY "Allow public don_kho" ON public.don_kho FOR ALL USING (true) WITH
               background: '#0f172a',
               color: '#38bdf8',
               borderRadius: 6,
-              fontSize: 10.5,
+              fontSize: 12,
               overflowX: 'auto',
               fontFamily: 'monospace',
               lineHeight: '1.4'
@@ -19525,7 +19083,7 @@ ALTER TABLE public.don_kho ADD CONSTRAINT don_kho_ten_du_an_fkey
 -- ALTER TABLE public.don_chung DROP COLUMN IF EXISTS du_an;
 -- ALTER TABLE public.don_kho DROP COLUMN IF EXISTS du_an;`}
             </pre>
-            <p style={{ margin: 0, fontSize: 11, color: '#16a34a', fontWeight: 500 }}>
+            <p style={{ margin: 0, fontSize: 12, color: '#16a34a', fontWeight: 500 }}>
               ✔️ <strong>Lưu ý:</strong> Ứng dụng đã được tích hợp cơ chế <strong>Tự phục hồi (Self-Healing)</strong> thông minh. Bất kể bạn đang sử dụng cấu trúc cũ (cột <code>du_an</code>) hay cấu trúc mới (cột <code>ten_du_an</code>), phần mềm sẽ tự phát hiện lỗi column, tự gỡ bỏ cột thừa và lưu trữ trơn tru mà không làm ngắt quãng công việc của bạn!
             </p>
           </div>
@@ -19538,7 +19096,7 @@ ALTER TABLE public.don_kho ADD CONSTRAINT don_kho_ten_du_an_fkey
             <span>Nâng cấp cấu trúc bảng "Đơn giá vật tư & Khấu hao"</span>
           </summary>
           <div style={{ marginTop: 8, paddingLeft: 4, display: 'flex', flexDirection: 'column', gap: 6, textAlign: 'left' }}>
-            <p style={{ margin: 0, fontSize: 11.5, color: '#475569', lineHeight: '1.5' }}>
+            <p style={{ margin: 0, fontSize: 12, color: '#475569', lineHeight: '1.5' }}>
               Nếu bạn đã khởi tạo cơ sở dữ liệu từ trước và muốn cập nhật các cột mới cũng như gỡ bỏ khóa trùng lặp số tháng (để có thể lưu đồng thời số tháng trong cả nhóm Đã duyệt và Tạm tính), vui lòng chạy lệnh SQL sau trong <strong>SQL Editor</strong> của Supabase:
             </p>
             <pre style={{
@@ -19547,7 +19105,7 @@ ALTER TABLE public.don_kho ADD CONSTRAINT don_kho_ten_du_an_fkey
               background: '#0f172a',
               color: '#c084fc',
               borderRadius: 6,
-              fontSize: 10.5,
+              fontSize: 12,
               overflowX: 'auto',
               fontFamily: 'monospace',
               lineHeight: '1.4'
@@ -19579,7 +19137,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS cau_hinh_khau_hao_ma_sap_idx ON public.cau_hin
                 background: '#ffffff',
                 border: '1px solid #cbd5e1',
                 color: '#64748b',
-                fontSize: 13,
+                fontSize: 15,
                 fontWeight: 600,
                 cursor: 'pointer'
               }}
@@ -19595,7 +19153,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS cau_hinh_khau_hao_ma_sap_idx ON public.cau_hin
               border: '1px solid #cbd5e1',
               background: '#ffffff',
               color: '#475569',
-              fontSize: 13,
+              fontSize: 15,
               fontWeight: 600,
               cursor: 'pointer'
             }}
@@ -19611,7 +19169,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS cau_hinh_khau_hao_ma_sap_idx ON public.cau_hin
               border: 'none',
               background: 'linear-gradient(135deg, #0f58a7 0%, #1a6abf 100%)',
               color: '#ffffff',
-              fontSize: 13,
+              fontSize: 15,
               fontWeight: 600,
               cursor: saveSuccess ? 'not-allowed' : 'pointer',
               display: 'flex',
@@ -19694,7 +19252,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS cau_hinh_khau_hao_ma_sap_idx ON public.cau_hin
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #f1f5f9', paddingBottom: 12 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <Database size={18} color="#7e22ce" />
-            <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: '#0f172a' }}>Nâng cấp cấu trúc cơ sở dữ liệu Supabase</h3>
+            <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: '#0f172a' }}>Nâng cấp cấu trúc cơ sở dữ liệu Supabase</h3>
           </div>
           <button onClick={onClose} style={{ background: 'transparent', border: 'none', color: '#64748b', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: 4 }}>
             <X size={18} />
@@ -19706,7 +19264,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS cau_hinh_khau_hao_ma_sap_idx ON public.cau_hin
           border: '1px solid #e9d5ff',
           borderRadius: 8,
           padding: '12px 16px',
-          fontSize: '13px',
+          fontSize: '15px',
           color: '#581c87',
           lineHeight: '1.5'
         }}>
@@ -19719,8 +19277,8 @@ CREATE UNIQUE INDEX IF NOT EXISTS cau_hinh_khau_hao_ma_sap_idx ON public.cau_hin
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <label style={{ fontSize: '12.5px', fontWeight: 600, color: '#475569' }}>Các bước thực hiện:</label>
-          <ol style={{ margin: 0, paddingLeft: 20, fontSize: '12.5px', color: '#475569', lineHeight: '1.6', display: 'flex', flexDirection: 'column', gap: 4 }}>
+          <label style={{ fontSize: '12px', fontWeight: 600, color: '#475569' }}>Các bước thực hiện:</label>
+          <ol style={{ margin: 0, paddingLeft: 20, fontSize: '12px', color: '#475569', lineHeight: '1.6', display: 'flex', flexDirection: 'column', gap: 4 }}>
             <li>Copy đoạn mã SQL bên dưới bằng nút <strong>Copy câu lệnh SQL</strong>.</li>
             <li>Truy cập vào trang quản trị <strong>Supabase Dashboard</strong> của bạn.</li>
             <li>Nhấp vào mục <strong>SQL Editor</strong> ở thanh menu bên trái.</li>
@@ -19731,7 +19289,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS cau_hinh_khau_hao_ma_sap_idx ON public.cau_hin
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ fontSize: '12.5px', fontWeight: 600, color: '#475569' }}>Mã SQL nâng cấp:</span>
+            <span style={{ fontSize: '12px', fontWeight: 600, color: '#475569' }}>Mã SQL nâng cấp:</span>
             <button
               onClick={handleCopy}
               style={{
@@ -19743,7 +19301,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS cau_hinh_khau_hao_ma_sap_idx ON public.cau_hin
                 color: copied ? '#ffffff' : '#475569',
                 border: '1px solid ' + (copied ? '#22c55e' : '#cbd5e1'),
                 borderRadius: 6,
-                fontSize: '11.5px',
+                fontSize: '12px',
                 fontWeight: 600,
                 cursor: 'pointer',
                 transition: 'all 0.15s'
@@ -19758,7 +19316,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS cau_hinh_khau_hao_ma_sap_idx ON public.cau_hin
             background: '#0f172a',
             color: '#c084fc',
             borderRadius: 8,
-            fontSize: 11,
+            fontSize: 12,
             overflowX: 'auto',
             fontFamily: 'monospace',
             lineHeight: '1.4',
@@ -19777,7 +19335,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS cau_hinh_khau_hao_ma_sap_idx ON public.cau_hin
               border: '1px solid #cbd5e1',
               background: '#ffffff',
               color: '#475569',
-              fontSize: 13,
+              fontSize: 15,
               fontWeight: 600,
               cursor: 'pointer'
             }}
@@ -22094,26 +21652,18 @@ export default function App() {
             <RefreshCw size={30} color="var(--primary)" style={{ animation: 'spin 1s linear infinite' }} />
           </div>
           <div style={{ textAlign: 'center' }}>
-            <h2 style={{ fontSize: 18, fontWeight: 800, color: 'var(--text)', margin: '0' }}>
+            <h2 style={{ fontSize: 22, fontWeight: 800, color: 'var(--text)', margin: '0' }}>
               SGC | BÁO CÁO GIAO NHẬN
             </h2>
           </div>
         </div>
       )}
       <Header
-        selectedProject={selectedProject}
-        setSelectedProject={setSelectedProject}
-        duAnOptions={allProjects}
-        onOpenAddProjectModal={() => setShowAddProjectModal(true)}
-        onEditProject={(projectName) => {
-          setProjectToEdit(projectName)
-          setShowEditProjectModal(true)
-        }}
-        onDeleteProject={handleDeleteProject}
-        onOpenConfigModal={() => setShowConfigModal(true)}
         onForceRefresh={() => loadDataFromSupabase(true)}
-        onMouseEnterLogo={() => setIsSidebarOpen(true)}
         activeTab={tab}
+        setTab={setTab}
+        tabs={tabs}
+        counts={{ chung: chungRows.length, tinh_trang_don: tinhTrangDonRows.length, kho: khoRows.length, chuan_hoa_bch: bchAliasRules.length, dongia: materialPriceRows.length }}
         currentUser={currentUser}
         onLogout={handleLogout}
       />
@@ -22127,6 +21677,7 @@ export default function App() {
           onMouseEnter={handleMouseEnter}
           onMouseLeave={handleMouseLeave}
           style={{
+            display: 'none', // menu truot cu: thay bang thanh vien thuoc o dau trang
             position: 'absolute',
             left: 0,
             top: 0,
@@ -22157,7 +21708,7 @@ export default function App() {
                 <span style={{ 
                   fontFamily: 'var(--font-display)', 
                   fontWeight: 800, 
-                  fontSize: '13.5px', 
+                  fontSize: '15px', 
                   color: '#ffffff', 
                   letterSpacing: '0.06em', 
                   textTransform: 'uppercase' 
@@ -22208,7 +21759,7 @@ export default function App() {
             {/* GROUP 1: DỮ LIỆU ĐẦU VÀO */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
               <div style={{
-                fontSize: '10px',
+                fontSize: '12px',
                 fontWeight: 700,
                 color: '#93c5fd',
                 letterSpacing: '0.1em',
@@ -22243,7 +21794,7 @@ export default function App() {
                       width: '100%',
                       padding: '12px 14px',
                       borderRadius: '10px',
-                      fontSize: '13.5px',
+                      fontSize: '15px',
                       fontWeight: isSelected ? 700 : 500,
                       color: isSelected ? '#ffffff' : '#dbeafe',
                       background: isSelected ? 'linear-gradient(135deg, #1e40af 0%, #3b82f6 100%)' : 'transparent',
@@ -22288,7 +21839,7 @@ export default function App() {
                         border: isSelected ? 'none' : '1px solid rgba(255, 255, 255, 0.15)',
                         borderRadius: '20px',
                         padding: '2px 8px',
-                        fontSize: '11px',
+                        fontSize: '12px',
                         fontWeight: 700,
                         minWidth: '24px',
                         textAlign: 'center',
@@ -22305,7 +21856,7 @@ export default function App() {
             {/* GROUP 2: XỬ LÝ & TỔNG HỢP */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
               <div style={{
-                fontSize: '10px',
+                fontSize: '12px',
                 fontWeight: 700,
                 color: '#93c5fd',
                 letterSpacing: '0.1em',
@@ -22339,7 +21890,7 @@ export default function App() {
                       width: '100%',
                       padding: '12px 14px',
                       borderRadius: '10px',
-                      fontSize: '13.5px',
+                      fontSize: '15px',
                       fontWeight: isSelected ? 700 : 500,
                       color: isSelected ? '#ffffff' : '#dbeafe',
                       background: isSelected ? 'linear-gradient(135deg, #1e40af 0%, #3b82f6 100%)' : 'transparent',
@@ -22389,7 +21940,7 @@ export default function App() {
             {/* GROUP 1: DỮ LIỆU ĐẦU VÀO */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
               <div style={{
-                fontSize: '11px',
+                fontSize: '12px',
                 fontWeight: 700,
                 color: '#94a3b8',
                 letterSpacing: '0.08em',
@@ -22424,7 +21975,7 @@ export default function App() {
                       width: '100%',
                       padding: '11px 14px',
                       borderRadius: '8px',
-                      fontSize: '13.5px',
+                      fontSize: '15px',
                       fontWeight: isSelected ? 700 : 500,
                       color: isSelected ? '#ffffff' : '#475569',
                       background: isSelected ? 'linear-gradient(135deg, #0f58a7 0%, #083c75 100%)' : 'transparent',
@@ -22459,7 +22010,7 @@ export default function App() {
                         color: isSelected ? '#ffffff' : '#475569',
                         borderRadius: '12px',
                         padding: '1px 7px',
-                        fontSize: '11px',
+                        fontSize: '12px',
                         fontWeight: 700,
                         minWidth: '24px',
                         textAlign: 'center'
@@ -22475,7 +22026,7 @@ export default function App() {
             {/* GROUP 2: XỬ LÝ & TỔNG HỢP */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
               <div style={{
-                fontSize: '11px',
+                fontSize: '12px',
                 fontWeight: 700,
                 color: '#94a3b8',
                 letterSpacing: '0.08em',
@@ -22509,7 +22060,7 @@ export default function App() {
                       width: '100%',
                       padding: '11px 14px',
                       borderRadius: '8px',
-                      fontSize: '13.5px',
+                      fontSize: '15px',
                       fontWeight: isSelected ? 700 : 500,
                       color: isSelected ? '#ffffff' : '#475569',
                       background: isSelected ? 'linear-gradient(135deg, #0f58a7 0%, #083c75 100%)' : 'transparent',
@@ -22548,7 +22099,7 @@ export default function App() {
           <div style={{
             padding: '18px 24px',
             borderTop: '1px solid rgba(255, 255, 255, 0.12)',
-            fontSize: '11px',
+            fontSize: '12px',
             color: '#93c5fd',
             textAlign: 'center',
             background: 'linear-gradient(180deg, #153e75 0%, #0d284c 100%)',
@@ -22571,9 +22122,8 @@ export default function App() {
           display: 'flex',
           flexDirection: 'column',
           overflow: 'hidden',
-          paddingLeft: isSidebarPinned ? '270px' : '0px',
-          transition: 'padding-left 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-          backgroundColor: '#031fae'
+          paddingLeft: 0,
+          backgroundColor: 'transparent'
         }}>
           {supabaseAuthError && (
             <div style={{
@@ -22591,7 +22141,7 @@ export default function App() {
             }}>
               <AlertCircle size={20} color="#dc2626" style={{ marginTop: '2px', flexShrink: 0 }} />
               <div style={{ flex: 1 }}>
-                <h4 style={{ margin: 0, fontSize: '13px', fontWeight: 700 }}>⚠️ Lỗi xác thực kết nối Supabase (401 Unauthorized)</h4>
+                <h4 style={{ margin: 0, fontSize: '15px', fontWeight: 700 }}>⚠️ Lỗi xác thực kết nối Supabase (401 Unauthorized)</h4>
                 <p style={{ margin: '4px 0 0 0', fontSize: '12px', color: '#b91c1c', lineHeight: 1.4 }}>
                   Cơ sở dữ liệu Supabase đã từ chối yêu cầu truy cập vì Project URL hoặc Anon Key bị cấu hình sai hoặc đã bị thay đổi/hết hạn trên trang quản trị dự án của bạn (Lỗi 401 Unauthorized). 
                   Do đó, bạn <strong>không thể xem danh sách, cập nhật hay xóa dự án</strong> được. Vui lòng bấm vào nút cấu hình lại bên dưới.
@@ -22601,7 +22151,7 @@ export default function App() {
                   style={{
                     marginTop: '8px',
                     padding: '4px 10px',
-                    fontSize: '11px',
+                    fontSize: '12px',
                     fontWeight: 700,
                     color: '#ffffff',
                     backgroundColor: '#dc2626',

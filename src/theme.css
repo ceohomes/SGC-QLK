@@ -1,0 +1,368 @@
+/* ==========================================================================
+   Giao diện chung SGC-QLK theo "phong cách web anh Chung"
+   - Chữ Arial, chữ số Roboto; 3 cỡ chữ 12 / 15 / 22
+   - Nền xám rất nhạt có quầng sáng; thẻ bo góc lớn kiểu kính
+   - Bảng kẻ kiểu Excel nét #4F535E, tiêu đề nền nhạt căn giữa, dính khi cuộn
+   - Màu chủ đạo giữ xanh #0F58A7 của app
+   File này chỉ đổi trình bày, không đụng logic.
+   ========================================================================== */
+
+:root {
+  --primary: #0F58A7;
+  --primary-dark: #0A3D73;
+  --primary-light: #E4EEFA;
+  --bg: #ECECEE;
+  --surface: #FFFFFF;
+  --surface2: #F5F6F8;
+  --border: #D5D9E5;
+  --text: #16171C;
+  --text-muted: #4A4C55;
+  --text-light: #8C8E97;
+  --grid: #4F535E;
+  --th-bg: #E3EDF9;
+  --th-ink: #0A3D73;
+  --f: Arial, "Helvetica Neue", Helvetica, sans-serif;
+  --fn: "Roboto", Arial, sans-serif;
+  --radius: 12px;
+  --radius-lg: 24px;
+  color-scheme: light;
+}
+
+/* ---------- Phông chữ ---------- */
+html body, html body *:not(svg):not(path) {
+  font-family: var(--f) !important;
+}
+html body .sg-num, html body .sg-num *,
+html body td[style*="text-align: right"],
+html body td[style*="justify-content: flex-end"],
+html body input[type="number"],
+html body input[inputmode="decimal"] {
+  font-family: var(--fn) !important;
+  font-variant-numeric: tabular-nums;
+}
+html body { font-size: 15px; line-height: 1.5; letter-spacing: 0; -webkit-font-smoothing: antialiased; }
+
+/* ---------- Nền ---------- */
+html body, html body #root {
+  background-color: var(--bg) !important;
+  background-image: radial-gradient(1200px 600px at 85% -10%, #F7F7F9 0%, transparent 60%),
+                    radial-gradient(900px 500px at -10% 110%, #E2E2E7 0%, transparent 60%) !important;
+  background-attachment: fixed;
+}
+
+/* ---------- Thanh cuộn ---------- */
+::-webkit-scrollbar { width: 12px; height: 12px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #C3C7D1; border-radius: 8px; border: 3px solid transparent; background-clip: padding-box; min-height: 60px; }
+::-webkit-scrollbar-thumb:hover { background: #9AA0AD; background-clip: padding-box; border: 3px solid transparent; }
+
+/* ==========================================================================
+   Thanh trên cùng + điều hướng viên thuốc
+   ========================================================================== */
+.sg-top {
+  position: sticky; top: 0; z-index: 100;
+  padding: 10px 16px 8px;
+  background: rgba(236, 236, 238, .92);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 1px 0 #D5D9E5;
+  display: flex; flex-direction: column; gap: 8px;
+}
+.sg-top-row { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 12px; min-height: 40px; }
+.sg-top-title { display: flex; align-items: center; gap: 10px; min-width: 0; font-size: 22px; font-weight: 700; color: var(--text); line-height: 1.2; }
+.sg-top-title > span:last-child { overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.sg-top-dot { flex: none; width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; color: #fff; background: linear-gradient(135deg, var(--c), var(--c2)); box-shadow: 0 6px 14px -6px var(--c); }
+.sg-top-logo { display: flex; align-items: center; gap: 10px; justify-self: center; }
+.sg-logo-mark { width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; background: linear-gradient(135deg, #0A3D73, #0F58A7 55%, #2F86E0); color: #fff; font-weight: 700; font-size: 15px; letter-spacing: .02em; box-shadow: 0 8px 18px -8px rgba(15, 88, 167, .8), inset 0 1px 0 rgba(255,255,255,.35); }
+.sg-logo-text { font-size: 15px; font-weight: 700; color: var(--primary-dark); white-space: nowrap; }
+.sg-top-actions { display: flex; align-items: center; justify-content: flex-end; gap: 8px; min-width: 0; }
+.sg-round { display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 14px; border-radius: 99px; background: #fff; color: var(--primary); font-size: 15px; font-weight: 600; box-shadow: inset 0 0 0 1px #D5DCEB; white-space: nowrap; }
+.sg-round:hover { background: var(--primary-light); }
+.sg-round:active { transform: scale(.97); }
+.sg-round:disabled { opacity: .6; cursor: progress; }
+.sg-conn { display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 12px; border-radius: 99px; font-size: 12px; font-weight: 700; white-space: nowrap; }
+.sg-conn i { width: 8px; height: 8px; border-radius: 50%; }
+.sg-conn.ok { background: #DDF5E6; color: #0D7A3C; } .sg-conn.ok i { background: #12A150; box-shadow: 0 0 0 3px rgba(18,161,80,.18); }
+.sg-conn.off { background: #FDEFDC; color: #A85607; } .sg-conn.off i { background: #E07A10; }
+.sg-user { display: inline-flex; align-items: center; gap: 8px; height: 36px; padding: 0 12px 0 3px; border-radius: 99px; background: #fff; color: var(--text-muted); box-shadow: inset 0 0 0 1px #D5DCEB; max-width: 240px; }
+.sg-user:hover { color: #FF3B30; }
+.sg-ava { flex: none; width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; color: #fff; font-weight: 700; font-size: 15px; background: linear-gradient(135deg, #2F86E0, #0A3D73); }
+.sg-user-name { font-size: 15px; font-weight: 600; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.sg-pills { display: flex; align-items: center; gap: 6px; overflow-x: auto; scrollbar-width: none; padding: 2px; }
+.sg-pills::-webkit-scrollbar { display: none; }
+.sg-pill-sep { flex: none; width: 1px; height: 26px; margin: 0 4px; background: #C9CDD8; }
+.sg-pill { flex: none; display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 12px 0 6px; border-radius: 99px; background: var(--t); color: var(--cd); font-size: 15px; font-weight: 400 !important; white-space: nowrap; box-shadow: inset 0 0 0 1px rgba(255,255,255,.7); transition: transform .15s, box-shadow .2s, background .2s; }
+.sg-pill:hover { transform: translateY(-1px); box-shadow: inset 0 0 0 1px rgba(255,255,255,.7), 0 6px 14px -8px var(--c); }
+.sg-pill:active { transform: scale(.97); }
+.sg-pill.on { font-weight: 700 !important; background: linear-gradient(135deg, var(--c), var(--c2)); color: #fff; box-shadow: 0 8px 18px -8px var(--c), inset 0 1px 0 rgba(255,255,255,.35); }
+.sg-pill-dot { flex: none; width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; color: #fff; background: linear-gradient(135deg, var(--c), var(--c2)); }
+.sg-pill.on .sg-pill-dot { background: rgba(255,255,255,.24); }
+.sg-pill-n { font-family: var(--fn) !important; font-size: 12px; font-weight: 700; padding: 1px 7px; border-radius: 99px; background: rgba(255,255,255,.75); color: var(--cd); }
+.sg-pill.on .sg-pill-n { background: rgba(255,255,255,.25); color: #fff; }
+@media (max-width: 1500px) {
+  .sg-pill:not(.on) .sg-pill-lb { display: none; }
+  .sg-pill:not(.on) { padding: 0 8px 0 6px; }
+}
+@media (max-width: 1100px) {
+  .sg-logo-text, .sg-round-lb, .sg-user-name { display: none; }
+  .sg-round { padding: 0 11px; }
+}
+@media (max-width: 760px) {
+  .sg-top { padding: 8px 12px 6px; }
+  .sg-top-row { grid-template-columns: auto 1fr auto; }
+  .sg-top-logo { order: -1; justify-self: start; }
+  .sg-top-title { font-size: 15px; }
+  .sg-conn { display: none; }
+  .sg-pill-lb { display: inline !important; }
+}
+
+/* ==========================================================================
+   Bảng kẻ kiểu Excel (áp cho mọi bảng trong app)
+   ========================================================================== */
+html body table {
+  border-collapse: separate !important;
+  border-spacing: 0 !important;
+  font-size: 15px;
+  background: transparent;
+}
+html body table th,
+html body table td {
+  border: 0 !important;
+  border-right: 1px solid var(--grid) !important;
+  border-top: 1px solid var(--grid) !important;
+}
+html body table tr > *:first-child { border-left: 1px solid var(--grid) !important; }
+/* Dòng thân không kẻ dưới; dòng cuối kẻ đáy */
+html body table > tbody:last-of-type > tr:last-child > td { border-bottom: 1px solid var(--grid) !important; }
+html body table:has(> tfoot) > tbody:last-of-type > tr:last-child > td { border-bottom: 0 !important; }
+html body table > tfoot > tr:last-child > td,
+html body table > tfoot > tr:last-child > th { border-bottom: 1px solid var(--grid) !important; }
+/* Tiêu đề: nét dưới vẽ trong ô để khi dính đầu vẫn đủ viền, dòng đầu thân bảng bỏ nét trên (tránh nét đôi) */
+html body table > thead > tr:last-child > th,
+html body table > thead > tr > th[rowspan] { box-shadow: inset 0 -1px 0 var(--grid) !important; }
+html body table:has(> thead) > tbody:first-of-type > tr:first-child > td { border-top: 0 !important; }
+html body table > thead > tr:last-child > th { border-bottom: 0 !important; }
+
+/* Bo 4 góc */
+html body table > thead > tr:first-child > th:first-child,
+html body table:not(:has(> thead)) > tbody:first-of-type > tr:first-child > td:first-child { border-top-left-radius: 14px; }
+html body table > thead > tr:first-child > th:last-child,
+html body table:not(:has(> thead)) > tbody:first-of-type > tr:first-child > td:last-child { border-top-right-radius: 14px; }
+html body table:not(:has(> tfoot)) > tbody:last-of-type > tr:last-child > td:first-child,
+html body table > tfoot > tr:last-child > td:first-child { border-bottom-left-radius: 14px; }
+html body table:not(:has(> tfoot)) > tbody:last-of-type > tr:last-child > td:last-child,
+html body table > tfoot > tr:last-child > td:last-child { border-bottom-right-radius: 14px; }
+
+/* Tiêu đề cột: nền nhạt, chữ đậm màu thương hiệu, căn giữa, xuống dòng theo từ */
+html body table > thead > tr > th:not([style*="font-size"]) { font-size: 15px; }
+html body table > thead > tr > th {
+  background: var(--th-bg) !important;
+  background-image: none !important;
+  color: var(--th-ink) !important;
+  font-weight: 700 !important;
+  text-align: center !important;
+  vertical-align: middle !important;
+  white-space: normal !important;
+  word-break: normal !important;
+  overflow-wrap: normal !important;
+  hyphens: none !important;
+  line-height: 1.3 !important;
+  padding: 8px 8px !important;
+  text-transform: none !important;
+  letter-spacing: 0 !important;
+}
+html body table > thead > tr > th * { color: inherit; }
+html body table > thead > tr > th svg { color: currentColor !important; }
+/* Nhóm cột có màu riêng (themeFix.js gắn data-tone theo màu gốc của ô) */
+html body table > thead > tr > th[data-tone="green"] { background: #DDF4EC !important; color: #0B6B50 !important; }
+html body table > thead > tr > th[data-tone="orange"] { background: #FDEBDD !important; color: #A0420B !important; }
+html body table > thead > tr > th[data-tone="violet"] { background: #ECE7FB !important; color: #4B2FA0 !important; }
+html body table > thead > tr > th[data-tone="red"] { background: #FCE4E6 !important; color: #A8222B !important; }
+html body table > thead > tr > th[data-tone="navy"] { background: #D7E3F6 !important; color: #0A2F62 !important; }
+html body table > thead > tr > th[data-tone="amber"] { background: #FDF3D6 !important; color: #8A5A00 !important; }
+
+/* Ô dữ liệu */
+html body table > tbody > tr > td {
+  font-size: 15px;
+  padding: 7px 10px;
+  vertical-align: middle;
+  color: var(--text);
+}
+html body table > tbody > tr:hover > td { background-color: #F3F7FD; }
+/* Dòng tổng (tfoot): cùng màu nền/chữ/cỡ chữ với tiêu đề */
+html body table > tfoot > tr > td,
+html body table > tfoot > tr > th {
+  background: var(--th-bg) !important;
+  color: var(--th-ink) !important;
+  font-weight: 700 !important;
+  font-size: 15px !important;
+}
+html body table > tfoot { position: sticky; bottom: 0; z-index: 15; }
+
+/* Khung cuộn bảng: không viền, bo góc bằng ô góc */
+html body .table-wrap {
+  border: 0 !important;
+  box-shadow: none !important;
+  background: transparent !important;
+  border-radius: 14px;
+}
+html body .scroll-mirror { border: 0 !important; background: transparent !important; }
+
+/* ==========================================================================
+   Nút, ô nhập, ô chọn, nhãn
+   ========================================================================== */
+html body button { font-weight: 600; }
+/* Nút trong app: bo tròn kiểu viên thuốc (trừ nút tròn 50% và ô chọn) */
+html body button[style*="border-radius"]:not([style*="50%"]):not(.sg-pill) { border-radius: 99px !important; }
+html body .sg-btn, html body .sg-round, html body .sg-user { white-space: nowrap; }
+html body button:active:not(:disabled) { transform: scale(.98); }
+html body .btn { border-radius: 99px; font-size: 15px; min-height: 36px; padding: 0 16px; box-shadow: none; white-space: nowrap; }
+html body .btn-sm { height: 32px; font-size: 12px; padding: 0 12px; }
+html body .btn-primary { background: linear-gradient(135deg, #0F58A7, #2F86E0); box-shadow: 0 8px 18px -10px rgba(15,88,167,.9); }
+html body .btn-outline { border: 1.5px solid #C9D7EE; background: #fff; }
+
+html body input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=file]),
+html body textarea,
+html body select {
+  line-height: 1.5 !important;
+  font-size: 15px;
+}
+html body .input { border-radius: 12px; border: 1.5px solid #D5DCEB; box-shadow: none; }
+html body .input:focus,
+html body input:not([type=checkbox]):not([type=radio]):focus,
+html body select:focus,
+html body textarea:focus { border-color: var(--primary) !important; box-shadow: 0 0 0 3px rgba(15,88,167,.16) !important; outline: none; }
+
+/* Ô chọn: bỏ mũi tên mặc định, mũi tên xanh trong ô vuông nền xanh nhạt */
+html body select:not([multiple]) {
+  -webkit-appearance: none !important;
+  appearance: none !important;
+  background-color: #fff;
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%230F58A7' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E"),
+    linear-gradient(#E4EEFA, #E4EEFA) !important;
+  background-repeat: no-repeat !important;
+  background-position: right 11px center, right 5px center !important;
+  background-size: 12px 12px, 24px 24px !important;
+  padding-right: 38px !important;
+  border-radius: 12px;
+  cursor: pointer;
+}
+
+html body .badge { border-radius: 99px; font-size: 12px; font-weight: 700; }
+html body .chip { border-radius: 99px; font-size: 12px; font-weight: 700; }
+
+html body .upload-zone { border-radius: 24px; border-color: #C9D3E6; background: rgba(255,255,255,.72); }
+html body .empty-state h3 { font-size: 22px; }
+
+@media (prefers-reduced-motion: reduce) {
+  html body *, html body *::before, html body *::after { animation: none !important; transition: none !important; }
+}
+
+/* ==========================================================================
+   Khối dùng chung cho các tab (dùng className, không style inline)
+   ========================================================================== */
+/* Dãy viên số liệu báo cáo: gradient đậm, chữ trắng, TOÀN BỘ chữ đậm 700 */
+.sg-kpis { display: flex; flex-wrap: wrap; gap: 10px; align-items: stretch; }
+.sg-kpi { --c: #0F58A7; --c2: #2F86E0; position: relative; overflow: hidden; display: flex; align-items: center; gap: 12px; min-width: 0; flex: 1 1 200px; padding: 14px 18px; border-radius: 24px; color: #fff !important; background: linear-gradient(135deg, var(--c), var(--c2)); box-shadow: 0 12px 24px -14px var(--c), inset 0 1px 0 rgba(255,255,255,.35); font-weight: 700 !important; }
+.sg-kpi * { color: #fff !important; font-weight: 700 !important; }
+.sg-kpi .sg-kpi-ic { flex: none; width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; background: rgba(255,255,255,.2); }
+.sg-kpi .sg-kpi-bd { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.sg-kpi .sg-kpi-lb { font-size: 12px; opacity: .92; line-height: 1.3; }
+.sg-kpi .sg-kpi-v { font-size: 22px; line-height: 1.15; white-space: nowrap; font-family: var(--fn) !important; }
+.sg-kpi .sg-kpi-v small { font-size: 12px; margin-left: 4px; font-family: var(--f) !important; opacity: .92; }
+.sg-kpi .sg-kpi-sub { font-size: 12px; opacity: .9; line-height: 1.3; }
+.sg-kpi::after { content: ""; position: absolute; inset: -40% auto -40% -60%; width: 40%; transform: skewX(-20deg); background: linear-gradient(90deg, transparent, rgba(255,255,255,.28), transparent); animation: sgShine 7s ease-in-out infinite; pointer-events: none; }
+@keyframes sgShine { 0%, 70% { left: -60%; } 100% { left: 130%; } }
+/* Viên gọn cho trang làm việc */
+.sg-kpi.sm { flex: 0 0 auto; padding: 6px 14px 6px 6px; border-radius: 99px; gap: 8px; }
+.sg-kpi.sm .sg-kpi-ic { width: 28px; height: 28px; }
+.sg-kpi.sm .sg-kpi-bd { flex-direction: row; align-items: baseline; gap: 6px; }
+.sg-kpi.sm .sg-kpi-lb { font-size: 12px; }
+.sg-kpi.sm .sg-kpi-v { font-size: 15px; }
+.sg-kpi.sm::after { display: none; }
+button.sg-kpi { border: 0; cursor: pointer; text-align: left; }
+button.sg-kpi.dim { opacity: .55; }
+button.sg-kpi.on { box-shadow: 0 0 0 2px #fff, 0 0 0 4px var(--c), 0 12px 24px -14px var(--c); }
+/* Bảng màu viên (mỗi viên một màu theo ý nghĩa) */
+.sg-c-blue { --c: #0F58A7; --c2: #2F86E0; }
+.sg-c-green { --c: #12A150; --c2: #3CCB7F; }
+.sg-c-orange { --c: #E07A10; --c2: #F5A524; }
+.sg-c-red { --c: #D92D3A; --c2: #F2646E; }
+.sg-c-violet { --c: #6D4AFF; --c2: #9B7BFF; }
+.sg-c-magenta { --c: #C21FC9; --c2: #E05BE6; }
+.sg-c-teal { --c: #0E8F80; --c2: #22C2AE; }
+.sg-c-indigo { --c: #2D3CE6; --c2: #6271FF; }
+.sg-c-cyan { --c: #0284C7; --c2: #38BDF8; }
+.sg-c-rose { --c: #D9365E; --c2: #F2708F; }
+
+/* Nút gạt chọn kiểu xem / tab con */
+.sg-seg { display: inline-flex; align-items: center; gap: 2px; padding: 3px; border-radius: 99px; background: #fff; box-shadow: inset 0 0 0 1px #D5DCEB; flex: none; }
+.sg-seg > button { height: 32px; padding: 0 14px; border-radius: 99px; border: 0; background: transparent; color: var(--text-muted); font-size: 15px; font-weight: 600; white-space: nowrap; display: inline-flex; align-items: center; gap: 6px; }
+.sg-seg > button:hover { color: var(--primary); background: var(--primary-light); }
+.sg-seg > button.on { background: linear-gradient(135deg, #0F58A7, #2F86E0); color: #fff; box-shadow: 0 6px 14px -8px rgba(15,88,167,.9); }
+
+/* Nút chung */
+.sg-btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 36px; padding: 0 16px; border-radius: 99px; border: 0; font-size: 15px; font-weight: 600; white-space: nowrap; color: #fff; background: linear-gradient(135deg, #0F58A7, #2F86E0); box-shadow: 0 8px 16px -10px rgba(15,88,167,.9); cursor: pointer; }
+.sg-btn:hover { filter: brightness(1.06); }
+.sg-btn:disabled { opacity: .5; cursor: not-allowed; }
+.sg-btn.ghost { color: var(--primary); background: #fff; box-shadow: inset 0 0 0 1px #D5DCEB; }
+.sg-btn.ghost:hover { background: var(--primary-light); }
+.sg-btn.green { background: linear-gradient(135deg, #12A150, #3CCB7F); box-shadow: 0 8px 16px -10px rgba(18,161,80,.9); }
+.sg-btn.danger { color: #D92D3A; background: #FFE7E5; box-shadow: none; }
+.sg-btn.danger:hover { background: #FF3B30; color: #fff; }
+
+/* Nút Xuất Excel kiểu nhẹ: nền trắng, viền xanh lá nhạt, ô vuông chữ X (themeFix gắn lớp sg-xl theo chữ trên nút) */
+html body button.sg-xl {
+  background: #fff !important; background-image: none !important;
+  color: #0D7A3C !important; border: 1.5px solid #9EDDB7 !important;
+  box-shadow: none !important; border-radius: 99px !important;
+  height: 36px !important; padding: 0 14px 0 5px !important;
+  font-size: 15px !important; font-weight: 600 !important; gap: 8px !important;
+  display: inline-flex !important; align-items: center !important; white-space: nowrap !important;
+}
+html body button.sg-xl::before { content: "X"; flex: none; width: 24px; height: 24px; border-radius: 7px; background: #12A150; color: #fff; font-size: 12px; font-weight: 700; display: grid; place-items: center; font-family: var(--f); }
+html body button.sg-xl > svg { display: none !important; }
+html body button.sg-xl:hover:not(:disabled) { background: #EAF8EF !important; }
+html body button.sg-xl:disabled { opacity: .5 !important; }
+
+/* Tiêu đề trang trong tab trùng với thanh trên cùng → ẩn (giữ nút thao tác) */
+.sg-hide { display: none !important; }
+
+/* Dấu X kiểu iPhone cho mọi nút chỉ chứa biểu tượng X (xoá tìm, đóng, bỏ thẻ) */
+html body button:has(> svg.lucide-x:only-child) {
+  width: 26px !important; height: 26px !important; min-width: 26px !important; padding: 0 !important;
+  border-radius: 50% !important; border: 0 !important; box-shadow: none !important;
+  background: #FFE7E5 !important; color: #FF3B30 !important;
+  display: inline-grid !important; place-items: center !important; flex: none !important; cursor: pointer;
+}
+html body button:has(> svg.lucide-x:only-child) > svg { width: 12px !important; height: 12px !important; stroke-width: 2.6 !important; color: currentColor !important; stroke: currentColor !important; }
+html body button:has(> svg.lucide-x:only-child):hover { background: #FF3B30 !important; color: #fff !important; }
+
+/* Khung trắng bọc khối (card) viết bằng style inline: bo góc lớn, trắng mờ kiểu kính */
+html body div[style*="var(--shadow-sm)"]:not(.sg-kpi):not(.table-wrap) {
+  border-radius: 24px !important;
+  border-color: rgba(255,255,255,.75) !important;
+  background-color: rgba(255,255,255,.78) !important;
+  box-shadow: 0 10px 30px -18px rgba(16,24,64,.22), inset 0 0 0 1px rgba(255,255,255,.6) !important;
+}
+
+/* Không dùng chữ in hoa toàn bộ (phong cách anh Chung): bỏ text-transform uppercase viết inline */
+html body [style*="text-transform: uppercase"] { text-transform: none !important; letter-spacing: 0 !important; }
+
+/* Hộp thoại (lớp phủ cố định viết inline): khung bo góc lớn, bóng mềm */
+html body div[style*="position: fixed"][style*="inset: 0"] > div:not([style*="position: absolute"]) {
+  border-radius: 24px !important;
+  box-shadow: 0 30px 80px -30px rgba(16,24,64,.45), 0 0 0 1px rgba(16,24,64,.06) !important;
+}
+
+/* Nút không bao giờ gãy chữ thành 2 dòng */
+html body button, html body label.sg-btn, html body .btn { white-space: nowrap; }
+html body button > span { white-space: nowrap; }
+
+/* Điện thoại: dãy số liệu thành dải vuốt ngang */
+@media (max-width: 760px) {
+  .sg-kpis { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; padding-bottom: 4px; }
+  .sg-kpis::-webkit-scrollbar { display: none; }
+  .sg-kpi { flex: 0 0 auto; }
+}

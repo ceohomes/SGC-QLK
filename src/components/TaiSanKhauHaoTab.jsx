@@ -5,7 +5,8 @@ const XLSX = XLSXStyle
 
 import { 
   DollarSign, Search, Filter, ArrowUpDown, Download, 
-  Layers, Package, AlertTriangle, Calendar, Info, CheckCircle2, Database
+  Layers, Package, AlertTriangle, Calendar, Info, CheckCircle2, Database,
+  ChevronDown, ChevronUp, X
 } from 'lucide-react'
 
 import { isApprovedStatus, normalizeBchName, getStandardizedBchList } from '../constants.js'
@@ -37,25 +38,26 @@ function LocalSearchableSelect({ value, onChange, options, placeholder = 'Tất 
       <div 
         onClick={() => setIsOpen(!isOpen)}
         style={{
-          padding: '8px 12px',
+          padding: '0 5px 0 12px',
           background: '#ffffff',
-          border: '1px solid #cbd5e1',
-          borderRadius: '6px',
-          fontSize: '13px',
-          fontWeight: 500,
+          border: '1.5px solid #D5DCEB',
+          borderRadius: '12px',
+          fontSize: '15px',
+          fontWeight: 400,
           color: '#1e293b',
           cursor: 'pointer',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          minHeight: '38px',
+          gap: '8px',
+          height: '36px',
           boxSizing: 'border-box'
         }}
       >
         <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '90%' }}>
           {value || placeholder}
         </span>
-        <span style={{ fontSize: '10px', color: '#64748b' }}>▼</span>
+        <span style={{ flex: 'none', width: '24px', height: '24px', borderRadius: '8px', background: '#E4EEFA', color: '#0F58A7', display: 'grid', placeItems: 'center' }}><ChevronDown size={14} strokeWidth={2.6} /></span>
       </div>
 
       {isOpen && (
@@ -66,7 +68,7 @@ function LocalSearchableSelect({ value, onChange, options, placeholder = 'Tất 
           right: 0,
           background: '#ffffff',
           border: '1px solid #cbd5e1',
-          borderRadius: '6px',
+          borderRadius: '12px',
           boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1)',
           zIndex: 999,
           maxHeight: '260px',
@@ -101,7 +103,7 @@ function LocalSearchableSelect({ value, onChange, options, placeholder = 'Tất 
               }}
               style={{
                 padding: '8px 12px',
-                fontSize: '12.5px',
+                fontSize: '12px',
                 color: '#ef4444',
                 fontWeight: 600,
                 cursor: 'pointer',
@@ -126,7 +128,7 @@ function LocalSearchableSelect({ value, onChange, options, placeholder = 'Tất 
                   }}
                   style={{
                     padding: '8px 12px',
-                    fontSize: '12.5px',
+                    fontSize: '12px',
                     color: '#334155',
                     cursor: 'pointer',
                     background: value === opt ? '#e2e8f0' : 'transparent',
@@ -3162,369 +3164,144 @@ export default function TaiSanKhauHaoTab({
     URL.revokeObjectURL(url)
   }
 
+  const khCtl = { height: '36px', border: '1.5px solid #D5DCEB', borderRadius: '12px', background: '#ffffff', color: '#1e293b', fontSize: '15px', boxSizing: 'border-box', outline: 'none' }
+  const khCard = { background: 'rgba(255,255,255,.72)', borderRadius: '24px', boxShadow: '0 1px 2px rgba(16,24,40,.04), 0 8px 24px -16px rgba(16,24,40,.18)', border: '1px solid rgba(255,255,255,.9)' }
+  const khSubTabs = [
+    { id: 'detail', label: 'Chi tiết', full: 'Báo cáo chi tiết', icon: <Info size={15} /> },
+    { id: 'summary_all', label: 'Toàn công ty', full: 'Tổng hợp toàn công ty', icon: <Layers size={15} /> },
+    { id: 'summary_month', label: 'Báo cáo tháng', full: 'Tổng hợp báo cáo tháng', icon: <Calendar size={15} /> },
+    { id: 'material_stats', label: 'Theo vật tư', full: 'Thống kê theo vật tư', icon: <Package size={15} /> },
+    { id: 'reconciliation', label: 'Đối chiếu', full: 'Đối chiếu Kho dự án (A) với Nhà cung cấp (B)', icon: <CheckCircle2 size={15} /> }
+  ]
+
   return (
-    <div style={{ padding: '20px', height: '100%', display: 'flex', flexDirection: 'column', overflowY: 'auto', boxSizing: 'border-box', background: '#f8fafc' }}>
+    <div style={{ padding: '12px 16px', height: '100%', display: 'flex', flexDirection: 'column', gap: '10px', overflowY: 'auto', boxSizing: 'border-box', background: 'transparent' }}>
       
       {isDbSchemaOutdated && (
-        <div style={{
-          background: '#fef2f2',
-          border: '1.5px solid #f87171',
-          borderRadius: '8px',
-          padding: '16px 20px',
-          marginBottom: '16px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: '16px',
-          boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
-            <AlertTriangle size={22} style={{ color: '#dc2626', marginTop: '2px', flexShrink: 0 }} />
-            <div>
-              <h3 style={{ margin: 0, fontSize: '15px', fontWeight: 800, color: '#991b1b' }}>
-                Phát hiện cấu trúc cơ sở dữ liệu Supabase chưa được nâng cấp!
-              </h3>
-              <p style={{ margin: '4px 0 0 0', fontSize: '13.5px', color: '#7f1d1d', lineHeight: '1.5' }}>
-                Bảng <strong>cau_hinh_khau_hao</strong> trên database của bạn hiện tại thiếu cột <strong>ma_sap</strong>. 
-                Do đó, hệ thống không thể liên kết và hiển thị chính xác Thời gian khấu hao cho các mã vật tư đã lưu. 
-                Vui lòng nhấp vào nút bên phải để xem câu lệnh SQL nâng cấp cơ sở dữ liệu.
-              </p>
-            </div>
+        <div
+          title="Bảng cau_hinh_khau_hao trên database hiện tại thiếu cột ma_sap. Do đó hệ thống không thể liên kết và hiển thị chính xác Thời gian khấu hao cho các mã vật tư đã lưu. Bấm nút bên phải để xem câu lệnh SQL nâng cấp cơ sở dữ liệu."
+          style={{ ...khCard, background: '#FFF1F0', border: '1px solid #FFD4CF', padding: '8px 8px 8px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', flexShrink: 0 }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
+            <AlertTriangle size={18} style={{ color: '#D92D3A', flexShrink: 0 }} />
+            <span style={{ fontSize: '15px', fontWeight: 700, color: '#991b1b' }}>
+              Cơ sở dữ liệu Supabase chưa được nâng cấp: bảng <strong>cau_hinh_khau_hao</strong> thiếu cột <strong>ma_sap</strong>.
+            </span>
           </div>
-          <button
-            onClick={onOpenDbUpgradeModal}
-            style={{
-              padding: '8px 16px',
-              background: '#dc2626',
-              color: '#ffffff',
-              border: 'none',
-              borderRadius: '6px',
-              fontSize: '13px',
-              fontWeight: 750,
-              cursor: 'pointer',
-              whiteSpace: 'nowrap',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '6px',
-              transition: 'all 0.15s'
-            }}
-            onMouseOver={(e) => e.currentTarget.style.background = '#b91c1c'}
-            onMouseOut={(e) => e.currentTarget.style.background = '#dc2626'}
-          >
+          <button className="sg-btn danger" onClick={onOpenDbUpgradeModal}>
             <Database size={14} />
             Nâng cấp DB ngay
           </button>
         </div>
       )}
 
-      {/* Sub-tabs Selection & Export controls */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '12px', borderBottom: '2px solid #e2e8f0', paddingBottom: '12px' }}>
-        <div style={{ display: 'flex', gap: '8px' }}>
-          <button
-            onClick={() => {
-              setActiveSubTab('detail')
-              setSearchTerm('')
-            }}
-            style={{
-              padding: '10px 20px',
-              borderRadius: '8px',
-              fontSize: '14px',
-              fontWeight: 700,
-              cursor: 'pointer',
-              background: activeSubTab === 'detail' ? '#1e3a8a' : '#ffffff',
-              color: activeSubTab === 'detail' ? '#ffffff' : '#64748b',
-              border: '1px solid ' + (activeSubTab === 'detail' ? '#1e3a8a' : '#cbd5e1'),
-              boxShadow: activeSubTab === 'detail' ? '0 4px 10px rgba(30, 58, 138, 0.15)' : 'none',
-              transition: 'all 0.2s',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px'
-            }}
-          >
-            <Info size={16} />
-            Báo cáo chi tiết
-          </button>
-          <button
-            onClick={() => {
-              setActiveSubTab('summary_all')
-              setSearchTerm('')
-            }}
-            style={{
-              padding: '10px 20px',
-              borderRadius: '8px',
-              fontSize: '14px',
-              fontWeight: 700,
-              cursor: 'pointer',
-              background: activeSubTab === 'summary_all' ? '#1e3a8a' : '#ffffff',
-              color: activeSubTab === 'summary_all' ? '#ffffff' : '#64748b',
-              border: '1px solid ' + (activeSubTab === 'summary_all' ? '#1e3a8a' : '#cbd5e1'),
-              boxShadow: activeSubTab === 'summary_all' ? '0 4px 10px rgba(30, 58, 138, 0.15)' : 'none',
-              transition: 'all 0.2s',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px'
-            }}
-          >
-            <Layers size={16} />
-            Tổng hợp toàn công ty
-          </button>
-          <button
-            onClick={() => {
-              setActiveSubTab('summary_month')
-              setSearchTerm('')
-            }}
-            style={{
-              padding: '10px 20px',
-              borderRadius: '8px',
-              fontSize: '14px',
-              fontWeight: 700,
-              cursor: 'pointer',
-              background: activeSubTab === 'summary_month' ? '#1e3a8a' : '#ffffff',
-              color: activeSubTab === 'summary_month' ? '#ffffff' : '#64748b',
-              border: '1px solid ' + (activeSubTab === 'summary_month' ? '#1e3a8a' : '#cbd5e1'),
-              boxShadow: activeSubTab === 'summary_month' ? '0 4px 10px rgba(30, 58, 138, 0.15)' : 'none',
-              transition: 'all 0.2s',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px'
-            }}
-          >
-            <Calendar size={16} />
-            Tổng hợp báo cáo tháng
-          </button>
-          <button
-            onClick={() => {
-              setActiveSubTab('material_stats')
-              setSearchTerm('')
-            }}
-            style={{
-              padding: '10px 20px',
-              borderRadius: '8px',
-              fontSize: '14px',
-              fontWeight: 700,
-              cursor: 'pointer',
-              background: activeSubTab === 'material_stats' ? '#1e3a8a' : '#ffffff',
-              color: activeSubTab === 'material_stats' ? '#ffffff' : '#64748b',
-              border: '1px solid ' + (activeSubTab === 'material_stats' ? '#1e3a8a' : '#cbd5e1'),
-              boxShadow: activeSubTab === 'material_stats' ? '0 4px 10px rgba(30, 58, 138, 0.15)' : 'none',
-              transition: 'all 0.2s',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px'
-            }}
-          >
-            <Package size={16} />
-            Thống kê theo vật tư
-          </button>
-          <button
-            onClick={() => {
-              setActiveSubTab('reconciliation')
-              setSearchTerm('')
-            }}
-            style={{
-              padding: '10px 20px',
-              borderRadius: '8px',
-              fontSize: '14px',
-              fontWeight: 700,
-              cursor: 'pointer',
-              background: activeSubTab === 'reconciliation' ? '#1e3a8a' : '#ffffff',
-              color: activeSubTab === 'reconciliation' ? '#ffffff' : '#64748b',
-              border: '1px solid ' + (activeSubTab === 'reconciliation' ? '#1e3a8a' : '#cbd5e1'),
-              boxShadow: activeSubTab === 'reconciliation' ? '0 4px 10px rgba(30, 58, 138, 0.15)' : 'none',
-              transition: 'all 0.2s',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px'
-            }}
-          >
-            <CheckCircle2 size={16} />
-            Đối chiếu
-          </button>
+      {/* Hàng công cụ: tab con + bộ lọc + xuất Excel */}
+      <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '8px', flexShrink: 0 }}>
+        <div className="sg-seg">
+          {khSubTabs.map(t => (
+            <button
+              key={t.id}
+              title={t.full}
+              className={activeSubTab === t.id ? 'on' : ''}
+              onClick={() => {
+                setActiveSubTab(t.id)
+                setSearchTerm('')
+              }}
+            >
+              {t.icon}
+              {t.label}
+            </button>
+          ))}
         </div>
 
-        <button 
-          onClick={handleExportExcel}
-          style={{
-            background: '#10b981',
-            color: '#ffffff',
-            border: 'none',
-            padding: '10px 16px',
-            borderRadius: '8px',
-            fontSize: '13.5px',
-            fontWeight: 700,
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            boxShadow: '0 4px 6px -1px rgba(16, 185, 129, 0.2)'
-          }}
-          onMouseOver={(e) => e.currentTarget.style.background = '#059669'}
-          onMouseOut={(e) => e.currentTarget.style.background = '#10b981'}
-        >
-          <Download size={16} />
-          Xuất file Excel
-        </button>
-      </div>
+        <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '8px', flex: activeSubTab === 'detail' ? '1 1 760px' : '1 1 440px', minWidth: 0 }}>
+          {/* Project Selector - Hide on Company-wide Summary and Material Stats */}
+          {activeSubTab === 'detail' && (
+            <div title="Chọn Kho / Dự án" style={{ flex: '1 1 190px', minWidth: '170px' }}>
+              <LocalSearchableSelect
+                value={localProject}
+                onChange={(val) => setLocalProject(val)}
+                options={uniquePhysicalWarehouses}
+                placeholder="Tất cả Kho / Dự án"
+                searchPlaceholder="Tìm kiếm dự án..."
+              />
+            </div>
+          )}
 
-
-      {/* Filters Box */}
-      <div style={{
-        background: '#ffffff',
-        border: '1px solid #e2e8f0',
-        borderRadius: '12px',
-        padding: '16px',
-        marginBottom: '16px',
-        display: 'flex',
-        gap: '12px',
-        alignItems: 'center',
-        flexWrap: 'wrap',
-        boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
-      }}>
-        {/* Project Selector - Hide on Company-wide Summary and Material Stats */}
-        {activeSubTab === 'detail' && (
-          <div style={{ flex: '1 1 200px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
-            <label style={{ fontSize: '12px', fontWeight: 700, color: '#475569' }}>Chọn Kho / Dự án:</label>
-            <LocalSearchableSelect
-              value={localProject}
-              onChange={(val) => setLocalProject(val)}
-              options={uniquePhysicalWarehouses}
-              placeholder="Tất cả Kho / Dự án"
-              searchPlaceholder="Tìm kiếm dự án..."
-            />
-          </div>
-        )}
-
-        {/* Year Selector */}
-        <div style={{ flex: '0 0 120px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
-          <label style={{ fontSize: '12px', fontWeight: 700, color: '#475569' }}>Chọn Năm thống kê:</label>
+          {/* Year Selector */}
           <select
+            title="Chọn Năm thống kê"
             value={selectedYear}
             onChange={(e) => setSelectedYear(parseInt(e.target.value, 10))}
-            style={{
-              padding: '8px 12px',
-              border: '1px solid #cbd5e1',
-              borderRadius: '6px',
-              fontSize: '13px',
-              fontWeight: 600,
-              background: '#ffffff',
-              color: '#1e293b',
-              height: '38px',
-              outline: 'none'
-            }}
+            style={{ ...khCtl, flex: '0 0 auto', width: '128px', padding: '0 12px', fontWeight: 600 }}
           >
             {uniqueYears.map(yr => (
               <option key={yr} value={yr}>Năm {yr}</option>
             ))}
           </select>
-        </div>
 
-        {/* Status Selector - Hide on Company-wide Summary */}
-        {activeSubTab === 'detail' && (
-          <div style={{ flex: '1 1 180px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
-            <label style={{ fontSize: '12px', fontWeight: 700, color: '#475569' }}>Bộ lọc trạng thái:</label>
+          {/* Status Selector - Hide on Company-wide Summary */}
+          {activeSubTab === 'detail' && (
             <select
+              title="Bộ lọc trạng thái"
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              style={{
-                padding: '8px 12px',
-                border: '1px solid #cbd5e1',
-                borderRadius: '6px',
-                fontSize: '13px',
-                fontWeight: 500,
-                background: '#ffffff',
-                color: '#1e293b',
-                height: '38px',
-                outline: 'none'
-              }}
+              style={{ ...khCtl, flex: '0 1 190px', minWidth: '150px', padding: '0 12px' }}
             >
               <option value="all">Tất cả tài sản</option>
               <option value="khauhao">Chưa sử dụng (&gt; 30 ngày)</option>
               <option value="active">Đang sử dụng (&lt;= 30 ngày / Hết tồn)</option>
             </select>
-          </div>
-        )}
+          )}
 
-        {/* Text Search */}
-        <div style={{ flex: '2 1 240px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
-          <label style={{ fontSize: '12px', fontWeight: 700, color: '#475569' }}>
-            {activeSubTab === 'summary_all' ? 'Tìm kiếm Kho / Dự án:' : activeSubTab === 'summary_month' ? 'Tìm kiếm Kho / Dự án / Mã SAP / Vật tư:' : activeSubTab === 'reconciliation' ? 'Tìm kiếm nhanh vật tư:' : 'Tìm kiếm nhanh:'}
-          </label>
-          <div style={{ position: 'relative', width: '100%' }}>
+          {/* Text Search */}
+          <div
+            title={activeSubTab === 'summary_all' ? 'Tìm kiếm Kho / Dự án' : activeSubTab === 'summary_month' ? 'Tìm kiếm Kho / Dự án / Mã SAP / Vật tư' : activeSubTab === 'reconciliation' ? 'Tìm kiếm nhanh vật tư' : 'Tìm kiếm nhanh'}
+            style={{ position: 'relative', flex: '2 1 180px', minWidth: '170px' }}
+          >
             <input
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder={activeSubTab === 'summary_all' ? 'Nhập tên kho / dự án cần tìm...' : activeSubTab === 'summary_month' ? 'Tìm theo kho, dự án, mã SAP hoặc tên vật tư...' : activeSubTab === 'reconciliation' ? 'Tìm theo mã SAP, tên vật tư...' : 'Tìm theo mã, tên vật tư...'}
-              style={{
-                width: '100%',
-                padding: '8px 12px 8px 36px',
-                border: '1px solid #cbd5e1',
-                borderRadius: '6px',
-                fontSize: '13px',
-                height: '38px',
-                boxSizing: 'border-box',
-                outline: 'none',
-                color: '#1e293b'
-              }}
+              placeholder={activeSubTab === 'summary_all' ? 'Nhập tên kho / dự án cần tìm...' : activeSubTab === 'summary_month' ? 'Tìm theo kho, dự án, mã SAP hoặc tên vật tư...' : activeSubTab === 'reconciliation' ? 'Tìm theo mã SAP, tên vật tư...' : 'Tìm mã, tên vật tư...'}
+              style={{ ...khCtl, width: '100%', padding: '0 34px 0 36px' }}
             />
-            <Search size={16} color="#94a3b8" style={{ position: 'absolute', left: '12px', top: '11px' }} />
+            <Search size={16} color="#94a3b8" style={{ position: 'absolute', left: '12px', top: '10px', pointerEvents: 'none' }} />
+            {searchTerm && (
+              <button
+                type="button"
+                title="Xoá tìm kiếm"
+                onClick={() => setSearchTerm('')}
+                style={{ position: 'absolute', right: '6px', top: '6px', width: '24px', height: '24px', padding: 0, border: 0, borderRadius: '99px', background: '#EEF2F8', color: '#64748b', display: 'grid', placeItems: 'center', cursor: 'pointer' }}
+              >
+                <X size={14} />
+              </button>
+            )}
           </div>
+
+          <button className="sg-btn green" onClick={handleExportExcel} style={{ marginLeft: 'auto', flex: 'none' }}>
+            <Download size={16} />
+            Xuất file Excel
+          </button>
         </div>
       </div>
 
-      {/* Alert Banner for Reconciliation */}
-      {activeSubTab === 'reconciliation' && (
-        <div style={{
-          background: '#ecfdf5',
-          border: '1px solid #a7f3d0',
-          borderRadius: '12px',
-          padding: '14px 18px',
-          marginBottom: '16px',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '12px',
-          color: '#065f46',
-          fontSize: '13px',
-          lineHeight: '1.5',
-          boxShadow: '0 1px 2px rgba(0,0,0,0.02)'
-        }}>
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            background: '#10b981',
-            borderRadius: '50%',
-            width: '24px',
-            height: '24px',
-            minWidth: '24px',
-            color: '#ffffff',
-            fontWeight: 'bold',
-            fontSize: '14px'
-          }}>
-            ✓
-          </div>
-          <div>
-            <strong style={{ fontWeight: 700, color: '#047857', display: 'block', marginBottom: '2px', fontSize: '13.5px' }}>
-              Hệ thống đối soát tự động: Phân tích chênh lệch đối chiếu chi tiết giữa Kho Dự án (A) và Nhập từ Nhà cung cấp (B)
-            </strong>
-            <span>
-              Các phát sinh cấp phát/mượn vật tư liên quan đến <strong>Tổ đội (Crews)</strong> được phân loại là lưu chuyển nội bộ tạm thời, 
-              không ghi nhận là xuất kho cố định, bảo toàn tính chuẩn xác trong việc đối chiếu khớp số lượng nhập/tồn.
-            </span>
-          </div>
-        </div>
-      )}
-
       {/* Reconciliation Analysis & Discrepancy Cause Report */}
       {activeSubTab === 'reconciliation' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: '16px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', flexShrink: 0 }}>
           {/* Material-level Discrepancy Summary Table */}
-          <div style={{ background: '#ffffff', borderRadius: '12px', border: '1px solid #cbd5e1', padding: '18px', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+          <div style={{ ...khCard, padding: '14px 16px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', flexWrap: 'wrap', gap: '8px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Package size={16} color="#1e3a8a" />
-                <span style={{ fontSize: '13.5px', fontWeight: 800, color: '#1e3a8a' }}>
-                  📋 DANH SÁCH CÁC LOẠI VẬT TƯ CHÊNH LỆCH / BỊ ÂM TOÀN CÔNG TY
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
+                <Package size={16} color="#0F58A7" />
+                <span style={{ fontSize: '15px', fontWeight: 700, color: '#0F58A7' }}>
+                  Danh sách vật tư chênh lệch / bị âm toàn công ty
+                </span>
+                <span
+                  title={'Hệ thống đối soát tự động: phân tích chênh lệch đối chiếu chi tiết giữa Kho Dự án (A) và Nhập từ Nhà cung cấp (B).\nCác phát sinh cấp phát/mượn vật tư liên quan đến Tổ đội được phân loại là lưu chuyển nội bộ tạm thời, không ghi nhận là xuất kho cố định, bảo toàn tính chuẩn xác khi đối chiếu số lượng nhập/tồn.\n\nDanh sách tổng hợp các mã vật tư (tài sản khấu hao) bị âm hoặc chênh lệch giữa Kho Dự án (A) và Nhà cung cấp (B), lấy từ các đơn giao nhận chi tiết. Chênh lệch âm: tồn thực tế ở Kho Dự án ít hơn lượng Nhà cung cấp bàn giao.'}
+                  style={{ display: 'inline-flex', color: '#64748b', cursor: 'help' }}
+                >
+                  <Info size={16} />
                 </span>
               </div>
               <button
@@ -3532,28 +3309,12 @@ export default function TaiSanKhauHaoTab({
                   setShowDiscrepancyDetail(!showDiscrepancyDetail)
                   setDiscrepancyPage(1)
                 }}
-                style={{
-                  padding: '5px 12px',
-                  background: showDiscrepancyDetail ? '#475569' : '#1e3a8a',
-                  color: '#ffffff',
-                  border: 'none',
-                  borderRadius: '6px',
-                  fontSize: '11px',
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '4px',
-                  transition: 'all 0.15s ease'
-                }}
+                className="sg-btn ghost"
               >
                 {showDiscrepancyDetail ? 'Ẩn chi tiết giao dịch lệch' : 'Xem chi tiết giao dịch lệch'}
-                <span style={{ fontSize: '9px' }}>{showDiscrepancyDetail ? '▲' : '▼'}</span>
+                {showDiscrepancyDetail ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
               </button>
             </div>
-            <p style={{ fontSize: '12px', color: '#64748b', margin: '0 0 12px 0', lineHeight: '1.4' }}>
-              Dưới đây là danh sách tổng hợp các mã vật tư (tài sản khấu hao) bị âm hoặc chênh lệch giữa <strong>Kho Dự án (A)</strong> và <strong>Nhà cung cấp (B)</strong>, được tổng hợp từ các đơn giao nhận chi tiết. Các dòng có chênh lệch âm biểu thị lượng tồn thực tế ở Kho Dự án đang ít hơn lượng Nhà cung cấp bàn giao.
-            </p>
             <div style={{ overflowX: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '12px' }}>
                 <thead>
@@ -3571,7 +3332,7 @@ export default function TaiSanKhauHaoTab({
                   {filteredMaterialMismatchSummary.map((m, idx) => (
                     <tr key={m.maSAP} style={{ borderBottom: '1px solid #e2e8f0', background: idx % 2 === 0 ? '#ffffff' : '#f8fafc' }}>
                       <td style={{ padding: '8px 10px', textAlign: 'center', color: '#64748b' }}>{idx + 1}</td>
-                      <td style={{ padding: '8px 10px', fontFamily: 'monospace', fontSize: '11px', color: '#475569', fontWeight: 600 }}>{m.maSAP}</td>
+                      <td style={{ padding: '8px 10px', fontFamily: 'monospace', fontSize: '12px', color: '#475569', fontWeight: 600 }}>{m.maSAP}</td>
                       <td style={{ padding: '8px 10px', color: '#1e293b', fontWeight: 500 }}>{m.tenVatTu}</td>
                       <td style={{ padding: '8px 10px', textAlign: 'right', color: '#0f766e', fontWeight: 600 }}>{m.effectI.toLocaleString('vi-VN', { maximumFractionDigits: 2 })}</td>
                       <td style={{ padding: '8px 10px', textAlign: 'right', color: '#b45309', fontWeight: 600 }}>{m.effectII.toLocaleString('vi-VN', { maximumFractionDigits: 2 })}</td>
@@ -3586,7 +3347,7 @@ export default function TaiSanKhauHaoTab({
                   {filteredMaterialMismatchSummary.length === 0 && (
                     <tr>
                       <td colSpan="7" style={{ padding: '20px', textAlign: 'center', color: '#64748b', fontStyle: 'italic' }}>
-                        🎉 Tuyệt vời! Không có chênh lệch tồn kho vật tư nào khớp với từ khóa tìm kiếm hoặc không có chênh lệch nào tồn tại.
+                        Không có chênh lệch tồn kho vật tư nào khớp với từ khóa tìm kiếm hoặc không có chênh lệch nào tồn tại.
                       </td>
                     </tr>
                   )}
@@ -3614,12 +3375,12 @@ export default function TaiSanKhauHaoTab({
 
           {/* Interactive Mismatch Detail Table */}
           {showDiscrepancyDetail && (
-            <div style={{ marginTop: '16px', background: '#ffffff', borderRadius: '8px', border: '1px solid #cbd5e1', padding: '14px' }}>
+            <div style={{ ...khCard, padding: '14px 16px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px', marginBottom: '12px' }}>
-                <span style={{ fontSize: '13px', fontWeight: 700, color: '#334155' }}>
+                <span style={{ fontSize: '15px', fontWeight: 700, color: '#334155' }}>
                   Bảng kê chi tiết {mismatchAnalysis.length} giao dịch lệch dòng đối chiếu:
                 </span>
-                <div style={{ position: 'relative', width: '280px' }}>
+                <div style={{ position: 'relative', width: '320px', maxWidth: '100%' }}>
                   <input
                     type="text"
                     placeholder="Tìm theo Mã SAP, tên vật tư, đơn vị..."
@@ -3628,17 +3389,9 @@ export default function TaiSanKhauHaoTab({
                       setDiscrepancySearch(e.target.value)
                       setDiscrepancyPage(1)
                     }}
-                    style={{
-                      width: '100%',
-                      padding: '6px 10px 6px 30px',
-                      fontSize: '12px',
-                      border: '1px solid #cbd5e1',
-                      borderRadius: '6px',
-                      boxSizing: 'border-box',
-                      outline: 'none'
-                    }}
+                    style={{ ...khCtl, width: '100%', padding: '0 12px 0 36px' }}
                   />
-                  <Search size={14} color="#94a3b8" style={{ position: 'absolute', left: '10px', top: '9px' }} />
+                  <Search size={16} color="#94a3b8" style={{ position: 'absolute', left: '12px', top: '10px', pointerEvents: 'none' }} />
                 </div>
               </div>
 
@@ -3678,7 +3431,7 @@ export default function TaiSanKhauHaoTab({
                             <td style={{ padding: '8px 10px', textAlign: 'center', color: '#64748b' }}>{globalIdx}</td>
                             <td style={{ padding: '8px 10px', fontWeight: 600, color: '#475569' }}>{m.maDon}</td>
                             <td style={{ padding: '8px 10px', textAlign: 'center', color: '#64748b' }}>{m.date}</td>
-                            <td style={{ padding: '8px 10px', fontFamily: 'monospace', fontSize: '11px' }}>{m.maSAP}</td>
+                            <td style={{ padding: '8px 10px', fontFamily: 'monospace', fontSize: '12px' }}>{m.maSAP}</td>
                             <td style={{ padding: '8px 10px', fontWeight: 500, color: '#1e293b' }}>{m.tenVatTu}</td>
                             <td style={{ padding: '8px 10px', color: '#475569' }}>{m.giaoUnit || <span style={{ color: '#ef4444', fontStyle: 'italic' }}>Khuyết</span>}</td>
                             <td style={{ padding: '8px 10px', color: '#475569' }}>{m.nhanUnit || <span style={{ color: '#ef4444', fontStyle: 'italic' }}>Khuyết</span>}</td>
@@ -3686,7 +3439,7 @@ export default function TaiSanKhauHaoTab({
                             <td style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 700, color: m.diff < 0 ? '#ef4444' : '#047857' }}>
                               {m.diff > 0 ? `+${m.diff.toLocaleString('vi-VN', { maximumFractionDigits: 2 })}` : m.diff.toLocaleString('vi-VN', { maximumFractionDigits: 2 })}
                             </td>
-                            <td style={{ padding: '8px 10px', color: '#b45309', fontSize: '11.5px', lineHeight: '1.4' }}>{m.reason}</td>
+                            <td style={{ padding: '8px 10px', color: '#b45309', fontSize: '12px', lineHeight: '1.4' }}>{m.reason}</td>
                           </tr>
                         )
                       })}
@@ -3743,14 +3496,8 @@ export default function TaiSanKhauHaoTab({
                     <button
                       onClick={() => setDiscrepancyPage(p => Math.max(1, p - 1))}
                       disabled={discrepancyPage === 1}
-                      style={{
-                        padding: '4px 10px',
-                        background: '#ffffff',
-                        border: '1px solid #cbd5e1',
-                        borderRadius: '4px',
-                        cursor: discrepancyPage === 1 ? 'not-allowed' : 'pointer',
-                        opacity: discrepancyPage === 1 ? 0.5 : 1
-                      }}
+                      className="sg-btn ghost"
+                      style={{ height: '32px', padding: '0 12px' }}
                     >
                       Trước
                     </button>
@@ -3765,30 +3512,8 @@ export default function TaiSanKhauHaoTab({
                           m.nhanUnit.toLowerCase().includes(q) ||
                           m.reason.toLowerCase().includes(q)
                       }).length}
-                      style={{
-                        padding: '4px 10px',
-                        background: '#ffffff',
-                        border: '1px solid #cbd5e1',
-                        borderRadius: '4px',
-                        cursor: discrepancyPage * discrepancyPageSize >= mismatchAnalysis.filter(m => {
-                          const q = discrepancySearch.toLowerCase().trim()
-                          if (!q) return true
-                          return m.maSAP.toLowerCase().includes(q) ||
-                            m.tenVatTu.toLowerCase().includes(q) ||
-                            m.giaoUnit.toLowerCase().includes(q) ||
-                            m.nhanUnit.toLowerCase().includes(q) ||
-                            m.reason.toLowerCase().includes(q)
-                        }).length ? 'not-allowed' : 'pointer',
-                        opacity: discrepancyPage * discrepancyPageSize >= mismatchAnalysis.filter(m => {
-                          const q = discrepancySearch.toLowerCase().trim()
-                          if (!q) return true
-                          return m.maSAP.toLowerCase().includes(q) ||
-                            m.tenVatTu.toLowerCase().includes(q) ||
-                            m.giaoUnit.toLowerCase().includes(q) ||
-                            m.nhanUnit.toLowerCase().includes(q) ||
-                            m.reason.toLowerCase().includes(q)
-                        }).length ? 0.5 : 1
-                      }}
+                      className="sg-btn ghost"
+                      style={{ height: '32px', padding: '0 12px' }}
                     >
                       Sau
                     </button>
@@ -3801,10 +3526,10 @@ export default function TaiSanKhauHaoTab({
       )}
 
       {/* Data Table */}
-      <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '12px', overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.05)', display: 'flex', flexDirection: 'column', flex: 1 }}>
+      <div style={{ ...khCard, background: '#ffffff', overflow: 'hidden', display: 'flex', flexDirection: 'column', flex: 1, minHeight: '320px' }}>
         <div style={{ overflowX: 'auto', flex: 1 }}>
           {activeSubTab === 'summary_all' ? (
-            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '12.5px', minWidth: '1150px' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '12px', minWidth: '1150px' }}>
               <thead>
                 <tr style={{ background: '#1e3a8a', borderBottom: '2px solid #0f172a' }}>
                   <th style={{ padding: '12px 10px', fontWeight: 700, color: '#ffffff', width: '60px', textAlign: 'center' }}>STT</th>
@@ -3852,7 +3577,7 @@ export default function TaiSanKhauHaoTab({
               <tbody>
                 {companyProjectSummaries.length === 0 ? (
                   <tr>
-                    <td colSpan="17" style={{ padding: '32px', textTransform: 'none', color: '#94a3b8', textAlign: 'center', fontSize: '14px', fontWeight: 500 }}>
+                    <td colSpan="17" style={{ padding: '32px', textTransform: 'none', color: '#94a3b8', textAlign: 'center', fontSize: '15px', fontWeight: 500 }}>
                       Không có dữ liệu tổng hợp toàn công ty.
                     </td>
                   </tr>
@@ -3873,7 +3598,7 @@ export default function TaiSanKhauHaoTab({
                         <React.Fragment key={group.id}>
                           {/* Group Title Row */}
                           <tr style={{ background: '#f1f5f9', borderBottom: '1px solid #cbd5e1' }}>
-                            <td colSpan="17" style={{ padding: '10px 14px', fontSize: '13px', fontWeight: 800, color: '#1e3a8a', background: '#f1f5f9', letterSpacing: '0.5px' }}>
+                            <td colSpan="17" style={{ padding: '10px 14px', fontSize: '15px', fontWeight: 800, color: '#1e3a8a', background: '#f1f5f9', letterSpacing: '0.5px' }}>
                               {group.title}
                             </td>
                           </tr>
@@ -3941,7 +3666,7 @@ export default function TaiSanKhauHaoTab({
 
                           {/* Subtotal Row for this Group */}
                           <tr style={{ background: '#f8fafc', fontWeight: 700, borderBottom: '2px solid #cbd5e1', borderTop: '1px solid #cbd5e1' }}>
-                            <td colSpan="2" style={{ padding: '10px 14px', textTransform: 'none', color: '#1e3a8a', fontSize: '12.5px', fontWeight: 800 }}>
+                            <td colSpan="2" style={{ padding: '10px 14px', textTransform: 'none', color: '#1e3a8a', fontSize: '12px', fontWeight: 800 }}>
                               CỘNG {group.id === 'I' ? 'KHO DỰ ÁN (A)' : 'NHẬP TỪ NCC (B)'}
                             </td>
                             <td style={{ padding: '10px', textAlign: 'center', color: '#475569' }}>{groupAssets}</td>
@@ -3979,7 +3704,7 @@ export default function TaiSanKhauHaoTab({
                     {/* Reconciled Difference Row */}
                     <tr style={{ background: '#ecfdf5', fontWeight: 800, borderTop: '2px solid #10b981', borderBottom: '2px solid #10b981' }}>
                       <td colSpan="2" style={{ padding: '12px 10px', textAlign: 'center', color: '#047857' }}>
-                        ✓ CHÊNH LỆCH ĐỐI CHIẾU (A - B)
+                        CHÊNH LỆCH ĐỐI CHIẾU (A - B)
                       </td>
                       <td style={{ padding: '12px 10px', textAlign: 'center', color: '#047857' }}>-</td>
                       <td style={{ padding: '12px 10px', textAlign: 'right', color: '#047857' }}>
@@ -4016,7 +3741,7 @@ export default function TaiSanKhauHaoTab({
               </tbody>
             </table>
           ) : activeSubTab === 'summary_month' ? (
-            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '11.5px', minWidth: '2600px', border: '1px solid #cbd5e1' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '12px', minWidth: '2600px', border: '1px solid #cbd5e1' }}>
               <thead>
                 <tr style={{ background: '#1e3a8a', borderBottom: '1px solid #cbd5e1' }}>
                   <th rowSpan={2} style={{ padding: '10px 8px', fontWeight: 700, color: '#ffffff', width: '50px', textAlign: 'center', verticalAlign: 'middle', border: '1px solid #cbd5e1' }}>STT</th>
@@ -4067,7 +3792,7 @@ export default function TaiSanKhauHaoTab({
                           width: '60px',
                           background: '#2563eb',
                           border: '1px solid #cbd5e1',
-                          fontSize: '10.5px'
+                          fontSize: '12px'
                         }}
                       >
                         T{m} {sumSortField === key && (sumSortDirection === 'asc' ? '▲' : '▼')}
@@ -4089,7 +3814,7 @@ export default function TaiSanKhauHaoTab({
                           width: '85px',
                           background: '#059669',
                           border: '1px solid #cbd5e1',
-                          fontSize: '10.5px'
+                          fontSize: '12px'
                         }}
                       >
                         T{m}
@@ -4101,7 +3826,7 @@ export default function TaiSanKhauHaoTab({
               <tbody>
                 {companyProjectMonthlySummaries.length === 0 ? (
                   <tr>
-                    <td colSpan={31} style={{ padding: '32px', textTransform: 'none', color: '#94a3b8', textAlign: 'center', fontSize: '14px', fontWeight: 500 }}>
+                    <td colSpan={31} style={{ padding: '32px', textTransform: 'none', color: '#94a3b8', textAlign: 'center', fontSize: '15px', fontWeight: 500 }}>
                       Không có dữ liệu tổng hợp tháng.
                     </td>
                   </tr>
@@ -4120,7 +3845,7 @@ export default function TaiSanKhauHaoTab({
                       return (
                         <React.Fragment key={group.id}>
                           <tr style={{ background: '#f1f5f9', borderBottom: '1px solid #cbd5e1' }}>
-                            <td colSpan={31} style={{ padding: '10px 14px', fontSize: '13px', fontWeight: 800, color: '#1e3a8a', background: '#f1f5f9', letterSpacing: '0.5px' }}>
+                            <td colSpan={31} style={{ padding: '10px 14px', fontSize: '15px', fontWeight: 800, color: '#1e3a8a', background: '#f1f5f9', letterSpacing: '0.5px' }}>
                               {group.title}
                             </td>
                           </tr>
@@ -4177,7 +3902,7 @@ export default function TaiSanKhauHaoTab({
                                           color: val > 0 ? '#0f172a' : (val < 0 ? '#ef4444' : '#94a3b8'),
                                           background: 'rgba(219, 234, 254, 0.15)',
                                           border: '1px solid #cbd5e1',
-                                          fontSize: '11px'
+                                          fontSize: '12px'
                                         }}
                                       >
                                         {val !== 0 ? val.toLocaleString('vi-VN', { maximumFractionDigits: 2 }) : '-'}
@@ -4200,7 +3925,7 @@ export default function TaiSanKhauHaoTab({
                                           color: amt > 0 ? '#047857' : (amt < 0 ? '#ef4444' : '#94a3b8'),
                                           background: 'rgba(209, 250, 229, 0.15)',
                                           border: '1px solid #cbd5e1',
-                                          fontSize: '11px'
+                                          fontSize: '12px'
                                         }}
                                       >
                                         {amt !== 0 ? `${Math.round(amt).toLocaleString('vi-VN')} đ` : '-'}
@@ -4234,7 +3959,7 @@ export default function TaiSanKhauHaoTab({
                                     color: val > 0 ? '#0f172a' : (val < 0 ? '#ef4444' : '#64748b'),
                                     background: 'rgba(219, 234, 254, 0.3)',
                                     border: '1px solid #cbd5e1',
-                                    fontSize: '11px'
+                                    fontSize: '12px'
                                   }}
                                 >
                                   {val !== 0 ? val.toLocaleString('vi-VN', { maximumFractionDigits: 2 }) : '-'}
@@ -4254,7 +3979,7 @@ export default function TaiSanKhauHaoTab({
                                     color: val > 0 ? '#047857' : (val < 0 ? '#ef4444' : '#64748b'),
                                     background: 'rgba(209, 250, 229, 0.3)',
                                     border: '1px solid #cbd5e1',
-                                    fontSize: '11px'
+                                    fontSize: '12px'
                                   }}
                                 >
                                   {val !== 0 ? `${Math.round(val).toLocaleString('vi-VN')} đ` : '-'}
@@ -4268,7 +3993,7 @@ export default function TaiSanKhauHaoTab({
                     
                     <tr style={{ background: '#ecfdf5', fontWeight: 800, borderTop: '2px solid #10b981', borderBottom: '2px solid #10b981' }}>
                       <td colSpan="5" style={{ padding: '10px 10px', textAlign: 'center', color: '#047857', border: '1px solid #cbd5e1' }}>
-                        ✓ CHÊNH LỆCH ĐỐI CHIẾU (A - B)
+                        CHÊNH LỆCH ĐỐI CHIẾU (A - B)
                       </td>
                       <td style={{ padding: '10px 10px', textAlign: 'right', color: '#047857', border: '1px solid #cbd5e1' }}>
                         {reconciliationMonthlyDifference.stockDiff.toLocaleString('vi-VN', { maximumFractionDigits: 2 })}
@@ -4290,7 +4015,7 @@ export default function TaiSanKhauHaoTab({
                               color: val !== 0 ? (val < 0 ? '#ef4444' : '#047857') : '#047857',
                               background: '#ecfdf5',
                               border: '1px solid #cbd5e1',
-                              fontSize: '11px'
+                              fontSize: '12px'
                             }}
                           >
                             {val !== 0 ? val.toLocaleString('vi-VN', { maximumFractionDigits: 2 }) : '-'}
@@ -4310,7 +4035,7 @@ export default function TaiSanKhauHaoTab({
                               color: val !== 0 ? (val < 0 ? '#ef4444' : '#047857') : '#047857',
                               background: '#ecfdf5',
                               border: '1px solid #cbd5e1',
-                              fontSize: '11px'
+                              fontSize: '12px'
                             }}
                           >
                             {val !== 0 ? `${Math.round(val).toLocaleString('vi-VN')} đ` : '-'}
@@ -4323,7 +4048,7 @@ export default function TaiSanKhauHaoTab({
               </tbody>
             </table>
           ) : activeSubTab === 'material_stats' ? (
-            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '12.5px', minWidth: '1350px' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '12px', minWidth: '1350px' }}>
               <thead>
                 <tr style={{ background: '#1e3a8a', borderBottom: '2px solid #0f172a' }}>
                   <th style={{ padding: '12px 10px', fontWeight: 700, color: '#ffffff', width: '75px', minWidth: '75px', textAlign: 'center' }}>STT</th>
@@ -4353,7 +4078,7 @@ export default function TaiSanKhauHaoTab({
                         background: '#1d4ed8', 
                         borderLeft: '1px solid rgba(255, 255, 255, 0.25)', 
                         borderRight: '1px solid rgba(255, 255, 255, 0.25)',
-                        fontSize: '11px',
+                        fontSize: '12px',
                         lineHeight: '1.2'
                       }}
                     >
@@ -4365,7 +4090,7 @@ export default function TaiSanKhauHaoTab({
               <tbody>
                 {sortedMaterialStatsData.length === 0 ? (
                   <tr>
-                    <td colSpan={5 + activePhysicalWarehouses.length} style={{ padding: '32px', textTransform: 'none', color: '#94a3b8', textAlign: 'center', fontSize: '14px', fontWeight: 500 }}>
+                    <td colSpan={5 + activePhysicalWarehouses.length} style={{ padding: '32px', textTransform: 'none', color: '#94a3b8', textAlign: 'center', fontSize: '15px', fontWeight: 500 }}>
                       Không tìm thấy thống kê vật tư nào khớp với từ khóa tìm kiếm.
                     </td>
                   </tr>
@@ -4424,7 +4149,7 @@ export default function TaiSanKhauHaoTab({
                     
                     {/* Grand Total Row */}
                     <tr style={{ background: '#f8fafc', fontWeight: 700, borderTop: '2px solid #cbd5e1', borderBottom: '2px solid #cbd5e1' }}>
-                      <td colSpan="4" style={{ padding: '12px 14px', textTransform: 'none', color: '#1e3a8a', fontSize: '12.5px', fontWeight: 800, textAlign: 'right' }}>
+                      <td colSpan="4" style={{ padding: '12px 14px', textTransform: 'none', color: '#1e3a8a', fontSize: '12px', fontWeight: 800, textAlign: 'right' }}>
                         TỔNG CỘNG THỐNG KÊ VẬT TƯ:
                       </td>
                       
@@ -4459,7 +4184,7 @@ export default function TaiSanKhauHaoTab({
               </tbody>
             </table>
           ) : (
-            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '12.5px', minWidth: '1300px' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '12px', minWidth: '1300px' }}>
               <thead>
                 <tr style={{ background: '#1e3a8a', borderBottom: '2px solid #0f172a' }}>
                   <th style={{ padding: '12px 10px', fontWeight: 700, color: '#ffffff', width: '60px', textAlign: 'center' }}>STT</th>
@@ -4511,7 +4236,7 @@ export default function TaiSanKhauHaoTab({
               <tbody>
                 {paginatedData.length === 0 ? (
                   <tr>
-                    <td colSpan="21" style={{ padding: '32px', textTransform: 'none', color: '#94a3b8', textAlign: 'center', fontSize: '14px', fontWeight: 500 }}>
+                    <td colSpan="21" style={{ padding: '32px', textTransform: 'none', color: '#94a3b8', textAlign: 'center', fontSize: '15px', fontWeight: 500 }}>
                       Không tìm thấy tài sản khấu hao nào khớp với điều kiện lọc.
                     </td>
                   </tr>
@@ -4571,11 +4296,11 @@ export default function TaiSanKhauHaoTab({
                         
                         <td style={{ padding: '10px', textAlign: 'center' }}>
                           {isOver30Days ? (
-                            <span style={{ background: '#fef3c7', color: '#92400e', border: '1px solid #fde68a', padding: '2px 8px', borderRadius: '12px', fontSize: '10.5px', fontWeight: 700 }}>
+                            <span style={{ display: 'inline-block', background: '#FFF4E0', color: '#B45309', padding: '3px 10px', borderRadius: '99px', fontSize: '12px', fontWeight: 700, whiteSpace: 'nowrap', lineHeight: 1.4 }}>
                               Chưa dùng &gt; 30 ngày
                             </span>
                           ) : (
-                            <span style={{ background: '#dcfce7', color: '#15803d', border: '1px solid #bbf7d0', padding: '2px 8px', borderRadius: '12px', fontSize: '10.5px', fontWeight: 700 }}>
+                            <span style={{ display: 'inline-block', background: '#E5F7EC', color: '#12803F', padding: '3px 10px', borderRadius: '99px', fontSize: '12px', fontWeight: 700, whiteSpace: 'nowrap', lineHeight: 1.4 }}>
                               Đang sử dụng
                             </span>
                           )}
@@ -4592,16 +4317,16 @@ export default function TaiSanKhauHaoTab({
         {/* Pagination & Display size controls - Only show on detail tab */}
         {activeSubTab === 'detail' && sortedData.length > 0 && (
           <div style={{
-            padding: '12px 16px',
+            padding: '8px 16px',
             borderTop: '1px solid #e2e8f0',
-            background: '#f8fafc',
+            background: 'rgba(248,250,252,.8)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
             flexWrap: 'wrap',
             gap: '12px'
           }}>
-            <div style={{ fontSize: '13px', color: '#64748b' }}>
+            <div style={{ fontSize: '15px', color: '#64748b' }}>
               Hiển thị từ <strong>{Math.min(sortedData.length, (currentPage - 1) * pageSize + 1)}</strong> đến{' '}
               <strong>{Math.min(sortedData.length, currentPage * pageSize)}</strong> trong tổng số{' '}
               <strong>{sortedData.length}</strong> dòng kết quả.
@@ -4610,22 +4335,14 @@ export default function TaiSanKhauHaoTab({
             <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
               {/* Page size selector */}
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <span style={{ fontSize: '13px', color: '#64748b' }}>Số dòng/trang:</span>
+                <span style={{ fontSize: '15px', color: '#64748b' }}>Số dòng/trang:</span>
                 <select
                   value={pageSize}
                   onChange={(e) => {
                     setPageSize(parseInt(e.target.value, 10))
                     setCurrentPage(1)
                   }}
-                  style={{
-                    padding: '4px 8px',
-                    border: '1px solid #cbd5e1',
-                    borderRadius: '4px',
-                    fontSize: '12.5px',
-                    fontWeight: 500,
-                    outline: 'none',
-                    background: '#ffffff'
-                  }}
+                  style={{ ...khCtl, height: '32px', width: '84px', padding: '0 10px' }}
                 >
                   <option value={20}>20</option>
                   <option value={50}>50</option>
@@ -4635,79 +4352,50 @@ export default function TaiSanKhauHaoTab({
               </div>
 
               {/* Navigation buttons */}
-              <div style={{ display: 'flex', gap: '4px' }}>
+              <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
                 <button
                   disabled={currentPage === 1}
                   onClick={() => setCurrentPage(1)}
-                  style={{
-                    padding: '6px 10px',
-                    border: '1px solid #cbd5e1',
-                    borderRadius: '6px',
-                    background: '#ffffff',
-                    fontSize: '12px',
-                    fontWeight: 600,
-                    cursor: currentPage === 1 ? 'not-allowed' : 'pointer',
-                    opacity: currentPage === 1 ? 0.5 : 1
-                  }}
+                  className="sg-btn ghost"
+                  style={{ height: '32px', padding: '0 12px' }}
                 >
                   « Đầu
                 </button>
                 <button
                   disabled={currentPage === 1}
                   onClick={() => setCurrentPage(prev => prev - 1)}
-                  style={{
-                    padding: '6px 10px',
-                    border: '1px solid #cbd5e1',
-                    borderRadius: '6px',
-                    background: '#ffffff',
-                    fontSize: '12px',
-                    fontWeight: 600,
-                    cursor: currentPage === 1 ? 'not-allowed' : 'pointer',
-                    opacity: currentPage === 1 ? 0.5 : 1
-                  }}
+                  className="sg-btn ghost"
+                  style={{ height: '32px', padding: '0 12px' }}
                 >
                   ‹ Trước
                 </button>
                 <span style={{
-                  padding: '6px 12px',
-                  fontSize: '13px',
+                  height: '32px',
+                  padding: '0 14px',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  fontSize: '15px',
                   fontWeight: 700,
-                  color: '#1e3a8a',
-                  background: '#eff6ff',
-                  borderRadius: '6px',
-                  border: '1px solid #bfdbfe'
+                  color: '#0F58A7',
+                  background: '#E4EEFA',
+                  borderRadius: '99px',
+                  whiteSpace: 'nowrap'
                 }}>
                   {currentPage} / {totalPages}
                 </span>
                 <button
                   disabled={currentPage === totalPages}
                   onClick={() => setCurrentPage(prev => prev + 1)}
-                  style={{
-                    padding: '6px 10px',
-                    border: '1px solid #cbd5e1',
-                    borderRadius: '6px',
-                    background: '#ffffff',
-                    fontSize: '12px',
-                    fontWeight: 600,
-                    cursor: currentPage === totalPages ? 'not-allowed' : 'pointer',
-                    opacity: currentPage === totalPages ? 0.5 : 1
-                  }}
+                  className="sg-btn ghost"
+                  style={{ height: '32px', padding: '0 12px' }}
                 >
                   Sau ›
                 </button>
                 <button
                   disabled={currentPage === totalPages}
                   onClick={() => setCurrentPage(totalPages)}
-                  style={{
-                    padding: '6px 10px',
-                    border: '1px solid #cbd5e1',
-                    borderRadius: '6px',
-                    background: '#ffffff',
-                    fontSize: '12px',
-                    fontWeight: 600,
-                    cursor: currentPage === totalPages ? 'not-allowed' : 'pointer',
-                    opacity: currentPage === totalPages ? 0.5 : 1
-                  }}
+                  className="sg-btn ghost"
+                  style={{ height: '32px', padding: '0 12px' }}
                 >
                   Cuối »
                 </button>

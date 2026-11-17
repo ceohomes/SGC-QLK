@@ -269,572 +269,366 @@ SET ho_ten = EXCLUDED.ho_ten,
     return colors[idx]
   }
 
+  // Phím Esc đóng hộp thoại đang mở (trên cùng trước)
+  useEffect(() => {
+    if (!showCreateModal && !showEditModal && !showDeleteModal) return
+    const onKey = (e) => {
+      if (e.key !== 'Escape') return
+      e.preventDefault()
+      if (showDeleteModal) setShowDeleteModal(false)
+      else if (showEditModal) setShowEditModal(false)
+      else if (showCreateModal) setShowCreateModal(false)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [showCreateModal, showEditModal, showDeleteModal])
+
+  const isActiveStatus = (s) => s === 'Hoạt động' || s === 'Đang hoạt động'
+
+  // Màu cố định theo vai trò
+  const roleTone = (role) => ROLE_TONES[role] || ROLE_TONES._other
+
+  const closeBtn = (onClose) => (
+    <button type="button" className="sgx-close" onClick={onClose} title="Đóng (Esc)">
+      <IosX />
+      <span>Đóng</span>
+    </button>
+  )
+
   return (
-    <div style={{
-      height: '100%',
-      display: 'flex',
-      flexDirection: 'column',
-      background: '#f8fafc',
-      overflow: 'hidden',
-      fontFamily: 'var(--font-sans)',
-      textAlign: 'left'
-    }}>
-      
-      {/* ─── SCROLLABLE CONTENT BODY ─── */}
-      <div style={{
-        flex: 1,
-        overflowY: 'auto',
-        padding: '20px 24px',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '20px'
-      }}>
-        {/* ─── FILTERS & CONTROLS ─── */}
-        <div style={{
-          background: '#ffffff',
-          borderRadius: '16px',
-          border: '1px solid #e2e8f0',
-          padding: '16px',
-          display: 'flex',
-          flexWrap: 'wrap',
-          gap: '12px',
-          alignItems: 'center',
-          boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)',
-          justifyContent: 'space-between'
-        }}>
-          {/* Left inputs */}
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', flex: 1, minWidth: '320px' }}>
-            {/* Search Input */}
-            <div style={{ position: 'relative', width: '260px' }}>
-              <span style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#64748b', display: 'flex', alignItems: 'center' }}>
-                <Search size={16} />
-              </span>
-              <input
-                id="acc_search_input"
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Tìm tên, username, email..."
-                style={{
-                  width: '100%',
-                  padding: '9px 12px 9px 36px',
-                  border: '1px solid #cbd5e1',
-                  borderRadius: '10px',
-                  fontSize: '13.5px',
-                  outline: 'none',
-                  color: '#1e293b',
-                  boxSizing: 'border-box'
-                }}
-              />
-            </div>
+    <div className="sgx-page">
+      <style>{QLTK_CSS}</style>
 
-            {/* Quyền Dropdown */}
-            <select
-              id="acc_role_filter"
-              value={selectedRole}
-              onChange={(e) => setSelectedRole(e.target.value)}
-              style={{
-                padding: '9px 12px',
-                border: '1px solid #cbd5e1',
-                borderRadius: '10px',
-                fontSize: '13px',
-                fontWeight: 600,
-                color: '#475569',
-                background: '#ffffff',
-                outline: 'none',
-                cursor: 'pointer'
-              }}
-            >
-              <option value="all">Tất cả quyền</option>
-              <option value="Admin">Quyền: Admin</option>
-              <option value="User">Quyền: User</option>
-            </select>
+      {/* ─── HÀNG CÔNG CỤ: số liệu + tìm + lọc + nút ─── */}
+      <div className="sgx-bar">
+        <div className="sg-kpis" style={{ flexWrap: 'nowrap' }}>
+          <div className="sg-kpi sm sg-c-blue" title="Tổng số tài khoản trong hệ thống">
+            <span className="sg-kpi-ic"><Users size={16} /></span>
+            <span className="sg-kpi-bd"><span className="sg-kpi-lb">Tài khoản</span><span className="sg-kpi-v">{totalAccounts}</span></span>
           </div>
-
-          {/* Right Action Button */}
-          <button
-            id="acc_create_btn"
-            onClick={openCreateModal}
-            style={{
-              background: '#2563eb',
-              color: '#ffffff',
-              border: 'none',
-              borderRadius: '10px',
-              padding: '10px 18px',
-              fontSize: '13.5px',
-              fontWeight: 700,
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              boxShadow: '0 4px 10px rgba(37, 99, 235, 0.15)',
-              transition: 'all 0.15s ease'
-            }}
-            onMouseOver={(e) => {
-              e.currentTarget.style.background = '#1d4ed8'
-              e.currentTarget.style.transform = 'translateY(-1px)'
-            }}
-            onMouseOut={(e) => {
-              e.currentTarget.style.background = '#2563eb'
-              e.currentTarget.style.transform = 'none'
-            }}
-          >
-            <Plus size={16} />
-            Tạo tài khoản
-          </button>
+          <div className="sg-kpi sm sg-c-green" title="Số tài khoản đang hoạt động">
+            <span className="sg-kpi-ic"><UserCheck size={16} /></span>
+            <span className="sg-kpi-bd"><span className="sg-kpi-lb">Đang hoạt động</span><span className="sg-kpi-v">{activeAccounts}</span></span>
+          </div>
+          <div className="sg-kpi sm sg-c-violet" title="Số tài khoản có quyền Admin">
+            <span className="sg-kpi-ic"><Shield size={16} /></span>
+            <span className="sg-kpi-bd"><span className="sg-kpi-lb">Admin</span><span className="sg-kpi-v">{adminAccounts}</span></span>
+          </div>
         </div>
 
-        {/* ─── DATA TABLE ─── */}
-        <div style={{
-          background: '#ffffff',
-          borderRadius: '16px',
-          border: '1px solid #e2e8f0',
-          boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)',
-          overflow: 'hidden'
-        }}>
-          {loading ? (
-            <div style={{ padding: '60px', textAlign: 'center', color: '#64748b' }}>
-              <svg className="animate-spin" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#2563eb" strokeWidth="3" style={{ margin: '0 auto 12px auto', animation: 'spin 1s linear infinite' }}>
-                <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
-              </svg>
-              <span>Đang tải danh sách tài khoản...</span>
-            </div>
-          ) : filteredAccounts.length === 0 ? (
-            accounts.length === 0 && isSupabaseConfigured ? (
-              <div style={{ padding: '40px 24px', color: '#64748b', background: '#fffefc', border: '1px solid #fef3c7', borderRadius: '12px', margin: '20px' }}>
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', gap: '12px' }}>
-                  <AlertTriangle size={56} color="#d97706" />
-                  <h3 style={{ margin: '0 0 6px 0', fontSize: '16px', fontWeight: 800, color: '#b45309' }}>
-                    CHƯA THIẾT LẬP HOẶC BỊ CHẶN BỞI CHÍNH SÁCH BẢO MẬT RLS TRÊN SUPABASE
-                  </h3>
-                  <p style={{ margin: '0 max(20px, 10%) 16px max(20px, 10%)', fontSize: '13.5px', color: '#78350f', lineHeight: '1.6' }}>
-                    Mặc dù ứng dụng đã kết nối thành công tới Supabase, nhưng truy vấn trả về 0 dòng dữ liệu. Điều này xảy ra do chính sách <strong>Row Level Security (RLS)</strong> trên bảng <code style={{ background: '#fef3c7', padding: '2px 6px', borderRadius: '4px', fontFamily: 'var(--font-mono)', fontWeight: 600 }}>quan_ly_tai_khoan</code> đang chặn quyền đọc dữ liệu của công chúng (anonymous role), hoặc bảng chưa được tạo đúng cấu trúc.
-                  </p>
-                </div>
-                
-                <div style={{ background: '#fcfcfc', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '16px', marginTop: '16px' }}>
-                  <h4 style={{ margin: '0 0 10px 0', fontSize: '13.5px', fontWeight: 700, color: '#1e293b' }}>Các bước khắc phục nhanh:</h4>
-                  <ol style={{ margin: 0, paddingLeft: '20px', fontSize: '13.5px', color: '#475569', display: 'flex', flexDirection: 'column', gap: '8px', lineHeight: '1.6' }}>
-                    <li>Nhấn nút <strong>Copy mã SQL cấu hình</strong> ở bên dưới.</li>
-                    <li>Mở <a href="https://supabase.com/dashboard" target="_blank" rel="noreferrer" style={{ color: '#2563eb', fontWeight: 600, textDecoration: 'underline' }}>Supabase Dashboard</a>, truy cập vào mục <strong>SQL Editor</strong> ở thanh menu bên trái.</li>
-                    <li>Nhấn <strong>New Query</strong>, dán toàn bộ mã SQL vừa copy vào và nhấn nút <strong>RUN</strong>.</li>
-                    <li>Sau khi thấy kết quả hiển thị thành công, vui lòng tải lại trang web này để hiển thị danh sách tài khoản.</li>
-                  </ol>
-                  
-                  <div style={{ display: 'flex', gap: '12px', marginTop: '20px', flexWrap: 'wrap' }}>
-                    <button
-                      onClick={handleCopySql}
-                      style={{
-                        background: copiedSql ? '#10b981' : '#d97706',
-                        color: '#ffffff',
-                        border: 'none',
-                        borderRadius: '8px',
-                        padding: '10px 20px',
-                        fontSize: '13px',
-                        fontWeight: 700,
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '8px',
-                        boxShadow: '0 4px 6px rgba(217, 119, 6, 0.15)'
-                      }}
-                    >
-                      {copiedSql ? <Check size={16} /> : <Copy size={16} />}
-                      {copiedSql ? 'Đã copy mã SQL!' : 'Copy mã SQL cấu hình RLS'}
-                    </button>
-                    <a
-                      href="https://supabase.com/dashboard"
-                      target="_blank"
-                      rel="noreferrer"
-                      style={{
-                        background: '#ffffff',
-                        color: '#475569',
-                        border: '1px solid #cbd5e1',
-                        borderRadius: '8px',
-                        padding: '9px 20px',
-                        fontSize: '13px',
-                        fontWeight: 600,
-                        textDecoration: 'none',
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '8px'
-                      }}
-                    >
-                      <HelpCircle size={16} />
-                      Mở Supabase Dashboard
-                    </a>
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <div style={{ padding: '80px 24px', textAlign: 'center', color: '#64748b' }}>
-                <Users size={48} color="#94a3b8" style={{ margin: '0 auto 16px auto' }} />
-                <h3 style={{ margin: '0 0 6px 0', fontSize: '15px', fontWeight: 700, color: '#475569' }}>Không tìm thấy tài khoản nào</h3>
-                <p style={{ margin: 0, fontSize: '13px', color: '#94a3b8' }}>Hãy điều chỉnh từ khóa tìm kiếm hoặc tạo một tài khoản mới.</p>
-              </div>
-            )
-          ) : (
-            <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13.5px' }}>
-                <thead>
-                  <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
-                    <th style={{ padding: '14px 16px', fontWeight: 700, color: '#475569', textAlign: 'center', width: '80px' }}>STT</th>
-                    <th style={{ padding: '14px 16px', fontWeight: 700, color: '#475569', textAlign: 'center' }}>Họ & tên</th>
-                    <th style={{ padding: '14px 16px', fontWeight: 700, color: '#475569', textAlign: 'center' }}>Tên đăng nhập</th>
-                    <th style={{ padding: '14px 16px', fontWeight: 700, color: '#475569', textAlign: 'center' }}>Mật khẩu</th>
-                    <th style={{ padding: '14px 16px', fontWeight: 700, color: '#475569', textAlign: 'center' }}>Vai trò</th>
-                    <th style={{ padding: '14px 16px', fontWeight: 700, color: '#475569', textAlign: 'center' }}>Ngày tạo</th>
-                    <th style={{ padding: '14px 16px', fontWeight: 700, color: '#475569', textAlign: 'center', width: '180px' }}>Trạng thái</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredAccounts.map((acc, index) => {
-                    const avatarLetter = acc.ho_ten ? acc.ho_ten.split(' ').pop().charAt(0).toUpperCase() : 'U'
-                    const isSystemAdmin = acc.ten_dang_nhap === 'Docongchung'
-
-                    return (
-                      <tr 
-                        key={acc.id} 
-                        style={{ 
-                          borderBottom: '1px solid #f1f5f9',
-                          transition: 'background 0.15s ease',
-                          cursor: 'pointer'
-                        }}
-                        title="Click đúp chuột để chỉnh sửa và xóa tài khoản"
-                        onMouseOver={(e) => { e.currentTarget.style.background = '#f8fafc' }}
-                        onMouseOut={(e) => { e.currentTarget.style.background = 'transparent' }}
-                        onDoubleClick={() => openEditModal(acc)}
-                      >
-                        {/* 1. STT */}
-                        <td style={{ padding: '12px 16px', textAlign: 'center', color: '#64748b', fontWeight: 600 }}>
-                          {index + 1}
-                        </td>
-
-                        {/* 2. HỌ & TÊN WITH AVATAR */}
-                        <td style={{ padding: '12px 16px' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                            <div style={{
-                              width: '32px',
-                              height: '32px',
-                              borderRadius: '50%',
-                              backgroundColor: getAvatarBg(acc.ho_ten),
-                              color: '#ffffff',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              fontWeight: 700,
-                              fontSize: '13px',
-                              boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
-                            }}>
-                              {avatarLetter}
-                            </div>
-                            <span style={{ fontWeight: 700, color: '#0f172a' }}>{acc.ho_ten}</span>
-                          </div>
-                        </td>
-
-                        {/* 3. TÊN ĐĂNG NHẬP */}
-                        <td style={{ padding: '12px 16px', textAlign: 'center' }}>
-                          <span style={{
-                            background: '#eff6ff',
-                            color: '#2563eb',
-                            padding: '3px 10px',
-                            borderRadius: '20px',
-                            fontSize: '12px',
-                            fontWeight: 700,
-                            border: '1px solid #dbeafe'
-                          }}>
-                            {acc.ten_dang_nhap}
-                          </span>
-                        </td>
-
-                        {/* 4. MẬT KHẨU */}
-                        <td style={{ padding: '12px 16px', fontFamily: 'var(--font-mono)', color: '#475569', fontWeight: 500, textAlign: 'center' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
-                            <span>
-                              {currentUser?.quyen === 'Admin' && showPasswords[acc.id]
-                                ? acc.mat_khau
-                                : '••••••'}
-                            </span>
-                            {currentUser?.quyen === 'Admin' && (
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation() // Prevent tr doubleClick trigger
-                                  togglePasswordVisibility(acc.id)
-                                }}
-                                style={{
-                                  background: 'none',
-                                  border: 'none',
-                                  cursor: 'pointer',
-                                  color: '#64748b',
-                                  padding: '4px',
-                                  borderRadius: '4px',
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'center'
-                                }}
-                                onMouseOver={(e) => { e.currentTarget.style.backgroundColor = '#f1f5f9' }}
-                                onMouseOut={(e) => { e.currentTarget.style.backgroundColor = 'transparent' }}
-                              >
-                                {showPasswords[acc.id] ? <EyeOff size={14} /> : <Eye size={14} />}
-                              </button>
-                            )}
-                          </div>
-                        </td>
-
-                        {/* 5. VAI TRÒ */}
-                        <td style={{ padding: '12px 16px', textAlign: 'center' }}>
-                          {acc.quyen === 'Admin' ? (
-                            <span style={{ background: '#fce7f3', color: '#be185d', padding: '4px 10px', borderRadius: '12px', fontSize: '11px', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                              👑 Admin
-                            </span>
-                          ) : (
-                            <span style={{ background: '#eff6ff', color: '#1d4ed8', padding: '4px 10px', borderRadius: '12px', fontSize: '11px', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                              👤 User
-                            </span>
-                          )}
-                        </td>
-
-                        {/* 6. NGÀY TẠO */}
-                        <td style={{ padding: '12px 16px', color: '#475569', fontWeight: 500, textAlign: 'center' }}>
-                          {formatDate(acc.created_at)}
-                        </td>
-
-                        {/* 7. TRẠNG THÁI (Gạt toggle) */}
-                        <td style={{ padding: '12px 16px', textAlign: 'center' }}>
-                          <div 
-                            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
-                            onClick={(e) => e.stopPropagation()} // Prevent doubleClick edit modal
-                          >
-                            <label style={{
-                              position: 'relative',
-                              display: 'inline-block',
-                              width: '44px',
-                              height: '22px',
-                              cursor: isSystemAdmin ? 'not-allowed' : 'pointer',
-                              opacity: isSystemAdmin ? 0.6 : 1
-                            }}>
-                              <input 
-                                type="checkbox" 
-                                checked={acc.trang_thai === 'Hoạt động' || acc.trang_thai === 'Đang hoạt động'}
-                                disabled={isSystemAdmin}
-                                onChange={async () => {
-                                  if (isSystemAdmin) return
-                                  const currentActive = acc.trang_thai === 'Hoạt động' || acc.trang_thai === 'Đang hoạt động'
-                                  const newStatus = currentActive ? 'Ngừng hoạt động' : 'Đang hoạt động'
-                                  
-                                  const res = await updateAccount(acc.id, {
-                                    ho_ten: acc.ho_ten,
-                                    ten_dang_nhap: acc.ten_dang_nhap,
-                                    mat_khau: acc.mat_khau,
-                                    quyen: acc.quyen,
-                                    trang_thai: newStatus
-                                  })
-                                  
-                                  if (res.success) {
-                                    loadAccounts()
-                                  } else {
-                                    alert(res.error || 'Không thể cập nhật trạng thái!')
-                                  }
-                                }}
-                                style={{ opacity: 0, width: 0, height: 0 }}
-                              />
-                              <span style={{
-                                position: 'absolute',
-                                cursor: isSystemAdmin ? 'not-allowed' : 'pointer',
-                                top: 0, left: 0, right: 0, bottom: 0,
-                                backgroundColor: (acc.trang_thai === 'Hoạt động' || acc.trang_thai === 'Đang hoạt động') ? '#22c55e' : '#cbd5e1',
-                                transition: '0.2s',
-                                borderRadius: '34px'
-                              }}>
-                                <span style={{
-                                  position: 'absolute',
-                                  content: '""',
-                                  height: '16px',
-                                  width: '16px',
-                                  left: (acc.trang_thai === 'Hoạt động' || acc.trang_thai === 'Đang hoạt động') ? '24px' : '4px',
-                                  bottom: '3px',
-                                  backgroundColor: 'white',
-                                  transition: '0.2s',
-                                  borderRadius: '50%',
-                                  boxShadow: '0 1px 3px rgba(0,0,0,0.2)'
-                                }} />
-                              </span>
-                            </label>
-                            <span style={{ 
-                              fontSize: '11px', 
-                              fontWeight: 700, 
-                              color: (acc.trang_thai === 'Hoạt động' || acc.trang_thai === 'Đang hoạt động') ? '#16a34a' : '#ef4444',
-                              minWidth: '100px',
-                              textAlign: 'left'
-                            }}>
-                              {(acc.trang_thai === 'Hoạt động' || acc.trang_thai === 'Đang hoạt động') ? 'Đang hoạt động' : 'Ngừng hoạt động'}
-                            </span>
-                          </div>
-                        </td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
-            </div>
+        <div className="sgx-search">
+          <span className="sgx-search-ic"><Search size={16} /></span>
+          <input
+            id="acc_search_input"
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Tìm họ tên, tên đăng nhập..."
+          />
+          {searchQuery && (
+            <button type="button" className="sgx-x" onClick={() => setSearchQuery('')} title="Xoá tìm kiếm" aria-label="Xoá tìm kiếm">
+              <IosX />
+            </button>
           )}
         </div>
 
-        {/* Bottom Warning Message matching bottom right text of image */}
-        <div style={{
-          display: 'flex',
-          justifyContent: 'flex-end',
-          alignItems: 'center',
-          gap: '8px',
-          color: '#e11d48',
-          fontSize: '12px',
-          fontWeight: 700,
-          marginTop: '4px'
-        }}>
-          <AlertTriangle size={14} />
-          <span>Tài khoản Admin hệ thống mặc định không thể xóa</span>
-        </div>
+        <select
+          id="acc_role_filter"
+          className="sgx-select"
+          value={selectedRole}
+          onChange={(e) => setSelectedRole(e.target.value)}
+        >
+          <option value="all">Tất cả vai trò</option>
+          <option value="Admin">Vai trò: Admin</option>
+          <option value="User">Vai trò: User</option>
+        </select>
 
+        <span className="sgx-note" title="Tài khoản Admin mặc định của hệ thống không thể xoá">
+          <AlertTriangle size={14} />
+          Admin mặc định không thể xoá
+        </span>
+
+        <span className="sgx-spacer" />
+
+        <button id="acc_create_btn" type="button" className="sg-btn" onClick={openCreateModal}>
+          <Plus size={16} />
+          Tạo tài khoản
+        </button>
       </div>
 
-      {/* ─── MODALS ─── */}
-
-      {/* 1. CREATE MODAL */}
-      <AnimatePresence>
-        {showCreateModal && (
-          <div style={{
-            position: 'fixed',
-            inset: 0,
-            zIndex: 10000,
-            background: 'rgba(15, 23, 42, 0.6)',
-            backdropFilter: 'blur(4px)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: '20px'
-          }}>
-            <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              style={{
-                width: '100%',
-                maxWidth: '520px',
-                background: '#ffffff',
-                borderRadius: '16px',
-                boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-                overflow: 'hidden',
-                color: '#1e293b'
-              }}
-            >
-              {/* Header */}
-              <div style={{
-                background: '#f8fafc',
-                padding: '16px 24px',
-                borderBottom: '1px solid #e2e8f0',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between'
-              }}>
-                <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 800, color: '#0f172a' }}>TẠO TÀI KHOẢN MỚI</h3>
-                <button 
-                  onClick={() => setShowCreateModal(false)}
-                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748b', padding: '4px', borderRadius: '50%' }}
-                >
-                  <X size={18} />
-                </button>
+      {/* ─── BẢNG ─── */}
+      <div className="sgx-tablebox">
+        {loading ? (
+          <div className="sgx-empty">
+            <svg className="sgx-spin" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#0F58A7" strokeWidth="3">
+              <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
+            </svg>
+            <span>Đang tải danh sách tài khoản...</span>
+          </div>
+        ) : filteredAccounts.length === 0 ? (
+          accounts.length === 0 && isSupabaseConfigured ? (
+            <div className="sgx-card sgx-warn">
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', gap: '10px' }}>
+                <AlertTriangle size={40} color="#E07A10" />
+                <h3 style={{ margin: 0, fontSize: '15px', fontWeight: 700, color: '#A85607' }}>
+                  Chưa thiết lập bảng hoặc bị chặn bởi chính sách bảo mật RLS trên Supabase
+                </h3>
+                <p style={{ margin: '0 max(20px, 10%)', fontSize: '15px', color: '#4A4C55', lineHeight: '1.6' }}>
+                  Mặc dù ứng dụng đã kết nối thành công tới Supabase, nhưng truy vấn trả về 0 dòng dữ liệu. Điều này xảy ra do chính sách <strong>Row Level Security (RLS)</strong> trên bảng <code style={{ background: '#FDF3D6', padding: '2px 6px', borderRadius: '6px', fontWeight: 600 }}>quan_ly_tai_khoan</code> đang chặn quyền đọc dữ liệu của công chúng (anonymous role), hoặc bảng chưa được tạo đúng cấu trúc.
+                </p>
               </div>
 
-              {/* Form Content */}
-              <form onSubmit={handleCreateSubmit} style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <div style={{ background: '#fff', borderRadius: '16px', padding: '16px', marginTop: '16px', boxShadow: 'inset 0 0 0 1px #D5DCEB' }}>
+                <h4 style={{ margin: '0 0 10px 0', fontSize: '15px', fontWeight: 700, color: '#16171C' }}>Các bước khắc phục nhanh:</h4>
+                <ol style={{ margin: 0, paddingLeft: '20px', fontSize: '15px', color: '#4A4C55', display: 'flex', flexDirection: 'column', gap: '8px', lineHeight: '1.6' }}>
+                  <li>Nhấn nút <strong>Copy mã SQL cấu hình</strong> ở bên dưới.</li>
+                  <li>Mở <a href="https://supabase.com/dashboard" target="_blank" rel="noreferrer" style={{ color: '#0F58A7', fontWeight: 600, textDecoration: 'underline' }}>Supabase Dashboard</a>, truy cập vào mục <strong>SQL Editor</strong> ở thanh menu bên trái.</li>
+                  <li>Nhấn <strong>New Query</strong>, dán toàn bộ mã SQL vừa copy vào và nhấn nút <strong>RUN</strong>.</li>
+                  <li>Sau khi thấy kết quả hiển thị thành công, vui lòng tải lại trang web này để hiển thị danh sách tài khoản.</li>
+                </ol>
+
+                <div style={{ display: 'flex', gap: '10px', marginTop: '16px', flexWrap: 'wrap' }}>
+                  <button type="button" onClick={handleCopySql} className={copiedSql ? 'sg-btn green' : 'sg-btn'}>
+                    {copiedSql ? <Check size={16} /> : <Copy size={16} />}
+                    {copiedSql ? 'Đã copy mã SQL!' : 'Copy mã SQL cấu hình RLS'}
+                  </button>
+                  <a href="https://supabase.com/dashboard" target="_blank" rel="noreferrer" className="sg-btn ghost" style={{ textDecoration: 'none' }}>
+                    <HelpCircle size={16} />
+                    Mở Supabase Dashboard
+                  </a>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="sgx-empty">
+              <Users size={44} color="#9AA0AD" />
+              <h3 style={{ margin: 0, fontSize: '15px', fontWeight: 700, color: '#4A4C55' }}>Không tìm thấy tài khoản nào</h3>
+              <p style={{ margin: 0, fontSize: '15px', color: '#8C8E97' }}>Hãy điều chỉnh từ khoá tìm kiếm hoặc tạo một tài khoản mới.</p>
+            </div>
+          )
+        ) : (
+          <div className="sgx-scroll">
+            <table className="sgx-table">
+              <thead>
+                <tr>
+                  <th style={{ width: '64px' }}>STT</th>
+                  <th>Họ và tên</th>
+                  <th style={{ width: '200px' }}>Tên đăng nhập</th>
+                  <th style={{ width: '180px' }}>Mật khẩu</th>
+                  <th style={{ width: '130px' }}>Vai trò</th>
+                  <th style={{ width: '130px' }}>Ngày tạo</th>
+                  <th style={{ width: '220px' }}>Trạng thái</th>
+                  <th style={{ width: '110px' }}>Thao tác</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredAccounts.map((acc, index) => {
+                  const avatarLetter = acc.ho_ten ? acc.ho_ten.split(' ').pop().charAt(0).toUpperCase() : 'U'
+                  const isSystemAdmin = acc.ten_dang_nhap === 'Docongchung'
+                  const active = isActiveStatus(acc.trang_thai)
+                  const tone = roleTone(acc.quyen)
+
+                  return (
+                    <tr
+                      key={acc.id}
+                      style={{ cursor: 'pointer' }}
+                      title="Bấm đúp để sửa tài khoản"
+                      onDoubleClick={() => openEditModal(acc)}
+                    >
+                      {/* 1. STT */}
+                      <td style={{ textAlign: 'center', color: '#4A4C55' }}>{index + 1}</td>
+
+                      {/* 2. HỌ VÀ TÊN */}
+                      <td>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                          <div className="sgx-ava" style={{ backgroundColor: getAvatarBg(acc.ho_ten) }}>{avatarLetter}</div>
+                          <span style={{ fontWeight: 600, color: '#16171C' }}>{acc.ho_ten}</span>
+                        </div>
+                      </td>
+
+                      {/* 3. TÊN ĐĂNG NHẬP */}
+                      <td style={{ textAlign: 'center', color: '#0A3D73', fontWeight: 600 }}>{acc.ten_dang_nhap}</td>
+
+                      {/* 4. MẬT KHẨU */}
+                      <td style={{ textAlign: 'center', color: '#4A4C55' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+                          <span>
+                            {currentUser?.quyen === 'Admin' && showPasswords[acc.id]
+                              ? acc.mat_khau
+                              : '••••••'}
+                          </span>
+                          {currentUser?.quyen === 'Admin' && (
+                            <button
+                              type="button"
+                              className="sgx-ib"
+                              title={showPasswords[acc.id] ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
+                              onClick={(e) => {
+                                e.stopPropagation() // Không kích hoạt bấm đúp của dòng
+                                togglePasswordVisibility(acc.id)
+                              }}
+                            >
+                              {showPasswords[acc.id] ? <EyeOff size={15} /> : <Eye size={15} />}
+                            </button>
+                          )}
+                        </div>
+                      </td>
+
+                      {/* 5. VAI TRÒ */}
+                      <td style={{ textAlign: 'center' }}>
+                        <span className="sgx-role" style={{ background: tone.bg, color: tone.ink }}>
+                          <i style={{ background: tone.dot }} />
+                          {acc.quyen}
+                        </span>
+                      </td>
+
+                      {/* 6. NGÀY TẠO */}
+                      <td className="sg-num" style={{ textAlign: 'center', color: '#4A4C55' }}>{formatDate(acc.created_at)}</td>
+
+                      {/* 7. TRẠNG THÁI (gạt) */}
+                      <td style={{ textAlign: 'center' }}>
+                        <div
+                          style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <label
+                            className={'sgx-tg' + (active ? ' on' : '') + (isSystemAdmin ? ' lock' : '')}
+                            title={isSystemAdmin ? 'Tài khoản Admin mặc định luôn hoạt động' : (active ? 'Bấm để ngừng hoạt động' : 'Bấm để kích hoạt')}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={active}
+                              disabled={isSystemAdmin}
+                              onChange={async () => {
+                                if (isSystemAdmin) return
+                                const currentActive = acc.trang_thai === 'Hoạt động' || acc.trang_thai === 'Đang hoạt động'
+                                const newStatus = currentActive ? 'Ngừng hoạt động' : 'Đang hoạt động'
+
+                                const res = await updateAccount(acc.id, {
+                                  ho_ten: acc.ho_ten,
+                                  ten_dang_nhap: acc.ten_dang_nhap,
+                                  mat_khau: acc.mat_khau,
+                                  quyen: acc.quyen,
+                                  trang_thai: newStatus
+                                })
+
+                                if (res.success) {
+                                  loadAccounts()
+                                } else {
+                                  alert(res.error || 'Không thể cập nhật trạng thái!')
+                                }
+                              }}
+                            />
+                            <span />
+                          </label>
+                          <span style={{ fontSize: '12px', fontWeight: 700, color: active ? '#0D7A3C' : '#D92D3A', minWidth: '112px', textAlign: 'left' }}>
+                            {active ? 'Đang hoạt động' : 'Ngừng hoạt động'}
+                          </span>
+                        </div>
+                      </td>
+
+                      {/* 8. THAO TÁC */}
+                      <td style={{ textAlign: 'center' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }} onDoubleClick={(e) => e.stopPropagation()}>
+                          <button type="button" className="sgx-pen" title="Sửa tài khoản" aria-label="Sửa tài khoản" onClick={() => openEditModal(acc)}>
+                            <PenIcon />
+                          </button>
+                          {isSystemAdmin ? (
+                            <span className="sgx-x-ph" title="Tài khoản Admin mặc định không thể xoá" />
+                          ) : (
+                            <button type="button" className="sgx-x" title="Xoá tài khoản" aria-label="Xoá tài khoản" onClick={() => openDeleteModal(acc)}>
+                              <IosX />
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* ─── HỘP THOẠI ─── */}
+
+      {/* 1. TẠO TÀI KHOẢN */}
+      <AnimatePresence>
+        {showCreateModal && (
+          <div className="sgx-ov">
+            <motion.div
+              className="sgx-dlg"
+              initial={{ scale: 0.94, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.94, opacity: 0 }}
+            >
+              <div className="sgx-dlg-hd">
+                <h3>Tạo tài khoản mới</h3>
+                {closeBtn(() => setShowCreateModal(false))}
+              </div>
+
+              <form onSubmit={handleCreateSubmit} className="sgx-form">
                 {formError && (
-                  <div style={{ background: '#fef2f2', border: '1px solid #fca5a5', padding: '10px 14px', borderRadius: '8px', color: '#991b1b', fontSize: '13px', display: 'flex', gap: '8px', alignItems: 'center' }}>
+                  <div className="sgx-err">
                     <AlertTriangle size={16} />
                     <span>{formError}</span>
                   </div>
                 )}
 
-                {/* Họ tên */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  <label style={{ fontSize: '12.5px', fontWeight: 700, color: '#475569' }}>Họ và tên <span style={{ color: '#ef4444' }}>*</span></label>
+                <div className="sgx-field">
+                  <label>Họ và tên <b>*</b></label>
                   <input
                     type="text"
                     required
                     value={hoTen}
                     onChange={(e) => setHoTen(e.target.value)}
-                    placeholder="Nhập họ và tên (Ví dụ: Nguyễn Văn A)..."
-                    style={{ padding: '10px 12px', border: '1px solid #cbd5e1', borderRadius: '8px', fontSize: '14px', outline: 'none' }}
+                    placeholder="Nhập họ và tên (ví dụ: Nguyễn Văn A)..."
                   />
                 </div>
 
-                {/* Username & Pass Row */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                    <label style={{ fontSize: '12.5px', fontWeight: 700, color: '#475569' }}>Tên đăng nhập <span style={{ color: '#ef4444' }}>*</span></label>
+                <div className="sgx-row2">
+                  <div className="sgx-field">
+                    <label>Tên đăng nhập <b>*</b></label>
                     <input
                       type="text"
                       required
                       value={tenDangNhap}
                       onChange={(e) => setTenDangNhap(e.target.value)}
                       placeholder="Docongchung..."
-                      style={{ padding: '10px 12px', border: '1px solid #cbd5e1', borderRadius: '8px', fontSize: '14px', outline: 'none' }}
                     />
                   </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                    <label style={{ fontSize: '12.5px', fontWeight: 700, color: '#475569' }}>Mật khẩu <span style={{ color: '#ef4444' }}>*</span></label>
+                  <div className="sgx-field">
+                    <label>Mật khẩu <b>*</b></label>
                     <input
                       type="text"
                       required
                       value={matKhau}
                       onChange={(e) => setMatKhau(e.target.value)}
                       placeholder="Nhập mật khẩu..."
-                      style={{ padding: '10px 12px', border: '1px solid #cbd5e1', borderRadius: '8px', fontSize: '14px', outline: 'none' }}
                     />
                   </div>
                 </div>
 
-                {/* Quyền hạn & Trạng thái Row */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                    <label style={{ fontSize: '12.5px', fontWeight: 700, color: '#475569' }}>Quyền hạn</label>
-                    <select
-                      value={quyen}
-                      onChange={(e) => setQuyen(e.target.value)}
-                      style={{ padding: '10px 12px', border: '1px solid #cbd5e1', borderRadius: '8px', fontSize: '14px', background: '#ffffff', outline: 'none' }}
-                    >
+                <div className="sgx-row2">
+                  <div className="sgx-field">
+                    <label>Vai trò</label>
+                    <select value={quyen} onChange={(e) => setQuyen(e.target.value)} className="sgx-roleselect" style={{ backgroundColor: roleTone(quyen).bg, color: roleTone(quyen).ink }}>
                       <option value="User">User (Nhân viên)</option>
                       <option value="Admin">Admin (Quản trị viên)</option>
                     </select>
                   </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                    <label style={{ fontSize: '12.5px', fontWeight: 700, color: '#475569' }}>Trạng thái</label>
-                    <select
-                      value={trangThai}
-                      onChange={(e) => setTrangThai(e.target.value)}
-                      style={{ padding: '10px 12px', border: '1px solid #cbd5e1', borderRadius: '8px', fontSize: '14px', background: '#ffffff', outline: 'none' }}
-                    >
+                  <div className="sgx-field">
+                    <label>Trạng thái</label>
+                    <select value={trangThai} onChange={(e) => setTrangThai(e.target.value)}>
                       <option value="Hoạt động">Đang hoạt động</option>
                       <option value="Ngừng hoạt động">Ngừng hoạt động</option>
                     </select>
                   </div>
                 </div>
 
-                {/* Footer Buttons */}
-                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '12px', borderTop: '1px solid #e2e8f0', paddingTop: '16px' }}>
-                  <button
-                    type="button"
-                    onClick={() => setShowCreateModal(false)}
-                    style={{ padding: '10px 18px', background: '#f1f5f9', border: 'none', borderRadius: '8px', color: '#475569', fontWeight: 600, cursor: 'pointer' }}
-                  >
-                    Hủy bỏ
-                  </button>
-                  <button
-                    type="submit"
-                    style={{ padding: '10px 18px', background: '#2563eb', border: 'none', borderRadius: '8px', color: '#ffffff', fontWeight: 700, cursor: 'pointer' }}
-                  >
-                    Tạo tài khoản
-                  </button>
+                <div className="sgx-ft">
+                  <button type="button" className="sg-btn ghost" onClick={() => setShowCreateModal(false)}>Huỷ bỏ</button>
+                  <button type="submit" className="sg-btn">Tạo tài khoản</button>
                 </div>
               </form>
             </motion.div>
@@ -842,119 +636,81 @@ SET ho_ten = EXCLUDED.ho_ten,
         )}
       </AnimatePresence>
 
-      {/* 2. EDIT MODAL */}
+      {/* 2. SỬA TÀI KHOẢN */}
       <AnimatePresence>
         {showEditModal && (
-          <div style={{
-            position: 'fixed',
-            inset: 0,
-            zIndex: 10000,
-            background: 'rgba(15, 23, 42, 0.6)',
-            backdropFilter: 'blur(4px)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: '20px'
-          }}>
+          <div className="sgx-ov">
             <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
+              className="sgx-dlg"
+              initial={{ scale: 0.94, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              style={{
-                width: '100%',
-                maxWidth: '520px',
-                background: '#ffffff',
-                borderRadius: '16px',
-                boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-                overflow: 'hidden',
-                color: '#1e293b'
-              }}
+              exit={{ scale: 0.94, opacity: 0 }}
             >
-              {/* Header */}
-              <div style={{
-                background: '#f8fafc',
-                padding: '16px 24px',
-                borderBottom: '1px solid #e2e8f0',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between'
-              }}>
-                <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 800, color: '#0f172a' }}>CẬP NHẬT TÀI KHOẢN</h3>
-                <button 
-                  onClick={() => setShowEditModal(false)}
-                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748b', padding: '4px', borderRadius: '50%' }}
-                >
-                  <X size={18} />
-                </button>
+              <div className="sgx-dlg-hd">
+                <h3>Cập nhật tài khoản</h3>
+                {closeBtn(() => setShowEditModal(false))}
               </div>
 
-              {/* Form Content */}
-              <form onSubmit={handleEditSubmit} style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <form onSubmit={handleEditSubmit} className="sgx-form">
                 {formError && (
-                  <div style={{ background: '#fef2f2', border: '1px solid #fca5a5', padding: '10px 14px', borderRadius: '8px', color: '#991b1b', fontSize: '13px', display: 'flex', gap: '8px', alignItems: 'center' }}>
+                  <div className="sgx-err">
                     <AlertTriangle size={16} />
                     <span>{formError}</span>
                   </div>
                 )}
 
-                {/* Họ tên */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  <label style={{ fontSize: '12.5px', fontWeight: 700, color: '#475569' }}>Họ và tên <span style={{ color: '#ef4444' }}>*</span></label>
+                <div className="sgx-field">
+                  <label>Họ và tên <b>*</b></label>
                   <input
                     type="text"
                     required
                     value={hoTen}
                     onChange={(e) => setHoTen(e.target.value)}
-                    style={{ padding: '10px 12px', border: '1px solid #cbd5e1', borderRadius: '8px', fontSize: '14px', outline: 'none' }}
                   />
                 </div>
 
-                {/* Username & Pass Row */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                    <label style={{ fontSize: '12.5px', fontWeight: 700, color: '#475569' }}>Tên đăng nhập <span style={{ color: '#ef4444' }}>*</span></label>
+                <div className="sgx-row2">
+                  <div className="sgx-field">
+                    <label>Tên đăng nhập <b>*</b></label>
                     <input
                       type="text"
                       required
                       disabled={selectedAccount?.ten_dang_nhap === 'Docongchung'}
                       value={tenDangNhap}
                       onChange={(e) => setTenDangNhap(e.target.value)}
-                      style={{ padding: '10px 12px', border: '1px solid #cbd5e1', borderRadius: '8px', fontSize: '14px', outline: 'none', background: selectedAccount?.ten_dang_nhap === 'Docongchung' ? '#f1f5f9' : '#ffffff' }}
                     />
                   </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                    <label style={{ fontSize: '12.5px', fontWeight: 700, color: '#475569' }}>Mật khẩu <span style={{ color: '#ef4444' }}>*</span></label>
+                  <div className="sgx-field">
+                    <label>Mật khẩu <b>*</b></label>
                     <input
                       type="text"
                       required
                       value={matKhau}
                       onChange={(e) => setMatKhau(e.target.value)}
-                      style={{ padding: '10px 12px', border: '1px solid #cbd5e1', borderRadius: '8px', fontSize: '14px', outline: 'none' }}
                     />
                   </div>
                 </div>
 
-                {/* Quyền hạn & Trạng thái Row */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                    <label style={{ fontSize: '12.5px', fontWeight: 700, color: '#475569' }}>Quyền hạn</label>
+                <div className="sgx-row2">
+                  <div className="sgx-field">
+                    <label>Vai trò</label>
                     <select
                       value={quyen}
                       disabled={selectedAccount?.ten_dang_nhap === 'Docongchung'}
                       onChange={(e) => setQuyen(e.target.value)}
-                      style={{ padding: '10px 12px', border: '1px solid #cbd5e1', borderRadius: '8px', fontSize: '14px', background: selectedAccount?.ten_dang_nhap === 'Docongchung' ? '#f1f5f9' : '#ffffff', outline: 'none' }}
+                      className="sgx-roleselect"
+                      style={{ backgroundColor: roleTone(quyen).bg, color: roleTone(quyen).ink }}
                     >
                       <option value="User">User (Nhân viên)</option>
                       <option value="Admin">Admin (Quản trị viên)</option>
                     </select>
                   </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                    <label style={{ fontSize: '12.5px', fontWeight: 700, color: '#475569' }}>Trạng thái</label>
+                  <div className="sgx-field">
+                    <label>Trạng thái</label>
                     <select
                       value={trangThai}
                       disabled={selectedAccount?.ten_dang_nhap === 'Docongchung'}
                       onChange={(e) => setTrangThai(e.target.value)}
-                      style={{ padding: '10px 12px', border: '1px solid #cbd5e1', borderRadius: '8px', fontSize: '14px', background: selectedAccount?.ten_dang_nhap === 'Docongchung' ? '#f1f5f9' : '#ffffff', outline: 'none' }}
                     >
                       <option value="Hoạt động">Đang hoạt động</option>
                       <option value="Ngừng hoạt động">Ngừng hoạt động</option>
@@ -962,48 +718,23 @@ SET ho_ten = EXCLUDED.ho_ten,
                   </div>
                 </div>
 
-                {/* Footer Buttons */}
-                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '12px', borderTop: '1px solid #e2e8f0', paddingTop: '16px' }}>
+                <div className="sgx-ft">
                   {selectedAccount?.ten_dang_nhap !== 'Docongchung' && (
                     <button
                       type="button"
+                      className="sg-btn danger"
+                      style={{ marginRight: 'auto' }}
                       onClick={() => {
                         setShowEditModal(false)
                         openDeleteModal(selectedAccount)
                       }}
-                      style={{ 
-                        padding: '10px 18px', 
-                        background: '#fee2e2', 
-                        border: '1px solid #fecdd3', 
-                        borderRadius: '8px', 
-                        color: '#ef4444', 
-                        fontWeight: 600, 
-                        cursor: 'pointer',
-                        marginRight: 'auto',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '4px'
-                      }}
-                      onMouseOver={(e) => { e.currentTarget.style.background = '#fecdd3' }}
-                      onMouseOut={(e) => { e.currentTarget.style.background = '#fee2e2' }}
                     >
-                      <Trash2 size={14} />
-                      Xóa tài khoản
+                      <Trash2 size={15} />
+                      Xoá tài khoản
                     </button>
                   )}
-                  <button
-                    type="button"
-                    onClick={() => setShowEditModal(false)}
-                    style={{ padding: '10px 18px', background: '#f1f5f9', border: 'none', borderRadius: '8px', color: '#475569', fontWeight: 600, cursor: 'pointer' }}
-                  >
-                    Hủy bỏ
-                  </button>
-                  <button
-                    type="submit"
-                    style={{ padding: '10px 18px', background: '#2563eb', border: 'none', borderRadius: '8px', color: '#ffffff', fontWeight: 700, cursor: 'pointer' }}
-                  >
-                    Cập nhật
-                  </button>
+                  <button type="button" className="sg-btn ghost" onClick={() => setShowEditModal(false)}>Huỷ bỏ</button>
+                  <button type="submit" className="sg-btn">Cập nhật</button>
                 </div>
               </form>
             </motion.div>
@@ -1011,72 +742,126 @@ SET ho_ten = EXCLUDED.ho_ten,
         )}
       </AnimatePresence>
 
-      {/* 3. DELETE CONFIRMATION MODAL */}
+      {/* 3. XÁC NHẬN XOÁ */}
       <AnimatePresence>
         {showDeleteModal && (
-          <div style={{
-            position: 'fixed',
-            inset: 0,
-            zIndex: 10000,
-            background: 'rgba(15, 23, 42, 0.6)',
-            backdropFilter: 'blur(4px)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: '20px'
-          }}>
+          <div className="sgx-ov">
             <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
+              className="sgx-dlg"
+              style={{ maxWidth: '420px' }}
+              initial={{ scale: 0.94, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              style={{
-                width: '100%',
-                maxWidth: '400px',
-                background: '#ffffff',
-                borderRadius: '16px',
-                boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-                padding: '24px',
-                color: '#1e293b'
-              }}
+              exit={{ scale: 0.94, opacity: 0 }}
             >
-              <div style={{ textAlign: 'center' }}>
-                <div style={{
-                  width: '48px',
-                  height: '48px',
-                  borderRadius: '50%',
-                  background: '#fee2e2',
-                  color: '#ef4444',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  margin: '0 auto 16px auto'
-                }}>
+              <div className="sgx-dlg-hd">
+                <h3>Xác nhận xoá tài khoản</h3>
+                {closeBtn(() => setShowDeleteModal(false))}
+              </div>
+              <div style={{ padding: '20px 24px 22px', textAlign: 'center' }}>
+                <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: '#FFE7E5', color: '#FF3B30', display: 'grid', placeItems: 'center', margin: '0 auto 14px' }}>
                   <AlertTriangle size={24} />
                 </div>
-                <h3 style={{ margin: '0 0 8px 0', fontSize: '16px', fontWeight: 800, color: '#0f172a' }}>XÁC NHẬN XÓA TÀI KHOẢN</h3>
-                <p style={{ margin: '0 0 24px 0', fontSize: '13.5px', color: '#475569', lineHeight: '1.5' }}>
-                  Bạn có chắc chắn muốn xóa vĩnh viễn tài khoản của <strong>{selectedAccount?.ho_ten}</strong> (Tên đăng nhập: <strong>{selectedAccount?.ten_dang_nhap}</strong>) khỏi hệ thống? Hành động này không thể hoàn tác!
+                <p style={{ margin: '0 0 20px 0', fontSize: '15px', color: '#4A4C55', lineHeight: '1.5' }}>
+                  Bạn có chắc chắn muốn xoá vĩnh viễn tài khoản của <strong>{selectedAccount?.ho_ten}</strong> (tên đăng nhập: <strong>{selectedAccount?.ten_dang_nhap}</strong>) khỏi hệ thống? Hành động này không thể hoàn tác.
                 </p>
                 <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
-                  <button
-                    onClick={() => setShowDeleteModal(false)}
-                    style={{ padding: '10px 18px', background: '#f1f5f9', border: 'none', borderRadius: '8px', color: '#475569', fontWeight: 600, cursor: 'pointer', flex: 1 }}
-                  >
-                    Bỏ qua
-                  </button>
-                  <button
-                    onClick={handleConfirmDelete}
-                    style={{ padding: '10px 18px', background: '#ef4444', border: 'none', borderRadius: '8px', color: '#ffffff', fontWeight: 700, cursor: 'pointer', flex: 1 }}
-                  >
-                    Xác nhận xóa
-                  </button>
+                  <button type="button" className="sg-btn ghost" style={{ flex: 1 }} onClick={() => setShowDeleteModal(false)}>Bỏ qua</button>
+                  <button type="button" className="sg-btn" style={{ flex: 1, background: 'linear-gradient(135deg, #D92D3A, #F2646E)', boxShadow: '0 8px 16px -10px rgba(217,45,58,.9)' }} onClick={handleConfirmDelete}>Xác nhận xoá</button>
                 </div>
               </div>
             </motion.div>
           </div>
         )}
       </AnimatePresence>
-
     </div>
   )
 }
+
+// ─── Màu cố định theo vai trò ───
+const ROLE_TONES = {
+  Admin: { bg: '#ECE7FB', ink: '#4B2FA0', dot: '#6D4AFF' },
+  User: { bg: '#E4EEFA', ink: '#0A3D73', dot: '#2F86E0' },
+  _other: { bg: '#DDF4EC', ink: '#0B6B50', dot: '#0E8F80' }
+}
+
+// Dấu X kiểu iPhone (SVG, nét đều đầu tròn)
+function IosX() {
+  return (
+    <svg width="11" height="11" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+      <path d="M2.5 2.5l7 7M9.5 2.5l-7 7" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
+    </svg>
+  )
+}
+
+// Bút có gạch chân
+function PenIcon() {
+  return (
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M15.2 4.3l3.5 3.5L9 17.5l-4.3.9.9-4.3z" />
+      <path d="M13.2 6.3l3.5 3.5" />
+      <path d="M4 21.5h16" />
+    </svg>
+  )
+}
+
+const QLTK_CSS = `
+.sgx-page { height: 100%; display: flex; flex-direction: column; gap: 12px; padding: 14px 20px 16px; box-sizing: border-box; overflow: hidden; text-align: left; }
+.sgx-bar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; flex: none; }
+.sgx-spacer { flex: 1 1 0; }
+.sgx-search { position: relative; flex: 0 1 300px; min-width: 200px; }
+.sgx-search-ic { position: absolute; left: 13px; top: 50%; transform: translateY(-50%); color: #6B7AA0; display: flex; pointer-events: none; }
+html body .sgx-search input { width: 100%; height: 36px; box-sizing: border-box; padding: 0 38px 0 38px; font-size: 15px; color: #16171C; background: #fff; border: 1.5px solid #D5DCEB; border-radius: 99px; outline: none; }
+.sgx-search .sgx-x { position: absolute; right: 7px; top: 50%; transform: translateY(-50%); }
+html body .sgx-search .sgx-x:active { transform: translateY(-50%) scale(.94); }
+html body .sgx-select { height: 36px; box-sizing: border-box; border: 1.5px solid #D5DCEB; padding-left: 14px; font-size: 15px; font-weight: 600; color: #0A3D73; }
+.sgx-note { display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 12px; border-radius: 99px; background: #FFE7E5; color: #B4232C; font-size: 12px; font-weight: 700; white-space: nowrap; }
+.sgx-x { flex: none; width: 24px; height: 24px; padding: 0; border: 0; border-radius: 50%; display: inline-grid; place-items: center; background: #FFE7E5; color: #FF3B30; cursor: pointer; transition: background .15s, color .15s; }
+.sgx-x:hover { background: #FF3B30; color: #fff; }
+.sgx-x-ph { display: inline-block; width: 24px; height: 24px; }
+.sgx-pen { flex: none; width: 30px; height: 30px; padding: 0; border: 0; border-radius: 8px; display: inline-grid; place-items: center; background: transparent; color: #0A2486; cursor: pointer; }
+.sgx-pen:hover { background: #EEF1FA; }
+.sgx-ib { width: 28px; height: 28px; padding: 0; border: 0; border-radius: 8px; display: inline-grid; place-items: center; background: transparent; color: #6B7AA0; cursor: pointer; }
+.sgx-ib:hover { background: #E4EEFA; color: #0F58A7; }
+.sgx-tablebox { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
+.sgx-scroll { flex: 1 1 auto; min-height: 0; overflow: auto; border-radius: 14px; }
+.sgx-table { width: 100%; min-width: 1100px; background: #fff; }
+.sgx-table > thead > tr > th { position: sticky; top: 0; z-index: 5; }
+.sgx-ava { flex: none; width: 30px; height: 30px; border-radius: 50%; color: #fff; display: grid; place-items: center; font-weight: 700; font-size: 15px; }
+.sgx-role { display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 12px; border-radius: 99px; font-size: 12px; font-weight: 700; white-space: nowrap; }
+.sgx-role i { width: 7px; height: 7px; border-radius: 50%; }
+.sgx-tg { position: relative; display: inline-block; width: 44px; height: 24px; cursor: pointer; flex: none; }
+.sgx-tg input { position: absolute; opacity: 0; width: 0; height: 0; }
+.sgx-tg > span { position: absolute; inset: 0; border-radius: 99px; background: #C9CDD8; transition: background .2s; }
+.sgx-tg > span::after { content: ""; position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.25); transition: left .2s; }
+.sgx-tg.on > span { background: linear-gradient(135deg, #12A150, #3CCB7F); }
+.sgx-tg.on > span::after { left: 23px; }
+.sgx-tg.lock { cursor: not-allowed; opacity: .6; }
+.sgx-empty { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 48px 24px; text-align: center; color: #4A4C55; background: rgba(255,255,255,.72); border-radius: 24px; }
+.sgx-spin { animation: sgxSpin 1s linear infinite; }
+@keyframes sgxSpin { to { transform: rotate(360deg); } }
+.sgx-card { background: rgba(255,255,255,.78); border-radius: 24px; padding: 24px; overflow: auto; }
+.sgx-warn { box-shadow: inset 0 0 0 1px #F5D9A8; }
+.sgx-ov { position: fixed; inset: 0; z-index: 10000; background: rgba(22, 23, 28, .45); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; padding: 20px; }
+.sgx-dlg { width: 100%; max-width: 540px; background: #fff; border-radius: 24px; box-shadow: 0 30px 60px -20px rgba(10, 36, 80, .45); overflow: hidden; color: #16171C; }
+.sgx-dlg-hd { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 16px 16px 12px 24px; }
+.sgx-dlg-hd h3 { margin: 0; font-size: 22px; font-weight: 700; color: #0A3D73; }
+.sgx-close { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px 0 6px; border: 0; border-radius: 99px; background: #FFE7E5; color: #FF3B30; font-size: 15px; font-weight: 600; cursor: pointer; }
+.sgx-close svg { width: 20px; height: 20px; padding: 4.5px; box-sizing: border-box; border-radius: 50%; background: rgba(255,255,255,.7); }
+.sgx-close:hover { background: #FF3B30; color: #fff; }
+.sgx-close:hover svg { background: rgba(255,255,255,.2); }
+.sgx-form { padding: 6px 24px 22px; display: flex; flex-direction: column; gap: 14px; }
+.sgx-row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.sgx-field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.sgx-field > label { font-size: 15px; font-weight: 600; color: #0A3D73; }
+.sgx-field > label b { color: #FF3B30; }
+html body .sgx-field input, html body .sgx-field select { height: 40px; box-sizing: border-box; padding: 0 12px; border: 1.5px solid #D5DCEB; border-radius: 12px; font-size: 15px; color: #16171C; outline: none; width: 100%; }
+html body .sgx-field input:disabled, html body .sgx-field select:disabled { background-color: #F5F6F8; color: #8C8E97; cursor: not-allowed; }
+html body .sgx-field select.sgx-roleselect { font-weight: 700; border-radius: 99px; padding-left: 16px; }
+.sgx-err { display: flex; align-items: center; gap: 8px; padding: 10px 14px; border-radius: 14px; background: #FFE7E5; color: #B4232C; font-size: 15px; font-weight: 600; }
+.sgx-ft { display: flex; justify-content: flex-end; gap: 10px; margin-top: 6px; padding-top: 14px; border-top: 1px solid #E6E9F0; }
+@media (max-width: 760px) {
+  .sgx-page { padding: 10px 12px; }
+  .sgx-row2 { grid-template-columns: 1fr; }
+  .sgx-note { display: none; }
+}
+`

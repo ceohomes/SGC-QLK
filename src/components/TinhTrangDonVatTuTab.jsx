@@ -1140,7 +1140,7 @@ export default function TinhTrangDonVatTuTab({
         justifyContent: 'center',
         padding: '3px 10px',
         borderRadius: '6px',
-        fontSize: '11.5px',
+        fontSize: '12px',
         fontWeight: 600,
         backgroundColor: bg,
         color: color,
@@ -1179,7 +1179,7 @@ export default function TinhTrangDonVatTuTab({
         justifyContent: 'center',
         padding: '3px 10px',
         borderRadius: '6px',
-        fontSize: '11.5px',
+        fontSize: '12px',
         fontWeight: 600,
         backgroundColor: bg,
         color: color,
@@ -1192,9 +1192,33 @@ export default function TinhTrangDonVatTuTab({
     )
   }
 
+  // Màu viên trạng thái: mỗi viên một màu theo ý nghĩa, không trùng nhau trong dãy
+  const statusTones = (() => {
+    const used = new Set(['blue', 'indigo'])
+    const pick = (prefs) => {
+      const all = [...prefs, 'orange', 'rose', 'magenta', 'violet', 'cyan', 'teal', 'green', 'red']
+      const c = all.find(x => !used.has(x)) || prefs[0]
+      used.add(c)
+      return c
+    }
+    const out = {}
+    dynamicStatusList.forEach(item => {
+      const s = item.name.toLowerCase().trim()
+      if (s.includes('chưa xác nhận') || s.includes('chờ xác nhận')) out[item.name] = pick(['orange'])
+      else if (s.includes('chưa') || s.includes('chờ') || s.includes('pending')) out[item.name] = pick(['orange', 'rose', 'magenta', 'violet', 'cyan'])
+      else if (s.includes('từ chối') || s.includes('hủy') || s.includes('reject') || s.includes('không')) out[item.name] = pick(['red', 'rose'])
+      else if (s.includes('đã') || s.includes('phê duyệt') || s.includes('hoàn thành') || s.includes('duyệt') || s.includes('approved')) out[item.name] = pick(['green', 'teal'])
+      else out[item.name] = pick(['cyan', 'teal', 'violet'])
+    })
+    return out
+  })()
+
+  const hasAnyFilter = !!(search || trangThaiFilter || donViGiaoFilter || donViNhanFilter || dongBoSAPFilter || startDate || endDate)
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden', padding: '16px 20px', background: '#f8fafc' }}>
-      
+    <div className="sgt-page">
+      <style>{TTDV_CSS}</style>
+
       {/* Hidden file inputs */}
       <input
         ref={fileInputRef}
@@ -1213,541 +1237,251 @@ export default function TinhTrangDonVatTuTab({
         onChange={(e) => processFiles(e.target.files, true)}
       />
 
-      {/* Header Info & Actions Toolbar */}
-      <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        flexWrap: 'wrap',
-        gap: 12,
-        marginBottom: 16,
-        paddingBottom: 14,
-        borderBottom: '1px solid #e2e8f0'
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <div style={{
-            width: 42,
-            height: 42,
-            borderRadius: 10,
-            background: 'linear-gradient(135deg, #0a3d73 0%, #1e40af 100%)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            color: '#ffffff',
-            boxShadow: '0 4px 10px rgba(10, 61, 115, 0.2)'
-          }}>
-            <FileCheck size={22} />
-          </div>
-          <div>
-            <h1 style={{ fontSize: 18, fontWeight: 800, color: '#0f172a', margin: 0, letterSpacing: '-0.01em' }}>
-              Tình trạng đơn vật tư
-            </h1>
-            <p style={{ fontSize: 13, color: '#64748b', margin: '2px 0 0 0' }}>
-              {fileName ? (
-                <>Tệp: <strong style={{ color: '#0a3d73' }}>{fileName}</strong> · {rows.length.toLocaleString('vi-VN')} đơn</>
-              ) : (
-                'Tải lên file Excel theo dõi tình trạng đơn vật tư & đồng bộ SAP'
-              )}
-            </p>
-          </div>
-        </div>
-
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-          {rows.length > 0 && (
-            <>
-              <button
-                onClick={() => appendFileInputRef.current && appendFileInputRef.current.click()}
-                title="Tải thêm file dữ liệu nối tiếp"
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 6,
-                  padding: '8px 14px',
-                  borderRadius: 8,
-                  fontSize: 13,
-                  fontWeight: 600,
-                  background: '#ffffff',
-                  color: '#0a3d73',
-                  border: '1px solid #cbd5e1',
-                  cursor: 'pointer',
-                  boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
-                  transition: 'all 0.15s ease'
-                }}
-              >
-                <Plus size={15} />
-                <span>Tải thêm file</span>
-              </button>
-
-              <button
-                onClick={handleExportExcel}
-                title="Xuất bảng dữ liệu ra file Excel"
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 6,
-                  padding: '8px 14px',
-                  borderRadius: 8,
-                  fontSize: 13,
-                  fontWeight: 600,
-                  background: '#059669',
-                  color: '#ffffff',
-                  border: 'none',
-                  cursor: 'pointer',
-                  boxShadow: '0 2px 4px rgba(5,150,105,0.2)',
-                  transition: 'all 0.15s ease'
-                }}
-              >
-                <Download size={15} />
-                <span>Xuất Excel ({filteredRows.length})</span>
-              </button>
-
-              <button
-                onClick={handleClearData}
-                title="Xóa toàn bộ dữ liệu đang xem"
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 6,
-                  padding: '8px 12px',
-                  borderRadius: 8,
-                  fontSize: 13,
-                  fontWeight: 600,
-                  background: '#fff1f2',
-                  color: '#e11d48',
-                  border: '1px solid #fecdd3',
-                  cursor: 'pointer',
-                  transition: 'all 0.15s ease'
-                }}
-              >
-                <Trash2 size={15} />
-                <span>Xóa dữ liệu</span>
-              </button>
-            </>
-          )}
-
-          <button
-            onClick={() => fileInputRef.current && fileInputRef.current.click()}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 6,
-              padding: '8px 16px',
-              borderRadius: 8,
-              fontSize: 13,
-              fontWeight: 700,
-              background: 'linear-gradient(135deg, #0a3d73 0%, #1e40af 100%)',
-              color: '#ffffff',
-              border: 'none',
-              cursor: 'pointer',
-              boxShadow: '0 2px 6px rgba(10, 61, 115, 0.25)',
-              transition: 'all 0.15s ease'
-            }}
-          >
-            <Upload size={15} />
-            <span>{rows.length > 0 ? 'Tải lại file mới' : 'Tải lên file Excel'}</span>
-          </button>
-        </div>
-      </div>
-
-      {/* KPI Stats Cards - Listing exact statuses according to data */}
       {rows.length > 0 && (
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(185px, 1fr))',
-          gap: 10,
-          marginBottom: 14
-        }}>
-          {/* Total */}
-          <div
-            onClick={() => {
-              setTrangThaiFilter('')
-              setCurrentPage(1)
-            }}
-            style={{
-              background: '#ffffff',
-              border: !trangThaiFilter ? '2px solid #0a3d73' : '1px solid #e2e8f0',
-              borderRadius: 10,
-              padding: '12px 14px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              boxShadow: !trangThaiFilter ? '0 2px 8px rgba(10, 61, 115, 0.12)' : '0 1px 3px rgba(0,0,0,0.03)',
-              cursor: 'pointer',
-              transition: 'all 0.15s ease'
-            }}
-            title="Nhấp để xem tất cả đơn"
-          >
-            <div>
-              <div style={{ fontSize: 11.5, color: '#64748b', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.02em' }}>
-                Tổng số đơn
-              </div>
-              <div style={{ fontSize: 20, fontWeight: 800, color: '#0a3d73', marginTop: 2, fontFamily: "'Roboto', sans-serif" }}>
-                {stats.total.toLocaleString('vi-VN')}
-              </div>
-            </div>
-            <div style={{ width: 36, height: 36, borderRadius: 8, background: '#eff6ff', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#1e40af' }}>
-              <FileSpreadsheet size={18} />
-            </div>
-          </div>
-
-          {/* Dynamic Status Cards */}
-          {dynamicStatusList.map(item => {
-            const isSelected = trangThaiFilter === item.name
-            const Icon = item.IconComponent
-            return (
-              <div
-                key={item.name}
+        <>
+          {/* Hàng viên số liệu (bấm để lọc) + nút thao tác */}
+          <div className="sgt-bar">
+            <div className="sg-kpis">
+              <button
+                type="button"
+                className={'sg-kpi sm sg-c-blue' + (!trangThaiFilter ? ' on' : ' dim')}
                 onClick={() => {
-                  if (isSelected) {
-                    setTrangThaiFilter('')
-                  } else {
-                    setTrangThaiFilter(item.name)
-                  }
+                  setTrangThaiFilter('')
                   setCurrentPage(1)
                 }}
-                style={{
-                  background: item.bg,
-                  border: isSelected ? `2px solid ${item.activeBorder}` : `1px solid ${item.border}`,
-                  borderRadius: 10,
-                  padding: '12px 14px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  boxShadow: isSelected ? '0 2px 8px rgba(0,0,0,0.1)' : '0 1px 3px rgba(0,0,0,0.03)',
-                  cursor: 'pointer',
-                  transition: 'all 0.15s ease'
-                }}
-                title={`Nhấp để lọc theo trạng thái: ${item.name}`}
+                title="Bấm để xem tất cả đơn"
               >
-                <div style={{ overflow: 'hidden', paddingRight: 6 }}>
-                  <div style={{
-                    fontSize: 11.5,
-                    color: '#64748b',
-                    fontWeight: 700,
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.02em',
-                    whiteSpace: 'nowrap',
-                    textOverflow: 'ellipsis',
-                    overflow: 'hidden'
-                  }}>
-                    {item.name}
-                  </div>
-                  <div style={{
-                    fontSize: 20,
-                    fontWeight: 800,
-                    color: item.color,
-                    marginTop: 2,
-                    fontFamily: "'Roboto', sans-serif"
-                  }}>
-                    {item.count.toLocaleString('vi-VN')}
-                  </div>
-                </div>
-                <div style={{
-                  width: 36,
-                  height: 36,
-                  borderRadius: 8,
-                  background: item.iconBg,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: item.iconColor,
-                  flexShrink: 0
-                }}>
-                  <Icon size={18} />
-                </div>
-              </div>
-            )
-          })}
+                <span className="sg-kpi-ic"><FileSpreadsheet size={15} /></span>
+                <span className="sg-kpi-bd"><span className="sg-kpi-lb">Tổng số đơn</span><span className="sg-kpi-v">{stats.total.toLocaleString('vi-VN')}</span></span>
+              </button>
 
-          {/* SAP Synced */}
-          {stats.dongBoThanhCong > 0 && (
-            <div
-              onClick={() => {
-                if (dongBoSAPFilter) {
-                  setDongBoSAPFilter('')
-                } else {
-                  const firstOk = dongBoSAPOptions.find(o => o.toLowerCase().includes('đã') || o.toLowerCase().includes('đồng bộ'))
-                  setDongBoSAPFilter(firstOk || '')
-                }
-                setCurrentPage(1)
-              }}
-              style={{
-                background: '#ffffff',
-                border: dongBoSAPFilter ? '2px solid #2563eb' : '1px solid #bfdbfe',
-                borderRadius: 10,
-                padding: '12px 14px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                boxShadow: dongBoSAPFilter ? '0 2px 8px rgba(37,99,235,0.15)' : '0 1px 3px rgba(0,0,0,0.03)',
-                cursor: 'pointer',
-                transition: 'all 0.15s ease'
-              }}
-              title="Nhấp để lọc đơn đã đồng bộ SAP"
-            >
-              <div>
-                <div style={{ fontSize: 11.5, color: '#64748b', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.02em' }}>
-                  Đã đồng bộ SAP
-                </div>
-                <div style={{ fontSize: 20, fontWeight: 800, color: '#2563eb', marginTop: 2, fontFamily: "'Roboto', sans-serif" }}>
-                  {stats.dongBoThanhCong.toLocaleString('vi-VN')}
-                </div>
-              </div>
-              <div style={{ width: 36, height: 36, borderRadius: 8, background: '#eff6ff', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#2563eb' }}>
-                <Database size={18} />
-              </div>
+              {dynamicStatusList.map(item => {
+                const isSelected = trangThaiFilter === item.name
+                const Icon = item.IconComponent
+                return (
+                  <button
+                    type="button"
+                    key={item.name}
+                    className={`sg-kpi sm sg-c-${statusTones[item.name]}` + (isSelected ? ' on' : (trangThaiFilter ? ' dim' : ''))}
+                    onClick={() => {
+                      if (isSelected) {
+                        setTrangThaiFilter('')
+                      } else {
+                        setTrangThaiFilter(item.name)
+                      }
+                      setCurrentPage(1)
+                    }}
+                    title={`Bấm để lọc theo trạng thái: ${item.name}`}
+                  >
+                    <span className="sg-kpi-ic"><Icon size={15} /></span>
+                    <span className="sg-kpi-bd"><span className="sg-kpi-lb">{item.name}</span><span className="sg-kpi-v">{item.count.toLocaleString('vi-VN')}</span></span>
+                  </button>
+                )
+              })}
+
+              {stats.dongBoThanhCong > 0 && (
+                <button
+                  type="button"
+                  className={'sg-kpi sm sg-c-indigo' + (dongBoSAPFilter ? ' on' : '')}
+                  onClick={() => {
+                    if (dongBoSAPFilter) {
+                      setDongBoSAPFilter('')
+                    } else {
+                      const firstOk = dongBoSAPOptions.find(o => o.toLowerCase().includes('đã') || o.toLowerCase().includes('đồng bộ'))
+                      setDongBoSAPFilter(firstOk || '')
+                    }
+                    setCurrentPage(1)
+                  }}
+                  title="Bấm để lọc đơn đã đồng bộ SAP"
+                >
+                  <span className="sg-kpi-ic"><Database size={15} /></span>
+                  <span className="sg-kpi-bd"><span className="sg-kpi-lb">Đã đồng bộ SAP</span><span className="sg-kpi-v">{stats.dongBoThanhCong.toLocaleString('vi-VN')}</span></span>
+                </button>
+              )}
             </div>
-          )}
-        </div>
-      )}
 
-      {/* Filter & Search Bar */}
-      {rows.length > 0 && (
-        <div style={{
-          background: '#ffffff',
-          border: '1px solid #e2e8f0',
-          borderRadius: 10,
-          padding: '12px 16px',
-          marginBottom: 12,
-          display: 'flex',
-          flexWrap: 'wrap',
-          gap: 10,
-          alignItems: 'center'
-        }}>
-          {/* Search Box */}
-          <div style={{ position: 'relative', flex: '1 1 240px', minWidth: 200 }}>
-            <Search size={16} color="#94a3b8" style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)' }} />
-            <input
-              type="text"
-              placeholder="Tìm kiếm số đơn, đơn vị, người duyệt, SAP..."
-              value={search}
-              onChange={(e) => { setSearch(e.target.value); setCurrentPage(1) }}
-              style={{
-                width: '100%',
-                padding: '7px 10px 7px 32px',
-                borderRadius: 6,
-                border: '1px solid #cbd5e1',
-                fontSize: 13,
-                outline: 'none',
-                boxSizing: 'border-box'
-              }}
-            />
+            <span className="sgt-spacer" />
+
+            {fileName && (
+              <span className="sgt-file" title={`Tệp đang xem: ${fileName} · ${rows.length.toLocaleString('vi-VN')} đơn`}>
+                <FileCheck size={15} />
+                <span>{fileName}</span>
+              </span>
+            )}
+
+            <button
+              type="button"
+              className="sg-btn ghost"
+              onClick={() => appendFileInputRef.current && appendFileInputRef.current.click()}
+              title="Tải thêm file dữ liệu nối tiếp"
+            >
+              <Plus size={15} />
+              <span>Tải thêm file</span>
+            </button>
+
+            <button
+              type="button"
+              className="sg-btn"
+              onClick={() => fileInputRef.current && fileInputRef.current.click()}
+              title="Tải lại từ file Excel mới (thay dữ liệu đang xem)"
+            >
+              <Upload size={15} />
+              <span>Tải lại file mới</span>
+            </button>
           </div>
 
-          {/* Filter Trạng thái */}
-          <div style={{ flex: '0 0 auto' }}>
+          {/* Hàng lọc / tìm ngay trên bảng */}
+          <div className="sgt-bar sgt-filters">
+            <div className="sgt-search" title="Tìm theo số đơn, đơn vị, người duyệt, số SAP">
+              <span className="sgt-search-ic"><Search size={16} /></span>
+              <input
+                type="text"
+                placeholder="Tìm số đơn, đơn vị, người duyệt, SAP..."
+                value={search}
+                onChange={(e) => { setSearch(e.target.value); setCurrentPage(1) }}
+              />
+              {search && (
+                <button type="button" className="sgt-x" onClick={() => setSearch('')} title="Xoá tìm kiếm" aria-label="Xoá tìm kiếm">
+                  <IosX />
+                </button>
+              )}
+            </div>
+
             <select
+              className="sgt-sel"
+              title="Trạng thái"
               value={trangThaiFilter}
               onChange={(e) => { setTrangThaiFilter(e.target.value); setCurrentPage(1) }}
-              style={{
-                padding: '7px 10px',
-                borderRadius: 6,
-                border: '1px solid #cbd5e1',
-                fontSize: 13,
-                outline: 'none',
-                background: '#ffffff',
-                color: '#334155'
-              }}
             >
-              <option value="">-- Tất cả trạng thái --</option>
+              <option value="">Tất cả trạng thái</option>
               {trangThaiOptions.map(t => (
                 <option key={t} value={t}>{t}</option>
               ))}
             </select>
-          </div>
 
-          {/* Filter Đơn vị giao */}
-          <div style={{ flex: '0 0 auto' }}>
             <select
+              className="sgt-sel"
+              title="Đơn vị giao"
               value={donViGiaoFilter}
               onChange={(e) => { setDonViGiaoFilter(e.target.value); setCurrentPage(1) }}
-              style={{
-                padding: '7px 10px',
-                borderRadius: 6,
-                border: '1px solid #cbd5e1',
-                fontSize: 13,
-                outline: 'none',
-                background: '#ffffff',
-                color: '#334155',
-                maxWidth: 180
-              }}
             >
-              <option value="">-- Đơn vị giao --</option>
+              <option value="">Tất cả đơn vị giao</option>
               {donViGiaoOptions.map(g => (
                 <option key={g} value={g}>{g}</option>
               ))}
             </select>
-          </div>
 
-          {/* Filter Đơn vị nhận */}
-          <div style={{ flex: '0 0 auto' }}>
             <select
+              className="sgt-sel"
+              title="Đơn vị nhận"
               value={donViNhanFilter}
               onChange={(e) => { setDonViNhanFilter(e.target.value); setCurrentPage(1) }}
-              style={{
-                padding: '7px 10px',
-                borderRadius: 6,
-                border: '1px solid #cbd5e1',
-                fontSize: 13,
-                outline: 'none',
-                background: '#ffffff',
-                color: '#334155',
-                maxWidth: 180
-              }}
             >
-              <option value="">-- Đơn vị nhận --</option>
+              <option value="">Tất cả đơn vị nhận</option>
               {donViNhanOptions.map(n => (
                 <option key={n} value={n}>{n}</option>
               ))}
             </select>
-          </div>
 
-          {/* Filter Đồng bộ SAP */}
-          <div style={{ flex: '0 0 auto' }}>
             <select
+              className="sgt-sel"
+              title="Đồng bộ SAP"
               value={dongBoSAPFilter}
               onChange={(e) => { setDongBoSAPFilter(e.target.value); setCurrentPage(1) }}
-              style={{
-                padding: '7px 10px',
-                borderRadius: 6,
-                border: '1px solid #cbd5e1',
-                fontSize: 13,
-                outline: 'none',
-                background: '#ffffff',
-                color: '#334155'
-              }}
             >
-              <option value="">-- Đồng bộ SAP --</option>
+              <option value="">Đồng bộ SAP: tất cả</option>
               {dongBoSAPOptions.map(s => (
                 <option key={s} value={s}>{s}</option>
               ))}
             </select>
-          </div>
 
-          {/* Date range filter */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flex: '0 0 auto' }}>
-            <input
-              type="date"
-              value={startDate}
-              onChange={(e) => { setStartDate(e.target.value); setCurrentPage(1) }}
-              title="Từ ngày xuất"
-              style={{
-                padding: '6px 8px',
-                borderRadius: 6,
-                border: '1px solid #cbd5e1',
-                fontSize: 12,
-                outline: 'none',
-                color: '#334155'
-              }}
-            />
-            <span style={{ color: '#94a3b8', fontSize: 12 }}>-</span>
-            <input
-              type="date"
-              value={endDate}
-              onChange={(e) => { setEndDate(e.target.value); setCurrentPage(1) }}
-              title="Đến ngày xuất"
-              style={{
-                padding: '6px 8px',
-                borderRadius: 6,
-                border: '1px solid #cbd5e1',
-                fontSize: 12,
-                outline: 'none',
-                color: '#334155'
-              }}
-            />
-          </div>
+            <div className="sgt-dates" title="Khoảng ngày xuất">
+              <Calendar size={15} color="#6B7AA0" />
+              <input
+                type="date"
+                value={startDate}
+                onChange={(e) => { setStartDate(e.target.value); setCurrentPage(1) }}
+                title="Từ ngày xuất"
+              />
+              <span>đến</span>
+              <input
+                type="date"
+                value={endDate}
+                onChange={(e) => { setEndDate(e.target.value); setCurrentPage(1) }}
+                title="Đến ngày xuất"
+              />
+            </div>
 
-          {/* Reset filters button */}
-          {(search || trangThaiFilter || donViGiaoFilter || donViNhanFilter || dongBoSAPFilter || startDate || endDate) && (
+            {hasAnyFilter && (
+              <button
+                type="button"
+                className="sg-btn danger"
+                onClick={() => {
+                  setSearch('')
+                  setTrangThaiFilter('')
+                  setDonViGiaoFilter('')
+                  setDonViNhanFilter('')
+                  setDongBoSAPFilter('')
+                  setStartDate('')
+                  setEndDate('')
+                  setCurrentPage(1)
+                }}
+                title="Bỏ toàn bộ bộ lọc"
+              >
+                <IosX />
+                Bỏ lọc
+              </button>
+            )}
+
+            <span className="sgt-spacer" />
+
             <button
-              onClick={() => {
-                setSearch('')
-                setTrangThaiFilter('')
-                setDonViGiaoFilter('')
-                setDonViNhanFilter('')
-                setDongBoSAPFilter('')
-                setStartDate('')
-                setEndDate('')
-                setCurrentPage(1)
-              }}
-              style={{
-                padding: '6px 10px',
-                borderRadius: 6,
-                border: '1px solid #cbd5e1',
-                background: '#f1f5f9',
-                color: '#475569',
-                fontSize: 12,
-                fontWeight: 600,
-                cursor: 'pointer'
-              }}
+              type="button"
+              className="sg-btn green"
+              onClick={handleExportExcel}
+              title="Xuất bảng dữ liệu đang lọc ra file Excel"
             >
-              Đặt lại
+              <Download size={15} />
+              <span>Xuất Excel ({filteredRows.length.toLocaleString('vi-VN')})</span>
             </button>
-          )}
-        </div>
+
+            <button
+              type="button"
+              className="sg-btn danger"
+              onClick={handleClearData}
+              title="Xoá toàn bộ dữ liệu đang xem"
+            >
+              <Trash2 size={15} />
+              <span>Xoá dữ liệu</span>
+            </button>
+          </div>
+        </>
       )}
 
-      {/* Main Content Area */}
+      {/* Vùng nội dung chính */}
       {rows.length === 0 ? (
-        /* Empty State & Upload DropZone */
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: 380 }}>
+        /* Khối thả file tải lên */
+        <div className="sgt-dropwrap">
           <div
+            className={'sgt-drop' + (isDragOver ? ' over' : '')}
             onDragOver={(e) => { e.preventDefault(); setIsDragOver(true) }}
             onDragLeave={() => setIsDragOver(false)}
             onDrop={handleDrop}
             onClick={() => fileInputRef.current && fileInputRef.current.click()}
-            style={{
-              width: '100%',
-              maxWidth: 680,
-              padding: '48px 32px',
-              borderRadius: 16,
-              border: `2px dashed ${isDragOver ? '#2563eb' : '#cbd5e1'}`,
-              background: isDragOver ? '#eff6ff' : '#ffffff',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              cursor: 'pointer',
-              boxShadow: '0 4px 20px rgba(0,0,0,0.03)',
-              transition: 'all 0.2s ease',
-              textAlign: 'center'
-            }}
+            title="Tải lên file Excel theo dõi tình trạng đơn vật tư và đồng bộ SAP"
           >
-            <div style={{
-              width: 68,
-              height: 68,
-              borderRadius: 16,
-              background: '#eff6ff',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: '#2563eb',
-              marginBottom: 16
-            }}>
-              <Upload size={32} />
-            </div>
+            <div className="sgt-drop-ic"><Upload size={28} /></div>
+            <h2>Tải lên file Excel tình trạng đơn vật tư</h2>
+            <p>Kéo thả file Excel vào đây hoặc bấm để chọn từ máy</p>
+            <span className="sg-btn" style={{ pointerEvents: 'none' }}>
+              <Upload size={15} />
+              Chọn file Excel
+            </span>
 
-            <h2 style={{ fontSize: 18, fontWeight: 700, color: '#0f172a', margin: '0 0 8px 0' }}>
-              Tải lên file Excel Tình trạng đơn vật tư
-            </h2>
-            <p style={{ fontSize: 14, color: '#64748b', margin: '0 0 16px 0', maxWidth: 480, lineHeight: 1.5 }}>
-              Kéo thả file Excel vào đây hoặc <span style={{ color: '#2563eb', fontWeight: 600 }}>chọn từ thiết bị</span>.
-            </p>
-
-            <div style={{
-              background: '#f8fafc',
-              border: '1px solid #e2e8f0',
-              borderRadius: 10,
-              padding: '12px 18px',
-              textAlign: 'left',
-              fontSize: 12.5,
-              color: '#475569',
-              lineHeight: 1.6,
-              maxWidth: 580,
-              width: '100%'
-            }}>
-              <div style={{ fontWeight: 700, color: '#0a3d73', marginBottom: 4 }}>
-                ℹ️ Cấu trúc file Excel hỗ trợ gồm các cột:
+            <div className="sgt-drop-note">
+              <div className="sgt-drop-note-hd">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9.5" /><path d="M12 11v6" /><path d="M12 7.5h.01" /></svg>
+                Cấu trúc file Excel hỗ trợ gồm các cột:
               </div>
               <div>
                 <strong>STT</strong> · <strong>Số đơn</strong> · <strong>Ngày xuất</strong> · <strong>Đơn vị giao</strong> · <strong>Người giao</strong> · <strong>Đơn vị nhận</strong> · <strong>Người nhận</strong> · <strong>Cán bộ phê duyệt 1 → 4</strong> · <strong>Trạng thái</strong> · <strong>Số đơn/phiếu SAP</strong> · <strong>Đồng bộ SAP</strong>
@@ -1756,10 +1490,10 @@ export default function TinhTrangDonVatTuTab({
           </div>
         </div>
       ) : (
-        /* Data Table View */
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: '#ffffff', border: '1px solid #94a3b8', borderRadius: 8, overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
-          <div style={{ flex: 1, overflow: 'auto', position: 'relative' }}>
-            <table style={{ width: '100%', minWidth: '1750px', borderCollapse: 'separate', borderSpacing: 0, fontSize: '13px', textAlign: 'left' }}>
+        /* Bảng dữ liệu */
+        <div className="sgt-tablebox">
+          <div className="sgt-scroll">
+            <table style={{ width: '100%', minWidth: '1750px', borderCollapse: 'separate', borderSpacing: 0, fontSize: '15px', textAlign: 'left' }}>
               <thead style={{ position: 'sticky', top: 0, zIndex: 20 }}>
                 <tr style={{ background: '#0a3d73', color: '#ffffff' }}>
                   <th style={{
@@ -1768,7 +1502,7 @@ export default function TinhTrangDonVatTuTab({
                     minWidth: '55px',
                     textAlign: 'center',
                     fontWeight: 700,
-                    fontSize: '13px',
+                    fontSize: '15px',
                     background: '#0a3d73',
                     color: '#ffffff',
                     whiteSpace: 'nowrap',
@@ -1787,7 +1521,7 @@ export default function TinhTrangDonVatTuTab({
                       maxWidth: '240px',
                       textAlign: 'left',
                       fontWeight: 700,
-                      fontSize: '13px',
+                      fontSize: '15px',
                       background: '#0a3d73',
                       color: '#ffffff',
                       cursor: 'pointer',
@@ -1812,7 +1546,7 @@ export default function TinhTrangDonVatTuTab({
                       minWidth: '115px',
                       textAlign: 'center',
                       fontWeight: 700,
-                      fontSize: '13px',
+                      fontSize: '15px',
                       background: '#0a3d73',
                       color: '#ffffff',
                       cursor: 'pointer',
@@ -1834,7 +1568,7 @@ export default function TinhTrangDonVatTuTab({
                     width: '230px',
                     minWidth: '230px',
                     fontWeight: 700,
-                    fontSize: '13px',
+                    fontSize: '15px',
                     background: '#0a3d73',
                     color: '#ffffff',
                     whiteSpace: 'nowrap',
@@ -1849,7 +1583,7 @@ export default function TinhTrangDonVatTuTab({
                     width: '150px',
                     minWidth: '150px',
                     fontWeight: 700,
-                    fontSize: '13px',
+                    fontSize: '15px',
                     background: '#0a3d73',
                     color: '#ffffff',
                     whiteSpace: 'nowrap',
@@ -1864,7 +1598,7 @@ export default function TinhTrangDonVatTuTab({
                     width: '230px',
                     minWidth: '230px',
                     fontWeight: 700,
-                    fontSize: '13px',
+                    fontSize: '15px',
                     background: '#0a3d73',
                     color: '#ffffff',
                     whiteSpace: 'nowrap',
@@ -1879,7 +1613,7 @@ export default function TinhTrangDonVatTuTab({
                     width: '150px',
                     minWidth: '150px',
                     fontWeight: 700,
-                    fontSize: '13px',
+                    fontSize: '15px',
                     background: '#0a3d73',
                     color: '#ffffff',
                     whiteSpace: 'nowrap',
@@ -1894,7 +1628,7 @@ export default function TinhTrangDonVatTuTab({
                     width: '170px',
                     minWidth: '170px',
                     fontWeight: 700,
-                    fontSize: '13px',
+                    fontSize: '15px',
                     background: '#0a3d73',
                     color: '#ffffff',
                     whiteSpace: 'nowrap',
@@ -1909,7 +1643,7 @@ export default function TinhTrangDonVatTuTab({
                     width: '170px',
                     minWidth: '170px',
                     fontWeight: 700,
-                    fontSize: '13px',
+                    fontSize: '15px',
                     background: '#0a3d73',
                     color: '#ffffff',
                     whiteSpace: 'nowrap',
@@ -1924,7 +1658,7 @@ export default function TinhTrangDonVatTuTab({
                     width: '160px',
                     minWidth: '160px',
                     fontWeight: 700,
-                    fontSize: '13px',
+                    fontSize: '15px',
                     background: '#0a3d73',
                     color: '#ffffff',
                     whiteSpace: 'nowrap',
@@ -1939,7 +1673,7 @@ export default function TinhTrangDonVatTuTab({
                     width: '160px',
                     minWidth: '160px',
                     fontWeight: 700,
-                    fontSize: '13px',
+                    fontSize: '15px',
                     background: '#0a3d73',
                     color: '#ffffff',
                     whiteSpace: 'nowrap',
@@ -1955,7 +1689,7 @@ export default function TinhTrangDonVatTuTab({
                     minWidth: '140px',
                     textAlign: 'center',
                     fontWeight: 700,
-                    fontSize: '13px',
+                    fontSize: '15px',
                     background: '#0a3d73',
                     color: '#ffffff',
                     whiteSpace: 'nowrap',
@@ -1971,7 +1705,7 @@ export default function TinhTrangDonVatTuTab({
                     minWidth: '150px',
                     textAlign: 'center',
                     fontWeight: 700,
-                    fontSize: '13px',
+                    fontSize: '15px',
                     background: '#0a3d73',
                     color: '#ffffff',
                     whiteSpace: 'nowrap',
@@ -1987,7 +1721,7 @@ export default function TinhTrangDonVatTuTab({
                     minWidth: '140px',
                     textAlign: 'center',
                     fontWeight: 700,
-                    fontSize: '13px',
+                    fontSize: '15px',
                     background: '#0a3d73',
                     color: '#ffffff',
                     whiteSpace: 'nowrap',
@@ -2085,36 +1819,18 @@ export default function TinhTrangDonVatTuTab({
             </table>
           </div>
 
-          {/* Table Footer / Pagination */}
-          <div style={{
-            padding: '10px 16px',
-            borderTop: '1px solid #e2e8f0',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            flexWrap: 'wrap',
-            gap: 10,
-            background: '#ffffff',
-            fontSize: 13,
-            color: '#64748b'
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          {/* Chân bảng: số dòng + phân trang */}
+          <div className="sgt-foot">
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
               <span>
                 Hiển thị <strong>{filteredRows.length === 0 ? 0 : (currentPage - 1) * pageSize + 1}</strong> - <strong>{Math.min(currentPage * pageSize, filteredRows.length)}</strong> trên tổng <strong>{filteredRows.length.toLocaleString('vi-VN')}</strong> đơn
               </span>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <span style={{ fontSize: 12 }}>Số dòng/trang:</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span>Số dòng/trang:</span>
                 <select
+                  className="sgt-sel sm"
                   value={pageSize}
                   onChange={(e) => { setPageSize(Number(e.target.value)); setCurrentPage(1) }}
-                  style={{
-                    padding: '3px 8px',
-                    borderRadius: 6,
-                    border: '1px solid #cbd5e1',
-                    fontSize: 12,
-                    outline: 'none',
-                    background: '#ffffff'
-                  }}
                 >
                   <option value={20}>20</option>
                   <option value={50}>50</option>
@@ -2127,64 +1843,20 @@ export default function TinhTrangDonVatTuTab({
 
             {pageSize > 0 && totalPages > 1 && (
               <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                <button
-                  onClick={() => setCurrentPage(1)}
-                  disabled={currentPage === 1}
-                  style={{
-                    padding: '5px 8px',
-                    borderRadius: 6,
-                    border: '1px solid #cbd5e1',
-                    background: '#ffffff',
-                    color: currentPage === 1 ? '#cbd5e1' : '#334155',
-                    cursor: currentPage === 1 ? 'not-allowed' : 'pointer'
-                  }}
-                >
-                  <ChevronsLeft size={14} />
+                <button type="button" className="sgt-pg" onClick={() => setCurrentPage(1)} disabled={currentPage === 1} title="Trang đầu">
+                  <ChevronsLeft size={16} />
                 </button>
-                <button
-                  onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                  disabled={currentPage === 1}
-                  style={{
-                    padding: '5px 8px',
-                    borderRadius: 6,
-                    border: '1px solid #cbd5e1',
-                    background: '#ffffff',
-                    color: currentPage === 1 ? '#cbd5e1' : '#334155',
-                    cursor: currentPage === 1 ? 'not-allowed' : 'pointer'
-                  }}
-                >
-                  <ChevronLeft size={14} />
+                <button type="button" className="sgt-pg" onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))} disabled={currentPage === 1} title="Trang trước">
+                  <ChevronLeft size={16} />
                 </button>
-                <span style={{ padding: '0 8px', fontWeight: 600, color: '#0f172a' }}>
+                <span style={{ padding: '0 8px', fontWeight: 700, color: '#16171C' }}>
                   {currentPage} / {totalPages}
                 </span>
-                <button
-                  onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                  disabled={currentPage === totalPages}
-                  style={{
-                    padding: '5px 8px',
-                    borderRadius: 6,
-                    border: '1px solid #cbd5e1',
-                    background: '#ffffff',
-                    color: currentPage === totalPages ? '#cbd5e1' : '#334155',
-                    cursor: currentPage === totalPages ? 'not-allowed' : 'pointer'
-                  }}
-                >
-                  <ChevronRight size={14} />
+                <button type="button" className="sgt-pg" onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))} disabled={currentPage === totalPages} title="Trang sau">
+                  <ChevronRight size={16} />
                 </button>
-                <button
-                  onClick={() => setCurrentPage(totalPages)}
-                  disabled={currentPage === totalPages}
-                  style={{
-                    padding: '5px 8px',
-                    borderRadius: 6,
-                    border: '1px solid #cbd5e1',
-                    background: '#ffffff',
-                    color: currentPage === totalPages ? '#cbd5e1' : '#334155',
-                    cursor: currentPage === totalPages ? 'not-allowed' : 'pointer'
-                  }}
-                >
-                  <ChevronsRight size={14} />
+                <button type="button" className="sgt-pg" onClick={() => setCurrentPage(totalPages)} disabled={currentPage === totalPages} title="Trang cuối">
+                  <ChevronsRight size={16} />
                 </button>
               </div>
             )}
@@ -2194,3 +1866,45 @@ export default function TinhTrangDonVatTuTab({
     </div>
   )
 }
+
+// Dấu X kiểu iPhone (SVG, nét đều đầu tròn)
+function IosX() {
+  return (
+    <svg width="11" height="11" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+      <path d="M2.5 2.5l7 7M9.5 2.5l-7 7" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
+    </svg>
+  )
+}
+
+const TTDV_CSS = `
+.sgt-page { display: flex; flex-direction: column; gap: 10px; height: 100%; overflow: hidden; padding: 14px 20px 16px; box-sizing: border-box; }
+.sgt-bar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; flex: none; }
+.sgt-spacer { flex: 1 1 0; }
+.sgt-file { display: inline-flex; align-items: center; gap: 6px; height: 30px; max-width: 280px; padding: 0 12px; border-radius: 99px; background: #fff; color: #0A3D73; font-size: 12px; font-weight: 700; box-shadow: inset 0 0 0 1px #D5DCEB; }
+.sgt-file > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sgt-search { position: relative; flex: 1 1 260px; min-width: 220px; max-width: 360px; }
+.sgt-search-ic { position: absolute; left: 13px; top: 50%; transform: translateY(-50%); color: #6B7AA0; display: flex; pointer-events: none; }
+html body .sgt-search input { width: 100%; height: 36px; box-sizing: border-box; padding: 0 38px; font-size: 15px; color: #16171C; background: #fff; border: 1.5px solid #D5DCEB; border-radius: 99px; outline: none; }
+.sgt-x { position: absolute; right: 7px; top: 50%; transform: translateY(-50%); width: 24px; height: 24px; padding: 0; border: 0; border-radius: 50%; display: grid; place-items: center; background: #FFE7E5; color: #FF3B30; cursor: pointer; transition: background .15s, color .15s; }
+.sgt-x:hover { background: #FF3B30; color: #fff; }
+html body .sgt-x:active { transform: translateY(-50%) scale(.94); }
+html body .sgt-sel { height: 36px; box-sizing: border-box; border: 1.5px solid #D5DCEB; padding-left: 12px; font-size: 15px; font-weight: 600; color: #16171C; max-width: 210px; flex: 0 1 auto; }
+html body .sgt-sel.sm { height: 32px; font-size: 12px; }
+.sgt-dates { display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 6px 0 12px; border-radius: 12px; background: #fff; box-shadow: inset 0 0 0 1.5px #D5DCEB; font-size: 12px; font-weight: 600; color: #4A4C55; }
+html body .sgt-dates input { height: 28px; border: 0 !important; box-shadow: none !important; background: transparent; font-size: 15px; color: #16171C; padding: 0 4px; outline: none; }
+.sgt-tablebox { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; gap: 8px; }
+.sgt-scroll { flex: 1 1 auto; min-height: 0; overflow: auto; position: relative; border-radius: 14px; }
+.sgt-scroll > table { background: #fff; }
+.sgt-foot { flex: none; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; padding: 6px 14px; border-radius: 99px; background: rgba(255,255,255,.72); font-size: 12px; font-weight: 600; color: #4A4C55; }
+.sgt-pg { width: 32px; height: 32px; padding: 0; border: 0; border-radius: 50%; display: grid; place-items: center; background: #fff; color: #0F58A7; box-shadow: inset 0 0 0 1px #D5DCEB; cursor: pointer; }
+.sgt-pg:hover:not(:disabled) { background: #E4EEFA; }
+.sgt-pg:disabled { color: #B5BAC6; cursor: not-allowed; }
+.sgt-dropwrap { flex: 1; display: flex; align-items: center; justify-content: center; min-height: 360px; }
+.sgt-drop { width: 100%; max-width: 640px; box-sizing: border-box; padding: 32px 28px 26px; border-radius: 24px; border: 2px dashed #C9D3E6; background: rgba(255,255,255,.72); backdrop-filter: blur(10px); display: flex; flex-direction: column; align-items: center; gap: 10px; text-align: center; cursor: pointer; transition: border-color .2s, background .2s, box-shadow .2s; box-shadow: 0 20px 40px -28px rgba(10, 61, 115, .35); }
+.sgt-drop:hover, .sgt-drop.over { border-color: #0F58A7; background: rgba(228, 238, 250, .85); }
+.sgt-drop-ic { width: 60px; height: 60px; border-radius: 18px; display: grid; place-items: center; color: #fff; background: linear-gradient(135deg, #0A3D73, #0F58A7 55%, #2F86E0); box-shadow: 0 12px 24px -12px rgba(15, 88, 167, .9); margin-bottom: 4px; }
+.sgt-drop h2 { margin: 0; font-size: 22px; font-weight: 700; color: #16171C; }
+.sgt-drop p { margin: 0 0 4px; font-size: 15px; color: #4A4C55; }
+.sgt-drop-note { margin-top: 10px; width: 100%; box-sizing: border-box; padding: 12px 16px; border-radius: 16px; background: rgba(245, 246, 248, .9); text-align: left; font-size: 12px; color: #4A4C55; line-height: 1.6; }
+.sgt-drop-note-hd { display: flex; align-items: center; gap: 6px; font-weight: 700; color: #0A3D73; margin-bottom: 4px; }
+`

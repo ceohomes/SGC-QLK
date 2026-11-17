@@ -83,27 +83,29 @@ function SearchableSelect({ value, onChange, options, placeholder = 'Tất cả'
       <div
         onClick={() => setIsOpen(!isOpen)}
         style={{
-          padding: '8px 12px',
-          border: '1px solid #cbd5e1',
-          borderRadius: '8px',
-          fontSize: '13px',
-          fontWeight: 500,
+          padding: '0 5px 0 12px',
+          border: '1.5px solid #D5DCEB',
+          borderRadius: '12px',
+          fontSize: '15px',
+          fontWeight: 600,
           background: '#ffffff',
-          color: value ? '#1e293b' : '#64748b',
+          color: value ? '#16171C' : '#4A4C55',
           cursor: 'pointer',
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
-          height: '38px',
+          gap: 6,
+          height: '36px',
           boxSizing: 'border-box',
-          userSelect: 'none',
-          boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
+          userSelect: 'none'
         }}
       >
-        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '90%' }}>
+        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>
           {selectedLabel}
         </span>
-        <span style={{ fontSize: '10px', color: '#94a3b8', marginLeft: 4 }}>▼</span>
+        <span style={{ flex: 'none', width: 24, height: 24, borderRadius: 7, background: '#E4EEFA', color: '#0F58A7', display: 'grid', placeItems: 'center' }}>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" style={{ transform: isOpen ? 'rotate(180deg)' : 'none', transition: 'transform .15s' }}><path d="M6 9l6 6 6-6" /></svg>
+        </span>
       </div>
 
       {isOpen && (
@@ -113,9 +115,10 @@ function SearchableSelect({ value, onChange, options, placeholder = 'Tất cả'
           left: 0,
           right: 0,
           background: '#ffffff',
-          border: '1px solid #cbd5e1',
-          borderRadius: '8px',
-          boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.15), 0 8px 10px -6px rgba(0, 0, 0, 0.1)',
+          border: '1px solid #D5DCEB',
+          borderRadius: '14px',
+          minWidth: '260px',
+          boxShadow: '0 16px 32px -12px rgba(10, 36, 80, 0.3)',
           zIndex: 9999,
           maxHeight: '280px',
           display: 'flex',
@@ -131,10 +134,11 @@ function SearchableSelect({ value, onChange, options, placeholder = 'Tất cả'
               autoFocus
               style={{
                 width: '100%',
-                padding: '6px 10px',
-                fontSize: '12.5px',
-                border: '1px solid #cbd5e1',
-                borderRadius: '6px',
+                height: '34px',
+                padding: '0 10px',
+                fontSize: '15px',
+                border: '1.5px solid #D5DCEB',
+                borderRadius: '10px',
                 outline: 'none',
                 boxSizing: 'border-box'
               }}
@@ -150,18 +154,18 @@ function SearchableSelect({ value, onChange, options, placeholder = 'Tất cả'
               }}
               style={{
                 padding: '8px 12px',
-                fontSize: '12.5px',
-                color: '#ef4444',
+                fontSize: '15px',
+                color: '#0F58A7',
                 fontWeight: 600,
                 cursor: 'pointer',
                 borderBottom: '1px solid #f1f5f9',
-                background: !value ? '#fef2f2' : 'transparent'
+                background: !value ? '#E4EEFA' : 'transparent'
               }}
             >
-              -- Tất cả / Mặc định --
+              Tất cả (bỏ lọc)
             </div>
             {filteredOptions.length === 0 ? (
-              <div style={{ padding: '12px', fontSize: '12px', color: '#94a3b8', textAlign: 'center' }}>
+              <div style={{ padding: '12px', fontSize: '15px', color: '#8C8E97', textAlign: 'center' }}>
                 Không tìm thấy kết quả
               </div>
             ) : (
@@ -180,11 +184,11 @@ function SearchableSelect({ value, onChange, options, placeholder = 'Tất cả'
                     }}
                     style={{
                       padding: '8px 12px',
-                      fontSize: '12.5px',
-                      color: isSelected ? '#1e40af' : '#334155',
+                      fontSize: '15px',
+                      color: isSelected ? '#0A3D73' : '#16171C',
                       fontWeight: isSelected ? 700 : 400,
                       cursor: 'pointer',
-                      background: isSelected ? '#eff6ff' : 'transparent',
+                      background: isSelected ? '#E4EEFA' : 'transparent',
                       borderBottom: '1px solid #f8fafc',
                       display: 'flex',
                       alignItems: 'center',
@@ -198,7 +202,7 @@ function SearchableSelect({ value, onChange, options, placeholder = 'Tất cả'
                     }}
                   >
                     <span>{optLabel}</span>
-                    {isSelected && <span style={{ color: '#2563eb', fontSize: '12px' }}>✓</span>}
+                    {isSelected && <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#0F58A7" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg>}
                   </div>
                 )
               })
@@ -269,6 +273,14 @@ export default function ThongKeTheoVatTuTab({
 
   // Material Transaction Detail Modal
   const [detailModalMaterial, setDetailModalMaterial] = useState(null)
+
+  // Phím Esc đóng hộp thoại lịch sử xuất nhập
+  useEffect(() => {
+    if (!detailModalMaterial) return
+    const onKey = (e) => { if (e.key === 'Escape') { e.preventDefault(); setDetailModalMaterial(null) } }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [detailModalMaterial])
 
   // Unit categorization helper
   const getCategory = (name) => {
@@ -886,209 +898,85 @@ export default function ThongKeTheoVatTuTab({
   }
 
   return (
-    <div style={{ padding: '20px', height: '100%', display: 'flex', flexDirection: 'column', boxSizing: 'border-box', overflow: 'hidden', background: '#f8fafc' }}>
-      
-      {/* Top Header & Metrics Bar */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px', gap: 16, flexWrap: 'wrap' }}>
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div style={{
-              background: 'linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%)',
-              color: '#ffffff',
-              padding: '8px',
-              borderRadius: '10px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              boxShadow: '0 4px 6px -1px rgba(37, 99, 235, 0.2)'
-            }}>
-              <Package size={22} />
-            </div>
-            <div>
-              <h2 style={{ fontSize: '19px', fontWeight: 800, color: '#0f172a', margin: 0, letterSpacing: '-0.02em' }}>
-                THỐNG KÊ TỒN KHO THEO VẬT TƯ
-              </h2>
-              <p style={{ fontSize: '13px', color: '#64748b', margin: '2px 0 0 0' }}>
-                Báo cáo tổng hợp số lượng tồn kho chi tiết theo từng vật tư trên tất cả các Ban Chỉ Huy (Kho Dự Án)
-              </p>
-            </div>
+    <div className="sgk-page">
+      <style>{TKVT_CSS}</style>
+
+      {/* Hàng số liệu + nút thao tác */}
+      <div className="sgk-bar">
+        <div className="sg-kpis" title="Báo cáo tổng hợp số lượng tồn kho chi tiết theo từng vật tư trên tất cả các Ban Chỉ Huy (kho dự án)">
+          <div className="sg-kpi sm sg-c-blue" title="Số loại vật tư đang hiển thị theo bộ lọc">
+            <span className="sg-kpi-ic"><Layers size={16} /></span>
+            <span className="sg-kpi-bd">
+              <span className="sg-kpi-lb">Số loại vật tư</span>
+              <span className="sg-kpi-v">{summaryMetrics.totalItems.toLocaleString('vi-VN')}</span>
+            </span>
           </div>
+          <div className="sg-kpi sm sg-c-green" title="Tổng số lượng tồn của toàn công ty theo bộ lọc">
+            <span className="sg-kpi-ic"><Package size={16} /></span>
+            <span className="sg-kpi-bd">
+              <span className="sg-kpi-lb">Tổng tồn toàn công ty</span>
+              <span className="sg-kpi-v">{summaryMetrics.grandStock.toLocaleString('vi-VN', { maximumFractionDigits: 2 })}</span>
+            </span>
+          </div>
+          <div className="sg-kpi sm sg-c-orange" title={`Số kho / BCH đang hiển thị trên tổng ${uniquePhysicalWarehouses.length} kho`}>
+            <span className="sg-kpi-ic"><Warehouse size={16} /></span>
+            <span className="sg-kpi-bd">
+              <span className="sg-kpi-lb">Kho / BCH hiển thị</span>
+              <span className="sg-kpi-v">{displayPhysicalWarehouses.length}<small>/ {uniquePhysicalWarehouses.length}</small></span>
+            </span>
+          </div>
+          {summaryMetrics.grandValue > 0 && (
+            <div className="sg-kpi sm sg-c-violet" title="Giá trị tồn ước tính theo đơn giá vật tư">
+              <span className="sg-kpi-ic"><BarChart3 size={16} /></span>
+              <span className="sg-kpi-bd">
+                <span className="sg-kpi-lb">Giá trị tồn ước tính</span>
+                <span className="sg-kpi-v">{Math.round(summaryMetrics.grandValue).toLocaleString('vi-VN')}<small>đ</small></span>
+              </span>
+            </div>
+          )}
         </div>
 
-        {/* Action Buttons */}
-        <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-          <button
-            onClick={handleExportExcel}
-            style={{
-              background: 'linear-gradient(135deg, #059669 0%, #10b981 100%)',
-              color: '#ffffff',
-              border: 'none',
-              padding: '9px 18px',
-              borderRadius: '8px',
-              fontSize: '13.5px',
-              fontWeight: 700,
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              boxShadow: '0 4px 10px rgba(16, 185, 129, 0.25)',
-              transition: 'all 0.2s'
+        <span className="sgk-spacer" />
+
+        <button
+          type="button"
+          className={'sgk-check' + (hideEmptyWarehouses ? ' on' : '')}
+          onClick={() => setHideEmptyWarehouses(!hideEmptyWarehouses)}
+          title="Ẩn các cột kho không có số tồn"
+        >
+          {hideEmptyWarehouses ? <CheckSquare size={18} /> : <Square size={18} />}
+          Ẩn kho không có tồn
+        </button>
+
+        <button type="button" onClick={handleExportExcel} className="sg-btn green">
+          <Download size={16} />
+          Xuất Excel
+        </button>
+      </div>
+
+      {/* Hàng lọc ngay trên bảng */}
+      <div className="sgk-bar sgk-filters">
+        {/* Tìm nhanh */}
+        <div className="sgk-search" title="Tìm nhanh theo mã SAP, tên vật tư, quy cách, ĐVT">
+          <span className="sgk-search-ic"><Search size={16} /></span>
+          <input
+            type="text"
+            value={searchTerm}
+            onChange={(e) => {
+              setSearchTerm(e.target.value)
+              setCurrentPage(1)
             }}
-            onMouseOver={(e) => e.currentTarget.style.transform = 'translateY(-1px)'}
-            onMouseOut={(e) => e.currentTarget.style.transform = 'none'}
-          >
-            <Download size={16} />
-            Xuất file Excel
-          </button>
-        </div>
-      </div>
-
-      {/* KPI Cards Summary Bar */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-        gap: '12px',
-        marginBottom: '16px'
-      }}>
-        <div style={{
-          background: '#ffffff',
-          border: '1px solid #e2e8f0',
-          borderRadius: '10px',
-          padding: '12px 16px',
-          boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
-          display: 'flex',
-          alignItems: 'center',
-          gap: 12
-        }}>
-          <div style={{ background: '#eff6ff', color: '#2563eb', padding: '10px', borderRadius: '8px' }}>
-            <Layers size={20} />
-          </div>
-          <div>
-            <div style={{ fontSize: '11.5px', color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>Số loại vật tư</div>
-            <div style={{ fontSize: '18px', fontWeight: 800, color: '#1e3a8a' }}>
-              {summaryMetrics.totalItems.toLocaleString('vi-VN')}
-            </div>
-          </div>
+            placeholder="Tìm mã SAP, tên vật tư, quy cách, ĐVT..."
+          />
+          {searchTerm && (
+            <button type="button" className="sgk-x" onClick={() => setSearchTerm('')} title="Xoá tìm kiếm" aria-label="Xoá tìm kiếm">
+              <IosX />
+            </button>
+          )}
         </div>
 
-        <div style={{
-          background: '#ffffff',
-          border: '1px solid #e2e8f0',
-          borderRadius: '10px',
-          padding: '12px 16px',
-          boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
-          display: 'flex',
-          alignItems: 'center',
-          gap: 12
-        }}>
-          <div style={{ background: '#ecfdf5', color: '#059669', padding: '10px', borderRadius: '8px' }}>
-            <Package size={20} />
-          </div>
-          <div>
-            <div style={{ fontSize: '11.5px', color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>Tổng tồn toàn công ty</div>
-            <div style={{ fontSize: '18px', fontWeight: 800, color: '#059669' }}>
-              {summaryMetrics.grandStock.toLocaleString('vi-VN', { maximumFractionDigits: 2 })}
-            </div>
-          </div>
-        </div>
-
-        <div style={{
-          background: '#ffffff',
-          border: '1px solid #e2e8f0',
-          borderRadius: '10px',
-          padding: '12px 16px',
-          boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
-          display: 'flex',
-          alignItems: 'center',
-          gap: 12
-        }}>
-          <div style={{ background: '#fef3c7', color: '#d97706', padding: '10px', borderRadius: '8px' }}>
-            <Warehouse size={20} />
-          </div>
-          <div>
-            <div style={{ fontSize: '11.5px', color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>Số Kho / BCH hiển thị</div>
-            <div style={{ fontSize: '18px', fontWeight: 800, color: '#d97706' }}>
-              {displayPhysicalWarehouses.length} <span style={{ fontSize: '12px', fontWeight: 500, color: '#94a3b8' }}>/ {uniquePhysicalWarehouses.length}</span>
-            </div>
-          </div>
-        </div>
-
-        {summaryMetrics.grandValue > 0 && (
-          <div style={{
-            background: '#ffffff',
-            border: '1px solid #e2e8f0',
-            borderRadius: '10px',
-            padding: '12px 16px',
-            boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 12
-          }}>
-            <div style={{ background: '#f5f3ff', color: '#7c3aed', padding: '10px', borderRadius: '8px' }}>
-              <BarChart3 size={20} />
-            </div>
-            <div>
-              <div style={{ fontSize: '11.5px', color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>Giá trị tồn ước tính</div>
-              <div style={{ fontSize: '18px', fontWeight: 800, color: '#7c3aed' }}>
-                {Math.round(summaryMetrics.grandValue).toLocaleString('vi-VN')} đ
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Modern Filter Toolbar */}
-      <div style={{
-        background: '#ffffff',
-        border: '1px solid #e2e8f0',
-        borderRadius: '12px',
-        padding: '14px 16px',
-        marginBottom: '16px',
-        display: 'flex',
-        gap: '12px',
-        alignItems: 'center',
-        flexWrap: 'wrap',
-        boxShadow: '0 1px 3px rgba(0,0,0,0.04)'
-      }}>
-        {/* Quick Search */}
-        <div style={{ flex: '2 1 240px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-          <label style={{ fontSize: '11.5px', fontWeight: 700, color: '#475569' }}>Tìm kiếm nhanh vật tư:</label>
-          <div style={{ position: 'relative', width: '100%' }}>
-            <input
-              type="text"
-              value={searchTerm}
-              onChange={(e) => {
-                setSearchTerm(e.target.value)
-                setCurrentPage(1)
-              }}
-              placeholder="Nhập mã SAP, tên vật tư, quy cách, ĐVT..."
-              style={{
-                width: '100%',
-                padding: '8px 32px 8px 34px',
-                border: '1px solid #cbd5e1',
-                borderRadius: '8px',
-                fontSize: '13px',
-                height: '38px',
-                boxSizing: 'border-box',
-                outline: 'none',
-                color: '#1e293b'
-              }}
-            />
-            <Search size={15} color="#94a3b8" style={{ position: 'absolute', left: '11px', top: '12px' }} />
-            {searchTerm && (
-              <X
-                size={14}
-                color="#94a3b8"
-                onClick={() => setSearchTerm('')}
-                style={{ position: 'absolute', right: '11px', top: '12px', cursor: 'pointer' }}
-              />
-            )}
-          </div>
-        </div>
-
-        {/* Select Specific Material Dropdown */}
-        <div style={{ flex: '2 1 260px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-          <label style={{ fontSize: '11.5px', fontWeight: 700, color: '#475569' }}>Chọn đích danh 1 vật tư:</label>
+        {/* Chọn đích danh 1 vật tư */}
+        <div className="sgk-f sgk-f-mat" title="Chọn đích danh 1 vật tư">
           <SearchableSelect
             value={selectedMaterialSap}
             onChange={(val) => {
@@ -1101,98 +989,61 @@ export default function ThongKeTheoVatTuTab({
           />
         </div>
 
-        {/* Category Classification Filter */}
-        <div style={{ flex: '1.2 1 170px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-          <label style={{ fontSize: '11.5px', fontWeight: 700, color: '#475569' }}>Nhóm vật tư:</label>
-          <select
-            value={selectedCategory}
-            onChange={(e) => {
-              setSelectedCategory(e.target.value)
-              setCurrentPage(1)
-            }}
-            style={{
-              padding: '8px 12px',
-              border: '1px solid #cbd5e1',
-              borderRadius: '8px',
-              fontSize: '13px',
-              fontWeight: 500,
-              background: '#ffffff',
-              color: '#1e293b',
-              height: '38px',
-              outline: 'none'
-            }}
-          >
-            <option value="ALL">Tất cả nhóm vật tư</option>
-            <option value="khauhao">Tài sản khấu hao</option>
-            <option value="ccdc">Công cụ dụng cụ</option>
-            <option value="tieuhai">Vật tư tiêu hao</option>
-            <option value="chua_phan_nhom">Chưa phân nhóm</option>
-            {categoryOptions.filter(c => !['Tài sản khấu hao', 'Công cụ dụng cụ', 'Vật tư tiêu hao'].includes(c)).map(cat => (
-              <option key={cat} value={cat}>{cat}</option>
-            ))}
-          </select>
-        </div>
+        {/* Nhóm vật tư */}
+        <select
+          className="sgk-sel"
+          title="Nhóm vật tư"
+          value={selectedCategory}
+          onChange={(e) => {
+            setSelectedCategory(e.target.value)
+            setCurrentPage(1)
+          }}
+        >
+          <option value="ALL">Tất cả nhóm vật tư</option>
+          <option value="khauhao">Tài sản khấu hao</option>
+          <option value="ccdc">Công cụ dụng cụ</option>
+          <option value="tieuhai">Vật tư tiêu hao</option>
+          <option value="chua_phan_nhom">Chưa phân nhóm</option>
+          {categoryOptions.filter(c => !['Tài sản khấu hao', 'Công cụ dụng cụ', 'Vật tư tiêu hao'].includes(c)).map(cat => (
+            <option key={cat} value={cat}>{cat}</option>
+          ))}
+        </select>
 
-        {/* Year Filter */}
-        <div style={{ flex: '0.8 1 120px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-          <label style={{ fontSize: '11.5px', fontWeight: 700, color: '#475569' }}>Năm thống kê:</label>
-          <select
-            value={selectedYear}
-            onChange={(e) => {
-              setSelectedYear(e.target.value)
-              setCurrentPage(1)
-            }}
-            style={{
-              padding: '8px 10px',
-              border: '1px solid #cbd5e1',
-              borderRadius: '8px',
-              fontSize: '13px',
-              fontWeight: 600,
-              background: '#ffffff',
-              color: '#1e293b',
-              height: '38px',
-              outline: 'none'
-            }}
-          >
-            <option value="ALL">Tất cả năm</option>
-            {uniqueYears.map(yr => (
-              <option key={yr} value={yr}>Năm {yr}</option>
-            ))}
-          </select>
-        </div>
+        {/* Năm thống kê */}
+        <select
+          className="sgk-sel"
+          title="Năm thống kê"
+          value={selectedYear}
+          onChange={(e) => {
+            setSelectedYear(e.target.value)
+            setCurrentPage(1)
+          }}
+        >
+          <option value="ALL">Tất cả năm</option>
+          {uniqueYears.map(yr => (
+            <option key={yr} value={yr}>Năm {yr}</option>
+          ))}
+        </select>
 
-        {/* Stock Filter Condition */}
-        <div style={{ flex: '1 1 150px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-          <label style={{ fontSize: '11.5px', fontWeight: 700, color: '#475569' }}>Trạng thái tồn:</label>
-          <select
-            value={stockFilter}
-            onChange={(e) => {
-              setStockFilter(e.target.value)
-              setCurrentPage(1)
-            }}
-            style={{
-              padding: '8px 10px',
-              border: '1px solid #cbd5e1',
-              borderRadius: '8px',
-              fontSize: '13px',
-              fontWeight: 500,
-              background: '#ffffff',
-              color: '#1e293b',
-              height: '38px',
-              outline: 'none'
-            }}
-          >
-            <option value="all">Tất cả số dư</option>
-            <option value="active">Chỉ còn tồn (&gt; 0)</option>
-            <option value="has_activity">Có phát sinh</option>
-            <option value="negative">Tồn âm (&lt; 0)</option>
-            <option value="zero">Hết tồn (= 0)</option>
-          </select>
-        </div>
+        {/* Trạng thái tồn */}
+        <select
+          className="sgk-sel"
+          title="Trạng thái tồn"
+          value={stockFilter}
+          onChange={(e) => {
+            setStockFilter(e.target.value)
+            setCurrentPage(1)
+          }}
+        >
+          <option value="all">Tất cả số dư</option>
+          <option value="active">Chỉ còn tồn (&gt; 0)</option>
+          <option value="has_activity">Có phát sinh</option>
+          <option value="negative">Tồn âm (&lt; 0)</option>
+          <option value="zero">Hết tồn (= 0)</option>
+        </select>
 
-        {/* Warehouse Filter */}
-        <div style={{ flex: '1.2 1 170px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-          <label style={{ fontSize: '11.5px', fontWeight: 700, color: '#475569' }}>Lọc theo Kho:</label>
+        {/* Lọc theo kho */}
+        <div className="sgk-f sgk-f-wh" title="Lọc theo kho">
           <SearchableSelect
             value={selectedWarehouseFilter}
             onChange={(val) => {
@@ -1200,39 +1051,16 @@ export default function ThongKeTheoVatTuTab({
               setCurrentPage(1)
             }}
             options={uniquePhysicalWarehouses}
-            placeholder="Tất cả các Kho"
+            placeholder="Tất cả các kho"
             searchPlaceholder="Tìm kiếm kho dự án..."
           />
         </div>
-
-        {/* Hide Empty Warehouses Checkbox Toggle */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 18, userSelect: 'none', cursor: 'pointer' }}
-          onClick={() => setHideEmptyWarehouses(!hideEmptyWarehouses)}
-        >
-          {hideEmptyWarehouses ? (
-            <CheckSquare size={18} color="#2563eb" />
-          ) : (
-            <Square size={18} color="#94a3b8" />
-          )}
-          <span style={{ fontSize: '12.5px', color: '#475569', fontWeight: 500 }}>
-            Ẩn các kho không có tồn
-          </span>
-        </div>
       </div>
 
-      {/* Main Table Container */}
-      <div style={{
-        flex: 1,
-        background: '#ffffff',
-        border: '1px solid #cbd5e1',
-        borderRadius: '12px',
-        overflow: 'hidden',
-        display: 'flex',
-        flexDirection: 'column',
-        boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)'
-      }}>
-        <div style={{ flex: 1, overflow: 'auto', position: 'relative' }}>
-          <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: 0, textAlign: 'left', fontSize: '12.5px', minWidth: '1250px' }}>
+      {/* Bảng chính */}
+      <div className="sgk-tablebox">
+        <div className="sgk-scroll">
+          <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: 0, textAlign: 'left', fontSize: '12px', minWidth: '1250px' }}>
             <thead style={{ position: 'sticky', top: 0, zIndex: 20 }}>
               <tr style={{ background: '#1e3a8a' }}>
                 <th style={{ padding: '12px 8px', fontWeight: 700, color: '#ffffff', width: '55px', minWidth: '55px', textAlign: 'center', borderRight: '1px solid rgba(255,255,255,0.15)', background: '#1e3a8a' }}>
@@ -1306,7 +1134,7 @@ export default function ThongKeTheoVatTuTab({
                       minWidth: '95px', 
                       background: '#1d4ed8', 
                       borderRight: '1px solid rgba(255, 255, 255, 0.2)', 
-                      fontSize: '11px',
+                      fontSize: '12px',
                       lineHeight: '1.25',
                       cursor: 'pointer',
                       userSelect: 'none'
@@ -1325,11 +1153,11 @@ export default function ThongKeTheoVatTuTab({
             <tbody>
               {sortedMaterialStatsData.length === 0 ? (
                 <tr>
-                  <td colSpan={6 + displayPhysicalWarehouses.length} style={{ padding: '48px 20px', textAlign: 'center', color: '#94a3b8', fontSize: '14px' }}>
+                  <td colSpan={6 + displayPhysicalWarehouses.length} style={{ padding: '48px 20px', textAlign: 'center', color: '#94a3b8', fontSize: '15px' }}>
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
                       <Package size={40} strokeWidth={1.5} color="#cbd5e1" />
                       <div style={{ fontWeight: 600, color: '#64748b' }}>Không tìm thấy vật tư nào khớp với điều kiện lọc hiện tại.</div>
-                      <div style={{ fontSize: '12.5px', color: '#94a3b8' }}>Hãy thử điều chỉnh lại từ khóa tìm kiếm hoặc bỏ bớt các bộ lọc.</div>
+                      <div style={{ fontSize: '12px', color: '#94a3b8' }}>Hãy thử điều chỉnh lại từ khóa tìm kiếm hoặc bỏ bớt các bộ lọc.</div>
                     </div>
                   </td>
                 </tr>
@@ -1362,7 +1190,7 @@ export default function ThongKeTheoVatTuTab({
                         <td style={{ padding: '9px 12px', fontWeight: 600, color: '#1e3a8a', borderRight: '1px solid #e2e8f0' }}>
                           <div>{item.tenVatTu}</div>
                           {item.thongSoKyThuat && (
-                            <div style={{ fontSize: '11px', color: '#64748b', fontWeight: 400 }}>{item.thongSoKyThuat}</div>
+                            <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 400 }}>{item.thongSoKyThuat}</div>
                           )}
                         </td>
                         <td style={{ padding: '9px 6px', textAlign: 'center', color: '#475569', borderRight: '1px solid #e2e8f0' }}>
@@ -1371,7 +1199,7 @@ export default function ThongKeTheoVatTuTab({
                         <td style={{ padding: '9px 10px', borderRight: '1px solid #e2e8f0' }}>
                           {item.classification ? (
                             <span style={{
-                              fontSize: '11px',
+                              fontSize: '12px',
                               fontWeight: 600,
                               padding: '2px 8px',
                               borderRadius: '12px',
@@ -1382,7 +1210,7 @@ export default function ThongKeTheoVatTuTab({
                               {item.classification}
                             </span>
                           ) : (
-                            <span style={{ fontSize: '11px', color: '#94a3b8', fontStyle: 'italic' }}>Chưa phân nhóm</span>
+                            <span style={{ fontSize: '12px', color: '#94a3b8', fontStyle: 'italic' }}>Chưa phân nhóm</span>
                           )}
                         </td>
                         
@@ -1415,7 +1243,7 @@ export default function ThongKeTheoVatTuTab({
                                 background: val !== 0 ? 'rgba(219, 234, 254, 0.12)' : 'transparent', 
                                 borderRight: '1px solid #e2e8f0', 
                                 color: isPos ? '#1e293b' : (isNeg ? '#ef4444' : '#94a3b8'),
-                                fontSize: '12px'
+                                fontSize: '15px'
                               }}
                             >
                               {val !== 0 ? val.toLocaleString('vi-VN', { maximumFractionDigits: 2 }) : '-'}
@@ -1428,8 +1256,8 @@ export default function ThongKeTheoVatTuTab({
 
                   {/* Grand Total Footer Row */}
                   <tr style={{ background: '#f1f5f9', fontWeight: 800, borderTop: '2px solid #94a3b8', borderBottom: '2px solid #94a3b8', position: 'sticky', bottom: 0, zIndex: 10 }}>
-                    <td colSpan="5" style={{ padding: '12px 14px', color: '#1e3a8a', fontSize: '13px', fontWeight: 800, textAlign: 'right', borderRight: '1px solid #cbd5e1', background: '#e2e8f0' }}>
-                      TỔNG CỘNG TỒN THEO KHO:
+                    <td colSpan="5" style={{ padding: '12px 14px', color: '#1e3a8a', fontSize: '15px', fontWeight: 800, textAlign: 'right', borderRight: '1px solid #cbd5e1', background: '#e2e8f0' }}>
+                      Tổng cộng tồn theo kho
                     </td>
                     
                     {/* Total of Totals */}
@@ -1440,7 +1268,7 @@ export default function ThongKeTheoVatTuTab({
                       borderLeft: '1px solid #cbd5e1',
                       borderRight: '2px solid #94a3b8',
                       color: '#1e3a8a',
-                      fontSize: '13.5px',
+                      fontSize: '15px',
                       fontWeight: 800
                     }}>
                       {summaryMetrics.grandStock.toLocaleString('vi-VN', { maximumFractionDigits: 2 })}
@@ -1459,7 +1287,7 @@ export default function ThongKeTheoVatTuTab({
                             borderRight: '1px solid #cbd5e1', 
                             color: totalVal > 0 ? '#1e3a8a' : (totalVal < 0 ? '#ef4444' : '#64748b'),
                             fontWeight: 700,
-                            fontSize: '12px'
+                            fontSize: '15px'
                           }}
                         >
                           {totalVal !== 0 ? totalVal.toLocaleString('vi-VN', { maximumFractionDigits: 2 }) : '-'}
@@ -1473,37 +1301,21 @@ export default function ThongKeTheoVatTuTab({
           </table>
         </div>
 
-        {/* Table Footer & Pagination Controls */}
-        <div style={{
-          padding: '10px 16px',
-          background: '#ffffff',
-          borderTop: '1px solid #e2e8f0',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          flexWrap: 'wrap',
-          gap: 10
-        }}>
-          <div style={{ fontSize: '12.5px', color: '#64748b' }}>
-            Hiển thị <strong>{paginatedData.length}</strong> / <strong>{sortedMaterialStatsData.length}</strong> vật tư (Tổng hệ thống: {rawMaterialStatsData.length})
+        {/* Chân bảng: số dòng + phân trang */}
+        <div className="sgk-foot">
+          <div style={{ fontSize: '12px', color: '#4A4C55', fontWeight: 600 }}>
+            Hiển thị <strong>{paginatedData.length}</strong> / <strong>{sortedMaterialStatsData.length}</strong> vật tư (tổng hệ thống: {rawMaterialStatsData.length})
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '12.5px', color: '#475569' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '12px', color: '#4A4C55', fontWeight: 600 }}>
               <span>Dòng/trang:</span>
               <select
+                className="sgk-sel sm"
                 value={pageSize}
                 onChange={(e) => {
                   setPageSize(Number(e.target.value))
                   setCurrentPage(1)
-                }}
-                style={{
-                  padding: '4px 8px',
-                  borderRadius: '6px',
-                  border: '1px solid #cbd5e1',
-                  fontSize: '12px',
-                  outline: 'none',
-                  background: '#ffffff'
                 }}
               >
                 <option value={25}>25</option>
@@ -1517,41 +1329,27 @@ export default function ThongKeTheoVatTuTab({
             {pageSize > 0 && totalPages > 1 && (
               <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                 <button
+                  type="button"
+                  className="sgk-pg"
                   disabled={currentPage <= 1}
                   onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                  style={{
-                    padding: '5px 8px',
-                    borderRadius: '6px',
-                    border: '1px solid #cbd5e1',
-                    background: currentPage <= 1 ? '#f1f5f9' : '#ffffff',
-                    color: currentPage <= 1 ? '#94a3b8' : '#334155',
-                    cursor: currentPage <= 1 ? 'not-allowed' : 'pointer',
-                    display: 'flex',
-                    alignItems: 'center'
-                  }}
+                  title="Trang trước"
                 >
-                  <ChevronLeft size={14} />
+                  <ChevronLeft size={16} />
                 </button>
 
-                <span style={{ fontSize: '12.5px', color: '#334155', padding: '0 6px', fontWeight: 600 }}>
+                <span style={{ fontSize: '12px', color: '#16171C', padding: '0 6px', fontWeight: 700 }}>
                   Trang {currentPage} / {totalPages}
                 </span>
 
                 <button
+                  type="button"
+                  className="sgk-pg"
                   disabled={currentPage >= totalPages}
                   onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                  style={{
-                    padding: '5px 8px',
-                    borderRadius: '6px',
-                    border: '1px solid #cbd5e1',
-                    background: currentPage >= totalPages ? '#f1f5f9' : '#ffffff',
-                    color: currentPage >= totalPages ? '#94a3b8' : '#334155',
-                    cursor: currentPage >= totalPages ? 'not-allowed' : 'pointer',
-                    display: 'flex',
-                    alignItems: 'center'
-                  }}
+                  title="Trang sau"
                 >
-                  <ChevronRight size={14} />
+                  <ChevronRight size={16} />
                 </button>
               </div>
             )}
@@ -1559,103 +1357,76 @@ export default function ThongKeTheoVatTuTab({
         </div>
       </div>
 
-      {/* Material Transactions Drilldown Modal */}
+      {/* Hộp thoại lịch sử xuất nhập của vật tư */}
       {detailModalMaterial && (
-        <div style={{
-          position: 'fixed',
-          inset: 0,
-          background: 'rgba(15, 23, 42, 0.65)',
-          backdropFilter: 'blur(3px)',
-          zIndex: 99999,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          padding: '20px'
-        }}>
-          <div style={{
-            background: '#ffffff',
-            borderRadius: '14px',
-            width: '100%',
-            maxWidth: '960px',
-            maxHeight: '90vh',
-            display: 'flex',
-            flexDirection: 'column',
-            overflow: 'hidden',
-            boxShadow: '0 20px 25px -5px rgba(0,0,0,0.2)'
-          }}>
-            {/* Modal Header */}
-            <div style={{
-              padding: '16px 20px',
-              background: 'linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%)',
-              color: '#ffffff',
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center'
-            }}>
-              <div>
-                <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 800 }}>
-                  LỊCH SỬ XUẤT NHẬP: {detailModalMaterial.tenVatTu}
-                </h3>
-                <div style={{ fontSize: '12.5px', color: '#bfdbfe', marginTop: 2 }}>
-                  Mã SAP: <strong>{detailModalMaterial.maSAP}</strong> | ĐVT: <strong>{detailModalMaterial.dvt || '---'}</strong> | Nhóm: <strong>{detailModalMaterial.classification || 'Chưa phân nhóm'}</strong>
+        <div className="sgk-ov">
+          <div className="sgk-dlg">
+            <div className="sgk-dlg-hd">
+              <div style={{ minWidth: 0 }}>
+                <h3>Lịch sử xuất nhập: {detailModalMaterial.tenVatTu}</h3>
+                <div className="sgk-dlg-meta">
+                  Mã SAP: <strong>{detailModalMaterial.maSAP}</strong> · ĐVT: <strong>{detailModalMaterial.dvt || '-'}</strong> · Nhóm: <strong>{detailModalMaterial.classification || 'Chưa phân nhóm'}</strong>
                 </div>
               </div>
-              <button
-                onClick={() => setDetailModalMaterial(null)}
-                style={{ background: 'rgba(255,255,255,0.2)', border: 'none', color: '#ffffff', borderRadius: '6px', width: 30, height: 30, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
-              >
-                <X size={16} />
+              <button type="button" className="sgk-close" onClick={() => setDetailModalMaterial(null)} title="Đóng (Esc)">
+                <IosX />
+                <span>Đóng</span>
               </button>
             </div>
 
-            {/* Modal Body: Table of Transactions */}
-            <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px' }}>
-              <div style={{ marginBottom: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: '13px', color: '#475569', fontWeight: 600 }}>
-                  Tổng cộng: {detailModalMaterial.rawTransactions.length} giao dịch phát sinh
-                </span>
-                <span style={{ fontSize: '13px', fontWeight: 800, color: '#1e3a8a' }}>
-                  Tổng tồn hiện tại: {detailModalMaterial.totalStock.toLocaleString('vi-VN', { maximumFractionDigits: 2 })} {detailModalMaterial.dvt}
+            <div style={{ padding: '0 20px 10px', display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+              <div className="sg-kpi sm sg-c-blue">
+                <span className="sg-kpi-bd" style={{ paddingLeft: 8 }}>
+                  <span className="sg-kpi-lb">Giao dịch phát sinh</span>
+                  <span className="sg-kpi-v">{detailModalMaterial.rawTransactions.length}</span>
                 </span>
               </div>
+              <div className="sg-kpi sm sg-c-green">
+                <span className="sg-kpi-bd" style={{ paddingLeft: 8 }}>
+                  <span className="sg-kpi-lb">Tổng tồn hiện tại</span>
+                  <span className="sg-kpi-v">{detailModalMaterial.totalStock.toLocaleString('vi-VN', { maximumFractionDigits: 2 })}<small>{detailModalMaterial.dvt}</small></span>
+                </span>
+              </div>
+            </div>
 
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px', textAlign: 'left' }}>
-                <thead>
-                  <tr style={{ background: '#f1f5f9', borderBottom: '2px solid #cbd5e1' }}>
-                    <th style={{ padding: '8px', width: '40px', textAlign: 'center' }}>STT</th>
-                    <th style={{ padding: '8px', width: '90px' }}>Ngày</th>
-                    <th style={{ padding: '8px', width: '100px' }}>Số phiếu</th>
-                    <th style={{ padding: '8px' }}>Đơn vị giao</th>
-                    <th style={{ padding: '8px' }}>Đơn vị nhận</th>
-                    <th style={{ padding: '8px', textAlign: 'right', width: '90px' }}>Nhập</th>
-                    <th style={{ padding: '8px', textAlign: 'right', width: '90px' }}>Xuất</th>
-                    <th style={{ padding: '8px', width: '120px' }}>Ghi chú</th>
+            <div style={{ flex: 1, overflowY: 'auto', padding: '0 20px 20px' }}>
+              <table style={{ width: '100%', textAlign: 'left', background: '#fff' }}>
+                <thead style={{ position: 'sticky', top: 0, zIndex: 2 }}>
+                  <tr>
+                    <th style={{ width: '56px' }}>STT</th>
+                    <th style={{ width: '110px' }}>Ngày</th>
+                    <th style={{ width: '120px' }}>Số phiếu</th>
+                    <th>Đơn vị giao</th>
+                    <th>Đơn vị nhận</th>
+                    <th style={{ width: '100px' }}>Nhập</th>
+                    <th style={{ width: '100px' }}>Xuất</th>
+                    <th style={{ width: '140px' }}>Ghi chú</th>
                   </tr>
                 </thead>
                 <tbody>
                   {detailModalMaterial.rawTransactions.length === 0 ? (
                     <tr>
-                      <td colSpan="8" style={{ padding: '24px', textAlign: 'center', color: '#94a3b8' }}>
+                      <td colSpan="8" style={{ padding: '24px', textAlign: 'center', color: '#8C8E97' }}>
                         Chưa có lịch sử giao dịch phát sinh nào được ghi nhận.
                       </td>
                     </tr>
                   ) : (
                     detailModalMaterial.rawTransactions.map((tx, idx) => {
-                      const dateStr = tx.date ? tx.date.toLocaleDateString('vi-VN') : '---'
+                      const dateStr = tx.date ? tx.date.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '-'
                       return (
-                        <tr key={idx} style={{ borderBottom: '1px solid #e2e8f0' }}>
-                          <td style={{ padding: '8px', textAlign: 'center', color: '#64748b' }}>{idx + 1}</td>
-                          <td style={{ padding: '8px', fontWeight: 600, color: '#334155' }}>{dateStr}</td>
-                          <td style={{ padding: '8px', color: '#2563eb', fontWeight: 600 }}>{tx.soPhieu || '-'}</td>
-                          <td style={{ padding: '8px', color: '#475569' }}>{tx.donViGiao || '-'}</td>
-                          <td style={{ padding: '8px', color: '#475569' }}>{tx.donViNhan || '-'}</td>
-                          <td style={{ padding: '8px', textAlign: 'right', fontWeight: 700, color: tx.khoiLuongNhap > 0 ? '#059669' : '#94a3b8' }}>
+                        <tr key={idx}>
+                          <td style={{ textAlign: 'center', color: '#4A4C55' }}>{idx + 1}</td>
+                          <td className="sg-num" style={{ textAlign: 'center', color: '#16171C' }}>{dateStr}</td>
+                          <td style={{ color: '#0F58A7', fontWeight: 600 }}>{tx.soPhieu || '-'}</td>
+                          <td style={{ color: '#4A4C55' }}>{tx.donViGiao || '-'}</td>
+                          <td style={{ color: '#4A4C55' }}>{tx.donViNhan || '-'}</td>
+                          <td style={{ textAlign: 'right', fontWeight: 700, color: tx.khoiLuongNhap > 0 ? '#0D7A3C' : '#8C8E97' }}>
                             {tx.khoiLuongNhap > 0 ? tx.khoiLuongNhap.toLocaleString('vi-VN', { maximumFractionDigits: 2 }) : '-'}
                           </td>
-                          <td style={{ padding: '8px', textAlign: 'right', fontWeight: 700, color: tx.khoiLuongXuat > 0 ? '#dc2626' : '#94a3b8' }}>
+                          <td style={{ textAlign: 'right', fontWeight: 700, color: tx.khoiLuongXuat > 0 ? '#D92D3A' : '#8C8E97' }}>
                             {tx.khoiLuongXuat > 0 ? tx.khoiLuongXuat.toLocaleString('vi-VN', { maximumFractionDigits: 2 }) : '-'}
                           </td>
-                          <td style={{ padding: '8px', color: '#64748b', fontSize: '11.5px' }}>{tx.ghiChu || '-'}</td>
+                          <td style={{ color: '#4A4C55', fontSize: '12px' }}>{tx.ghiChu || '-'}</td>
                         </tr>
                       )
                     })
@@ -1663,28 +1434,54 @@ export default function ThongKeTheoVatTuTab({
                 </tbody>
               </table>
             </div>
-
-            {/* Modal Footer */}
-            <div style={{ padding: '12px 20px', background: '#f8fafc', borderTop: '1px solid #e2e8f0', display: 'flex', justifyContent: 'flex-end' }}>
-              <button
-                onClick={() => setDetailModalMaterial(null)}
-                style={{
-                  padding: '8px 16px',
-                  background: '#e2e8f0',
-                  color: '#334155',
-                  border: 'none',
-                  borderRadius: '6px',
-                  fontWeight: 600,
-                  fontSize: '13px',
-                  cursor: 'pointer'
-                }}
-              >
-                Đóng
-              </button>
-            </div>
           </div>
         </div>
       )}
     </div>
   )
 }
+
+// Dấu X kiểu iPhone (SVG, nét đều đầu tròn)
+function IosX() {
+  return (
+    <svg width="11" height="11" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+      <path d="M2.5 2.5l7 7M9.5 2.5l-7 7" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
+    </svg>
+  )
+}
+
+const TKVT_CSS = `
+.sgk-page { height: 100%; display: flex; flex-direction: column; gap: 10px; padding: 14px 20px 16px; box-sizing: border-box; overflow: hidden; }
+.sgk-bar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; flex: none; }
+.sgk-spacer { flex: 1 1 0; }
+.sgk-filters { gap: 8px; }
+.sgk-search { position: relative; flex: 1 1 260px; min-width: 220px; max-width: 360px; }
+.sgk-search-ic { position: absolute; left: 13px; top: 50%; transform: translateY(-50%); color: #6B7AA0; display: flex; pointer-events: none; }
+html body .sgk-search input { width: 100%; height: 36px; box-sizing: border-box; padding: 0 38px; font-size: 15px; color: #16171C; background: #fff; border: 1.5px solid #D5DCEB; border-radius: 99px; outline: none; }
+.sgk-x { position: absolute; right: 7px; top: 50%; transform: translateY(-50%); width: 24px; height: 24px; padding: 0; border: 0; border-radius: 50%; display: grid; place-items: center; background: #FFE7E5; color: #FF3B30; cursor: pointer; transition: background .15s, color .15s; }
+.sgk-x:hover { background: #FF3B30; color: #fff; }
+html body .sgk-x:active { transform: translateY(-50%) scale(.94); }
+.sgk-f { min-width: 0; }
+.sgk-f-mat { flex: 1 1 240px; max-width: 320px; }
+.sgk-f-wh { flex: 1 1 200px; max-width: 260px; }
+html body .sgk-sel { height: 36px; box-sizing: border-box; border: 1.5px solid #D5DCEB; padding-left: 12px; font-size: 15px; font-weight: 600; color: #16171C; flex: 0 1 auto; max-width: 230px; }
+html body .sgk-sel.sm { height: 32px; font-size: 12px; }
+.sgk-check { display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 14px 0 10px; border: 0; border-radius: 99px; background: #fff; color: #4A4C55; font-size: 15px; font-weight: 600; box-shadow: inset 0 0 0 1px #D5DCEB; cursor: pointer; white-space: nowrap; }
+.sgk-check.on { color: #0F58A7; background: #E4EEFA; box-shadow: inset 0 0 0 1px #B9D0EE; }
+.sgk-tablebox { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; gap: 8px; }
+.sgk-scroll { flex: 1 1 auto; min-height: 0; overflow: auto; position: relative; border-radius: 14px; }
+.sgk-scroll > table { background: #fff; }
+.sgk-foot { flex: none; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; padding: 6px 14px; border-radius: 99px; background: rgba(255,255,255,.72); }
+.sgk-pg { width: 32px; height: 32px; padding: 0; border: 0; border-radius: 50%; display: grid; place-items: center; background: #fff; color: #0F58A7; box-shadow: inset 0 0 0 1px #D5DCEB; cursor: pointer; }
+.sgk-pg:hover:not(:disabled) { background: #E4EEFA; }
+.sgk-pg:disabled { color: #B5BAC6; cursor: not-allowed; }
+.sgk-ov { position: fixed; inset: 0; z-index: 10000; background: rgba(22, 23, 28, .45); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; padding: 20px; }
+.sgk-dlg { background: #fff; border-radius: 24px; width: 100%; max-width: 980px; max-height: 90vh; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 30px 60px -20px rgba(10, 36, 80, .45); }
+.sgk-dlg-hd { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; padding: 16px 16px 12px 20px; }
+.sgk-dlg-hd h3 { margin: 0; font-size: 22px; font-weight: 700; color: #0A3D73; line-height: 1.3; }
+.sgk-dlg-meta { margin-top: 4px; font-size: 12px; color: #4A4C55; font-weight: 600; }
+.sgk-close { flex: none; display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px 0 6px; border: 0; border-radius: 99px; background: #FFE7E5; color: #FF3B30; font-size: 15px; font-weight: 600; cursor: pointer; }
+.sgk-close svg { width: 20px; height: 20px; padding: 4.5px; box-sizing: border-box; border-radius: 50%; background: rgba(255,255,255,.7); }
+.sgk-close:hover { background: #FF3B30; color: #fff; }
+.sgk-close:hover svg { background: rgba(255,255,255,.2); }
+`

@@ -20,6 +20,7 @@ import {
   Info
 } from 'lucide-react'
 import { supabase, isSupabaseConfigured } from '../supabaseClient'
+import { CHB_CSS, PenIcon, XMark, CloseEscButton, useEscClose } from './ChuanHoaBchTab.jsx'
 
 export const SQL_SETUP_SCRIPT = `-- =========================================================================
 -- SCRIPT TẠO BẢNG CHUẨN HÓA TÊN BAN CHỈ HUY (KHO BCH) TRÊN SUPABASE
@@ -361,6 +362,9 @@ export default function ChuanHoaBchModal({
     }
   }
 
+  // Esc đóng hộp thoại
+  useEscClose(Boolean(isOpen), onClose)
+
   if (!isOpen) return null
 
   return (
@@ -371,7 +375,7 @@ export default function ChuanHoaBchModal({
         left: 0,
         right: 0,
         bottom: 0,
-        backgroundColor: 'rgba(15, 23, 42, 0.65)',
+        backgroundColor: 'rgba(15, 23, 42, 0.55)',
         backdropFilter: 'blur(4px)',
         zIndex: 99999,
         display: 'flex',
@@ -389,198 +393,53 @@ export default function ChuanHoaBchModal({
           width: '100%',
           maxWidth: '960px',
           maxHeight: '92vh',
-          borderRadius: '16px',
-          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+          borderRadius: '24px',
+          boxShadow: '0 30px 60px -20px rgba(10, 36, 80, 0.45)',
           display: 'flex',
           flexDirection: 'column',
-          overflow: 'hidden',
-          border: '1px solid #e2e8f0'
+          overflow: 'hidden'
         }}
       >
-        {/* Header */}
-        <div
-          style={{
-            padding: '16px 22px',
-            background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)',
-            color: '#ffffff',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            flexShrink: 0
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <div
-              style={{
-                width: 38,
-                height: 38,
-                borderRadius: 10,
-                background: 'linear-gradient(135deg, #2563eb 0%, #3b82f6 100%)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                boxShadow: '0 4px 10px rgba(37,99,235,0.3)'
-              }}
-            >
-              <Sparkles size={20} color="#ffffff" />
-            </div>
-            <div>
-              <h2 style={{ fontSize: 17, fontWeight: 700, margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
-                Chuẩn Hóa & Hợp Nhất Tên Ban Chỉ Huy (Kho BCH)
-                <span
-                  style={{
-                    fontSize: 12,
-                    fontWeight: 600,
-                    padding: '2px 8px',
-                    borderRadius: 12,
-                    background: 'rgba(59, 130, 246, 0.25)',
-                    border: '1px solid rgba(147, 197, 253, 0.3)',
-                    color: '#93c5fd'
-                  }}
-                >
-                  {rules.length} quy tắc
-                </span>
-              </h2>
-              <p style={{ margin: '2px 0 0', fontSize: 12.5, color: '#94a3b8' }}>
-                Tự động gom và quy đổi các tên cũ/biến thể trong Excel về một tên BCH chuẩn hóa duy nhất khi up đơn
-              </p>
+        <style>{CHB_CSS}</style>
+        {/* Đầu hộp thoại */}
+        <div className="chb-dlg-hd" style={{ flexShrink: 0 }}>
+          <div className="chb-dlg-ttl">
+            <span className="chb-dlg-ic"><Sparkles size={18} /></span>
+            <div style={{ minWidth: 0 }}>
+              <h3 style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                Chuẩn hóa và hợp nhất tên Ban Chỉ Huy (Kho BCH)
+                <span className="chb-tag multi">{rules.length} quy tắc</span>
+              </h3>
+              <div className="chb-dlg-sub" title="Tự động gom và quy đổi các tên cũ/biến thể trong Excel về một tên BCH chuẩn hóa duy nhất khi tải đơn lên">
+                Gom các tên cũ / biến thể trong Excel về một tên BCH chuẩn duy nhất khi tải đơn lên
+              </div>
             </div>
           </div>
-
-          <button
-            onClick={onClose}
-            style={{
-              background: 'rgba(255,255,255,0.1)',
-              border: 'none',
-              borderRadius: 8,
-              padding: 6,
-              color: '#cbd5e1',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              transition: 'all 0.15s'
-            }}
-            title="Đóng modal"
-          >
-            <X size={18} />
-          </button>
+          <CloseEscButton onClick={onClose} />
         </div>
 
-        {/* Tab Navigation */}
-        <div
-          style={{
-            display: 'flex',
-            borderBottom: '1px solid #e2e8f0',
-            background: '#f8fafc',
-            padding: '0 16px',
-            flexShrink: 0,
-            gap: 8
-          }}
-        >
-          <button
-            onClick={() => setActiveTab('rules')}
-            style={{
-              padding: '12px 16px',
-              fontSize: 13.5,
-              fontWeight: activeTab === 'rules' ? 700 : 500,
-              color: activeTab === 'rules' ? '#2563eb' : '#64748b',
-              borderBottom: activeTab === 'rules' ? '2.5px solid #2563eb' : '2.5px solid transparent',
-              background: 'transparent',
-              borderTop: 'none',
-              borderLeft: 'none',
-              borderRight: 'none',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 6
-            }}
-          >
-            <Layers size={16} />
-            Danh sách Quy tắc ({rules.length})
-          </button>
-
-          <button
-            onClick={() => setActiveTab('add')}
-            style={{
-              padding: '12px 16px',
-              fontSize: 13.5,
-              fontWeight: activeTab === 'add' ? 700 : 500,
-              color: activeTab === 'add' ? '#2563eb' : '#64748b',
-              borderBottom: activeTab === 'add' ? '2.5px solid #2563eb' : '2.5px solid transparent',
-              background: 'transparent',
-              borderTop: 'none',
-              borderLeft: 'none',
-              borderRight: 'none',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 6
-            }}
-          >
-            <Plus size={16} />
-            Thêm quy tắc / Gộp tên mới
-          </button>
-
-          <button
-            onClick={() => setActiveTab('suggest')}
-            style={{
-              padding: '12px 16px',
-              fontSize: 13.5,
-              fontWeight: activeTab === 'suggest' ? 700 : 500,
-              color: activeTab === 'suggest' ? '#059669' : '#64748b',
-              borderBottom: activeTab === 'suggest' ? '2.5px solid #059669' : '2.5px solid transparent',
-              background: 'transparent',
-              borderTop: 'none',
-              borderLeft: 'none',
-              borderRight: 'none',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 6
-            }}
-          >
-            <Zap size={16} color={activeTab === 'suggest' ? '#059669' : '#64748b'} />
-            Gợi ý gộp thông minh
-            {smartSuggestions.length > 0 && (
-              <span
-                style={{
-                  background: '#dcfce7',
-                  color: '#15803d',
-                  fontSize: 11,
-                  fontWeight: 700,
-                  padding: '1px 6px',
-                  borderRadius: 10
-                }}
-              >
-                {smartSuggestions.length}
-              </span>
-            )}
-          </button>
-
-          <button
-            onClick={() => setActiveTab('sql')}
-            style={{
-              padding: '12px 16px',
-              fontSize: 13.5,
-              fontWeight: activeTab === 'sql' ? 700 : 500,
-              color: activeTab === 'sql' ? '#d97706' : '#64748b',
-              borderBottom: activeTab === 'sql' ? '2.5px solid #d97706' : '2.5px solid transparent',
-              background: 'transparent',
-              borderTop: 'none',
-              borderLeft: 'none',
-              borderRight: 'none',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 6
-            }}
-          >
-            <Database size={16} color={activeTab === 'sql' ? '#d97706' : '#64748b'} />
-            Câu lệnh SQL Supabase
-          </button>
+        {/* Chọn mục */}
+        <div style={{ padding: '10px 22px', borderBottom: '1px solid #E3E6EE', background: '#F7F8FB', flexShrink: 0, overflowX: 'auto' }}>
+          <div className="sg-seg">
+            <button type="button" className={activeTab === 'rules' ? 'on' : ''} onClick={() => setActiveTab('rules')}>
+              <Layers size={15} /> Danh sách quy tắc ({rules.length})
+            </button>
+            <button type="button" className={activeTab === 'add' ? 'on' : ''} onClick={() => setActiveTab('add')}>
+              <Plus size={15} /> Thêm quy tắc / Gộp tên
+            </button>
+            <button type="button" className={activeTab === 'suggest' ? 'on' : ''} onClick={() => setActiveTab('suggest')}>
+              <Zap size={15} /> Gợi ý gộp
+              {smartSuggestions.length > 0 && (
+                <span className="sg-num" style={{ fontSize: 12, fontWeight: 700, padding: '0 7px', borderRadius: 99, lineHeight: '18px', background: activeTab === 'suggest' ? 'rgba(255,255,255,.25)' : '#DDF5E6', color: activeTab === 'suggest' ? '#fff' : '#0D7A3C' }}>
+                  {smartSuggestions.length}
+                </span>
+              )}
+            </button>
+            <button type="button" className={activeTab === 'sql' ? 'on' : ''} onClick={() => setActiveTab('sql')}>
+              <Database size={15} /> Câu lệnh SQL Supabase
+            </button>
+          </div>
         </div>
-
         {/* Alert Messages */}
         {saveSuccessMsg && (
           <div
@@ -591,7 +450,7 @@ export default function ChuanHoaBchModal({
               border: '1px solid #bbf7d0',
               borderRadius: 8,
               color: '#166534',
-              fontSize: 13,
+              fontSize: 15,
               display: 'flex',
               alignItems: 'center',
               gap: 8
@@ -611,7 +470,7 @@ export default function ChuanHoaBchModal({
               border: '1px solid #fecaca',
               borderRadius: 8,
               color: '#991b1b',
-              fontSize: 13,
+              fontSize: 15,
               display: 'flex',
               alignItems: 'center',
               gap: 8
@@ -628,7 +487,7 @@ export default function ChuanHoaBchModal({
                   border: 'none',
                   borderRadius: 4,
                   padding: '4px 8px',
-                  fontSize: 11.5,
+                  fontSize: 12,
                   cursor: 'pointer',
                   fontWeight: 600
                 }}
@@ -644,204 +503,115 @@ export default function ChuanHoaBchModal({
           {/* TAB 1: RULES LIST */}
           {activeTab === 'rules' && (
             <div>
-              {/* Search & Actions Bar */}
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  marginBottom: 14,
-                  gap: 12
-                }}
-              >
-                <div
-                  style={{
-                    position: 'relative',
-                    flex: 1,
-                    maxWidth: 420
-                  }}
-                >
-                  <Search
-                    size={15}
-                    color="#94a3b8"
-                    style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)' }}
-                  />
+              {/* Hàng công cụ: tìm + nút */}
+              <div className="chb-tb" style={{ marginBottom: 12 }}>
+                <div className="chb-search">
+                  <Search size={16} className="chb-lead" />
                   <input
+                    className="chb-in"
                     type="text"
-                    placeholder="Tìm kiếm tên cũ hoặc tên chuẩn..."
+                    placeholder="Tìm tên cũ hoặc tên chuẩn..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    style={{
-                      width: '100%',
-                      padding: '8px 12px 8px 32px',
-                      borderRadius: 8,
-                      border: '1px solid #cbd5e1',
-                      fontSize: 13,
-                      outline: 'none',
-                      boxSizing: 'border-box'
-                    }}
                   />
-                </div>
-
-                <div style={{ display: 'flex', gap: 8 }}>
-                  <button
-                    onClick={() => setActiveTab('add')}
-                    style={{
-                      background: 'linear-gradient(135deg, #2563eb 0%, #3b82f6 100%)',
-                      color: '#ffffff',
-                      border: 'none',
-                      borderRadius: 8,
-                      padding: '8px 14px',
-                      fontSize: 13,
-                      fontWeight: 600,
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 6
-                    }}
-                  >
-                    <Plus size={15} /> Thêm quy tắc
-                  </button>
-
-                  {rules.length > 0 && (
-                    <button
-                      onClick={() => {
-                        if (window.confirm('Bạn có chắc chắn muốn xóa toàn bộ quy tắc chuẩn hóa?')) {
-                          setRules([])
-                        }
-                      }}
-                      style={{
-                        background: '#f8fafc',
-                        color: '#64748b',
-                        border: '1px solid #cbd5e1',
-                        borderRadius: 8,
-                        padding: '8px 12px',
-                        fontSize: 13,
-                        fontWeight: 500,
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 6
-                      }}
-                    >
-                      <Trash2 size={14} /> Xóa hết
+                  {searchTerm && (
+                    <button type="button" className="chb-x sm" onClick={() => setSearchTerm('')} title="Xoá ô tìm">
+                      <XMark size={11} w={2.3} />
                     </button>
                   )}
                 </div>
+                <button type="button" className="sg-btn" onClick={() => setActiveTab('add')}>
+                  <Plus size={15} /> Thêm quy tắc
+                </button>
+                {rules.length > 0 && (
+                  <button
+                    type="button"
+                    className="sg-btn danger"
+                    style={{ marginLeft: 'auto' }}
+                    onClick={() => {
+                      if (window.confirm('Bạn có chắc chắn muốn xóa toàn bộ quy tắc chuẩn hóa?')) {
+                        setRules([])
+                      }
+                    }}
+                  >
+                    <XMark size={12} w={2.3} /> Xóa hết
+                  </button>
+                )}
               </div>
 
               {/* Rules Table */}
               {filteredRules.length === 0 ? (
                 <div
                   style={{
-                    padding: '40px 20px',
+                    padding: '36px 20px',
                     textAlign: 'center',
-                    background: '#f8fafc',
-                    borderRadius: 12,
-                    border: '1px dashed #cbd5e1'
+                    background: '#F7F8FB',
+                    borderRadius: 18,
+                    border: '1px dashed #C9D3E6'
                   }}
                 >
-                  <Layers size={36} color="#94a3b8" style={{ margin: '0 auto 12px' }} />
-                  <h4 style={{ margin: '0 0 6px', fontSize: 15, color: '#334155', fontWeight: 600 }}>
+                  <Layers size={32} color="#8C8E97" style={{ margin: '0 auto 10px' }} />
+                  <div style={{ margin: '0 0 6px', fontSize: 15, color: '#16171C', fontWeight: 700 }}>
                     {searchTerm ? 'Không tìm thấy quy tắc phù hợp' : 'Chưa có quy tắc chuẩn hóa tên BCH nào'}
-                  </h4>
-                  <p style={{ margin: '0 0 16px', fontSize: 13, color: '#64748b', maxWidth: 460, marginInline: 'auto' }}>
-                    Hãy bấm nút "Thêm quy tắc / Gộp tên mới" hoặc sử dụng tính năng "Gợi ý gộp thông minh" để gom các tên BCH cũ và mới về cùng 1 tên chuẩn!
+                  </div>
+                  <p style={{ margin: '0 0 14px', fontSize: 15, color: '#4A4C55', maxWidth: 480, marginInline: 'auto' }}>
+                    Bấm "Thêm quy tắc / Gộp tên" hoặc dùng "Gợi ý gộp" để gom các tên BCH cũ và mới về cùng một tên chuẩn.
                   </p>
-                  <button
-                    onClick={() => setActiveTab('add')}
-                    style={{
-                      background: '#2563eb',
-                      color: '#fff',
-                      border: 'none',
-                      borderRadius: 8,
-                      padding: '8px 16px',
-                      fontSize: 13,
-                      fontWeight: 600,
-                      cursor: 'pointer'
-                    }}
-                  >
-                    + Tạo quy tắc đầu tiên
+                  <button type="button" className="sg-btn" onClick={() => setActiveTab('add')}>
+                    <Plus size={15} /> Tạo quy tắc đầu tiên
                   </button>
                 </div>
               ) : (
-                <div
-                  style={{
-                    border: '1px solid #e2e8f0',
-                    borderRadius: 10,
-                    overflow: 'hidden'
-                  }}
-                >
-                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                <div className="chb-scroll">
+                  <table style={{ fontSize: 15 }}>
+                    <colgroup>
+                      <col style={{ width: 56 }} />
+                      <col style={{ width: '40%' }} />
+                      <col style={{ width: 40 }} />
+                      <col />
+                      <col style={{ width: 84 }} />
+                    </colgroup>
                     <thead>
-                      <tr style={{ background: '#f1f5f9', borderBottom: '1px solid #e2e8f0', color: '#475569' }}>
-                        <th style={{ padding: '10px 12px', textAlign: 'center', width: 45, fontWeight: 700 }}>STT</th>
-                        <th style={{ padding: '10px 12px', textAlign: 'left', fontWeight: 700, width: '38%' }}>
-                          Tên cũ / Biến thể trong Excel
-                        </th>
-                        <th style={{ padding: '10px 12px', textAlign: 'center', width: 30 }}></th>
-                        <th style={{ padding: '10px 12px', textAlign: 'left', fontWeight: 700, width: '38%' }}>
-                          Tên BCH chuẩn hóa (Hệ thống)
-                        </th>
-                        <th style={{ padding: '10px 12px', textAlign: 'center', width: 80, fontWeight: 700 }}>Thao tác</th>
+                      <tr>
+                        <th>STT</th>
+                        <th>Tên cũ / Biến thể trong Excel</th>
+                        <th></th>
+                        <th>Tên BCH chuẩn hóa (hệ thống)</th>
+                        <th>Thao tác</th>
                       </tr>
                     </thead>
                     <tbody>
                       {filteredRules.map((rule, idx) => (
-                        <tr
-                          key={idx}
-                          style={{
-                            borderBottom: '1px solid #f1f5f9',
-                            background: idx % 2 === 1 ? '#fafafa' : '#ffffff'
-                          }}
-                        >
-                          <td style={{ padding: '10px 12px', textAlign: 'center', color: '#94a3b8', fontWeight: 600 }}>
+                        <tr key={idx}>
+                          <td className="sg-num" style={{ textAlign: 'center', color: '#4A4C55' }}>
                             {idx + 1}
                           </td>
-                          <td style={{ padding: '10px 12px' }}>
-                            <div
-                              style={{
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: 6,
-                                background: '#fef2f2',
-                                border: '1px solid #fecaca',
-                                padding: '4px 10px',
-                                borderRadius: 6,
-                                color: '#991b1b',
-                                fontWeight: 600,
-                                fontSize: 12.5,
-                                wordBreak: 'break-word'
-                              }}
-                            >
-                              <span>{rule.ten_cu}</span>
-                            </div>
+                          <td>
+                            <div style={{ fontWeight: 600, color: '#2A2C33', wordBreak: 'break-word' }}>{rule.ten_cu}</div>
                             {rule.ghi_chu && (
-                              <div style={{ fontSize: 11, color: '#64748b', marginTop: 3 }}>
-                                <em>Ghi chú: {rule.ghi_chu}</em>
+                              <div style={{ fontSize: 12, color: '#4A4C55', fontWeight: 600, marginTop: 2 }}>
+                                Ghi chú: {rule.ghi_chu}
                               </div>
                             )}
                           </td>
-                          <td style={{ padding: '10px 12px', textAlign: 'center' }}>
-                            <ArrowRight size={16} color="#3b82f6" />
+                          <td style={{ textAlign: 'center' }}>
+                            <ArrowRight size={16} color="#0F58A7" />
                           </td>
-                          <td style={{ padding: '10px 12px' }}>
+                          <td>
                             {editingRuleIndex === idx ? (
-                              <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                              <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
                                 <input
                                   type="text"
+                                  className="chb-edit"
+                                  style={{ flex: '1 1 200px', width: 'auto' }}
                                   value={editStandardValue}
                                   onChange={(e) => setEditStandardValue(e.target.value)}
-                                  style={{
-                                    flex: 1,
-                                    padding: '4px 8px',
-                                    borderRadius: 6,
-                                    border: '1px solid #2563eb',
-                                    fontSize: 12.5
-                                  }}
                                   autoFocus
+                                  onFocus={(e) => { const l = e.target.value.length; e.target.setSelectionRange(l, l) }}
                                 />
                                 <button
+                                  type="button"
+                                  className="chb-mini ok"
                                   onClick={() => {
                                     if (!editStandardValue.trim()) return
                                     const next = [...rules]
@@ -849,86 +619,40 @@ export default function ChuanHoaBchModal({
                                     setRules(next)
                                     setEditingRuleIndex(null)
                                   }}
-                                  style={{
-                                    background: '#16a34a',
-                                    color: '#fff',
-                                    border: 'none',
-                                    borderRadius: 4,
-                                    padding: '4px 8px',
-                                    fontSize: 11.5,
-                                    cursor: 'pointer'
-                                  }}
                                 >
-                                  Lưu
+                                  <Check size={13} /> Lưu
                                 </button>
-                                <button
-                                  onClick={() => setEditingRuleIndex(null)}
-                                  style={{
-                                    background: '#94a3b8',
-                                    color: '#fff',
-                                    border: 'none',
-                                    borderRadius: 4,
-                                    padding: '4px 8px',
-                                    fontSize: 11.5,
-                                    cursor: 'pointer'
-                                  }}
-                                >
+                                <button type="button" className="chb-mini no" onClick={() => setEditingRuleIndex(null)}>
                                   Hủy
                                 </button>
                               </div>
                             ) : (
-                              <div
-                                style={{
-                                  display: 'inline-flex',
-                                  alignItems: 'center',
-                                  gap: 6,
-                                  background: '#eff6ff',
-                                  border: '1px solid #bfdbfe',
-                                  padding: '4px 10px',
-                                  borderRadius: 6,
-                                  color: '#1e40af',
-                                  fontWeight: 700,
-                                  fontSize: 12.5,
-                                  wordBreak: 'break-word'
-                                }}
-                              >
-                                <Building size={13} color="#2563eb" />
+                              <div style={{ fontWeight: 700, color: '#0A3D73', wordBreak: 'break-word' }}>
                                 <span>{rule.ten_chuan}</span>
+                                <button
+                                  type="button"
+                                  className="chb-pen"
+                                  style={{ marginLeft: 4, marginTop: -2 }}
+                                  onClick={() => {
+                                    setEditingRuleIndex(idx)
+                                    setEditStandardValue(rule.ten_chuan)
+                                  }}
+                                  title="Đổi tên chuẩn"
+                                >
+                                  <PenIcon />
+                                </button>
                               </div>
                             )}
                           </td>
-                          <td style={{ padding: '10px 12px', textAlign: 'center' }}>
-                            <div style={{ display: 'flex', gap: 6, justifyContent: 'center' }}>
-                              <button
-                                onClick={() => {
-                                  setEditingRuleIndex(idx)
-                                  setEditStandardValue(rule.ten_chuan)
-                                }}
-                                style={{
-                                  background: 'transparent',
-                                  border: 'none',
-                                  color: '#2563eb',
-                                  cursor: 'pointer',
-                                  padding: 4
-                                }}
-                                title="Đổi tên chuẩn"
-                              >
-                                <Edit2 size={14} />
-                              </button>
-                              <button
-                                onClick={() => handleDeleteRule(idx)}
-                                style={{
-                                  background: 'transparent',
-                                  border: 'none',
-                                  color: '#ef4444',
-                                  cursor: 'pointer',
-                                  padding: 4
-                                }}
-                                title="Xóa quy tắc"
-                              >
-                                <Trash2 size={14} />
-                              </button>
-                            </div>
+                          <td style={{ textAlign: 'center' }}>
+                            <button
+                              type="button"
+                              className="chb-x"
+                              onClick={() => handleDeleteRule(idx)}
+                              title="Xóa quy tắc"
+                            >
+                              <XMark size={13} w={2.3} />
+                            </button>
                           </td>
                         </tr>
                       ))}
@@ -951,7 +675,7 @@ export default function ChuanHoaBchModal({
                   padding: '14px 16px'
                 }}
               >
-                <div style={{ fontWeight: 700, fontSize: 14, color: '#1e293b', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div style={{ fontWeight: 700, fontSize: 15, color: '#1e293b', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 8 }}>
                   <span
                     style={{
                       width: 22,
@@ -986,7 +710,7 @@ export default function ChuanHoaBchModal({
                         padding: '8px 10px',
                         borderRadius: 8,
                         border: '1px solid #cbd5e1',
-                        fontSize: 13,
+                        fontSize: 15,
                         outline: 'none',
                         background: '#ffffff'
                       }}
@@ -1017,7 +741,7 @@ export default function ChuanHoaBchModal({
                         padding: '8px 10px',
                         borderRadius: 8,
                         border: '1px solid #cbd5e1',
-                        fontSize: 13,
+                        fontSize: 15,
                         outline: 'none',
                         boxSizing: 'border-box'
                       }}
@@ -1026,7 +750,7 @@ export default function ChuanHoaBchModal({
                 </div>
 
                 {(customStandardInput || selectedStandard) && (
-                  <div style={{ marginTop: 10, fontSize: 12.5, color: '#1e40af', display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <div style={{ marginTop: 10, fontSize: 12, color: '#1e40af', display: 'flex', alignItems: 'center', gap: 6 }}>
                     <Check size={14} color="#16a34a" />
                     Tên chuẩn sẽ áp dụng: <strong>{customStandardInput || selectedStandard}</strong>
                   </div>
@@ -1042,7 +766,7 @@ export default function ChuanHoaBchModal({
                   padding: '14px 16px'
                 }}
               >
-                <div style={{ fontWeight: 700, fontSize: 14, color: '#1e293b', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div style={{ fontWeight: 700, fontSize: 15, color: '#1e293b', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 8 }}>
                   <span
                     style={{
                       width: 22,
@@ -1082,7 +806,7 @@ export default function ChuanHoaBchModal({
                         padding: '6px 10px 6px 28px',
                         borderRadius: 6,
                         border: '1px solid #cbd5e1',
-                        fontSize: 12.5,
+                        fontSize: 12,
                         outline: 'none',
                         boxSizing: 'border-box'
                       }}
@@ -1136,7 +860,7 @@ export default function ChuanHoaBchModal({
                   }}
                 >
                   {filteredUnitsForSelection.length === 0 ? (
-                    <div style={{ padding: 16, textAlign: 'center', color: '#94a3b8', fontSize: 12.5 }}>
+                    <div style={{ padding: 16, textAlign: 'center', color: '#94a3b8', fontSize: 12 }}>
                       Không có tên nào khớp với tìm kiếm
                     </div>
                   ) : (
@@ -1158,7 +882,7 @@ export default function ChuanHoaBchModal({
                             cursor: isCurrentStandard ? 'not-allowed' : 'pointer',
                             background: isSelected ? '#eff6ff' : 'transparent',
                             opacity: isCurrentStandard ? 0.4 : 1,
-                            fontSize: 12.5,
+                            fontSize: 12,
                             borderBottom: '1px solid #f1f5f9'
                           }}
                         >
@@ -1181,7 +905,7 @@ export default function ChuanHoaBchModal({
                           {existingRule && (
                             <span
                               style={{
-                                fontSize: 11,
+                                fontSize: 12,
                                 color: '#2563eb',
                                 background: '#dbeafe',
                                 padding: '1px 6px',
@@ -1214,7 +938,7 @@ export default function ChuanHoaBchModal({
                       padding: '8px 10px',
                       borderRadius: 8,
                       border: '1px solid #cbd5e1',
-                      fontSize: 13,
+                      fontSize: 15,
                       outline: 'none',
                       boxSizing: 'border-box'
                     }}
@@ -1229,7 +953,7 @@ export default function ChuanHoaBchModal({
                     border: 'none',
                     borderRadius: 8,
                     padding: '9px 20px',
-                    fontSize: 13.5,
+                    fontSize: 15,
                     fontWeight: 700,
                     cursor: 'pointer',
                     display: 'flex',
@@ -1260,7 +984,7 @@ export default function ChuanHoaBchModal({
                 }}
               >
                 <Zap size={20} color="#16a34a" style={{ flexShrink: 0 }} />
-                <div style={{ fontSize: 13, color: '#166534', lineHeight: 1.4 }}>
+                <div style={{ fontSize: 15, color: '#166534', lineHeight: 1.4 }}>
                   Hệ thống tự động phát hiện các tên BCH gần giống nhau (như có ký tự <code>•</code>, khác số đuôi <code>01, 02</code>, hoặc viết tắt <code>CKN</code> vs <code>Cọc Khoan Nhồi</code>). Bạn có thể bấm <strong>"Gộp tên"</strong> để áp dụng ngay!
                 </div>
               </div>
@@ -1279,7 +1003,7 @@ export default function ChuanHoaBchModal({
                   <h4 style={{ margin: '0 0 6px', fontSize: 15, color: '#334155', fontWeight: 600 }}>
                     Tất cả các tên BCH hiện tại đã rất đồng nhất!
                   </h4>
-                  <p style={{ margin: 0, fontSize: 13, color: '#64748b' }}>
+                  <p style={{ margin: 0, fontSize: 15, color: '#64748b' }}>
                     Không phát hiện thêm các biến thể tên bị phân mảnh trong tệp hiện tại.
                   </p>
                 </div>
@@ -1306,7 +1030,7 @@ export default function ChuanHoaBchModal({
                         </div>
                         <div
                           style={{
-                            fontSize: 14,
+                            fontSize: 15,
                             fontWeight: 700,
                             color: '#1e40af',
                             display: 'flex',
@@ -1347,7 +1071,7 @@ export default function ChuanHoaBchModal({
                           border: 'none',
                           borderRadius: 8,
                           padding: '8px 16px',
-                          fontSize: 13,
+                          fontSize: 15,
                           fontWeight: 700,
                           cursor: 'pointer',
                           display: 'flex',
@@ -1382,7 +1106,7 @@ export default function ChuanHoaBchModal({
                 }}
               >
                 <Info size={20} color="#d97706" style={{ flexShrink: 0 }} />
-                <div style={{ fontSize: 13, color: '#92400e', lineHeight: 1.5 }}>
+                <div style={{ fontSize: 15, color: '#92400e', lineHeight: 1.5 }}>
                   Để lưu trữ vĩnh viễn các quy tắc chuẩn hóa tên BCH trên Supabase và đồng bộ tự động cho tất cả người dùng, hãy chạy đoạn mã SQL dưới đây trong mục <strong>SQL Editor</strong> của Supabase.
                 </div>
               </div>
@@ -1395,7 +1119,7 @@ export default function ChuanHoaBchModal({
                   borderRadius: 10,
                   padding: '12px 16px',
                   marginBottom: 14,
-                  fontSize: 13,
+                  fontSize: 15,
                   color: '#334155'
                 }}
               >
@@ -1436,7 +1160,7 @@ export default function ChuanHoaBchModal({
                     color: '#e2e8f0',
                     padding: '16px',
                     borderRadius: 10,
-                    fontSize: 12.5,
+                    fontSize: 12,
                     lineHeight: 1.5,
                     fontFamily: 'Consolas, Monaco, "Courier New", monospace',
                     overflowX: 'auto',
@@ -1479,68 +1203,20 @@ export default function ChuanHoaBchModal({
           )}
         </div>
 
-        {/* Modal Footer */}
-        <div
-          style={{
-            padding: '14px 20px',
-            background: '#f8fafc',
-            borderTop: '1px solid #e2e8f0',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            flexShrink: 0
-          }}
-        >
-          <div style={{ fontSize: 12.5, color: '#64748b', display: 'flex', alignItems: 'center', gap: 6 }}>
-            <span
-              style={{
-                width: 8,
-                height: 8,
-                borderRadius: '50%',
-                background: isSupabaseConfigured ? '#22c55e' : '#f59e0b'
-              }}
-            />
-            <span>{isSupabaseConfigured ? 'Supabase Connected' : 'Chế độ lưu trữ Offline (Local)'}</span>
-          </div>
+        {/* Chân hộp thoại */}
+        <div className="chb-dlg-ft" style={{ flexShrink: 0 }}>
+          <span className={'sg-conn ' + (isSupabaseConfigured ? 'ok' : 'off')}>
+            <i />
+            {isSupabaseConfigured ? 'Đã kết nối Supabase' : 'Lưu trên máy (chưa kết nối Supabase)'}
+          </span>
 
-          <div style={{ display: 'flex', gap: 10 }}>
-            <button
-              onClick={onClose}
-              style={{
-                background: '#ffffff',
-                border: '1px solid #cbd5e1',
-                color: '#475569',
-                padding: '8px 16px',
-                borderRadius: 8,
-                fontSize: 13.5,
-                fontWeight: 600,
-                cursor: 'pointer'
-              }}
-            >
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button type="button" className="sg-btn ghost" onClick={onClose}>
               Đóng
             </button>
-
-            <button
-              onClick={handleSaveAndApply}
-              disabled={saving}
-              style={{
-                background: 'linear-gradient(135deg, #2563eb 0%, #3b82f6 100%)',
-                color: '#ffffff',
-                border: 'none',
-                padding: '8px 20px',
-                borderRadius: 8,
-                fontSize: 13.5,
-                fontWeight: 700,
-                cursor: saving ? 'not-allowed' : 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 8,
-                boxShadow: '0 2px 6px rgba(37,99,235,0.25)',
-                opacity: saving ? 0.7 : 1
-              }}
-            >
+            <button type="button" className="sg-btn" onClick={handleSaveAndApply} disabled={saving}>
               <RefreshCw size={15} className={saving ? 'animate-spin' : ''} />
-              {saving ? 'Đang lưu...' : '💾 Lưu Lên Supabase & Áp Dụng Ngay'}
+              {saving ? 'Đang lưu...' : 'Lưu lên Supabase và áp dụng'}
             </button>
           </div>
         </div>
