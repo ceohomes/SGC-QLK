@@ -88,10 +88,10 @@ html body, html body #root {
 .sg-ava { flex: none; width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; color: #fff; font-weight: 700; font-size: 15px; background: linear-gradient(135deg, #2F86E0, #0A3D73); }
 .sg-user-name { font-size: 15px; font-weight: 600; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-.sg-pills { display: flex; align-items: center; gap: 6px; overflow-x: auto; scrollbar-width: none; padding: 2px; }
+.sg-pills { display: flex; align-items: center; gap: 4px; overflow-x: auto; scrollbar-width: none; padding: 2px; }
 .sg-pills::-webkit-scrollbar { display: none; }
-.sg-pill-sep { flex: none; width: 1px; height: 26px; margin: 0 4px; background: #C9CDD8; }
-.sg-pill { flex: none; display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 12px 0 6px; border-radius: 99px; background: var(--t); color: var(--cd); font-size: 15px; font-weight: 400 !important; white-space: nowrap; box-shadow: inset 0 0 0 1px rgba(255,255,255,.7); transition: transform .15s, box-shadow .2s, background .2s; }
+.sg-pill-sep { flex: none; width: 1px; height: 26px; margin: 0 3px; background: #C9CDD8; }
+.sg-pill { flex: none; display: inline-flex; align-items: center; gap: 5px; height: 36px; padding: 0 10px 0 5px; border-radius: 99px; background: var(--t); color: var(--cd); font-size: 15px; font-weight: 700 !important; white-space: nowrap; box-shadow: inset 0 0 0 1px rgba(255,255,255,.7); transition: transform .15s, box-shadow .2s, background .2s; }
 .sg-pill:hover { transform: translateY(-1px); box-shadow: inset 0 0 0 1px rgba(255,255,255,.7), 0 6px 14px -8px var(--c); }
 .sg-pill:active { transform: scale(.97); }
 .sg-pill.on { font-weight: 700 !important; background: linear-gradient(135deg, var(--c), var(--c2)); color: #fff; box-shadow: 0 8px 18px -8px var(--c), inset 0 1px 0 rgba(255,255,255,.35); }
@@ -99,10 +99,9 @@ html body, html body #root {
 .sg-pill.on .sg-pill-dot { background: rgba(255,255,255,.24); }
 .sg-pill-n { font-family: var(--fn) !important; font-size: 12px; font-weight: 700; padding: 1px 7px; border-radius: 99px; background: rgba(255,255,255,.75); color: var(--cd); }
 .sg-pill.on .sg-pill-n { background: rgba(255,255,255,.25); color: #fff; }
-@media (max-width: 1500px) {
-  .sg-pill:not(.on) .sg-pill-lb { display: none; }
-  .sg-pill:not(.on) { padding: 0 8px 0 6px; }
-}
+/* Không đủ chỗ (Header tự đo) → mục chưa chọn chỉ còn biểu tượng + tooltip, chữ vẫn đậm */
+.sg-pills.tight .sg-pill:not(.on) .sg-pill-lb { display: none; }
+.sg-pills.tight .sg-pill:not(.on) { padding: 0 6px 0 6px; }
 @media (max-width: 1100px) {
   .sg-logo-text, .sg-round-lb, .sg-user-name { display: none; }
   .sg-round { padding: 0 11px; }
@@ -330,14 +329,14 @@ html body button.sg-xl:disabled { opacity: .5 !important; }
 .sg-hide { display: none !important; }
 
 /* Dấu X kiểu iPhone cho mọi nút chỉ chứa biểu tượng X (xoá tìm, đóng, bỏ thẻ) */
-html body button:has(> svg.lucide-x:only-child) {
+html body button.sg-xbtn {
   width: 26px !important; height: 26px !important; min-width: 26px !important; padding: 0 !important;
   border-radius: 50% !important; border: 0 !important; box-shadow: none !important;
   background: #FFE7E5 !important; color: #FF3B30 !important;
   display: inline-grid !important; place-items: center !important; flex: none !important; cursor: pointer;
 }
-html body button:has(> svg.lucide-x:only-child) > svg { width: 12px !important; height: 12px !important; stroke-width: 2.6 !important; color: currentColor !important; stroke: currentColor !important; }
-html body button:has(> svg.lucide-x:only-child):hover { background: #FF3B30 !important; color: #fff !important; }
+html body button.sg-xbtn > svg { width: 12px !important; height: 12px !important; stroke-width: 2.6 !important; color: currentColor !important; stroke: currentColor !important; }
+html body button.sg-xbtn:hover { background: #FF3B30 !important; color: #fff !important; }
 
 /* Khung trắng bọc khối (card) viết bằng style inline: bo góc lớn, trắng mờ kiểu kính */
 html body div[style*="var(--shadow-sm)"]:not(.sg-kpi):not(.table-wrap) {
@@ -380,3 +379,12 @@ html body [style*="font-weight: 800"], html body [style*="font-weight: 900"], ht
 @keyframes sgSpin { to { transform: rotate(360deg); } }
 /* <b>/<strong> trong khối đã đậm sẽ thành "bolder" = 900 → cố định 700 */
 html body b, html body strong { font-weight: 700; }
+
+/* Mọi chữ trên nút luôn đậm 700 (anh Chung dặn), kể cả mục chưa chọn */
+html body button, html body button *:not(svg):not(path), html body label.sg-btn, html body .sg-btn, html body .sg-seg > button { font-weight: 700 !important; }
+
+/* Lớp chờ khi đang tạo file Excel */
+.sg-busy { position: fixed; inset: 0; z-index: 20000; display: grid; place-items: center; background: rgba(236,236,238,.55); backdrop-filter: blur(2px); }
+.sg-busy-card { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 22px 30px; border-radius: 24px; background: #fff; box-shadow: 0 30px 80px -30px rgba(16,24,64,.45); color: var(--primary-dark); font-size: 15px; }
+.sg-busy-card small { font-size: 12px; color: var(--text-muted); font-weight: 700; }
+.sg-busy-spin { width: 34px; height: 34px; border-radius: 50%; border: 4px solid #DDE7F5; border-top-color: #12A150; animation: sgSpin .8s linear infinite; }

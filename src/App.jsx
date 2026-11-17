@@ -706,6 +706,17 @@ function DashboardExcludeBchSelector({
 }
 
 // ─── Header ──────────────────────────────────────────────────────────────────
+// Hiện lớp "Đang tạo file Excel…" trong lúc xuất (xuất dữ liệu lớn mất vài chục giây, chạy đồng bộ nên phải vẽ lớp phủ trước)
+const withExportBusy = (fn) => () => {
+  const el = document.createElement('div')
+  el.className = 'sg-busy'
+  el.innerHTML = '<div class="sg-busy-card"><span class="sg-busy-spin"></span><b>Đang tạo file Excel…</b><small>Dữ liệu lớn có thể mất 30–60 giây, vui lòng chờ</small></div>'
+  document.body.appendChild(el)
+  setTimeout(() => {
+    try { fn() } catch (err) { console.error('Xuất Excel lỗi:', err) } finally { el.remove() }
+  }, 80)
+}
+
 // Phông Arial rộng hơn Roboto cũ: nới cột 15% để mã/chữ không gãy giữa từ
 const colW = (w) => (typeof w === 'number' ? Math.round(w * 1.15) : w)
 
@@ -725,6 +736,23 @@ const NAV_META = {
 
 function Header({ onForceRefresh, activeTab, setTab, tabs, counts, currentUser, onLogout }) {
   const [refreshing, setRefreshing] = useState(false)
+  const navRef = useRef(null)
+  const [tight, setTight] = useState(false)
+  // Đo xem hàng viên điều hướng có tràn không: tràn thì mục chưa chọn chỉ còn biểu tượng
+  React.useLayoutEffect(() => {
+    const nav = navRef.current
+    if (!nav) return
+    const measure = () => {
+      nav.classList.remove('tight')
+      const over = nav.scrollWidth > nav.clientWidth + 1
+      if (over) nav.classList.add('tight')
+      setTight(over)
+    }
+    measure()
+    const ro = new ResizeObserver(measure)
+    ro.observe(nav)
+    return () => ro.disconnect()
+  }, [activeTab, currentUser])
   const active = tabs.find(t => t.id === activeTab)
   const groups = [
     tabs.filter(t => ['chung', 'tinh_trang_don', 'kho', 'chuan_hoa_bch', 'dongia'].includes(t.id)),
@@ -770,7 +798,7 @@ function Header({ onForceRefresh, activeTab, setTab, tabs, counts, currentUser, 
           )}
         </div>
       </div>
-      <nav className="sg-pills" aria-label="Điều hướng">
+      <nav ref={navRef} className={'sg-pills' + (tight ? ' tight' : '')} aria-label="Điều hướng">
         {groups.map((g, gi) => (
           <React.Fragment key={gi}>
             {gi > 0 && <span className="sg-pill-sep" aria-hidden="true" />}
@@ -5463,7 +5491,7 @@ function OrderTab({
               setEndDate('')
             }}
             onEditProject={onEditProject}
-            onExportExcel={rows.length > 0 ? handleExportExcel : undefined}
+            onExportExcel={rows.length > 0 ? withExportBusy(handleExportExcel) : undefined}
           />
 
           {filtered.length === 0 && selectedProject && !search && !trangThai && !donViGiaoFilter && !donViNhanFilter ? (
@@ -6084,7 +6112,7 @@ function KhoDuAnTab({
           {filteredDonVi.length > 0 && (
             <button
               className="btn"
-              onClick={handleExportExcel}
+              onClick={withExportBusy(handleExportExcel)}
               style={{
                 background: 'linear-gradient(135deg, #059669 0%, #10b981 100%)',
                 color: '#ffffff',
@@ -14297,8 +14325,8 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
         donNhanLastRow >= 5
           ? {
               f: isAllProj
-                ? `IF(MAX(INDEX((Don_Nhan!$C$5:$C$${donNhanLastRow}=${sapCell})*(Don_Nhan!$I$5:$I$${donNhanLastRow}=${projectCell})*Don_Nhan!$B$5:$B$${donNhanLastRow},0))>0, MAX(INDEX((Don_Nhan!$C$5:$C$${donNhanLastRow}=${sapCell})*(Don_Nhan!$I$5:$I$${donNhanLastRow}=${projectCell})*Don_Nhan!$B$5:$B$${donNhanLastRow},0)), "")`
-                : `IF(MAX(INDEX((Don_Nhan!$C$5:$C$${donNhanLastRow}=${sapCell})*Don_Nhan!$B$5:$B$${donNhanLastRow},0))>0, MAX(INDEX((Don_Nhan!$C$5:$C$${donNhanLastRow}=${sapCell})*Don_Nhan!$B$5:$B$${donNhanLastRow},0)), "")`,
+                ? `IF(_xlfn.MAXIFS(Don_Nhan!$B$5:$B$${donNhanLastRow},Don_Nhan!$C$5:$C$${donNhanLastRow},${sapCell},Don_Nhan!$I$5:$I$${donNhanLastRow},${projectCell})>0, _xlfn.MAXIFS(Don_Nhan!$B$5:$B$${donNhanLastRow},Don_Nhan!$C$5:$C$${donNhanLastRow},${sapCell},Don_Nhan!$I$5:$I$${donNhanLastRow},${projectCell}), "")`
+                : `IF(_xlfn.MAXIFS(Don_Nhan!$B$5:$B$${donNhanLastRow},Don_Nhan!$C$5:$C$${donNhanLastRow},${sapCell})>0, _xlfn.MAXIFS(Don_Nhan!$B$5:$B$${donNhanLastRow},Don_Nhan!$C$5:$C$${donNhanLastRow},${sapCell}), "")`,
               v: toExcelSerial(item.latestReceivedDate),
               isDate: true
             }
@@ -14309,8 +14337,8 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
         donXuatLastRow >= 5
           ? {
               f: isAllProj
-                ? `IF(MAX(INDEX((Don_Xuat!$C$5:$C$${donXuatLastRow}=${sapCell})*(Don_Xuat!$H$5:$H$${donXuatLastRow}=${projectCell})*Don_Xuat!$B$5:$B$${donXuatLastRow},0))>0, MAX(INDEX((Don_Xuat!$C$5:$C$${donXuatLastRow}=${sapCell})*(Don_Xuat!$H$5:$H$${donXuatLastRow}=${projectCell})*Don_Xuat!$B$5:$B$${donXuatLastRow},0)), "")`
-                : `IF(MAX(INDEX((Don_Xuat!$C$5:$C$${donXuatLastRow}=${sapCell})*Don_Xuat!$B$5:$B$${donXuatLastRow},0))>0, MAX(INDEX((Don_Xuat!$C$5:$C$${donXuatLastRow}=${sapCell})*Don_Xuat!$B$5:$B$${donXuatLastRow},0)), "")`,
+                ? `IF(_xlfn.MAXIFS(Don_Xuat!$B$5:$B$${donXuatLastRow},Don_Xuat!$C$5:$C$${donXuatLastRow},${sapCell},Don_Xuat!$H$5:$H$${donXuatLastRow},${projectCell})>0, _xlfn.MAXIFS(Don_Xuat!$B$5:$B$${donXuatLastRow},Don_Xuat!$C$5:$C$${donXuatLastRow},${sapCell},Don_Xuat!$H$5:$H$${donXuatLastRow},${projectCell}), "")`
+                : `IF(_xlfn.MAXIFS(Don_Xuat!$B$5:$B$${donXuatLastRow},Don_Xuat!$C$5:$C$${donXuatLastRow},${sapCell})>0, _xlfn.MAXIFS(Don_Xuat!$B$5:$B$${donXuatLastRow},Don_Xuat!$C$5:$C$${donXuatLastRow},${sapCell}), "")`,
               v: toExcelSerial(item.latestIssuedDate),
               isDate: true
             }
@@ -16176,7 +16204,7 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
           {((isRealReport ? (realReportSubTab === 'tonghop' ? realReportSummaryRows.length : realReportRows.length) : reportData.length) > 0) && (
             <button
               id="btn-export-inventory"
-              onClick={handleExportExcel}
+              onClick={withExportBusy(handleExportExcel)}
               className="btn btn-success"
               style={{
                 display: 'flex',

@@ -42,6 +42,9 @@ function fixNum(el) {
 const XL_RE = /^\s*(Xuất\s+(file\s+)?Excel|Tải\s+Excel)/i
 function fixBtn(b) {
   if (XL_RE.test(b.textContent || '')) b.classList.add('sg-xl')
+  // Nút chỉ có dấu X (không chữ) → nút tròn đỏ nhạt kiểu iPhone
+  const onlyX = b.childElementCount === 1 && b.firstElementChild.matches('svg.lucide-x') && !(b.textContent || '').trim()
+  b.classList.toggle('sg-xbtn', onlyX)
 }
 
 function scan(root) {
