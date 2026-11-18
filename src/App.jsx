@@ -707,6 +707,9 @@ function DashboardExcludeBchSelector({
 }
 
 // ─── Header ──────────────────────────────────────────────────────────────────
+// Bật lại khi bảng don_chung đã tạo trên Supabase và app đã ghi Đơn chung lên đó
+const USE_REMOTE_DON_CHUNG = false
+
 // Thông báo nhỏ góc dưới phải (thay cho alert của trình duyệt)
 const showSgToast = (msg) => {
   const el = document.createElement('div')
@@ -20689,6 +20692,10 @@ export default function App() {
   const loadTableFromSupabase = React.useCallback(async (tableType, forceBypassCache = false) => {
     if (!isSupabaseConfigured) return
     if (tableType !== 'chung') return // Skip deleted tables
+    // Đơn chung đang chạy chế độ chỉ lưu trên máy (không ghi lên Supabase) và bảng don_chung chưa có
+    // trên Supabase → không gọi để khỏi báo lỗi 404. Khi tạo bảng (supabase/tao_bang_don_chung.sql)
+    // và làm phần đồng bộ lên thì đổi USE_REMOTE_DON_CHUNG thành true.
+    if (!USE_REMOTE_DON_CHUNG) return
     const tableName = 'don_chung'
     // KHAI BÁO Ở ĐÂY (không phải bên trong try) để catch block bên dưới vẫn truy cập được,
     // tránh lỗi "cachedKey is not defined" khiến dữ liệu tải xong không lưu được vào cache.
@@ -21060,6 +21067,10 @@ export default function App() {
       } catch (cacheErr) {
         console.warn('[Offline-First Cache] Không thể đọc cache ban đầu:', cacheErr)
       }
+
+      // Không bắt người dùng chờ Supabase (mạng chậm có khi 15–30 giây): tắt màn tải ngay,
+      // các bảng đơn giá / khấu hao / phân loại / chuẩn hoá BCH tải ngầm rồi tự cập nhật màn hình.
+      if (isMounted) setIsInitialLoading(false)
 
       // Tiếp tục kiểm tra/đồng bộ ngầm với Supabase để lấy cập nhật mới nhất
       try {
