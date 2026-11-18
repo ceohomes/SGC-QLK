@@ -20,6 +20,7 @@ import ThongKeTheoVatTuTab from './components/ThongKeTheoVatTuTab.jsx'
 import ChuanHoaBchModal from './components/ChuanHoaBchModal.jsx'
 import ChuanHoaBchTab from './components/ChuanHoaBchTab.jsx'
 import TinhTrangDonVatTuTab from './components/TinhTrangDonVatTuTab.jsx'
+import UploadHero from './components/UploadHero.jsx'
 
 const KEYS_TO_REMOVE_FOR_REAL_REPORT = [
   'tenNguon', 'maNguon', 'lo', 'hangMuc', 'soHopDong', 'thuKho', 
@@ -886,7 +887,7 @@ function TabBar({ tabs, active, onChange }) {
 }
 
 // ─── Upload Zone ──────────────────────────────────────────────────────────────
-function UploadZone({ onFile, label, accept = '.xlsx,.xls', disabled = false }) {
+function UploadZone({ onFile, label, accept = '.xlsx,.xls', disabled = false, hero = null }) {
   const [drag, setDrag] = useState(false)
   const ref = useRef()
 
@@ -929,6 +930,24 @@ function UploadZone({ onFile, label, accept = '.xlsx,.xls', disabled = false }) 
       }
     })
   }, [onFile, disabled])
+
+  if (hero) {
+    return (
+      <>
+        <input ref={ref} type="file" accept={accept} multiple disabled={disabled} onChange={e => { if (!disabled) handle(e.target.files); e.target.value = '' }} style={{ display: 'none' }} />
+        <UploadHero
+          {...hero}
+          dragging={drag}
+          disabled={disabled}
+          disabledNote="Hãy chọn một kho dự án cụ thể trước khi tải file lên."
+          onPick={() => ref.current && ref.current.click()}
+          onDragOver={e => { e.preventDefault(); if (!disabled) setDrag(true) }}
+          onDragLeave={() => setDrag(false)}
+          onDrop={e => { e.preventDefault(); setDrag(false); if (!disabled) handle(e.dataTransfer.files) }}
+        />
+      </>
+    )
+  }
 
   return (
     <div
@@ -5400,41 +5419,18 @@ function OrderTab({
   return (
     <div style={{ padding: '16px 24px 24px 24px', height: '100%', display: 'flex', flexDirection: 'column', boxSizing: 'border-box', overflow: 'hidden' }}>
       {!rows.length && !loading ? (
-        <div style={{ maxWidth: 560, margin: '40px auto' }}>
-          <div style={{
-            background: 'var(--primary-light)',
-            border: '1px solid #bdd4f0',
-            borderRadius: 10,
-            padding: '10px 14px',
-            marginBottom: 20,
-            display: 'flex',
-            gap: 8,
-            alignItems: 'flex-start',
-          }}>
-            <Info size={14} color="var(--primary)" style={{ marginTop: 1, flexShrink: 0 }} />
-            <div style={{ fontSize: 15, color: 'var(--primary-dark)' }}>
-              <strong>Cấu trúc file yêu cầu:</strong> File Excel có sheet "Báo cáo theo dõi giao nhận" với 36 cột từ Ngày xuất nhập đến Nhãn hiệu. Dòng 1 là nhóm cột, dòng 2 là sub-header, dữ liệu từ dòng 3.
-            </div>
-          </div>
-
-          {!selectedProject && (
-            <div style={{
-              background: 'var(--primary-light)',
-              border: '1px solid #bdd4f0',
-              borderRadius: 10,
-              padding: '10px 14px',
-              marginBottom: 16,
-              display: 'flex',
-              gap: 8,
-              alignItems: 'flex-start',
-            }}>
-              <Info size={14} color="var(--primary)" style={{ marginTop: 1, flexShrink: 0 }} />
-              <div style={{ fontSize: 15, color: 'var(--primary-dark)' }}>
-                <strong>Lưu ý:</strong> Bạn đang chọn <strong>Tất cả dự án</strong>. Khi tải file lên, hệ thống sẽ tự động phân tích và gán dữ liệu vào các dự án tương ứng dựa trên cột dữ liệu gốc của từng dòng!
-              </div>
-            </div>
-          )}
-          <UploadZone onFile={handleFile} label={uploadLabel} disabled={false} />
+        <div style={{ flex: 1, minHeight: 360, width: '100%', maxWidth: 1000, margin: '0 auto', display: 'flex', alignItems: 'center' }}>
+          <UploadZone
+            onFile={handleFile}
+            label={uploadLabel}
+            disabled={false}
+            hero={{
+              title: 'Bắt đầu với ' + uploadLabel.replace('Tải lên file ', 'file '),
+              sub: 'Tải báo cáo xuất từ SCP để dựng toàn bộ báo cáo giao nhận',
+              stats: [{ v: '36', l: 'cột dữ liệu' }, { v: '6', l: 'dữ liệu từ dòng' }, { v: '.xlsx', l: 'chọn nhiều file' }],
+              dropNote: 'Sheet "Báo cáo theo dõi giao nhận" · dòng 4 nhóm cột, dòng 5 tiêu đề' + (!selectedProject ? ' · đang chọn Tất cả dự án: tự gán từng dòng theo dữ liệu gốc' : ` · gán vào dự án ${selectedProject}`),
+            }}
+          />
         </div>
       ) : loading ? (
         <div className="empty-state">

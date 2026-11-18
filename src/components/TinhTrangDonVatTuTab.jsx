@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useCallback, useRef } from 'react'
+import UploadHero from './UploadHero.jsx'
 import * as XLSXStyleRaw from 'xlsx-js-style'
 import {
   FileSpreadsheet,
@@ -1462,32 +1463,17 @@ export default function TinhTrangDonVatTuTab({
       {rows.length === 0 ? (
         /* Khối thả file tải lên */
         <div className="sgt-dropwrap">
-          <div
-            className={'sgt-drop' + (isDragOver ? ' over' : '')}
+          <UploadHero
+            title="Bắt đầu với file tình trạng đơn vật tư"
+            sub="Tải file Excel theo dõi tình trạng đơn để xem trạng thái phê duyệt và đồng bộ SAP"
+            stats={[{ v: '1→4', l: 'cán bộ phê duyệt' }, { v: 'SAP', l: 'số phiếu, đồng bộ' }, { v: '.xlsx', l: 'file Excel' }]}
+            dropNote="Cột cần có: STT · Số đơn · Ngày xuất · Đơn vị giao/nhận · Người giao/nhận · Cán bộ phê duyệt 1→4 · Trạng thái · Số đơn/phiếu SAP · Đồng bộ SAP"
+            dragging={isDragOver}
+            onPick={() => fileInputRef.current && fileInputRef.current.click()}
             onDragOver={(e) => { e.preventDefault(); setIsDragOver(true) }}
             onDragLeave={() => setIsDragOver(false)}
             onDrop={handleDrop}
-            onClick={() => fileInputRef.current && fileInputRef.current.click()}
-            title="Tải lên file Excel theo dõi tình trạng đơn vật tư và đồng bộ SAP"
-          >
-            <div className="sgt-drop-ic"><Upload size={28} /></div>
-            <h2>Tải lên file Excel tình trạng đơn vật tư</h2>
-            <p>Kéo thả file Excel vào đây hoặc bấm để chọn từ máy</p>
-            <span className="sg-btn" style={{ pointerEvents: 'none' }}>
-              <Upload size={15} />
-              Chọn file Excel
-            </span>
-
-            <div className="sgt-drop-note">
-              <div className="sgt-drop-note-hd">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9.5" /><path d="M12 11v6" /><path d="M12 7.5h.01" /></svg>
-                Cấu trúc file Excel hỗ trợ gồm các cột:
-              </div>
-              <div>
-                <strong>STT</strong> · <strong>Số đơn</strong> · <strong>Ngày xuất</strong> · <strong>Đơn vị giao</strong> · <strong>Người giao</strong> · <strong>Đơn vị nhận</strong> · <strong>Người nhận</strong> · <strong>Cán bộ phê duyệt 1 → 4</strong> · <strong>Trạng thái</strong> · <strong>Số đơn/phiếu SAP</strong> · <strong>Đồng bộ SAP</strong>
-              </div>
-            </div>
-          </div>
+          />
         </div>
       ) : (
         /* Bảng dữ liệu */
