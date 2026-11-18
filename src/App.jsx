@@ -706,6 +706,15 @@ function DashboardExcludeBchSelector({
 }
 
 // ─── Header ──────────────────────────────────────────────────────────────────
+// Thông báo nhỏ góc dưới phải (thay cho alert của trình duyệt)
+const showSgToast = (msg) => {
+  const el = document.createElement('div')
+  el.className = 'sg-toast'
+  el.textContent = msg
+  document.body.appendChild(el)
+  setTimeout(() => el.remove(), 9000)
+}
+
 // Hiện lớp "Đang tạo file Excel…" trong lúc xuất (xuất dữ liệu lớn mất vài chục giây, chạy đồng bộ nên phải vẽ lớp phủ trước)
 const withExportBusy = (fn) => () => {
   const el = document.createElement('div')
@@ -713,7 +722,7 @@ const withExportBusy = (fn) => () => {
   el.innerHTML = '<div class="sg-busy-card"><span class="sg-busy-spin"></span><b>Đang tạo file Excel…</b><small>Dữ liệu lớn có thể mất 30–60 giây, vui lòng chờ</small></div>'
   document.body.appendChild(el)
   setTimeout(() => {
-    try { fn() } catch (err) { console.error('Xuất Excel lỗi:', err) } finally { el.remove() }
+    try { fn() } catch (err) { console.error('Xuất Excel lỗi:', err); showSgToast('Xuất Excel không thành công: ' + (err && err.message ? err.message : err) + '. Hãy chọn từng kho rồi xuất lại.') } finally { el.remove() }
   }, 80)
 }
 
@@ -2446,7 +2455,7 @@ function RealReportSummaryTable({ summaryRows = [], customCategoryMap = {}, loca
       XLSXStyle.utils.book_append_sheet(wb, wsThucXuat, xuatSheetName)
     })
 
-    const wbout = XLSXStyle.write(wb, { bookType: 'xlsx', type: 'array' })
+    const wbout = XLSXStyle.write(wb, { bookType: 'xlsx', type: 'array', bookSST: true, compression: true })
     const blob = new Blob([wbout], { type: 'application/octet-stream' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
@@ -3548,7 +3557,7 @@ function RealReportSummaryTable({ summaryRows = [], customCategoryMap = {}, loca
     XLSXStyle.utils.book_append_sheet(wb, wsThucXuat, "Chi tiết Thực xuất")
 
     // Generate output
-    const wbout = XLSXStyle.write(wb, { bookType: 'xlsx', type: 'array' })
+    const wbout = XLSXStyle.write(wb, { bookType: 'xlsx', type: 'array', bookSST: true, compression: true })
     const blob = new Blob([wbout], { type: 'application/octet-stream' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
@@ -5375,7 +5384,7 @@ function OrderTab({
     XLSXStyle.utils.book_append_sheet(wb, ws, sheetName)
     
     // Save
-    const wbout = XLSXStyle.write(wb, { bookType: 'xlsx', type: 'array' })
+    const wbout = XLSXStyle.write(wb, { bookType: 'xlsx', type: 'array', bookSST: true, compression: true })
     const blob = new Blob([wbout], { type: 'application/octet-stream' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
@@ -5935,7 +5944,7 @@ function KhoDuAnTab({
     createSheetForList(categorizedUnits.todoi, 'Tổ đội', '059669')
 
     // Save
-    const wbout = XLSXStyle.write(wb, { bookType: 'xlsx', type: 'array' })
+    const wbout = XLSXStyle.write(wb, { bookType: 'xlsx', type: 'array', bookSST: true, compression: true })
     const blob = new Blob([wbout], { type: 'application/octet-stream' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
@@ -9015,7 +9024,7 @@ function PhanNhomVatTuTab({
 
       XLSXStyle.utils.book_append_sheet(wb, ws, "Template Đơn Giá")
       
-      const wbout = XLSXStyle.write(wb, { bookType: 'xlsx', type: 'array' })
+      const wbout = XLSXStyle.write(wb, { bookType: 'xlsx', type: 'array', bookSST: true, compression: true })
       const blob = new Blob([wbout], { type: 'application/octet-stream' })
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
@@ -9498,7 +9507,7 @@ function PhanNhomVatTuTab({
                   )
                   XLSXStyle.utils.book_append_sheet(wb, phanNhomSheet, "Phân nhóm Vật tư")
                   
-                  const wbout = XLSXStyle.write(wb, { bookType: 'xlsx', type: 'array' })
+                  const wbout = XLSXStyle.write(wb, { bookType: 'xlsx', type: 'array', bookSST: true, compression: true })
                   const blob = new Blob([wbout], { type: 'application/octet-stream' })
                   const url = URL.createObjectURL(blob)
                   const a = document.createElement('a')
@@ -13821,7 +13830,7 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
           XLSXStyle.utils.book_append_sheet(wb, phanNhomSheet, "Phân nhóm Vật tư")
         }
 
-        const wbout = XLSXStyle.write(wb, { bookType: 'xlsx', type: 'array' })
+        const wbout = XLSXStyle.write(wb, { bookType: 'xlsx', type: 'array', bookSST: true, compression: true })
         const blob = new Blob([wbout], { type: 'application/octet-stream' })
         const url = URL.createObjectURL(blob)
         const a = document.createElement('a')
@@ -14175,7 +14184,7 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
         XLSXStyle.utils.book_append_sheet(wb, phanNhomSheet, "Phân nhóm Vật tư")
       }
 
-      const wbout = XLSXStyle.write(wb, { bookType: 'xlsx', type: 'array' })
+      const wbout = XLSXStyle.write(wb, { bookType: 'xlsx', type: 'array', bookSST: true, compression: true })
       const blob = new Blob([wbout], { type: 'application/octet-stream' })
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
@@ -14657,6 +14666,8 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
         { key: 'trangThai', label: 'Trạng thái', width: 120 },
         { key: 'ghiChu', label: 'Ghi chú', width: 200 }
       ]
+      // Dữ liệu rất lớn: chỉ giữ cột A–J (công thức tổng hợp chỉ cần đến cột J) để file ghi được
+      if ((detailRows.nhanList.length + detailRows.xuatList.length) > 150000) dcols.splice(10)
       dws['!cols'] = dcols.map(c => ({ wpx: c.width }))
 
       dws['A1'] = {
@@ -14766,7 +14777,7 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
         }
       }
 
-      dws['!ref'] = `A1:O${dRowIdx}`
+      dws['!ref'] = `A1:${String.fromCharCode(64 + dcols.length)}${dRowIdx}`
       return dws
     }
 
@@ -14781,7 +14792,20 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
       XLSXStyle.utils.book_append_sheet(wb, phanNhomSheet, "Phân nhóm Vật tư")
     }
 
-    const wbout = XLSXStyle.write(wb, { bookType: 'xlsx', type: 'array' })
+    let wbout
+    try {
+      wbout = XLSXStyle.write(wb, { bookType: 'xlsx', type: 'array', bookSST: true, compression: true })
+    } catch (bigErr) {
+      // Quá lớn để ghi kèm 2 sheet chi tiết đơn: bỏ 2 sheet đó, đổi công thức thành số đã tính sẵn rồi ghi lại
+      console.warn('Xuất Excel: dữ liệu quá lớn, ghi bản gọn không kèm sheet chi tiết đơn', bigErr)
+      ;['Don_Nhan', 'Don_Xuat'].forEach(n => {
+        delete wb.Sheets[n]
+        wb.SheetNames = wb.SheetNames.filter(x => x !== n)
+      })
+      Object.keys(ws).forEach(k => { if (k[0] !== '!' && ws[k] && ws[k].f) delete ws[k].f })
+      wbout = XLSXStyle.write(wb, { bookType: 'xlsx', type: 'array', bookSST: true, compression: true })
+      showSgToast('Dữ liệu quá lớn nên file chỉ gồm bảng tổng hợp (số đã tính sẵn), không kèm 2 sheet chi tiết đơn nhận/xuất.')
+    }
     const blob = new Blob([wbout], { type: 'application/octet-stream' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
@@ -15288,7 +15312,7 @@ INSERT INTO public.cau_hinh_khau_hao (months, is_approved) VALUES (12, true), (2
         XLSXStyle.utils.book_append_sheet(wb, phanNhomSheet, "Phân nhóm Vật tư")
       }
 
-      const wbout = XLSXStyle.write(wb, { bookType: 'xlsx', type: 'array' })
+      const wbout = XLSXStyle.write(wb, { bookType: 'xlsx', type: 'array', bookSST: true, compression: true })
       const blob = new Blob([wbout], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
       const url = window.URL.createObjectURL(blob)
       const a = document.createElement('a')
@@ -17434,7 +17458,7 @@ function SummaryCompilationTab({ giaoRows, nhanRows, configs = [], selectedProje
     XLSXStyle.utils.book_append_sheet(wb, wsSummary, "Tổng hợp")
     XLSXStyle.utils.book_append_sheet(wb, ws, "Tổng hợp thông tin")
 
-    const wbout = XLSXStyle.write(wb, { bookType: 'xlsx', type: 'array' })
+    const wbout = XLSXStyle.write(wb, { bookType: 'xlsx', type: 'array', bookSST: true, compression: true })
     const blob = new Blob([wbout], { type: 'application/octet-stream' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')

@@ -2059,7 +2059,7 @@ export default function TaiSanKhauHaoTab({
         XLSXStyle.utils.book_append_sheet(wb, wsMismatch, 'Chi tiết lệch dòng đối chiếu')
       }
 
-      const wbout = XLSXStyle.write(wb, { bookType: 'xlsx', type: 'array' })
+      const wbout = XLSXStyle.write(wb, { bookType: 'xlsx', type: 'array', bookSST: true, compression: true })
       const blob = new Blob([wbout], { type: 'application/octet-stream' })
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
@@ -2400,7 +2400,7 @@ export default function TaiSanKhauHaoTab({
       ws['!ref'] = `A1:${getColLabel(maxColIdx)}${excelRowIdx}`
       XLSXStyle.utils.book_append_sheet(wb, ws, 'Tổng hợp tháng')
 
-      const wbout = XLSXStyle.write(wb, { bookType: 'xlsx', type: 'array' })
+      const wbout = XLSXStyle.write(wb, { bookType: 'xlsx', type: 'array', bookSST: true, compression: true })
       const blob = new Blob([wbout], { type: 'application/octet-stream' })
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
@@ -2619,7 +2619,7 @@ export default function TaiSanKhauHaoTab({
       XLSXStyle.utils.book_append_sheet(wb, ws, 'Thống kê Vật tư')
 
       const fileProjName = 'Tat_ca'
-      const wbout = XLSXStyle.write(wb, { bookType: 'xlsx', type: 'array' })
+      const wbout = XLSXStyle.write(wb, { bookType: 'xlsx', type: 'array', bookSST: true, compression: true })
       const blob = new Blob([wbout], { type: 'application/octet-stream' })
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
@@ -3152,7 +3152,7 @@ export default function TaiSanKhauHaoTab({
     XLSXStyle.utils.book_append_sheet(wb, giaoSheet, 'Don_Giao')
 
     const fileProjName = localProject ? String(localProject).replace(/[^a-zA-Z0-9_đĐâÂêÊôÔ]/g, '_') : 'Tat_ca'
-    const wbout = XLSXStyle.write(wb, { bookType: 'xlsx', type: 'array' })
+    const wbout = XLSXStyle.write(wb, { bookType: 'xlsx', type: 'array', bookSST: true, compression: true })
     const blob = new Blob([wbout], { type: 'application/octet-stream' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')

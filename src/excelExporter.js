@@ -1076,7 +1076,7 @@ export const exportConsolidatedExcel = (selectedRows, localProject, customCatego
     XLSXStyle.utils.book_append_sheet(wb, phanNhomSheet, "Phân nhóm Vật tư")
   }
 
-  const wbout = XLSXStyle.write(wb, { bookType: 'xlsx', type: 'array' })
+  const wbout = XLSXStyle.write(wb, { bookType: 'xlsx', type: 'array', bookSST: true, compression: true })
   const blob = new Blob([wbout], { type: 'application/octet-stream' })
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
